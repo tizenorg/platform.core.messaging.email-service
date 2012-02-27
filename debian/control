@@ -1,0 +1,32 @@
+Source: email-service
+Section: main/libs
+Priority: extra
+Maintainer: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>, Sang-Hun Chung <sanghun.chung@samsung.com>
+Uploaders: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>, Sang-Hun Chung <sanghun.chung@samsung.com>, Changseok Oh <seok.oh@samsung.com>
+Build-Depends: debhelper (>= 5), libglib2.0-dev, libdbus-1-dev, libdbus-glib-1-dev,	libslp-db-util-dev, libxml2-dev, libwbxml2-dev, libssl-dev, drm-service-dev, libslp-pm-dev, libuw-imap-toolkit-dev, openssl, dlog-dev, libslp-setting-dev, libcontacts-service-dev, libheynoti-dev, libss-client-dev, libalarm-dev, libaccounts-svc-dev, libdevman-dev, libmm-player-dev, libmm-session-dev, libnotification-dev, libeina-dev, libcurl-dev
+Standards-Version: 3.7.2
+Homepage: N/A
+
+Package: email-service-dev
+XB-Public-Package: yes
+XB-Generate-Docs: yes
+Section: main/libdevel
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, email-service-0 (= ${Source-Version})
+Description: E-mail Framework Middleware Development package
+ email-service-dev
+
+Package: email-service-0
+Section: main/libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libuw-imap-toolkit-0
+Description: E-mail Framework Middleware Development package
+ email-service-0
+
+Package: email-service-dbg
+Section: debug
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, email-service-0 (= ${Source-Version})
+Description: Debug for use with email-service
+ email-service-dbg : for debug
+

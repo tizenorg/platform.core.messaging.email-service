@@ -1,0 +1,4 @@
+#/usr/bin/email-test-app
+#/opt/etc/email-service/*
+#/opt/dbspace/.email-service.db
+#/opt/dbspace/.email-service.db-journal

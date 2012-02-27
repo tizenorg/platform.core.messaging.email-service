@@ -1,0 +1,465 @@
+msgid "IDS_EMAIL_POP_NO_EMAIL_ADDRESS"
+msgstr "Нет адреса E-mail"
+
+msgid "IDS_EMAIL_BODY_COMPLETE"
+msgstr "Завершено"
+
+msgid "IDS_EMAIL_BODY_ACCEPTED_C_PS"
+msgstr "Принято: %s"
+
+msgid "IDS_EMAIL_BODY_DECLINED_C_PS"
+msgstr "Отклонено: %s"
+
+msgid "IDS_EMAIL_BODY_DOWNLOAD_FULL_MESSAGE"
+msgstr "Загрузить все сообщение"
+
+msgid "IDS_EMAIL_BODY_GENERAL_SETTINGS"
+msgstr "Общие настройки"
+
+msgid "IDS_EMAIL_BODY_TENTATIVE_C_PS"
+msgstr "Под вопросом: %s"
+
+msgid "IDS_EMAIL_BODY_WHEN_C_PS"
+msgstr "Когда: %s"
+
+msgid "IDS_EMAIL_BODY_WHERE_C_PS"
+msgstr "Где: %s"
+
+msgid "IDS_EMAIL_BUTTON_DECLINE_ABB"
+msgstr "Отклонить"
+
+msgid "IDS_EMAIL_BODY_NO_CONTENTS"
+msgstr "Нет содержимого"
+
+msgid "IDS_EMAIL_BODY_ORIGINAL_MESSAGE"
+msgstr "Исходное сообщение"
+
+msgid "IDS_EMAIL_HEADER_ACCOUNT_SETTINGS"
+msgstr "Параметры учетной записи"
+
+msgid "IDS_EMAIL_OPT_BLOCK"
+msgstr "Блокировать"
+
+msgid "IDS_EMAIL_OPT_MARK_AS_READ"
+msgstr "Пометить как прочитанное"
+
+msgid "IDS_EMAIL_OPT_MARK_AS_UNREAD"
+msgstr "Пометить как непрочитанное"
+
+msgid "IDS_EMAIL_OPT_OTHERS"
+msgstr "Прочее"
+
+msgid "IDS_EMAIL_OPT_UNREAD"
+msgstr "Непрочитанные"
+
+msgid "IDS_EMAIL_SK_COMPOSE"
+msgstr "Создать"
+
+msgid "IDS_EMAIL_HEADER_DOWNLOAD_FAILED"
+msgstr "Загрузка невозможна"
+
+msgid "IDS_EMAIL_OPT_ADD_TO_CONTACT"
+msgstr "Добавить к контакту"
+
+msgid "IDS_EMAIL_OPT_VOICE_CALL"
+msgstr "Голосовой вызов"
+
+msgid "IDS_EMAIL_BODY_ACCOUNT_NAME"
+msgstr "Имя учетной записи"
+
+msgid "IDS_EMAIL_BODY_ATTACHMENTS"
+msgstr "Вложения"
+
+msgid "IDS_EMAIL_BODY_FROM_C"
+msgstr "От:"
+
+msgid "IDS_EMAIL_BODY_IMAP4_SERVER"
+msgstr "Сервер IMAP4"
+
+msgid "IDS_EMAIL_BODY_INCLUDES"
+msgstr "Содержит"
+
+msgid "IDS_EMAIL_BODY_INCOMING_PORT"
+msgstr "Порт сервера вх. почты"
+
+msgid "IDS_EMAIL_BODY_INCOMING_SERVER"
+msgstr "Входящий сервер"
+
+msgid "IDS_EMAIL_BODY_IN_PD_MINUTES"
+msgstr "Через %d мин."
+
+msgid "IDS_EMAIL_BODY_KEEP_IN_SERVER"
+msgstr "Хранить копии на сервере"
+
+msgid "IDS_EMAIL_BODY_NO_TEXT"
+msgstr "Нет текста"
+
+msgid "IDS_EMAIL_BODY_OUTGOING_PORT"
+msgstr "Порт сервера исх. почты"
+
+msgid "IDS_EMAIL_BODY_OUTGOING_SERVER"
+msgstr "Исходящий сервер"
+
+msgid "IDS_EMAIL_BODY_PD_EMAILS"
+msgstr "Сообщений электронной почты: %d"
+
+msgid "IDS_EMAIL_BODY_POP3_SERVER"
+msgstr "Сервер POP3"
+
+msgid "IDS_EMAIL_BODY_RECENT"
+msgstr "Последние"
+
+msgid "IDS_EMAIL_BODY_RETRIEVING_OPTIONS"
+msgstr "Параметры приема"
+
+msgid "IDS_EMAIL_BODY_RE_C"
+msgstr "RE:"
+
+msgid "IDS_EMAIL_BODY_SENT_C"
+msgstr "Отправлено:"
+
+msgid "IDS_EMAIL_BODY_SENT_FROM_SAMSUNG_MOBILE"
+msgstr "Отправлено с Samsung Mobile"
+
+msgid "IDS_EMAIL_BODY_USER_PASSWORD"
+msgstr "Пароль пользователя"
+
+msgid "IDS_EMAIL_HEADER_EDIT_RULES"
+msgstr "Изменить правила"
+
+msgid "IDS_EMAIL_HEADER_EMAIL_SETTINGS"
+msgstr "Настройки эл.почты"
+
+msgid "IDS_EMAIL_HEADER_MAILBOXES"
+msgstr "Почтовые ящики"
+
+msgid "IDS_EMAIL_POP_ALERT"
+msgstr "Сигнал"
+
+msgid "IDS_EMAIL_POP_FILE_ALREADY_EXISTS"
+msgstr "Файл уже существует"
+
+msgid "IDS_EMAIL_POP_NO_SENDER"
+msgstr "Отправитель отсутствует"
+
+msgid "IDS_EMAIL_POP_SUCCEEDED"
+msgstr "Успешно"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ATTACH_MAXIMUM_NUMBER_OF_FILES_IS_PD"
+msgstr "Невозможно вложить. Максимальное количество файлов: %d"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ATTACH_MAXIMUM_SIZE_OF_FILES_IS_PD_KB"
+msgstr "Невозможно вложить. Максимальный размер файлов: %d КБ"
+
+msgid "IDS_EMAIL_POP_VALIDATION_FAILED"
+msgstr "Сбой проверки"
+
+msgid "IDS_EMAIL_SK_REPLY_ALL"
+msgstr "Ответить всем"
+
+msgid "IDS_EMAIL_BODY_1_ITEM"
+msgstr "1 элемент"
+
+msgid "IDS_EMAIL_BODY_ADD_MY_NAMECARD"
+msgstr "Добавить мою визитку"
+
+msgid "IDS_EMAIL_BODY_ADD_SIGNATURE"
+msgstr "Добавлять подпись"
+
+msgid "IDS_EMAIL_BODY_ALL_EMAILS"
+msgstr "Все сообщения"
+
+msgid "IDS_EMAIL_BODY_ALWAYS_BCC_MYSELF"
+msgstr "Всегда отправлять себе скрытую копию"
+
+msgid "IDS_EMAIL_BODY_BCC"
+msgstr "СК"
+
+msgid "IDS_EMAIL_BODY_BLOCK_EMAILS"
+msgstr "Блокировка E-mail сообщений"
+
+msgid "IDS_EMAIL_BODY_BODY"
+msgstr "Телосложение"
+
+msgid "IDS_EMAIL_BODY_CC"
+msgstr "Копия"
+
+msgid "IDS_EMAIL_BODY_CC_BCC"
+msgstr "Копия/скрытая копия"
+
+msgid "IDS_EMAIL_BODY_CHECK_INTERVAL"
+msgstr "Интервал проверки"
+
+msgid "IDS_EMAIL_BODY_DEFAULT_ACCOUNT"
+msgstr "Уч. зап. по умолч."
+
+msgid "IDS_EMAIL_BODY_DRAFTS"
+msgstr "Черновики"
+
+msgid "IDS_EMAIL_BODY_EMAIL_ACCOUNTS"
+msgstr "Учетные записи"
+
+msgid "IDS_EMAIL_BODY_END_TIME"
+msgstr "Время окончания"
+
+msgid "IDS_EMAIL_BODY_ENTIRE_EMAIL"
+msgstr "Все сообщения электронной почты"
+
+msgid "IDS_EMAIL_BODY_EXACTLY_THE_SAME_AS"
+msgstr "Точное совпадение"
+
+msgid "IDS_EMAIL_BODY_EXAMPLE"
+msgstr "Пример"
+
+msgid "IDS_EMAIL_BODY_FROM_M_SENDER"
+msgstr "От:"
+
+msgid "IDS_EMAIL_BODY_INBOX"
+msgstr "Входящие"
+
+msgid "IDS_EMAIL_BODY_INCLUDE"
+msgstr "Содержит"
+
+msgid "IDS_EMAIL_BODY_MATCH_CRITERIA"
+msgstr "Условие совпадения"
+
+msgid "IDS_EMAIL_BODY_NOT_USED"
+msgstr "Не используется"
+
+msgid "IDS_EMAIL_BODY_NO_ACCOUNTS"
+msgstr "Нет учетных записей"
+
+msgid "IDS_EMAIL_BODY_PD_DAYS"
+msgstr "%d дней"
+
+msgid "IDS_EMAIL_BODY_PD_ITEMS"
+msgstr "Элементов: %d"
+
+msgid "IDS_EMAIL_BODY_PRIORITY"
+msgstr "Приоритет"
+
+msgid "IDS_EMAIL_BODY_RECEIVING_OPTIONS"
+msgstr "Параметры приема"
+
+msgid "IDS_EMAIL_BODY_SECURE_CONNECTION"
+msgstr "Безопасное соединение"
+
+msgid "IDS_EMAIL_BODY_SENDING_OPTIONS"
+msgstr "Параметры отправки"
+
+msgid "IDS_EMAIL_BODY_SENTBOX"
+msgstr "Отправленные"
+
+msgid "IDS_EMAIL_BODY_SERVER_URL"
+msgstr "URL сервера"
+
+msgid "IDS_EMAIL_BODY_SIGNATURE"
+msgstr "Подпись"
+
+msgid "IDS_EMAIL_BODY_SPAMBOX"
+msgstr "Спам"
+
+msgid "IDS_EMAIL_BODY_START_TIME"
+msgstr "Время начала"
+
+msgid "IDS_EMAIL_BODY_SYNC_SCHEDULE_TMO"
+msgstr "Расписание синхронизации"
+
+msgid "IDS_EMAIL_BODY_TRASH"
+msgstr "Корзина"
+
+msgid "IDS_EMAIL_BODY_WITHOUT_ATTACHMENTS"
+msgstr "Без вложений"
+
+msgid "IDS_EMAIL_BUTTON_GROUP"
+msgstr "Группа"
+
+msgid "IDS_EMAIL_HEADER_ADD_RULES"
+msgstr "Добавить правила"
+
+msgid "IDS_EMAIL_OPT_ATTACH_ITEMS"
+msgstr "Вложить элементы"
+
+msgid "IDS_EMAIL_OPT_EXCHANGE"
+msgstr "Exchange"
+
+msgid "IDS_EMAIL_OPT_FILE"
+msgstr "Файл"
+
+msgid "IDS_EMAIL_OPT_NAMECARD"
+msgstr "Визитка"
+
+msgid "IDS_EMAIL_OPT_OPEN_URL"
+msgstr "Открыть URL"
+
+msgid "IDS_EMAIL_OPT_SENDER"
+msgstr "Отправитель"
+
+msgid "IDS_EMAIL_OPT_SEND_EMAIL"
+msgstr "Отправить E-mail"
+
+msgid "IDS_EMAIL_OPT_UPDATE_EXISTING"
+msgstr "Обновить контакт"
+
+msgid "IDS_EMAIL_POP_ADD_ACCOUNTS"
+msgstr "Добавить учетные записи"
+
+msgid "IDS_EMAIL_POP_DOWNLOADING_ATTACHMENT_ING"
+msgstr "Загрузка вложения..."
+
+msgid "IDS_EMAIL_POP_INVALID_EMAIL_ADDRESS"
+msgstr "Неправильный адрес эл. почты"
+
+msgid "IDS_EMAIL_POP_LOADING_CONTENTS_ING"
+msgstr "Загрузка содержимого..."
+
+msgid "IDS_EMAIL_POP_MAXIMUM_NUMBER_OF_ATTACHMENTS_REACHED"
+msgstr "Достигнуто максимальное число вложений"
+
+msgid "IDS_EMAIL_POP_MOVE_TO_SPAMBOX_Q"
+msgstr "Переместить в папку нежелательной почты?"
+
+msgid "IDS_EMAIL_POP_NO_RECIPIENTS_ADDED_ENTER_RECIPIENTS"
+msgstr "Получатели не введены. Введите получателей"
+
+msgid "IDS_EMAIL_POP_PLEASE_FILL_ALL_THE_MANDATORY_FIELDS"
+msgstr "Заполните все обязательные поля"
+
+msgid "IDS_EMAIL_POP_SAVE_IN_DRAFTS_Q"
+msgstr "Сохранить в черновиках?"
+
+msgid "IDS_EMAIL_POP_THERE_IS_NO_ACCOUNT_CREATE_A_NEW_ACCOUNT_FIRST"
+msgstr "Нет учетной записи. Сначала создайте новую учетную запись"
+
+msgid "IDS_EMAIL_POP_TOO_MANY_RECIPIENTS"
+msgstr "Слишком много получателей"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_DOWNLOAD"
+msgstr "Невозможно выполнить загрузку"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ENTER_TEXT"
+msgstr "Не удается ввести текст"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_LAUNCH_APPLICATION"
+msgstr "Не удается запустить приложение"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_OPEN_ATTACHMENT"
+msgstr "Не удается открыть вложение"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_SAVE_ATTACHMENT"
+msgstr "Не удается сохранить вложение"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_SAVE_IN_DRAFTS"
+msgstr "Не удается сохранить как черновик"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_SEND_EMAIL"
+msgstr "Не удается отправить сообщение электронной почты"
+
+msgid "IDS_EMAIL_POP_UNSUPPORTED_FILE_TYPE"
+msgstr "Неподдерживаемый тип файла"
+
+msgid "IDS_EMAIL_POP_VALIDATING_ACCOUNT_ING"
+msgstr "Проверка учетной записи..."
+
+msgid "IDS_EMAIL_SK_RESEND"
+msgstr "Отправить повторно"
+
+msgid "IDS_EMAIL_BODY_ACCEPT_ALL_SSL_CERTIFICATES"
+msgstr "Принимать все сертификаты SSL"
+
+msgid "IDS_EMAIL_SK3_ACCOUNT_LIST"
+msgstr "Учетные записи"
+
+msgid "IDS_EMAIL_BODY_USER_ID"
+msgstr "Логин"
+
+msgid "IDS_EMAIL_POP_ACCOUNT_ALREADY_REGISTERED"
+msgstr "Учетная запись уже зарегистрирована"
+
+msgid "IDS_EMAIL_HEADER_ATTACH_FILE"
+msgstr "Вложить файл"
+
+msgid "IDS_EMAIL_BODY_EXCHANGE_SYNC_SETTINGS_MSG"
+msgstr "Активируя это приложение, вы соглашаетесь с тем, что часть данных об устройстве (идентификатор и название модели) будет храниться, обрабатываться и использоваться компанией Samsung для отправки отчетов об активации приложения его лицензиарам. Данные, которые хранятся корпорацией Samsung, будут использоваться исключительно в соответствии с политикой конфиденциальности Samsung, опубликованной на сайте www.samsung.com. Продолжить?"
+
+msgid "IDS_EMAIL_BODY_FORWARD_WITH_FILES"
+msgstr "Пересылать с файлами"
+
+msgid "IDS_EMAIL_BODY_REPLY_WITH_BODY"
+msgstr "Текст сообщения при ответе"
+
+msgid "IDS_EMAIL_BODY_NO_SUBJECT"
+msgstr "Нет темы"
+
+msgid "IDS_EMAIL_BODY_FROM"
+msgstr "От"
+
+msgid "IDS_EMAIL_BODY_NO_ADDRESS"
+msgstr "Нет адреса"
+
+msgid "IDS_EMAIL_OPT_RECORD_SOUND"
+msgstr "Записать звук"
+
+msgid "IDS_EMAIL_OPT_RECORD_VIDEO"
+msgstr "Записать видео"
+
+msgid "IDS_EMAIL_OPT_INSERT_IMAGE"
+msgstr "Вставить изображение"
+
+msgid "IDS_EMAIL_OPT_ADD_TO_CALENDAR"
+msgstr "Добавить в календарь"
+
+msgid "IDS_EMAIL_OPT_CHANGE_EMAIL_ADDRESS_ABB"
+msgstr "Изменить электронный адрес"
+
+msgid "IDS_EMAIL_OPT_CLIPBOARD"
+msgstr "Буфер обмена"
+
+msgid "IDS_EMAIL_OPT_MARKED_AS_UNREAD"
+msgstr "Отмечено как непрочитанное"
+
+msgid "IDS_EMAIL_OPT_VIEW_CONTACT_DETAILS"
+msgstr "Сведения о контакте"
+
+msgid "IDS_EMAIL_POP_SAVED_IN_DRAFTS"
+msgstr "Сохранено в Черновики"
+
+msgid "IDS_EMAIL_POP_NETWORK_BUSY"
+msgstr "Сеть занята"
+
+msgid "IDS_EMAIL_POP_LOGIN_ALLOWED_ONLY_EVERY_PD_MINUTES"
+msgstr "Login allowed only every %d minutes"
+
+msgid "IDS_EMAIL_POP_HOST_NOT_FOUND"
+msgstr "Хост не обнаружен"
+
+msgid "IDS_EMAIL_POP_HOST_NOT_REACHABLE"
+msgstr "Хост недоступен"
+
+msgid "IDS_EMAIL_POP_NO_SERVICE"
+msgstr "Нет сети"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_FORWARD_DRM_CONTENTS"
+msgstr "Не удается переслать содержимое DRM"
+
+msgid "IDS_EMAIL_POP_BLOCKED"
+msgstr "Заблокировано"
+
+msgid "IDS_EMAIL_POP_1_EMAIL_SELECTED"
+msgstr "Выбрано 1 сообщение электронной почты"
+
+msgid "IDS_EMAIL_POP_PD_EMAILS_SELECTED"
+msgstr "Выбрано сообщений электронной почты: %d"
+
+msgid "IDS_EMAIL_POP_1_RECIPIENT_SELECTED"
+msgstr "Выбран 1 получатель"
+
+msgid "IDS_EMAIL_POP_PD_RECIPIENTS_SELECTED"
+msgstr "Выбрано получателей: %d"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ADD_ACCOUNT"
+msgstr "Не удается добавить учетную запись"
+
+msgid "IDS_EMAIL_SK3_MOVE_HERE"
+msgstr "Переместить сюда"
+

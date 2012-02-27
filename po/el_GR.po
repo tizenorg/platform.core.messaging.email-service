@@ -1,0 +1,465 @@
+msgid "IDS_EMAIL_POP_NO_EMAIL_ADDRESS"
+msgstr "Δεν υπάρχει διεύθυνση email"
+
+msgid "IDS_EMAIL_BODY_COMPLETE"
+msgstr "Ολοκληρώθηκε"
+
+msgid "IDS_EMAIL_BODY_ACCEPTED_C_PS"
+msgstr "Έγινε αποδεκτό: %s"
+
+msgid "IDS_EMAIL_BODY_DECLINED_C_PS"
+msgstr "Απορρίφθηκε: %s"
+
+msgid "IDS_EMAIL_BODY_DOWNLOAD_FULL_MESSAGE"
+msgstr "Λήψη πλήρους μηνύματος"
+
+msgid "IDS_EMAIL_BODY_GENERAL_SETTINGS"
+msgstr "Γεν. Ρυθμίσεις"
+
+msgid "IDS_EMAIL_BODY_TENTATIVE_C_PS"
+msgstr "Αβέβαιη: %s"
+
+msgid "IDS_EMAIL_BODY_WHEN_C_PS"
+msgstr "Πότε: %s"
+
+msgid "IDS_EMAIL_BODY_WHERE_C_PS"
+msgstr "Πού: %s"
+
+msgid "IDS_EMAIL_BUTTON_DECLINE_ABB"
+msgstr "Απόρριψη"
+
+msgid "IDS_EMAIL_BODY_NO_CONTENTS"
+msgstr "Κανένα περιεχόμενο"
+
+msgid "IDS_EMAIL_BODY_ORIGINAL_MESSAGE"
+msgstr "Αρχικό μήνυμα"
+
+msgid "IDS_EMAIL_HEADER_ACCOUNT_SETTINGS"
+msgstr "Ρυθμίσεις λογαριασμού"
+
+msgid "IDS_EMAIL_OPT_BLOCK"
+msgstr "Αποκλεισμός"
+
+msgid "IDS_EMAIL_OPT_MARK_AS_READ"
+msgstr "Σήμανση ως αναγνωσμένου"
+
+msgid "IDS_EMAIL_OPT_MARK_AS_UNREAD"
+msgstr "Σήμανση ως μη αναγνωσμένο"
+
+msgid "IDS_EMAIL_OPT_OTHERS"
+msgstr "Άλλα"
+
+msgid "IDS_EMAIL_OPT_UNREAD"
+msgstr "Μη αναγνωσμένο"
+
+msgid "IDS_EMAIL_SK_COMPOSE"
+msgstr "Compose"
+
+msgid "IDS_EMAIL_HEADER_DOWNLOAD_FAILED"
+msgstr "Αποτυχία λήψης"
+
+msgid "IDS_EMAIL_OPT_ADD_TO_CONTACT"
+msgstr "Προσθήκη σε επαφή"
+
+msgid "IDS_EMAIL_OPT_VOICE_CALL"
+msgstr "Φωνητική κλήση"
+
+msgid "IDS_EMAIL_BODY_ACCOUNT_NAME"
+msgstr "Όνομα λογαριασμού"
+
+msgid "IDS_EMAIL_BODY_ATTACHMENTS"
+msgstr "Συνημμένα"
+
+msgid "IDS_EMAIL_BODY_FROM_C"
+msgstr "Από:"
+
+msgid "IDS_EMAIL_BODY_IMAP4_SERVER"
+msgstr "Διακομιστής IMAP4"
+
+msgid "IDS_EMAIL_BODY_INCLUDES"
+msgstr "Περιέχει"
+
+msgid "IDS_EMAIL_BODY_INCOMING_PORT"
+msgstr "Θύρα εισερχόμενων"
+
+msgid "IDS_EMAIL_BODY_INCOMING_SERVER"
+msgstr "Διακομιστής εισερχομένων"
+
+msgid "IDS_EMAIL_BODY_IN_PD_MINUTES"
+msgstr "Σε %d λεπτά"
+
+msgid "IDS_EMAIL_BODY_KEEP_IN_SERVER"
+msgstr "Φύλαξη στο διακομιστή"
+
+msgid "IDS_EMAIL_BODY_NO_TEXT"
+msgstr "Χωρίς κείμενο"
+
+msgid "IDS_EMAIL_BODY_OUTGOING_PORT"
+msgstr "Θύρα εξερχόμενων"
+
+msgid "IDS_EMAIL_BODY_OUTGOING_SERVER"
+msgstr "Διακομιστής εξερχομένων"
+
+msgid "IDS_EMAIL_BODY_PD_EMAILS"
+msgstr "%d emails"
+
+msgid "IDS_EMAIL_BODY_POP3_SERVER"
+msgstr "Διακομιστής POP3"
+
+msgid "IDS_EMAIL_BODY_RECENT"
+msgstr "Πρόσφατα"
+
+msgid "IDS_EMAIL_BODY_RETRIEVING_OPTIONS"
+msgstr "Επιλογές ανάκτησης"
+
+msgid "IDS_EMAIL_BODY_RE_C"
+msgstr "ΠΡΟΣ:"
+
+msgid "IDS_EMAIL_BODY_SENT_C"
+msgstr "Εστάλη:"
+
+msgid "IDS_EMAIL_BODY_SENT_FROM_SAMSUNG_MOBILE"
+msgstr "Αποστολή από κινητό Samsung"
+
+msgid "IDS_EMAIL_BODY_USER_PASSWORD"
+msgstr "Κωδικός χρήστη"
+
+msgid "IDS_EMAIL_HEADER_EDIT_RULES"
+msgstr "Επεξεργασία κανόνων"
+
+msgid "IDS_EMAIL_HEADER_EMAIL_SETTINGS"
+msgstr "Ρυθμίσεις email"
+
+msgid "IDS_EMAIL_HEADER_MAILBOXES"
+msgstr "Φάκελοι αλληλογραφίας"
+
+msgid "IDS_EMAIL_POP_ALERT"
+msgstr "Ειδοποίηση"
+
+msgid "IDS_EMAIL_POP_FILE_ALREADY_EXISTS"
+msgstr "Το αρχείο υπάρχει ήδη"
+
+msgid "IDS_EMAIL_POP_NO_SENDER"
+msgstr "Χωρίς αποστολέα"
+
+msgid "IDS_EMAIL_POP_SUCCEEDED"
+msgstr "Πέτυχε"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ATTACH_MAXIMUM_NUMBER_OF_FILES_IS_PD"
+msgstr "Δεν είναι δυνατή η επισύναψη. Ο μέγιστος αριθμός αρχείων είναι %d"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ATTACH_MAXIMUM_SIZE_OF_FILES_IS_PD_KB"
+msgstr "Δεν είναι δυνατή η επισύναψη. Το μέγιστο όριο μεγέθους των αρχείων είναι %d KB"
+
+msgid "IDS_EMAIL_POP_VALIDATION_FAILED"
+msgstr "Αποτυχία επικύρωσης"
+
+msgid "IDS_EMAIL_SK_REPLY_ALL"
+msgstr "Απάντ. σε όλους"
+
+msgid "IDS_EMAIL_BODY_1_ITEM"
+msgstr "1 στοιχείο"
+
+msgid "IDS_EMAIL_BODY_ADD_MY_NAMECARD"
+msgstr "Προσθήκη κάρτας στοιχείων μου"
+
+msgid "IDS_EMAIL_BODY_ADD_SIGNATURE"
+msgstr "Προσθήκη υπογραφής"
+
+msgid "IDS_EMAIL_BODY_ALL_EMAILS"
+msgstr "Όλα τα email"
+
+msgid "IDS_EMAIL_BODY_ALWAYS_BCC_MYSELF"
+msgstr "Να γίνεται πάντα Ιδ.Κοιν. σε εμένα"
+
+msgid "IDS_EMAIL_BODY_BCC"
+msgstr "Ιδιαίτερη κοινοποίηση"
+
+msgid "IDS_EMAIL_BODY_BLOCK_EMAILS"
+msgstr "Αποκλεισμός μηνυμάτων email"
+
+msgid "IDS_EMAIL_BODY_BODY"
+msgstr "Το σώμα μου"
+
+msgid "IDS_EMAIL_BODY_CC"
+msgstr "Κοιν."
+
+msgid "IDS_EMAIL_BODY_CC_BCC"
+msgstr "Κ./Ιδ.κ."
+
+msgid "IDS_EMAIL_BODY_CHECK_INTERVAL"
+msgstr "Έλεγχος διαστήματος"
+
+msgid "IDS_EMAIL_BODY_DEFAULT_ACCOUNT"
+msgstr "Προεπ. λογαριασμός"
+
+msgid "IDS_EMAIL_BODY_DRAFTS"
+msgstr "Πρόχειρο"
+
+msgid "IDS_EMAIL_BODY_EMAIL_ACCOUNTS"
+msgstr "Λογαριασμοί email"
+
+msgid "IDS_EMAIL_BODY_END_TIME"
+msgstr "Ώρα λήξης"
+
+msgid "IDS_EMAIL_BODY_ENTIRE_EMAIL"
+msgstr "Ολόκληρο μήνυμα email"
+
+msgid "IDS_EMAIL_BODY_EXACTLY_THE_SAME_AS"
+msgstr "Ακριβώς ίδιο με"
+
+msgid "IDS_EMAIL_BODY_EXAMPLE"
+msgstr "Παράδειγμα"
+
+msgid "IDS_EMAIL_BODY_FROM_M_SENDER"
+msgstr "Από:"
+
+msgid "IDS_EMAIL_BODY_INBOX"
+msgstr "Εισερχόμενα"
+
+msgid "IDS_EMAIL_BODY_INCLUDE"
+msgstr "Να συμπεριληφθεί"
+
+msgid "IDS_EMAIL_BODY_MATCH_CRITERIA"
+msgstr "Αντιστοίχιση κριτηρίων"
+
+msgid "IDS_EMAIL_BODY_NOT_USED"
+msgstr "Δεν χρησιμοποιείται"
+
+msgid "IDS_EMAIL_BODY_NO_ACCOUNTS"
+msgstr "Δεν υπάρχουν λογαριασμοί"
+
+msgid "IDS_EMAIL_BODY_PD_DAYS"
+msgstr "%d ημέρες"
+
+msgid "IDS_EMAIL_BODY_PD_ITEMS"
+msgstr "%d στοιχεία"
+
+msgid "IDS_EMAIL_BODY_PRIORITY"
+msgstr "Προτεραιότητα"
+
+msgid "IDS_EMAIL_BODY_RECEIVING_OPTIONS"
+msgstr "Επιλογές λήψης"
+
+msgid "IDS_EMAIL_BODY_SECURE_CONNECTION"
+msgstr "Ασφαλής σύνδεση"
+
+msgid "IDS_EMAIL_BODY_SENDING_OPTIONS"
+msgstr "Επιλογές αποστολής"
+
+msgid "IDS_EMAIL_BODY_SENTBOX"
+msgstr "Απεσταλμένα"
+
+msgid "IDS_EMAIL_BODY_SERVER_URL"
+msgstr "URL διακομιστή"
+
+msgid "IDS_EMAIL_BODY_SIGNATURE"
+msgstr "Υπογραφή"
+
+msgid "IDS_EMAIL_BODY_SPAMBOX"
+msgstr "Φάκελος ανεπιθύμητης αλληλογραφίας"
+
+msgid "IDS_EMAIL_BODY_START_TIME"
+msgstr "Ώρα έναρξης"
+
+msgid "IDS_EMAIL_BODY_SYNC_SCHEDULE_TMO"
+msgstr "Συγχρονισμός προγράμματος"
+
+msgid "IDS_EMAIL_BODY_TRASH"
+msgstr "Απορρίμματα"
+
+msgid "IDS_EMAIL_BODY_WITHOUT_ATTACHMENTS"
+msgstr "Χωρίς συνημμένα"
+
+msgid "IDS_EMAIL_BUTTON_GROUP"
+msgstr "Ομάδα"
+
+msgid "IDS_EMAIL_HEADER_ADD_RULES"
+msgstr "Προσθήκη κανόνων"
+
+msgid "IDS_EMAIL_OPT_ATTACH_ITEMS"
+msgstr "Επισύναψη στοιχείου"
+
+msgid "IDS_EMAIL_OPT_EXCHANGE"
+msgstr "Exchange"
+
+msgid "IDS_EMAIL_OPT_FILE"
+msgstr "Αρχείο"
+
+msgid "IDS_EMAIL_OPT_NAMECARD"
+msgstr "Κάρτα στοιχειών"
+
+msgid "IDS_EMAIL_OPT_OPEN_URL"
+msgstr "Άνοιγμα διεύθυνσης URL"
+
+msgid "IDS_EMAIL_OPT_SENDER"
+msgstr "Αποστολέας"
+
+msgid "IDS_EMAIL_OPT_SEND_EMAIL"
+msgstr "Αποστολή email"
+
+msgid "IDS_EMAIL_OPT_UPDATE_EXISTING"
+msgstr "Ενημέρωση υπάρχοντων"
+
+msgid "IDS_EMAIL_POP_ADD_ACCOUNTS"
+msgstr "Προσθήκη λογαριασμών"
+
+msgid "IDS_EMAIL_POP_DOWNLOADING_ATTACHMENT_ING"
+msgstr "Λήψη συνημμένου..."
+
+msgid "IDS_EMAIL_POP_INVALID_EMAIL_ADDRESS"
+msgstr "Μη έγκυρη διεύθυνση email"
+
+msgid "IDS_EMAIL_POP_LOADING_CONTENTS_ING"
+msgstr "Φόρτωση περιεχομένων..."
+
+msgid "IDS_EMAIL_POP_MAXIMUM_NUMBER_OF_ATTACHMENTS_REACHED"
+msgstr "Συμπληρώθηκε ο μέγιστος αριθμός συνημμένων"
+
+msgid "IDS_EMAIL_POP_MOVE_TO_SPAMBOX_Q"
+msgstr "Μετακίνηση στο φάκελο ανεπιθύμητης αλληλογραφίας;"
+
+msgid "IDS_EMAIL_POP_NO_RECIPIENTS_ADDED_ENTER_RECIPIENTS"
+msgstr "Δεν έχουν προστεθεί παραλήπτες. Εισάγετε παραλήπτες"
+
+msgid "IDS_EMAIL_POP_PLEASE_FILL_ALL_THE_MANDATORY_FIELDS"
+msgstr "Συμπληρώστε όλα τα υποχρεωτικά πεδία"
+
+msgid "IDS_EMAIL_POP_SAVE_IN_DRAFTS_Q"
+msgstr "Αποθήκευση στα πρόχειρα"
+
+msgid "IDS_EMAIL_POP_THERE_IS_NO_ACCOUNT_CREATE_A_NEW_ACCOUNT_FIRST"
+msgstr "Δεν υπάρχει κανένας λογαριασμός. Δημιουργήστε ένα νέο λογαριασμό πρώτα."
+
+msgid "IDS_EMAIL_POP_TOO_MANY_RECIPIENTS"
+msgstr "Μεγάλος αριθμός παραληπτών"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_DOWNLOAD"
+msgstr "Δεν είναι δυνατή η λήψη"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ENTER_TEXT"
+msgstr "Δεν είναι δυνατή η εισαγωγή κειμένου"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_LAUNCH_APPLICATION"
+msgstr "Αδύνατη η εκκίνηση της εφαρμογής"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_OPEN_ATTACHMENT"
+msgstr "Δεν ήταν δυνατό το άνοιγμα του συνημμένου"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_SAVE_ATTACHMENT"
+msgstr "Δεν ήταν δυνατή η αποθήκευση του συνημμένου"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_SAVE_IN_DRAFTS"
+msgstr "Δεν ήταν δυνατή η αποθήκευση στα Πρόχειρα"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_SEND_EMAIL"
+msgstr "Δεν ήταν δυνατή η αποστολή email"
+
+msgid "IDS_EMAIL_POP_UNSUPPORTED_FILE_TYPE"
+msgstr "Μη υποστηριζόμενος τύπος αρχείου"
+
+msgid "IDS_EMAIL_POP_VALIDATING_ACCOUNT_ING"
+msgstr "Επαλήθευση λογαριασμού..."
+
+msgid "IDS_EMAIL_SK_RESEND"
+msgstr "Επανάληψη αποστολής"
+
+msgid "IDS_EMAIL_BODY_ACCEPT_ALL_SSL_CERTIFICATES"
+msgstr "Αποδοχή όλων των πιστοποιητικών SSL"
+
+msgid "IDS_EMAIL_SK3_ACCOUNT_LIST"
+msgstr "Λίστα\nλογαρ."
+
+msgid "IDS_EMAIL_BODY_USER_ID"
+msgstr "Ταυτότητα χρήστη"
+
+msgid "IDS_EMAIL_POP_ACCOUNT_ALREADY_REGISTERED"
+msgstr "Ο λογαριασμός έχει ήδη καταχωρηθεί"
+
+msgid "IDS_EMAIL_HEADER_ATTACH_FILE"
+msgstr "Επισύναψη αρχείου"
+
+msgid "IDS_EMAIL_BODY_EXCHANGE_SYNC_SETTINGS_MSG"
+msgstr "Ενεργοποιώντας αυτή την εφαρμογή, αποδέχεστε ότι μέρος των δεδομένων της συσκευής σας (περιλαμβανομένου του μοναδικού αναγνωριστικού συσκευής και του ονόματος μοντέλου) θα αποθηκευτούν, θα υποστούν επεξεργασία και θα χρησιμοποιηθούν από τη Samsung για την αναφορά της ενεργοποίησης της εφαρμογής στους παρέχοντες την άδεια χρήσης του ίδιου του λογισμικού της εφαρμογής. Τα δεδομένα που φυλάσσονται από τη Samsung θα υποστούν επεξεργασία σε αυστηρή συμμόρφωση με την πολιτική ιδιωτικού απορρήτου της Samsung που είναι διαθέσιμα στη διεύθυνση www.samsung.com. Θέλετε να συνεχίσετε;"
+
+msgid "IDS_EMAIL_BODY_FORWARD_WITH_FILES"
+msgstr "Προώθηση με αρχεία"
+
+msgid "IDS_EMAIL_BODY_REPLY_WITH_BODY"
+msgstr "Απαν.με κύριο κείμενο"
+
+msgid "IDS_EMAIL_BODY_NO_SUBJECT"
+msgstr "Χωρίς θέμα"
+
+msgid "IDS_EMAIL_BODY_FROM"
+msgstr "Από"
+
+msgid "IDS_EMAIL_BODY_NO_ADDRESS"
+msgstr "Καμία διεύθυνση"
+
+msgid "IDS_EMAIL_OPT_RECORD_SOUND"
+msgstr "Εγγραφή ήχου"
+
+msgid "IDS_EMAIL_OPT_RECORD_VIDEO"
+msgstr "Εγγραφή βίντεο"
+
+msgid "IDS_EMAIL_OPT_INSERT_IMAGE"
+msgstr "Εισαγωγή εικόνας"
+
+msgid "IDS_EMAIL_OPT_ADD_TO_CALENDAR"
+msgstr "Προσθήκη στο ημερολόγιο"
+
+msgid "IDS_EMAIL_OPT_CHANGE_EMAIL_ADDRESS_ABB"
+msgstr "Αλλαγή διεύθυνσης email"
+
+msgid "IDS_EMAIL_OPT_CLIPBOARD"
+msgstr "Πρόχειρο"
+
+msgid "IDS_EMAIL_OPT_MARKED_AS_UNREAD"
+msgstr "Σήμανση ως μη αναγνωσμένο"
+
+msgid "IDS_EMAIL_OPT_VIEW_CONTACT_DETAILS"
+msgstr "Προβολή λεπτομερειών επαφής"
+
+msgid "IDS_EMAIL_POP_SAVED_IN_DRAFTS"
+msgstr "Αποθηκεύτηκε στα πρόχειρα"
+
+msgid "IDS_EMAIL_POP_NETWORK_BUSY"
+msgstr "Κατειλημμένο δίκτυο"
+
+msgid "IDS_EMAIL_POP_LOGIN_ALLOWED_ONLY_EVERY_PD_MINUTES"
+msgstr "Login allowed only every %d minutes"
+
+msgid "IDS_EMAIL_POP_HOST_NOT_FOUND"
+msgstr "Δεν εντοπίστηκε ο κεντρικός υπολογιστής"
+
+msgid "IDS_EMAIL_POP_HOST_NOT_REACHABLE"
+msgstr "Δεν είναι δυνατή η πρόσβαση στον κεντρικό υπολογιστή"
+
+msgid "IDS_EMAIL_POP_NO_SERVICE"
+msgstr "Μη διαθέσιμη υπηρεσία"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_FORWARD_DRM_CONTENTS"
+msgstr "Δεν ήταν δυνατή η προώθηση περιεχομένων DRM"
+
+msgid "IDS_EMAIL_POP_BLOCKED"
+msgstr "Αποκλεισμένο"
+
+msgid "IDS_EMAIL_POP_1_EMAIL_SELECTED"
+msgstr "Επιλέχθηκε 1 email"
+
+msgid "IDS_EMAIL_POP_PD_EMAILS_SELECTED"
+msgstr "%d email επιλέχθηκαν"
+
+msgid "IDS_EMAIL_POP_1_RECIPIENT_SELECTED"
+msgstr "1 επιλογή αποδέκτη"
+
+msgid "IDS_EMAIL_POP_PD_RECIPIENTS_SELECTED"
+msgstr "Επιλογή %d αποδεκτών"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ADD_ACCOUNT"
+msgstr "Δεν είναι δυνατή η προσθήκη του λογαριασμού"
+
+msgid "IDS_EMAIL_SK3_MOVE_HERE"
+msgstr "Μετακίνηση εδώ"
+

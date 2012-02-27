@@ -1,0 +1,465 @@
+msgid "IDS_EMAIL_POP_NO_EMAIL_ADDRESS"
+msgstr "Sin dirección de correo"
+
+msgid "IDS_EMAIL_BODY_COMPLETE"
+msgstr "Completo"
+
+msgid "IDS_EMAIL_BODY_ACCEPTED_C_PS"
+msgstr "Aceptado: %s"
+
+msgid "IDS_EMAIL_BODY_DECLINED_C_PS"
+msgstr "No aceptado: %s"
+
+msgid "IDS_EMAIL_BODY_DOWNLOAD_FULL_MESSAGE"
+msgstr "Descargar mensaje completo"
+
+msgid "IDS_EMAIL_BODY_GENERAL_SETTINGS"
+msgstr "Ajustes generales"
+
+msgid "IDS_EMAIL_BODY_TENTATIVE_C_PS"
+msgstr "Provisional: %s"
+
+msgid "IDS_EMAIL_BODY_WHEN_C_PS"
+msgstr "Cuándo: %s"
+
+msgid "IDS_EMAIL_BODY_WHERE_C_PS"
+msgstr "Dónde: %s"
+
+msgid "IDS_EMAIL_BUTTON_DECLINE_ABB"
+msgstr "Rechazar"
+
+msgid "IDS_EMAIL_BODY_NO_CONTENTS"
+msgstr "No hay contenido"
+
+msgid "IDS_EMAIL_BODY_ORIGINAL_MESSAGE"
+msgstr "Mensaje original"
+
+msgid "IDS_EMAIL_HEADER_ACCOUNT_SETTINGS"
+msgstr "Ajustes de cuenta"
+
+msgid "IDS_EMAIL_OPT_BLOCK"
+msgstr "Bloquear"
+
+msgid "IDS_EMAIL_OPT_MARK_AS_READ"
+msgstr "Marcar como leído"
+
+msgid "IDS_EMAIL_OPT_MARK_AS_UNREAD"
+msgstr "Marcar como no leído"
+
+msgid "IDS_EMAIL_OPT_OTHERS"
+msgstr "Otros"
+
+msgid "IDS_EMAIL_OPT_UNREAD"
+msgstr "No leídos"
+
+msgid "IDS_EMAIL_SK_COMPOSE"
+msgstr "Crear"
+
+msgid "IDS_EMAIL_HEADER_DOWNLOAD_FAILED"
+msgstr "Descarga no disponible"
+
+msgid "IDS_EMAIL_OPT_ADD_TO_CONTACT"
+msgstr "Añadir a contacto"
+
+msgid "IDS_EMAIL_OPT_VOICE_CALL"
+msgstr "Llamada de voz"
+
+msgid "IDS_EMAIL_BODY_ACCOUNT_NAME"
+msgstr "Nombre de cuenta"
+
+msgid "IDS_EMAIL_BODY_ATTACHMENTS"
+msgstr "Archivos adjuntos"
+
+msgid "IDS_EMAIL_BODY_FROM_C"
+msgstr "De:"
+
+msgid "IDS_EMAIL_BODY_IMAP4_SERVER"
+msgstr "Servidor IMAP4"
+
+msgid "IDS_EMAIL_BODY_INCLUDES"
+msgstr "Incluye"
+
+msgid "IDS_EMAIL_BODY_INCOMING_PORT"
+msgstr "Puerto entrante"
+
+msgid "IDS_EMAIL_BODY_INCOMING_SERVER"
+msgstr "Servidor entrante"
+
+msgid "IDS_EMAIL_BODY_IN_PD_MINUTES"
+msgstr "Dentro de %d minutos"
+
+msgid "IDS_EMAIL_BODY_KEEP_IN_SERVER"
+msgstr "Mantener en el servidor"
+
+msgid "IDS_EMAIL_BODY_NO_TEXT"
+msgstr "Sin texto"
+
+msgid "IDS_EMAIL_BODY_OUTGOING_PORT"
+msgstr "Puerto saliente"
+
+msgid "IDS_EMAIL_BODY_OUTGOING_SERVER"
+msgstr "Servidor saliente"
+
+msgid "IDS_EMAIL_BODY_PD_EMAILS"
+msgstr "%d correos electrónicos"
+
+msgid "IDS_EMAIL_BODY_POP3_SERVER"
+msgstr "Servidor POP3"
+
+msgid "IDS_EMAIL_BODY_RECENT"
+msgstr "Reciente"
+
+msgid "IDS_EMAIL_BODY_RETRIEVING_OPTIONS"
+msgstr "Ajustes de recepción"
+
+msgid "IDS_EMAIL_BODY_RE_C"
+msgstr "RE:"
+
+msgid "IDS_EMAIL_BODY_SENT_C"
+msgstr "Enviado:"
+
+msgid "IDS_EMAIL_BODY_SENT_FROM_SAMSUNG_MOBILE"
+msgstr "Enviado de Samsung Mobile"
+
+msgid "IDS_EMAIL_BODY_USER_PASSWORD"
+msgstr "Contraseña de usuario"
+
+msgid "IDS_EMAIL_HEADER_EDIT_RULES"
+msgstr "Editar reglas"
+
+msgid "IDS_EMAIL_HEADER_EMAIL_SETTINGS"
+msgstr "Ajustes de email"
+
+msgid "IDS_EMAIL_HEADER_MAILBOXES"
+msgstr "Buzones de correo"
+
+msgid "IDS_EMAIL_POP_ALERT"
+msgstr "Alerta"
+
+msgid "IDS_EMAIL_POP_FILE_ALREADY_EXISTS"
+msgstr "El archivo ya existe"
+
+msgid "IDS_EMAIL_POP_NO_SENDER"
+msgstr "Ningún remitente"
+
+msgid "IDS_EMAIL_POP_SUCCEEDED"
+msgstr "Realizado con éxito"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ATTACH_MAXIMUM_NUMBER_OF_FILES_IS_PD"
+msgstr "No se puede adjuntar. El número máximo de archivos es de %d"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ATTACH_MAXIMUM_SIZE_OF_FILES_IS_PD_KB"
+msgstr "No se puede adjuntar. El tamaño máximo de archivos es de %d KB"
+
+msgid "IDS_EMAIL_POP_VALIDATION_FAILED"
+msgstr "Error de validación"
+
+msgid "IDS_EMAIL_SK_REPLY_ALL"
+msgstr "Responder  todos"
+
+msgid "IDS_EMAIL_BODY_1_ITEM"
+msgstr "1 elemento"
+
+msgid "IDS_EMAIL_BODY_ADD_MY_NAMECARD"
+msgstr "Añadir mi tarjeta de contacto"
+
+msgid "IDS_EMAIL_BODY_ADD_SIGNATURE"
+msgstr "Añadir firma"
+
+msgid "IDS_EMAIL_BODY_ALL_EMAILS"
+msgstr "Todos los correos"
+
+msgid "IDS_EMAIL_BODY_ALWAYS_BCC_MYSELF"
+msgstr "Copiarme siempre en copia oculta"
+
+msgid "IDS_EMAIL_BODY_BCC"
+msgstr "Cco"
+
+msgid "IDS_EMAIL_BODY_BLOCK_EMAILS"
+msgstr "Bloquear mensajes de correo electrónico"
+
+msgid "IDS_EMAIL_BODY_BODY"
+msgstr "Cuerpo"
+
+msgid "IDS_EMAIL_BODY_CC"
+msgstr "Cc"
+
+msgid "IDS_EMAIL_BODY_CC_BCC"
+msgstr "CC/CCO"
+
+msgid "IDS_EMAIL_BODY_CHECK_INTERVAL"
+msgstr "Comprobar intervalo"
+
+msgid "IDS_EMAIL_BODY_DEFAULT_ACCOUNT"
+msgstr "Cuenta predetermin"
+
+msgid "IDS_EMAIL_BODY_DRAFTS"
+msgstr "Borradores"
+
+msgid "IDS_EMAIL_BODY_EMAIL_ACCOUNTS"
+msgstr "Cuentas de correo electrónico"
+
+msgid "IDS_EMAIL_BODY_END_TIME"
+msgstr "Hora de finalización"
+
+msgid "IDS_EMAIL_BODY_ENTIRE_EMAIL"
+msgstr "Correo electrónico completo"
+
+msgid "IDS_EMAIL_BODY_EXACTLY_THE_SAME_AS"
+msgstr "Exactamente igual a"
+
+msgid "IDS_EMAIL_BODY_EXAMPLE"
+msgstr "Ejemplo"
+
+msgid "IDS_EMAIL_BODY_FROM_M_SENDER"
+msgstr "De:"
+
+msgid "IDS_EMAIL_BODY_INBOX"
+msgstr "Entrada"
+
+msgid "IDS_EMAIL_BODY_INCLUDE"
+msgstr "Incluir"
+
+msgid "IDS_EMAIL_BODY_MATCH_CRITERIA"
+msgstr "Coincidir criterios"
+
+msgid "IDS_EMAIL_BODY_NOT_USED"
+msgstr "No usado"
+
+msgid "IDS_EMAIL_BODY_NO_ACCOUNTS"
+msgstr "Ninguna cuenta"
+
+msgid "IDS_EMAIL_BODY_PD_DAYS"
+msgstr "%d días"
+
+msgid "IDS_EMAIL_BODY_PD_ITEMS"
+msgstr "%d elementos"
+
+msgid "IDS_EMAIL_BODY_PRIORITY"
+msgstr "Prioridad"
+
+msgid "IDS_EMAIL_BODY_RECEIVING_OPTIONS"
+msgstr "Opciones de recepción"
+
+msgid "IDS_EMAIL_BODY_SECURE_CONNECTION"
+msgstr "Conexión segura"
+
+msgid "IDS_EMAIL_BODY_SENDING_OPTIONS"
+msgstr "Opciones de envío"
+
+msgid "IDS_EMAIL_BODY_SENTBOX"
+msgstr "Enviados"
+
+msgid "IDS_EMAIL_BODY_SERVER_URL"
+msgstr "URL del servidor"
+
+msgid "IDS_EMAIL_BODY_SIGNATURE"
+msgstr "Firma"
+
+msgid "IDS_EMAIL_BODY_SPAMBOX"
+msgstr "Correo no deseado"
+
+msgid "IDS_EMAIL_BODY_START_TIME"
+msgstr "Hora de inicio"
+
+msgid "IDS_EMAIL_BODY_SYNC_SCHEDULE_TMO"
+msgstr "Sincronizar planificación"
+
+msgid "IDS_EMAIL_BODY_TRASH"
+msgstr "Papelera"
+
+msgid "IDS_EMAIL_BODY_WITHOUT_ATTACHMENTS"
+msgstr "Sin archivos adjuntos"
+
+msgid "IDS_EMAIL_BUTTON_GROUP"
+msgstr "Grupo"
+
+msgid "IDS_EMAIL_HEADER_ADD_RULES"
+msgstr "Añadir reglas"
+
+msgid "IDS_EMAIL_OPT_ATTACH_ITEMS"
+msgstr "Adjuntar elementos"
+
+msgid "IDS_EMAIL_OPT_EXCHANGE"
+msgstr "Exchange"
+
+msgid "IDS_EMAIL_OPT_FILE"
+msgstr "Archivo"
+
+msgid "IDS_EMAIL_OPT_NAMECARD"
+msgstr "Tarjeta de contacto"
+
+msgid "IDS_EMAIL_OPT_OPEN_URL"
+msgstr "Abrir URL"
+
+msgid "IDS_EMAIL_OPT_SENDER"
+msgstr "Remitente"
+
+msgid "IDS_EMAIL_OPT_SEND_EMAIL"
+msgstr "Enviar correo electrónico"
+
+msgid "IDS_EMAIL_OPT_UPDATE_EXISTING"
+msgstr "Actualizar existente"
+
+msgid "IDS_EMAIL_POP_ADD_ACCOUNTS"
+msgstr "Añadir cuentas"
+
+msgid "IDS_EMAIL_POP_DOWNLOADING_ATTACHMENT_ING"
+msgstr "Descargando adjunto..."
+
+msgid "IDS_EMAIL_POP_INVALID_EMAIL_ADDRESS"
+msgstr "Dirección de correo electrónico no válida"
+
+msgid "IDS_EMAIL_POP_LOADING_CONTENTS_ING"
+msgstr "Cargando contenidos..."
+
+msgid "IDS_EMAIL_POP_MAXIMUM_NUMBER_OF_ATTACHMENTS_REACHED"
+msgstr "Alcanzado el número máximo de adjuntos"
+
+msgid "IDS_EMAIL_POP_MOVE_TO_SPAMBOX_Q"
+msgstr "¿Mover a bandeja de correo no deseado?"
+
+msgid "IDS_EMAIL_POP_NO_RECIPIENTS_ADDED_ENTER_RECIPIENTS"
+msgstr "No se han añadido destinatarios. Introduzca destinatarios"
+
+msgid "IDS_EMAIL_POP_PLEASE_FILL_ALL_THE_MANDATORY_FIELDS"
+msgstr "Rellene todos los campos obligatorios"
+
+msgid "IDS_EMAIL_POP_SAVE_IN_DRAFTS_Q"
+msgstr "¿Guardar en Borradores?"
+
+msgid "IDS_EMAIL_POP_THERE_IS_NO_ACCOUNT_CREATE_A_NEW_ACCOUNT_FIRST"
+msgstr "No hay ninguna cuenta. Cree una cuenta nueva primero"
+
+msgid "IDS_EMAIL_POP_TOO_MANY_RECIPIENTS"
+msgstr "Demasiados destinatarios"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_DOWNLOAD"
+msgstr "No se puede descargar"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ENTER_TEXT"
+msgstr "No se puede escribir texto"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_LAUNCH_APPLICATION"
+msgstr "No se puede iniciar aplicación"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_OPEN_ATTACHMENT"
+msgstr "No se puede abrir adjunto"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_SAVE_ATTACHMENT"
+msgstr "No se puede guardar adjunto"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_SAVE_IN_DRAFTS"
+msgstr "No se puede guardar en Borradores"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_SEND_EMAIL"
+msgstr "No se puede enviar el correo electrónico"
+
+msgid "IDS_EMAIL_POP_UNSUPPORTED_FILE_TYPE"
+msgstr "Tipo de archivo no admitido"
+
+msgid "IDS_EMAIL_POP_VALIDATING_ACCOUNT_ING"
+msgstr "Validando cuenta..."
+
+msgid "IDS_EMAIL_SK_RESEND"
+msgstr "Reenviar"
+
+msgid "IDS_EMAIL_BODY_ACCEPT_ALL_SSL_CERTIFICATES"
+msgstr "Aceptar todos los certificados de SSL"
+
+msgid "IDS_EMAIL_SK3_ACCOUNT_LIST"
+msgstr "Lista de cuentas"
+
+msgid "IDS_EMAIL_BODY_USER_ID"
+msgstr "ID de usuario"
+
+msgid "IDS_EMAIL_POP_ACCOUNT_ALREADY_REGISTERED"
+msgstr "Cuenta ya registrada"
+
+msgid "IDS_EMAIL_HEADER_ATTACH_FILE"
+msgstr "Adjuntar archivo"
+
+msgid "IDS_EMAIL_BODY_EXCHANGE_SYNC_SETTINGS_MSG"
+msgstr "Al activar esta aplicación acepta el almacenamiento, procesamiento y uso de algunos de datos de su dispositivo (identificador único de dispositivo y nombre del modelo) por parte de Samsung, para informar de la activación de esta aplicación a los cedentes de licencia del propio software. Los datos que Samsung posea serán tratados estrictamente conforme a la directiva de privacidad de Samsung, que está disponible en www.samsung.com. ¿Continuar?"
+
+msgid "IDS_EMAIL_BODY_FORWARD_WITH_FILES"
+msgstr "Reenviar con archivos"
+
+msgid "IDS_EMAIL_BODY_REPLY_WITH_BODY"
+msgstr "Responder con cuerpo"
+
+msgid "IDS_EMAIL_BODY_NO_SUBJECT"
+msgstr "Sin asunto"
+
+msgid "IDS_EMAIL_BODY_FROM"
+msgstr "De"
+
+msgid "IDS_EMAIL_BODY_NO_ADDRESS"
+msgstr "Sin dirección"
+
+msgid "IDS_EMAIL_OPT_RECORD_SOUND"
+msgstr "Grabar sonido"
+
+msgid "IDS_EMAIL_OPT_RECORD_VIDEO"
+msgstr "Grabar vídeo"
+
+msgid "IDS_EMAIL_OPT_INSERT_IMAGE"
+msgstr "Insertar imagen"
+
+msgid "IDS_EMAIL_OPT_ADD_TO_CALENDAR"
+msgstr "Añadir a calendario"
+
+msgid "IDS_EMAIL_OPT_CHANGE_EMAIL_ADDRESS_ABB"
+msgstr "Cambiar dirección de correo electrónico"
+
+msgid "IDS_EMAIL_OPT_CLIPBOARD"
+msgstr "Portapapeles"
+
+msgid "IDS_EMAIL_OPT_MARKED_AS_UNREAD"
+msgstr "Marcado como no leído"
+
+msgid "IDS_EMAIL_OPT_VIEW_CONTACT_DETAILS"
+msgstr "Ver detalles de contacto"
+
+msgid "IDS_EMAIL_POP_SAVED_IN_DRAFTS"
+msgstr "Guardado en Borradores"
+
+msgid "IDS_EMAIL_POP_NETWORK_BUSY"
+msgstr "Red ocupada"
+
+msgid "IDS_EMAIL_POP_LOGIN_ALLOWED_ONLY_EVERY_PD_MINUTES"
+msgstr "Login allowed only every %d minutes"
+
+msgid "IDS_EMAIL_POP_HOST_NOT_FOUND"
+msgstr "Host no encontrado"
+
+msgid "IDS_EMAIL_POP_HOST_NOT_REACHABLE"
+msgstr "Host no localizable"
+
+msgid "IDS_EMAIL_POP_NO_SERVICE"
+msgstr "Sin servicio"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_FORWARD_DRM_CONTENTS"
+msgstr "No se pueden reenviar contenidos de DRM"
+
+msgid "IDS_EMAIL_POP_BLOCKED"
+msgstr "Bloqueado"
+
+msgid "IDS_EMAIL_POP_1_EMAIL_SELECTED"
+msgstr "1 correo electrónico seleccionado"
+
+msgid "IDS_EMAIL_POP_PD_EMAILS_SELECTED"
+msgstr "%d correos electrónicos seleccionados"
+
+msgid "IDS_EMAIL_POP_1_RECIPIENT_SELECTED"
+msgstr "1 destinatario seleccionado"
+
+msgid "IDS_EMAIL_POP_PD_RECIPIENTS_SELECTED"
+msgstr "%d destinatarios seleccionados"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ADD_ACCOUNT"
+msgstr "No se puede añadir cuenta"
+
+msgid "IDS_EMAIL_SK3_MOVE_HERE"
+msgstr "Mover aquí"
+

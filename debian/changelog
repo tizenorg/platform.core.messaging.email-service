@@ -1,0 +1,7 @@
+email-service (0.3.6-4) unstable; urgency=low
+
+  * New API function 'email_find_mail_on_server'
+  * Git : slp/pkgs/e/email-service
+  * Tag : email-service_0.3.6-4
+
+ -- Kyuho Jo <kyuho.jo@samsung.com>  Wed, 08 Feb 2012 21:13:33 +0900

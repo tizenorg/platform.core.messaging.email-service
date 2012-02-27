@@ -1,0 +1,465 @@
+msgid "IDS_EMAIL_POP_NO_EMAIL_ADDRESS"
+msgstr "無電子郵件地址"
+
+msgid "IDS_EMAIL_BODY_COMPLETE"
+msgstr "完成"
+
+msgid "IDS_EMAIL_BODY_ACCEPTED_C_PS"
+msgstr "已接受： %s"
+
+msgid "IDS_EMAIL_BODY_DECLINED_C_PS"
+msgstr "已拒絕： %s"
+
+msgid "IDS_EMAIL_BODY_DOWNLOAD_FULL_MESSAGE"
+msgstr "下載完整訊息"
+
+msgid "IDS_EMAIL_BODY_GENERAL_SETTINGS"
+msgstr "一般設定"
+
+msgid "IDS_EMAIL_BODY_TENTATIVE_C_PS"
+msgstr "暫定： %s"
+
+msgid "IDS_EMAIL_BODY_WHEN_C_PS"
+msgstr "時間： %s"
+
+msgid "IDS_EMAIL_BODY_WHERE_C_PS"
+msgstr "地點： %s"
+
+msgid "IDS_EMAIL_BUTTON_DECLINE_ABB"
+msgstr "拒絕"
+
+msgid "IDS_EMAIL_BODY_NO_CONTENTS"
+msgstr "無內容"
+
+msgid "IDS_EMAIL_BODY_ORIGINAL_MESSAGE"
+msgstr "原有訊息"
+
+msgid "IDS_EMAIL_HEADER_ACCOUNT_SETTINGS"
+msgstr "帳戶設定"
+
+msgid "IDS_EMAIL_OPT_BLOCK"
+msgstr "封鎖"
+
+msgid "IDS_EMAIL_OPT_MARK_AS_READ"
+msgstr "標記為已讀"
+
+msgid "IDS_EMAIL_OPT_MARK_AS_UNREAD"
+msgstr "標記為未讀"
+
+msgid "IDS_EMAIL_OPT_OTHERS"
+msgstr "其他"
+
+msgid "IDS_EMAIL_OPT_UNREAD"
+msgstr "未讀"
+
+msgid "IDS_EMAIL_SK_COMPOSE"
+msgstr "撰寫"
+
+msgid "IDS_EMAIL_HEADER_DOWNLOAD_FAILED"
+msgstr "不能下載"
+
+msgid "IDS_EMAIL_OPT_ADD_TO_CONTACT"
+msgstr "加到聯絡人"
+
+msgid "IDS_EMAIL_OPT_VOICE_CALL"
+msgstr "語音通話"
+
+msgid "IDS_EMAIL_BODY_ACCOUNT_NAME"
+msgstr "帳戶名稱"
+
+msgid "IDS_EMAIL_BODY_ATTACHMENTS"
+msgstr "附件"
+
+msgid "IDS_EMAIL_BODY_FROM_C"
+msgstr "由："
+
+msgid "IDS_EMAIL_BODY_IMAP4_SERVER"
+msgstr "IMAP4 伺服器"
+
+msgid "IDS_EMAIL_BODY_INCLUDES"
+msgstr "包括"
+
+msgid "IDS_EMAIL_BODY_INCOMING_PORT"
+msgstr "接收端口"
+
+msgid "IDS_EMAIL_BODY_INCOMING_SERVER"
+msgstr "內送伺服器"
+
+msgid "IDS_EMAIL_BODY_IN_PD_MINUTES"
+msgstr "在 %d 分鐘內"
+
+msgid "IDS_EMAIL_BODY_KEEP_IN_SERVER"
+msgstr "保存在伺服器中"
+
+msgid "IDS_EMAIL_BODY_NO_TEXT"
+msgstr "無文字"
+
+msgid "IDS_EMAIL_BODY_OUTGOING_PORT"
+msgstr "外寄端口"
+
+msgid "IDS_EMAIL_BODY_OUTGOING_SERVER"
+msgstr "外寄伺服器"
+
+msgid "IDS_EMAIL_BODY_PD_EMAILS"
+msgstr "%d個電郵"
+
+msgid "IDS_EMAIL_BODY_POP3_SERVER"
+msgstr "POP3 伺服器"
+
+msgid "IDS_EMAIL_BODY_RECENT"
+msgstr "最近"
+
+msgid "IDS_EMAIL_BODY_RETRIEVING_OPTIONS"
+msgstr "取回選項"
+
+msgid "IDS_EMAIL_BODY_RE_C"
+msgstr "回覆："
+
+msgid "IDS_EMAIL_BODY_SENT_C"
+msgstr "已發送："
+
+msgid "IDS_EMAIL_BODY_SENT_FROM_SAMSUNG_MOBILE"
+msgstr "從三星手機發送"
+
+msgid "IDS_EMAIL_BODY_USER_PASSWORD"
+msgstr "用戶密碼"
+
+msgid "IDS_EMAIL_HEADER_EDIT_RULES"
+msgstr "編輯規則"
+
+msgid "IDS_EMAIL_HEADER_EMAIL_SETTINGS"
+msgstr "電子郵件設定"
+
+msgid "IDS_EMAIL_HEADER_MAILBOXES"
+msgstr "郵箱"
+
+msgid "IDS_EMAIL_POP_ALERT"
+msgstr "提醒"
+
+msgid "IDS_EMAIL_POP_FILE_ALREADY_EXISTS"
+msgstr "檔案已存在"
+
+msgid "IDS_EMAIL_POP_NO_SENDER"
+msgstr "無寄件人"
+
+msgid "IDS_EMAIL_POP_SUCCEEDED"
+msgstr "已成功"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ATTACH_MAXIMUM_NUMBER_OF_FILES_IS_PD"
+msgstr "無法附加。最大檔案數量是 ％d"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ATTACH_MAXIMUM_SIZE_OF_FILES_IS_PD_KB"
+msgstr "無法附加。檔案最大為%d KB"
+
+msgid "IDS_EMAIL_POP_VALIDATION_FAILED"
+msgstr "驗證失敗"
+
+msgid "IDS_EMAIL_SK_REPLY_ALL"
+msgstr "全部回覆"
+
+msgid "IDS_EMAIL_BODY_1_ITEM"
+msgstr "1個項目"
+
+msgid "IDS_EMAIL_BODY_ADD_MY_NAMECARD"
+msgstr "加入我的名片"
+
+msgid "IDS_EMAIL_BODY_ADD_SIGNATURE"
+msgstr "加入簽名"
+
+msgid "IDS_EMAIL_BODY_ALL_EMAILS"
+msgstr "全部電子郵件"
+
+msgid "IDS_EMAIL_BODY_ALWAYS_BCC_MYSELF"
+msgstr "總是密送給自己"
+
+msgid "IDS_EMAIL_BODY_BCC"
+msgstr "密送"
+
+msgid "IDS_EMAIL_BODY_BLOCK_EMAILS"
+msgstr "封鎖電子郵件"
+
+msgid "IDS_EMAIL_BODY_BODY"
+msgstr "正文"
+
+msgid "IDS_EMAIL_BODY_CC"
+msgstr "抄送"
+
+msgid "IDS_EMAIL_BODY_CC_BCC"
+msgstr "抄送/密送"
+
+msgid "IDS_EMAIL_BODY_CHECK_INTERVAL"
+msgstr "檢查時間間隔"
+
+msgid "IDS_EMAIL_BODY_DEFAULT_ACCOUNT"
+msgstr "預設帳戶"
+
+msgid "IDS_EMAIL_BODY_DRAFTS"
+msgstr "草稿匣"
+
+msgid "IDS_EMAIL_BODY_EMAIL_ACCOUNTS"
+msgstr "電子郵件帳戶"
+
+msgid "IDS_EMAIL_BODY_END_TIME"
+msgstr "結束時間"
+
+msgid "IDS_EMAIL_BODY_ENTIRE_EMAIL"
+msgstr "完整電郵"
+
+msgid "IDS_EMAIL_BODY_EXACTLY_THE_SAME_AS"
+msgstr "完全相同於"
+
+msgid "IDS_EMAIL_BODY_EXAMPLE"
+msgstr "範例"
+
+msgid "IDS_EMAIL_BODY_FROM_M_SENDER"
+msgstr "由："
+
+msgid "IDS_EMAIL_BODY_INBOX"
+msgstr "收件匣"
+
+msgid "IDS_EMAIL_BODY_INCLUDE"
+msgstr "包括"
+
+msgid "IDS_EMAIL_BODY_MATCH_CRITERIA"
+msgstr "符合標準"
+
+msgid "IDS_EMAIL_BODY_NOT_USED"
+msgstr "未有使用"
+
+msgid "IDS_EMAIL_BODY_NO_ACCOUNTS"
+msgstr "無帳戶"
+
+msgid "IDS_EMAIL_BODY_PD_DAYS"
+msgstr "%d 天"
+
+msgid "IDS_EMAIL_BODY_PD_ITEMS"
+msgstr "%d 個項目"
+
+msgid "IDS_EMAIL_BODY_PRIORITY"
+msgstr "優先次序"
+
+msgid "IDS_EMAIL_BODY_RECEIVING_OPTIONS"
+msgstr "接收選項"
+
+msgid "IDS_EMAIL_BODY_SECURE_CONNECTION"
+msgstr "安全連接"
+
+msgid "IDS_EMAIL_BODY_SENDING_OPTIONS"
+msgstr "發送選項"
+
+msgid "IDS_EMAIL_BODY_SENTBOX"
+msgstr "寄件備份匣"
+
+msgid "IDS_EMAIL_BODY_SERVER_URL"
+msgstr "伺服器網址"
+
+msgid "IDS_EMAIL_BODY_SIGNATURE"
+msgstr "簽名"
+
+msgid "IDS_EMAIL_BODY_SPAMBOX"
+msgstr "垃圾箱"
+
+msgid "IDS_EMAIL_BODY_START_TIME"
+msgstr "開始時間"
+
+msgid "IDS_EMAIL_BODY_SYNC_SCHEDULE_TMO"
+msgstr "同步日程"
+
+msgid "IDS_EMAIL_BODY_TRASH"
+msgstr "垃圾"
+
+msgid "IDS_EMAIL_BODY_WITHOUT_ATTACHMENTS"
+msgstr "無附件"
+
+msgid "IDS_EMAIL_BUTTON_GROUP"
+msgstr "分組"
+
+msgid "IDS_EMAIL_HEADER_ADD_RULES"
+msgstr "加入規則"
+
+msgid "IDS_EMAIL_OPT_ATTACH_ITEMS"
+msgstr "附加項目"
+
+msgid "IDS_EMAIL_OPT_EXCHANGE"
+msgstr "Exchange"
+
+msgid "IDS_EMAIL_OPT_FILE"
+msgstr "檔案"
+
+msgid "IDS_EMAIL_OPT_NAMECARD"
+msgstr "名片"
+
+msgid "IDS_EMAIL_OPT_OPEN_URL"
+msgstr "開啟網址"
+
+msgid "IDS_EMAIL_OPT_SENDER"
+msgstr "寄件人"
+
+msgid "IDS_EMAIL_OPT_SEND_EMAIL"
+msgstr "發送電子郵件"
+
+msgid "IDS_EMAIL_OPT_UPDATE_EXISTING"
+msgstr "更新現有的"
+
+msgid "IDS_EMAIL_POP_ADD_ACCOUNTS"
+msgstr "加入帳戶"
+
+msgid "IDS_EMAIL_POP_DOWNLOADING_ATTACHMENT_ING"
+msgstr "正在下載附件..."
+
+msgid "IDS_EMAIL_POP_INVALID_EMAIL_ADDRESS"
+msgstr "無效電子郵件地址"
+
+msgid "IDS_EMAIL_POP_LOADING_CONTENTS_ING"
+msgstr "正在載入內容..."
+
+msgid "IDS_EMAIL_POP_MAXIMUM_NUMBER_OF_ATTACHMENTS_REACHED"
+msgstr "附件數目已達上限"
+
+msgid "IDS_EMAIL_POP_MOVE_TO_SPAMBOX_Q"
+msgstr "要移動到垃圾箱嗎？"
+
+msgid "IDS_EMAIL_POP_NO_RECIPIENTS_ADDED_ENTER_RECIPIENTS"
+msgstr "未加入收件人。請輸入收件人"
+
+msgid "IDS_EMAIL_POP_PLEASE_FILL_ALL_THE_MANDATORY_FIELDS"
+msgstr "請填寫所有必填欄位"
+
+msgid "IDS_EMAIL_POP_SAVE_IN_DRAFTS_Q"
+msgstr "要儲存到草稿匣嗎？"
+
+msgid "IDS_EMAIL_POP_THERE_IS_NO_ACCOUNT_CREATE_A_NEW_ACCOUNT_FIRST"
+msgstr "沒有帳戶。請先建立一個新帳戶"
+
+msgid "IDS_EMAIL_POP_TOO_MANY_RECIPIENTS"
+msgstr "太多收件人"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_DOWNLOAD"
+msgstr "無法下載"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ENTER_TEXT"
+msgstr "無法輸入文字"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_LAUNCH_APPLICATION"
+msgstr "無法啟動應用程式"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_OPEN_ATTACHMENT"
+msgstr "無法開啟附件"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_SAVE_ATTACHMENT"
+msgstr "無法儲存附件"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_SAVE_IN_DRAFTS"
+msgstr "無法儲存到草稿匣"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_SEND_EMAIL"
+msgstr "無法發送電子郵件"
+
+msgid "IDS_EMAIL_POP_UNSUPPORTED_FILE_TYPE"
+msgstr "不支援的檔案類型"
+
+msgid "IDS_EMAIL_POP_VALIDATING_ACCOUNT_ING"
+msgstr "正在確認帳戶..."
+
+msgid "IDS_EMAIL_SK_RESEND"
+msgstr "重新發送"
+
+msgid "IDS_EMAIL_BODY_ACCEPT_ALL_SSL_CERTIFICATES"
+msgstr "接受所有SSL證書"
+
+msgid "IDS_EMAIL_SK3_ACCOUNT_LIST"
+msgstr "帳戶清單"
+
+msgid "IDS_EMAIL_BODY_USER_ID"
+msgstr "用戶 ID"
+
+msgid "IDS_EMAIL_POP_ACCOUNT_ALREADY_REGISTERED"
+msgstr "帳戶已註冊"
+
+msgid "IDS_EMAIL_HEADER_ATTACH_FILE"
+msgstr "附加檔案"
+
+msgid "IDS_EMAIL_BODY_EXCHANGE_SYNC_SETTINGS_MSG"
+msgstr "通過啟動此應用程式，您接受三星還原、處理及使用部分裝置資料 (唯一的裝置 ID 和型號名稱)，將該應用程式的啟動向應用程式軟件的授權者彙報。三星持有的資料將依據三星的隱私權政策嚴格處理 (請參見 www.samsung.com) 。要繼續嗎？"
+
+msgid "IDS_EMAIL_BODY_FORWARD_WITH_FILES"
+msgstr "連檔案轉寄"
+
+msgid "IDS_EMAIL_BODY_REPLY_WITH_BODY"
+msgstr "以正文回覆"
+
+msgid "IDS_EMAIL_BODY_NO_SUBJECT"
+msgstr "無主題"
+
+msgid "IDS_EMAIL_BODY_FROM"
+msgstr "由"
+
+msgid "IDS_EMAIL_BODY_NO_ADDRESS"
+msgstr "無地址"
+
+msgid "IDS_EMAIL_OPT_RECORD_SOUND"
+msgstr "錄音"
+
+msgid "IDS_EMAIL_OPT_RECORD_VIDEO"
+msgstr "錄影"
+
+msgid "IDS_EMAIL_OPT_INSERT_IMAGE"
+msgstr "插入圖像"
+
+msgid "IDS_EMAIL_OPT_ADD_TO_CALENDAR"
+msgstr "加到日曆"
+
+msgid "IDS_EMAIL_OPT_CHANGE_EMAIL_ADDRESS_ABB"
+msgstr "更改電子郵件地址"
+
+msgid "IDS_EMAIL_OPT_CLIPBOARD"
+msgstr "剪貼板"
+
+msgid "IDS_EMAIL_OPT_MARKED_AS_UNREAD"
+msgstr "已標記為未讀"
+
+msgid "IDS_EMAIL_OPT_VIEW_CONTACT_DETAILS"
+msgstr "檢視聯絡人詳細資料"
+
+msgid "IDS_EMAIL_POP_SAVED_IN_DRAFTS"
+msgstr "已儲存到草稿匣"
+
+msgid "IDS_EMAIL_POP_NETWORK_BUSY"
+msgstr "網絡繁忙"
+
+msgid "IDS_EMAIL_POP_LOGIN_ALLOWED_ONLY_EVERY_PD_MINUTES"
+msgstr "Login allowed only every %d minutes"
+
+msgid "IDS_EMAIL_POP_HOST_NOT_FOUND"
+msgstr "找不到主機"
+
+msgid "IDS_EMAIL_POP_HOST_NOT_REACHABLE"
+msgstr "無法到達主機"
+
+msgid "IDS_EMAIL_POP_NO_SERVICE"
+msgstr "無服務"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_FORWARD_DRM_CONTENTS"
+msgstr "無法轉寄DRM內容"
+
+msgid "IDS_EMAIL_POP_BLOCKED"
+msgstr "已封鎖"
+
+msgid "IDS_EMAIL_POP_1_EMAIL_SELECTED"
+msgstr "已選擇 1 封電子郵件"
+
+msgid "IDS_EMAIL_POP_PD_EMAILS_SELECTED"
+msgstr "已選擇 %d 封電子郵件"
+
+msgid "IDS_EMAIL_POP_1_RECIPIENT_SELECTED"
+msgstr "1個收件人已選取"
+
+msgid "IDS_EMAIL_POP_PD_RECIPIENTS_SELECTED"
+msgstr "%d個收件人已選取"
+
+msgid "IDS_EMAIL_POP_UNABLE_TO_ADD_ACCOUNT"
+msgstr "無法加入帳戶"
+
+msgid "IDS_EMAIL_SK3_MOVE_HERE"
+msgstr "移到這裡"
+

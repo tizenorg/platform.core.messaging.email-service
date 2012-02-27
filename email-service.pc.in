@@ -1,0 +1,9 @@
+prefix=/usr
+libdir=${prefix}/lib
+includedir=${prefix}/include
+ 
+Name: Email Engine Library
+Description: Email Engine Library 1.0
+Version: $version
+Libs: -L${libdir} -lemail-storage -lemail-core -lemail-base -lemail-ipc -lemail-api -lemail-network 
+Cflags: -I${includedir}/email-service -D_PREVIEW_IN_MAILIST 
