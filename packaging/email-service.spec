@@ -1,15 +1,16 @@
 Name:       email-service
 Summary:    E-mail Framework Middleware package
-Version:    0.2.9
+Version:    0.3.6
 Release:    3
-Group:      System/Libraries
-License:    TBD
+Group:      System/Services
+License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Requires(post):    /sbin/ldconfig
 Requires(post):    /usr/bin/sqlite3
 Requires(post):    /usr/bin/vconftool
 Requires(postun):  /sbin/ldconfig
 BuildRequires:  cmake
+BuildRequires:  gettext-tools
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(gthread-2.0)
 BuildRequires:  pkgconfig(aul)
@@ -17,7 +18,6 @@ BuildRequires:  pkgconfig(vconf)
 BuildRequires:  pkgconfig(heynoti)
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(db-util)
-BuildRequires:  pkgconfig(dnet)
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(contacts-service)
@@ -28,13 +28,14 @@ BuildRequires:  pkgconfig(alarm-service)
 BuildRequires:  pkgconfig(mm-player)
 BuildRequires:  pkgconfig(devman_haptic)
 BuildRequires:  pkgconfig(secure-storage)
-BuildRequires:  pkgconfig(quickpanel)
 BuildRequires:  pkgconfig(notification)
 BuildRequires:  pkgconfig(accounts-svc)
 BuildRequires:  pkgconfig(libcurl)
+BuildRequires:  pkgconfig(gconf-2.0)
+BuildRequires:  pkgconfig(mm-session)
+BuildRequires:  pkgconfig(capi-base-common)
 
 
-BuildRoot:  %{_tmppath}/%{name}-%{version}-build
 
 %description
 E-mail Framework Middleware Library/Binary package
@@ -75,9 +76,6 @@ make
 
 %install
 %make_install
-
-%clean
-rm -rf %{buildroot}
 
 %post
 /sbin/ldconfig
@@ -559,6 +557,21 @@ chown root:root /opt/dbspace/.email-service.db-journal
 %{_libdir}/libemail-network.so.*
 %{_libdir}/libemail-storage.so.*
 %{_bindir}/email-service
+/opt/apps/email-service/res/locale/de_DE/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/el_GR/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/en/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/es_ES/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/fr_FR/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/it_IT/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/ja_JP/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/ko_KR/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/nl_NL/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/pt_PT/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/ru_RU/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/tr_TR/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/zh_CN/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/zh_HK/LC_MESSAGES/email.mo
+/opt/apps/email-service/res/locale/zh_TW/LC_MESSAGES/email.mo
 
 
 %files devel
