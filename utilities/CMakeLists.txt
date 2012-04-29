@@ -20,23 +20,23 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${VISIBILITY} -fvisibility=hidden")
 
 
 SET(TEST-APP-SRCS
-	${CMAKE_SOURCE_DIR}/utilities/email-service-test-application/email-service-test-application/emf-test-main.c
-	${CMAKE_SOURCE_DIR}/utilities/email-service-test-application/email-service-test-application/emf-test-utility.c
-	${CMAKE_SOURCE_DIR}/utilities/email-service-test-application/email-service-test-application/emf-test-message.c
-	${CMAKE_SOURCE_DIR}/utilities/email-service-test-application/email-service-test-application/emf-test-mailbox.c
-	${CMAKE_SOURCE_DIR}/utilities/email-service-test-application/email-service-test-application/emf-test-account.c
-	${CMAKE_SOURCE_DIR}/utilities/email-service-test-application/email-service-test-application/emf-test-rule.c
-	${CMAKE_SOURCE_DIR}/utilities/email-service-test-application/email-service-test-application/emf-test-thread.c
-	${CMAKE_SOURCE_DIR}/utilities/email-service-test-application/email-service-test-application/emf-test-others.c
+	${CMAKE_SOURCE_DIR}/utilities/test-application/main.c
+	${CMAKE_SOURCE_DIR}/utilities/test-application/testapp-utility.c
+	${CMAKE_SOURCE_DIR}/utilities/test-application/testapp-mail.c
+	${CMAKE_SOURCE_DIR}/utilities/test-application/testapp-mailbox.c
+	${CMAKE_SOURCE_DIR}/utilities/test-application/testapp-account.c
+	${CMAKE_SOURCE_DIR}/utilities/test-application/testapp-rule.c
+	${CMAKE_SOURCE_DIR}/utilities/test-application/testapp-thread.c
+	${CMAKE_SOURCE_DIR}/utilities/test-application/testapp-others.c
 )
 
 INCLUDE_DIRECTORIES(
-	${CMAKE_SOURCE_DIR}/utilities/email-service-test-application/email-service-test-application/include
-	${CMAKE_SOURCE_DIR}/MAPI/include
-	${CMAKE_SOURCE_DIR}/include
-	${CMAKE_SOURCE_DIR}/email-core/em-storage/include
+	${CMAKE_SOURCE_DIR}/utilities/test-application/include
+	${CMAKE_SOURCE_DIR}/email-api/include
+	${CMAKE_SOURCE_DIR}/email-common-use/include
 	${CMAKE_SOURCE_DIR}/email-core/include
-	${CMAKE_SOURCE_DIR}/ipc/include
+	${CMAKE_SOURCE_DIR}/email-core/email-storage/include
+	${CMAKE_SOURCE_DIR}/email-ipc/include
 )
 
 INCLUDE(FindPkgConfig)

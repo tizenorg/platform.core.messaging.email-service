@@ -1,7 +1,21 @@
-email-service (0.3.6-4) unstable; urgency=low
+email-service (0.4.0-2) unstable; urgency=low
 
-  * New API function 'email_find_mail_on_server'
+  * 1. Change IPC code (c++ -> c)
+  * 2. Fixed the memory leak
+  * 3. Fixed the display the time
   * Git : slp/pkgs/e/email-service
-  * Tag : email-service_0.3.6-4
+  * Tag : email-service_0.4.0-2
 
- -- Kyuho Jo <kyuho.jo@samsung.com>  Wed, 08 Feb 2012 21:13:33 +0900
+ -- Sunghyun Kwon <sh0701.kwon@samsung.com>  Wed, 04 Apr 2012 17:01:25 +0900
+
+email-service (0.4.0-1) unstable; urgency=low
+
+  * 1. Removed all deprecated functions. 
+  * 2. attachment_mime_type is added to emf_attachment_data_t.
+  * 3. An attribute 'datetime' is removed from emf_mail_data_t and emf_mail_list_item_t.
+  * 4. An attribute 'date_time' is added to emf_mail_data_t and emf_mail_list_item_t.
+  * 5. emf_mail_t, emf_mail_info_t, emf_mail_body_t, emf_mail_head_t are removed from API.
+  * Git : slp/pkgs/e/email-service
+  * Tag : email-service_0.4.0-1
+
+ -- Kyuho Jo <kyuho.jo@samsung.com>  Thu, 08 Mar 2012 17:42:24 +0900

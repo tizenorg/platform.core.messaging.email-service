@@ -17,12 +17,12 @@ MESSAGE(">>> Build type: ${CMAKE_BUILD_TYPE}")
 ##########################################################
 # Define BASE LIB
 ##########################################################
-ADD_SUBDIRECTORY(Common)
+ADD_SUBDIRECTORY(email-common-use)
 
 #########################################################
 # Define IPC
 ##########################################################
-ADD_SUBDIRECTORY(ipc)
+ADD_SUBDIRECTORY(email-ipc)
 
 ##########################################################
 # Define STORAGE, NETWORK, CORE lib
@@ -34,25 +34,19 @@ ADD_SUBDIRECTORY(email-core)
 # Define Email API   
 ##########################################################
 
-ADD_SUBDIRECTORY(MAPI)
+ADD_SUBDIRECTORY(email-api)
 
 ##########################################################
 # Define Execute File
 ##########################################################
 
-ADD_SUBDIRECTORY(email-engine)
+ADD_SUBDIRECTORY(email-daemon)
 
 ##########################################################
 # Define Test App
 ##########################################################
 
 ADD_SUBDIRECTORY(utilities)
-
-##########################################################
-# Define locale
-##########################################################
-
-ADD_SUBDIRECTORY(po)
 
 ##########################################################
 # Define Install Files
