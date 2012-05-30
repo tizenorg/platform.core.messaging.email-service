@@ -5,6 +5,7 @@ Release:    1
 Group:      System/Libraries
 License:    TBD
 Source0:    %{name}-%{version}.tar.gz
+Source1001: packaging/email-service.manifest 
 Requires(post):    /sbin/ldconfig
 Requires(post):    /usr/bin/sqlite3
 Requires(post):    /usr/bin/vconftool
@@ -55,6 +56,7 @@ E-mail Framework Middleware Development package
 %setup -q
 
 %build
+cp %{SOURCE1001} .
 
 export CFLAGS="${CFLAGS} -fPIC -Wall -g -fvisibility=hidden"
 export CXXFLAGS="${CXXFLAGS} -fPIC -Wall -g -fvisibility=hidden"
@@ -634,6 +636,7 @@ chmod 644 /opt/dbspace/.email-service.db-journal
 
 
 %files
+%manifest email-service.manifest
 %exclude /opt/dbspace/.email-service.db
 %exclude /opt/dbspace/.email-service.db-journal
 %exclude /usr/bin/email-test-app
@@ -642,6 +645,7 @@ chmod 644 /opt/dbspace/.email-service.db-journal
 
 
 %files devel
+%manifest email-service.manifest
 %{_includedir}/email-service/*.h
 %{_libdir}/lib*.so
 %{_libdir}/pkgconfig/*.pc
