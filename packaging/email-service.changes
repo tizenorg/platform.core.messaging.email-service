@@ -1,0 +1,4 @@
+* Fri Jun 22 2012 Patrick McCarty <patrick.mccarty@linux.intel.com> 0a6646f
+- Add a service file for systemd support
+- Create the initscripts and db in %install section
+

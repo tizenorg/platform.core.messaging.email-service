@@ -1,0 +1,12 @@
+
+[Unit]
+Description=Start the Email service
+
+[Service]
+ExecStart=/usr/bin/email-service
+Nice=5
+OOMScoreAdjust=100
+
+[Install]
+WantedBy=tizen-middleware.target
+
