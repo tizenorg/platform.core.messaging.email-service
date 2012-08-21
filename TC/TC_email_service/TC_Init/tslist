@@ -1,6 +1,0 @@
-uts-email-service-begin
-uts-email-open-db
-uts-email-init-storage
-uts-email-ping-service
-uts-email-close-db
-uts-email-service-end

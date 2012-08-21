@@ -1,6 +1,0 @@
-./TC_email_service/TC_Folder/tslist
-./TC_email_service/TC_Message/tslist
-./TC_email_service/TC_Account/tslist
-./TC_email_service/TC_Rule/tslist
-./TC_email_service/TC_Network/tslist
-./TC_email_service/TC_Init/tslist
