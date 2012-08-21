@@ -33,6 +33,19 @@
 #include "email-api.h"
 #include "email-debug-log.h"
 
+EXPORT_API void emipc_free_email_task(emipc_email_task *task)
+{
+	EM_DEBUG_FUNC_BEGIN("task [%p]", task);
+	
+	if (!task) {
+		EM_DEBUG_EXCEPTION("Invalid parameter.");
+		return;
+	}
+
+	emipc_free_api_info(task->api_info);
+	EM_SAFE_FREE(task);
+}
+
 EXPORT_API bool emipc_parse_stream_email_task(emipc_email_task *task, void *stream, int response_id)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -45,8 +58,8 @@ EXPORT_API bool emipc_parse_stream_email_task(emipc_email_task *task, void *stre
 	memset(task->api_info, 0x00, sizeof(emipc_email_api_info));
 	
 	if (task->api_info) {
-		emipc_parse_stream_of_api_info(task->api_info, ePARAMETER_IN, stream);
-		emipc_set_response_id_of_api_info(task->api_info, response_id);
+		emipc_deserialize_api_info(task->api_info, ePARAMETER_IN, stream);
+		task->api_info->response_id = response_id;
 		return true;
 	}
 	return false;
@@ -66,16 +79,16 @@ EXPORT_API bool emipc_run_task(emipc_email_task *task)
 {
 	EM_DEBUG_LOG("[IPCLib] starting a new task...");
 
-	int app_id = emipc_get_app_id_of_api_info(task->api_info);
-	int api_id = emipc_get_api_id_of_api_info(task->api_info);
+	int api_id = task->api_info->api_id;
+	int app_id = task->api_info->app_id;
 
-	if (app_id > 0) {
-		EM_DEBUG_LOG("[IPCLib] This task (%s) is for async. Response ID [%d]", EM_APIID_TO_STR(api_id), api_id);
-		if (!emipc_set_response_info(app_id, api_id)) {
-			EM_DEBUG_EXCEPTION("emipc_set_response_info failed");
-			return false;
-		}
+	EM_DEBUG_LOG("[IPCLib] This task (%s) is for async. App id [%d], Response ID [%d]", EM_APIID_TO_STR(api_id), app_id, api_id);
+
+	if (!emipc_execute_api_proxy_to_stub(task->api_info)) {
+		EM_DEBUG_EXCEPTION("emipc_execute_api_proxy_to_stub failed");
+		return false;
 	}
-	return emipc_execute_api_proxy_to_stub(task->api_info);
+	
+	return true;
 }
 

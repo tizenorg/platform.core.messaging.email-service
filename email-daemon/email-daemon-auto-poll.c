@@ -44,23 +44,23 @@ typedef struct _emf_account_alarm_binder
            int account_id;
            alarm_id_t  alarm_id;
            int timer_interval;
-} emf_account_alarm_binder;
+} email_account_alarm_binder;
 
 /*  global  list */
 typedef struct _emf_account_alarm_binder_list_t
 {
-    emf_account_alarm_binder account_alarm_binder;
+    email_account_alarm_binder account_alarm_binder;
     struct _emf_account_alarm_binder_list_t  *next;
-}emf_account_alarm_binder_list_t;
+}email_account_alarm_binder_list_t;
 
 /* sowmya.kr@samsung.com, 23022010, Implementation of auto-polling feature */
 
-emf_account_alarm_binder_list_t *g_account_alarm_binder_list  = NULL;
+email_account_alarm_binder_list_t *g_account_alarm_binder_list  = NULL;
 
 static int _emdaemon_get_polling_alarm_and_timerinterval(int account_id, alarm_id_t *alarm_id, int *timer_interval);
 static int _emdaemon_get_polling_account_and_timeinterval(alarm_id_t  alarm_id, int *account_id, int *timer_interval);
 static int _emdaemon_create_alarm(int alarm_interval, alarm_id_t *p_alarm_id);
-static int _emdaemon_add_to_account_alarm_binder_list(emf_account_alarm_binder_list_t *p_account_alarm_binder);
+static int _emdaemon_add_to_account_alarm_binder_list(email_account_alarm_binder_list_t *p_account_alarm_binder);
 static int _emdaemon_remove_from_account_alarm_binder_list(int account_id);
 static int _emdaemon_update_account_alarm_binder_list(int account_id, alarm_id_t  alarm_id);
 
@@ -79,14 +79,14 @@ INTERNAL_FUNC int emdaemon_add_polling_alarm(int account_id, int alarm_interval)
 	}
 
 	alarm_id_t alarmID = 0;
-	emf_account_alarm_binder_list_t *p_account_alarm_binder = NULL;
+	email_account_alarm_binder_list_t *p_account_alarm_binder = NULL;
 
 	if(!_emdaemon_create_alarm(alarm_interval, &alarmID)) {
 		EM_DEBUG_EXCEPTION("_emdaemon_create_alarm failed");
 		return false;
 	}
 			
-	p_account_alarm_binder = (emf_account_alarm_binder_list_t*)em_malloc(sizeof(emf_account_alarm_binder_list_t));
+	p_account_alarm_binder = (email_account_alarm_binder_list_t*)em_malloc(sizeof(email_account_alarm_binder_list_t));
 	if(!p_account_alarm_binder) {
 		EM_DEBUG_EXCEPTION("malloc  Failed ");
 		return false;
@@ -147,7 +147,7 @@ INTERNAL_FUNC int emdaemon_check_auto_polling_started(int account_id)
 		return false;
 	}
 
-	emf_account_alarm_binder_list_t  *p_temp = g_account_alarm_binder_list;
+	email_account_alarm_binder_list_t  *p_temp = g_account_alarm_binder_list;
 	int match_found = false;
 
 	while(p_temp != NULL) {
@@ -180,12 +180,12 @@ INTERNAL_FUNC int emdaemon_alarm_polling_cb(alarm_id_t  alarm_id, void* user_par
 	}
 	
 
-	emf_mailbox_t mailbox = {0};
-	int account_id = 0, err = EMF_ERROR_NONE, timer_interval =0, alarmID =0,ret = false;
+	email_mailbox_t mailbox = {0};
+	int account_id = 0, err = EMAIL_ERROR_NONE, timer_interval =0, alarmID =0,ret = false;
 	char* mailbox_name = NULL;
 
 	if(!_emdaemon_get_polling_account_and_timeinterval(alarm_id,&account_id,&timer_interval)) {
-		EM_DEBUG_EXCEPTION("emf_get_polling_account failed");
+		EM_DEBUG_EXCEPTION("email_get_polling_account failed");
 		return false;
 	}
 
@@ -203,18 +203,18 @@ INTERNAL_FUNC int emdaemon_alarm_polling_cb(alarm_id_t  alarm_id, void* user_par
 		return false;
 	}
 
-	memset(&mailbox, 0x00, sizeof(emf_mailbox_t));
+	memset(&mailbox, 0x00, sizeof(email_mailbox_t));
 	mailbox.account_id = account_id;
 
-		if (!emstorage_get_mailboxname_by_mailbox_type(mailbox.account_id,EMF_MAILBOX_TYPE_INBOX,&mailbox_name, false, &err))  {
-			EM_DEBUG_EXCEPTION("emstorage_get_mailboxname_by_mailbox_type failed [%d]", err);
+		if (!emstorage_get_mailbox_name_by_mailbox_type(mailbox.account_id,EMAIL_MAILBOX_TYPE_INBOX,&mailbox_name, false, &err))  {
+			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_name_by_mailbox_type failed [%d]", err);
 						
 	
 			goto FINISH_OFF;
 		}
-		mailbox.name = mailbox_name;
+		mailbox.mailbox_name = mailbox_name;
 
-	if (!emdaemon_sync_header(&mailbox, NULL, &err))  {
+	if (!emdaemon_sync_header(account_id, mailbox.mailbox_id, NULL, &err))  {
 		EM_DEBUG_EXCEPTION("emdaemon_sync_header falied [%d]", err);		
 		goto FINISH_OFF;
 	}
@@ -238,7 +238,7 @@ static int _emdaemon_get_polling_alarm_and_timerinterval(int account_id, alarm_i
 		return false;
 	}
 
-	emf_account_alarm_binder_list_t  *p_temp = g_account_alarm_binder_list;
+	email_account_alarm_binder_list_t  *p_temp = g_account_alarm_binder_list;
 	int match_found = false;
 
 	while(p_temp != NULL) {
@@ -277,7 +277,7 @@ static int _emdaemon_get_polling_account_and_timeinterval(alarm_id_t  alarm_id, 
 		return false;
 	}
 
-	emf_account_alarm_binder_list_t  *p_temp = g_account_alarm_binder_list;
+	email_account_alarm_binder_list_t  *p_temp = g_account_alarm_binder_list;
 	int match_found = false;
 
 	while(p_temp != NULL) {
@@ -303,7 +303,7 @@ static int _emdaemon_get_polling_account_and_timeinterval(alarm_id_t  alarm_id, 
 	return true;
 }
 
-#define AUTO_POLL_DESTINATION 	"com.samsung.email-service"
+#define AUTO_POLL_DESTINATION 	"org.tizen.email-service"
 static int _emdaemon_create_alarm(int alarm_interval, alarm_id_t *p_alarm_id)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -363,7 +363,7 @@ INTERNAL_FUNC int emdaemon_free_account_alarm_binder_list()
 {
 	EM_DEBUG_FUNC_BEGIN();
 
-	emf_account_alarm_binder_list_t *p = g_account_alarm_binder_list, *p_next = NULL; 	
+	email_account_alarm_binder_list_t *p = g_account_alarm_binder_list, *p_next = NULL; 	
 	int a_nErrorCode = 0;
 	
 	/* delete alarm as well */
@@ -383,9 +383,9 @@ INTERNAL_FUNC int emdaemon_free_account_alarm_binder_list()
 	return true;
 }
 
-static int  _emdaemon_add_to_account_alarm_binder_list(emf_account_alarm_binder_list_t *p_account_alarm_binder)
+static int  _emdaemon_add_to_account_alarm_binder_list(email_account_alarm_binder_list_t *p_account_alarm_binder)
 {
-	emf_account_alarm_binder_list_t  *p_temp = NULL;
+	email_account_alarm_binder_list_t  *p_temp = NULL;
 
 	if(!p_account_alarm_binder) {
 		EM_DEBUG_EXCEPTION("Invalid param ");
@@ -410,7 +410,7 @@ static int  _emdaemon_add_to_account_alarm_binder_list(emf_account_alarm_binder_
 
 static int  _emdaemon_remove_from_account_alarm_binder_list(int account_id)
 {
-	emf_account_alarm_binder_list_t  *p_temp = g_account_alarm_binder_list,  *p_prev = NULL;
+	email_account_alarm_binder_list_t  *p_temp = g_account_alarm_binder_list,  *p_prev = NULL;
 	int match_found = false;
 	
 	if(!account_id) {
@@ -450,7 +450,7 @@ static int  _emdaemon_remove_from_account_alarm_binder_list(int account_id)
 
 static int  _emdaemon_update_account_alarm_binder_list(int account_id, alarm_id_t  alarm_id)
 {
-	emf_account_alarm_binder_list_t  *p_temp = g_account_alarm_binder_list;
+	email_account_alarm_binder_list_t  *p_temp = g_account_alarm_binder_list;
 	int match_found = false;
 
 	if( !account_id || !alarm_id) {

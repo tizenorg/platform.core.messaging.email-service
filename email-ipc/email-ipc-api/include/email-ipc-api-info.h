@@ -36,27 +36,17 @@ typedef struct {
 	emipc_param_list *params[2];
 } emipc_email_api_info;
 
-EXPORT_API bool emipc_set_api_id_of_api_info(emipc_email_api_info *api_info, long api_id);
+/*EXPORT_API bool emipc_set_app_id_of_api_info(emipc_email_api_info *api_info, long app_id); */
 
-EXPORT_API long emipc_get_api_id_of_api_info(emipc_email_api_info *api_info);
+EXPORT_API bool emipc_deserialize_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction, void *stream);
 
-EXPORT_API bool emipc_set_app_id_of_api_info(emipc_email_api_info *api_info, long app_id);
+EXPORT_API unsigned char *emipc_serialize_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction, int *stream_len);
 
-EXPORT_API long emipc_get_app_id_of_api_info(emipc_email_api_info *api_info);
-
-EXPORT_API bool emipc_set_response_id_of_api_info(emipc_email_api_info *api_info, long response_id);
-
-EXPORT_API long emipc_get_response_id_of_api_info(emipc_email_api_info *api_info);
-
-EXPORT_API bool emipc_parse_stream_of_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction, void *stream);
-
-EXPORT_API unsigned char *emipc_get_stream_of_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction);
-
-EXPORT_API int emipc_get_stream_length_of_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction);
+/*EXPORT_API int emipc_get_stream_length_of_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction); */
 
 EXPORT_API void *emipc_get_parameters_of_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction);
 
-
+EXPORT_API bool emipc_free_api_info(emipc_email_api_info *api_info);
 
 /* don't insert empty line */
 #define EM_APIID_TO_STR(nAPIID) \
@@ -67,6 +57,12 @@ EXPORT_API void *emipc_get_parameters_of_api_info(emipc_email_api_info *api_info
 			case _EMAIL_API_ADD_ACCOUNT:\
 					s = "_EMAIL_API_ADD_ACCOUNT";\
 					break;\
+			case _EMAIL_API_DELETE_ACCOUNT:\
+					s = "_EMAIL_API_DELETE_ACCOUNT";\
+					break;\
+			case _EMAIL_API_UPDATE_ACCOUNT:\
+					s = "_EMAIL_API_UPDATE_ACCOUNT";\
+					break;\
 			case _EMAIL_API_ADD_MAILBOX:\
 					s = "_EMAIL_API_ADD_MAILBOX";\
 					break;\
@@ -75,6 +71,12 @@ EXPORT_API void *emipc_get_parameters_of_api_info(emipc_email_api_info *api_info
 					break;\
 			case _EMAIL_API_UPDATE_MAILBOX:\
 					s = "_EMAIL_API_UPDATE_MAILBOX";\
+					break;\
+			case _EMAIL_API_RENAME_MAILBOX:\
+					s = "_EMAIL_API_RENAME_MAILBOX";\
+					break;\
+			case _EMAIL_API_SET_MAILBOX_TYPE:\
+					s = "_EMAIL_API_SET_MAILBOX_TYPE";\
 					break;\
 			case _EMAIL_API_SET_MAIL_SLOT_SIZE:\
 					s = "_EMAIL_API_SET_MAIL_SLOT_SIZE";\
@@ -154,9 +156,6 @@ EXPORT_API void *emipc_get_parameters_of_api_info(emipc_email_api_info *api_info
 			case _EMAIL_API_MODIFY_SEEN_FLAG_OF_THREAD:\
 					s = "_EMAIL_API_MODIFY_SEEN_FLAG_OF_THREAD";\
 					break;\
-			case _EMAIL_API_UPDATE_ACCOUNT:\
-					s = "_EMAIL_API_UPDATE_ACCOUNT";\
-					break;\
 			case _EMAIL_API_ADD_ATTACHMENT:\
 					s = "_EMAIL_API_ADD_ATTACHMENT";\
 					break;\
@@ -219,6 +218,9 @@ EXPORT_API void *emipc_get_parameters_of_api_info(emipc_email_api_info *api_info
 					break;\
 			case _EMAIL_API_GET_PASSWORD_LENGTH_OF_ACCOUNT:\
 					s = "_EMAIL_API_GET_PASSWORD_LENGTH_OF_ACCOUNT";\
+					break;\
+			case _EMAIL_API_SHOW_USER_MESSAGE:\
+					s = "_EMAIL_API_SHOW_USER_MESSAGE";\
 					break;\
 			default : \
 					s = "UNKNOWN_APIID";\

@@ -21,8 +21,8 @@
 
 
 
-#ifndef EMF_TEST_THREAD_H
-#define EMF_TEST_THREAD_H
+#ifndef EMAIL_TEST_THREAD_H
+#define EMAIL_TEST_THREAD_H
 
 #include <glib.h>
 
@@ -31,4 +31,4 @@
 void testapp_thread_main();
 
  
-#endif	/* EMF_TEST_THREAD_H */
+#endif	/* EMAIL_TEST_THREAD_H */

@@ -1,0 +1,8 @@
+uts-email-add-account
+uts-email-validate-account
+uts-email-update-account
+uts-email-add-account-with-validation
+uts-email-get-account
+uts-email-get-account-list
+uts-email-free-account
+uts-email-delete-account

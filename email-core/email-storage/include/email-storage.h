@@ -55,48 +55,84 @@ typedef struct
 {
 	int mail_id;
 	unsigned long server_mail_id;
-} emf_id_set_t;
+} email_id_set_t;
 
 #endif /* __FEATURE_BULK_DELETE_MOVE_UPDATE_REQUEST_OPTI__ */
 
 
 typedef struct 
 {
-	int            account_bind_type;
-	char          *account_name;
-	int            receiving_server_type;
-	char          *receiving_server_addr;
-	char          *email_addr;
-	char          *user_name;
-	char          *password;
-	int            retrieval_mode;
-	int            port_num;
-	int            use_security;
-	int            sending_server_type;
-	char          *sending_server_addr;
-	int            sending_port_num;
-	int            sending_auth;
-	int            sending_security;
-	char          *sending_user;
-	char          *sending_password;
-	char          *display_name;
-	char          *reply_to_addr;
-	char          *return_addr;
-	int            account_id;
-	int            keep_on_server;
-	int            flag1;                     /*  Specifies the downloading option 0 is subject only, 1 is text body, 2 is normal. */
-	int            flag2;
-	int            pop_before_smtp;           /*  POP before SMTP Authentication   */
-	int            apop;                      /*  APOP authentication  */
-	char          *logo_icon_path;            /*  Account logo icon  */
-	int            preset_account;            /*  Preset account or not  */
-	emf_option_t   options;                   /*  Specifies the Sending options  */
-	int            target_storage;            /*  Specifies the targetStorage. 0 is phone, 1 is MMC  */
-	int            check_interval;            /*  Specifies the check interval  */
-	int            my_account_id;             /*  Specifies accout id of my account */
-	int            index_color;               /*  index color in RGB */
-	int            sync_status;               /*  Sync Status */
+	/* Account information */
+	int                                account_id;                               /* Account id  */
+	char                              *account_name;                             /* Account name */
+	char                              *logo_icon_path;                           /* Account logo icon path */
+	int                                account_svc_id;                           /* Specifies id from account-svc */
+	int                                sync_status;                              /* Sync Status. SYNC_STATUS_FINISHED, SYNC_STATUS_SYNCING, SYNC_STATUS_HAVE_NEW_MAILS */
+	int                                sync_disabled;                            /* If this attriube is set as true, email-service will not synchronize this account. */
+	int                                default_mail_slot_size;
+
+	void                              *user_data;                                /* binary user data */
+	int                                user_data_length;                         /* user data length */
+
+	/* User information */
+	char                              *user_display_name;                        /* User's display name */
+	char                              *user_email_address;                       /* User's email address */
+	char                              *reply_to_address;                         /* Email address for reply */
+	char                              *return_address;                           /* Email address for error from server*/
+
+	/* Configuration for incoming server */
+	email_account_server_t             incoming_server_type;                     /* Incoming server type */
+	char                              *incoming_server_address;                  /* Incoming server address */
+	int                                incoming_server_port_number;              /* Incoming server port number */
+	char                              *incoming_server_user_name;                /* Incoming server user name */
+	char                              *incoming_server_password;                 /* Incoming server password */
+	int                                incoming_server_secure_connection;        /* Does incoming server requires secured connection? */
+
+	/* Options for incoming server */
+	email_imap4_retrieval_mode_t       retrieval_mode;                           /* Retrieval mode : EMAIL_IMAP4_RETRIEVAL_MODE_NEW or EMAIL_IMAP4_RETRIEVAL_MODE_ALL */
+	int                                keep_mails_on_pop_server_after_download;  /* Keep mails on POP server after download */
+	int                                check_interval;                           /* Specifies the interval for checking new mail periodically */
+	int                                auto_download_size;                       /* Specifies the size for auto download in bytes. -1 means entire mails body */
+
+	/* Configuration for outgoing server */
+	email_account_server_t             outgoing_server_type;
+	char                              *outgoing_server_address;
+	int                                outgoing_server_port_number;
+	char                              *outgoing_server_user_name;
+	char                              *outgoing_server_password;
+	int                                outgoing_server_secure_connection;        /* Does outgoing server requires secured connection? */
+	int                                outgoing_server_need_authentication;      /* Does outgoing server requires authentication? */
+	int                                outgoing_server_use_same_authenticator;   /* Use same authenticator for outgoing server */ /* flag2 */
+
+	/* Options for outgoing server */
+	email_option_t                     options;
+
+	/* Authentication Options */
+	int                                pop_before_smtp;                          /* POP before SMTP Authentication */
+	int                                incoming_server_requires_apop;            /* APOP authentication */
+
+	/* S/MIME Options */
+	email_smime_type                   smime_type;                               /* Sepeifies the smime type 0=Normal 1=Clear signed 2=encrypted 3=Signed + encrypted */
+	char                              *certificate_path;                         /* Sepeifies the certificate path of private*/
+	email_cipher_type                  cipher_type;                              /* Sepeifies the encryption algorithm*/
+	email_digest_type                  digest_type;                              /* Sepeifies the digest algorithm*/
 } emstorage_account_tbl_t;
+
+typedef struct 
+{
+	int certificate_id;
+	int issue_year;
+	int issue_month;
+	int issue_day;
+	int expiration_year;
+	int expiration_month;
+	int expiration_day;
+	char *issue_organization_name;
+	char *email_address;
+	char *subject_str;
+	char *filepath;
+	char *password;
+} emstorage_certificate_tbl_t;
 
 typedef struct 
 {
@@ -105,7 +141,7 @@ typedef struct
 	int   type;            /*  from/subject/body  */
 	char *value;
 	int   action_type;     /*  move/block/delete  */
-	char *dest_mailbox;    /*  destination mailbox  */
+	int   target_mailbox_id;    /*  destination mailbox  */
 	int   flag1;           /*  for rule ON/OFF */
 	int   flag2;           /*  For rule type INCLUDE/Exactly SAME AS */
 } emstorage_rule_tbl_t;
@@ -117,22 +153,23 @@ typedef struct
 	int                  account_id;
 	int                  local_yn;
 	char                *mailbox_name;
-	emf_mailbox_type_e   mailbox_type;
+	email_mailbox_type_e   mailbox_type;
 	char                *alias;
-	int                  sync_with_server_yn;      /*  whether mailbox is a sync IMAP mailbox */
+	int                  sync_with_server_yn;        /*  whether mailbox is a sync IMAP mailbox */
 	int                  modifiable_yn;              /*  whether mailbox is able to be deleted/modified */
-	int                  unread_count;              /*  Removed. 16-Dec-2010, count unread mails at the moment it is required. not store in the DB */
+	int                  unread_count;               /*  Removed. 16-Dec-2010, count unread mails at the moment it is required. not store in the DB */
 	int                  total_mail_count_on_local;  /*  Specifies the total number of mails in the mailbox in the local DB. count unread mails at the moment it is required. not store in the DB */
-	int                  total_mail_count_on_server;  /*  Specifies the total number of mails in the mailbox in the mail server */
+	int                  total_mail_count_on_server; /*  Specifies the total number of mails in the mailbox in the mail server */
 	int                  has_archived_mails;
 	int                  mail_slot_size;
+	time_t               last_sync_time;             /*  The last synchronization time */
 } emstorage_mailbox_tbl_t;
 
 /* mail_read_uid_tbl table entity */
 typedef struct 
 {
 	int     account_id;
-	char   *local_mbox;
+	int     mailbox_id;
 	int     local_uid;
 	char   *mailbox_name;   /*  server mailbox */
 	char   *s_uid;          /*  uid on server */
@@ -146,7 +183,7 @@ typedef struct
 {
 	int        mail_id;
 	int        account_id;
-	int        mailbox_id;         /* For internal use. Currently, account_id and mailbox name is primary key of the table. */
+	int        mailbox_id;
 	char      *mailbox_name;
 	int        mailbox_type;
 	char      *subject;
@@ -168,6 +205,7 @@ typedef struct
 	int        body_download_status;
 	char      *file_path_plain;
 	char      *file_path_html;
+	char      *file_path_mime_entity;
 	int        mail_size;
 	char       flags_seen_field;
 	char       flags_deleted_field;
@@ -187,6 +225,9 @@ typedef struct
 	int        thread_item_count;
 	char      *preview_text;
 	int        meeting_request_status;
+	int        message_class;
+	int        digest_type;
+	int        smime_type;
 } emstorage_mail_tbl_t;
 
 /* mail_attachment_tbl entity */
@@ -198,7 +239,7 @@ typedef struct
 	int   attachment_size;
 	int   mail_id;
 	int   account_id;
-	char *mailbox_name;
+	int   mailbox_id;
 	int   attachment_save_status;              /* 1 : existing, 0 : not existing */
 	int   attachment_drm_type;                 /* 0 : none, 1 : object, 2 : rights, 3 : dcf */
 	int   attachment_drm_method;               /* 0 : none, 1 : FL, 2 : CD, 3 : SSD, 4 : SD */
@@ -229,16 +270,9 @@ typedef struct _emstorage_search_filter_t {
 } emstorage_search_filter_t;
 
 typedef enum {
-	EMF_CREATE_DB_NORMAL = 0, 
-	EMF_CREATE_DB_CHECK, 
+	EMAIL_CREATE_DB_NORMAL = 0, 
+	EMAIL_CREATE_DB_CHECK, 
 } emstorage_create_db_type_t;
-
-typedef enum {
-	SET_TYPE_SET        = 1,
-	SET_TYPE_UNION      = 2,
-	SET_TYPE_MINUS      = 3, 
-	SET_TYPE_INTERSECT  = 4 /* Not supported */
-} emstorage_set_type_t;
 
 
 /*****************************************************************************
@@ -345,7 +379,7 @@ INTERNAL_FUNC int emstorage_create_table(emstorage_create_db_type_t type, int *e
  * @remarks N/A
  * @return This function returns true if there is no duplicated account. returns false and set error code if there are duplicated accounts or error 
  */
-INTERNAL_FUNC int emstorage_check_duplicated_account(emf_account_t *account, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_check_duplicated_account(email_account_t *account, int transaction, int *err_code);
 
 
 /**
@@ -382,7 +416,7 @@ INTERNAL_FUNC int emstorage_get_account_list(int *select_num, emstorage_account_
  *              this buffer must be free after it has been used.
  * return  : 
  */
-/* sowmya.kr, 281209 Adding signature to options in emf_account_t changes */
+/* sowmya.kr, 281209 Adding signature to options in email_account_t changes */
 
 INTERNAL_FUNC int emstorage_get_account_by_id(int account_id, int pulloption, emstorage_account_tbl_t **account, int transaction, int *err_code);
 
@@ -410,6 +444,9 @@ INTERNAL_FUNC int emstorage_get_password_length_of_account(int account_id, int *
  */
 INTERNAL_FUNC int emstorage_update_account(int account_id, emstorage_account_tbl_t *account, int transaction, int *err_code);
 
+
+INTERNAL_FUNC int emstorage_set_field_of_accounts_with_integer_value(int account_id, char *field_name, int value, int transaction);
+
 /*
  * emstorage_get_sync_status_of_account
  *
@@ -428,12 +465,12 @@ INTERNAL_FUNC int emstorage_get_sync_status_of_account(int account_id, int *resu
  * description :  update a sync status field from account table
  * arguments : 
  *    account_id  :  account id
- *    set_operator  :  set operater. refer emstorage_set_type_t
+ *    set_operator  :  set operater. refer email_set_type_t
  *    sync_status : sync status value
  * return  : 
  */
 
-INTERNAL_FUNC int emstorage_update_sync_status_of_account(int account_id, emstorage_set_type_t set_operator, int sync_status, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_update_sync_status_of_account(int account_id, email_set_type_t set_operator, int sync_status, int transaction, int *err_code);
 
 /*
  * emstorage_add_account
@@ -493,7 +530,7 @@ INTERNAL_FUNC int emstorage_get_mailbox_count(int account_id, int local_yn, int 
  *                   	this buffer must be free after it has been used.
  * return  : 
  */
-INTERNAL_FUNC int emstorage_get_mailbox(int account_id, int local_yn, email_mailbox_sort_type_t sort_type, int *select_num, emstorage_mailbox_tbl_t **mailbox_list,  int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_get_mailbox_list(int account_id, int local_yn, email_mailbox_sort_type_t sort_type, int *select_num, emstorage_mailbox_tbl_t **mailbox_list,  int transaction, int *err_code);
 
 /*
  * emstorage_get_child_mailbox_list
@@ -523,12 +560,13 @@ INTERNAL_FUNC int emstorage_get_child_mailbox_list(int account_id, char *parent_
  * return  : 
  */
 INTERNAL_FUNC int emstorage_get_mailbox_by_name(int account_id, int local_yn, char *mailbox_name, emstorage_mailbox_tbl_t **mailbox, int transaction, int *err_code);
-INTERNAL_FUNC int emstorage_get_mailbox_ex(int account_id, int local_yn, int with_count, int *select_num, emstorage_mailbox_tbl_t **mailbox_list, int transaction, int *err_code);
-INTERNAL_FUNC int emstorage_get_mailbox_by_mailbox_type(int account_id, emf_mailbox_type_e mailbox_type, emstorage_mailbox_tbl_t **mailbox, int transaction, int *err_code);
-INTERNAL_FUNC int emstorage_get_mailboxname_by_mailbox_type(int account_id, emf_mailbox_type_e mailbox_type, char **mailbox, int transaction, int *err_code);
-
+INTERNAL_FUNC int emstorage_get_mailbox_by_mailbox_type(int account_id, email_mailbox_type_e mailbox_type, emstorage_mailbox_tbl_t **mailbox, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_get_mailbox_by_id(int input_mailbox_id, emstorage_mailbox_tbl_t** output_mailbox);
+INTERNAL_FUNC int emstorage_get_mailbox_list_ex(int account_id, int local_yn, int with_count, int *select_num, emstorage_mailbox_tbl_t **mailbox_list, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_get_mailbox_id_by_mailbox_type(int account_id, email_mailbox_type_e mailbox_type, int *mailbox_id, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_get_mailbox_name_by_mailbox_type(int account_id, email_mailbox_type_e mailbox_type, char **mailbox_name, int transaction, int *err_code);
 INTERNAL_FUNC int emstorage_update_mailbox_modifiable_yn(int account_id, int local_yn, char *mailbox_name, int modifiable_yn, int transaction, int *err_code);
-INTERNAL_FUNC int emstorage_update_mailbox_total_count(int account_id, char *mailbox_name, int total_count_on_server, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_update_mailbox_total_count(int account_id, int input_mailbox_id, int total_count_on_server, int transaction, int *err_code);
 
 
 /*
@@ -541,7 +579,7 @@ INTERNAL_FUNC int emstorage_update_mailbox_total_count(int account_id, char *mai
  *    mailbox  :  buffer to hold selected local mailbox
  * return  : 
  */
-INTERNAL_FUNC int emstorage_update_mailbox(int account_id, int local_yn, char *mailbox_name, emstorage_mailbox_tbl_t *mailbox, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_update_mailbox(int account_id, int local_yn, int input_mailbox_id, emstorage_mailbox_tbl_t *mailbox, int transaction, int *err_code);
 
 /*
  * emstorage_update_mailbox_type
@@ -550,7 +588,7 @@ INTERNAL_FUNC int emstorage_update_mailbox(int account_id, int local_yn, char *m
  * arguments : 
  * return  : 
  */
-INTERNAL_FUNC int emstorage_update_mailbox_type(int account_id, int local_yn, char *mailbox_name, emstorage_mailbox_tbl_t *mailbox, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_update_mailbox_type(int account_id, int local_yn, char *mailbox_name, email_mailbox_type_e new_mailbox_type, int transaction, int *err_code);
 
 /*
  * emstorage_add_mailbox
@@ -570,14 +608,15 @@ INTERNAL_FUNC int emstorage_add_mailbox(emstorage_mailbox_tbl_t *mailbox, int tr
  *    mailbox_name  :  mailbox name of record to be deteted
  * return  : 
  */
-INTERNAL_FUNC int emstorage_delete_mailbox(int account_id, int local_yn, char *mailbox_name, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_delete_mailbox(int account_id, int local_yn, int input_mailbox_id, int transaction, int *err_code);
 
-INTERNAL_FUNC int emstorage_rename_mailbox(int account_id, char *old_mailbox_name, char *new_mailbox_name, int transaction, int *err_code);
-INTERNAL_FUNC int emstorage_get_overflowed_mail_id_list(int account_id, char *mailbox_name, int mail_slot_size, int **mail_id_list, int *mail_id_count, int transaction, int *err_code);
-INTERNAL_FUNC int emstorage_set_mail_slot_size(int account_id, char *mailbox_name, int new_slot_size, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_rename_mailbox(int input_mailbox_id, char *input_new_mailbox_path, char *input_new_mailbox_alias, int input_transaction);
+INTERNAL_FUNC int emstorage_get_overflowed_mail_id_list(int account_id, int input_mailbox_id, int mail_slot_size, int **mail_id_list, int *mail_id_count, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_set_mail_slot_size(int account_id, int mailbox_id, int new_slot_size, int transaction, int *err_code);
 
 INTERNAL_FUNC int emstorage_set_all_mailbox_modifiable_yn(int account_id, int modifiable_yn, int transaction, int *err_code);
 INTERNAL_FUNC int emstorage_get_mailbox_by_modifiable_yn(int account_id, int modifiable_yn, int *select_num, emstorage_mailbox_tbl_t **mailbox_list, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_stamp_last_sync_time_of_mailbox(int input_mailbox_id, int input_transaction);
 
 /*
  * emstorage_free_mailbox
@@ -617,14 +656,14 @@ INTERNAL_FUNC int emstorage_check_read_mail_uid(int account_id, char *mailbox_na
  * description :  get mail size from read mail uid
  * arguments : 
  *    db  :  database pointer
- *    local_mbox  :  local mailbox name
+ *    mailbox_id  :  local mailbox id
  *    local_uid  :  mail uid of local mailbox
  *    mailbox_name  :  server mailbox name
  *    uid  :  mail uid string of server mail
  *    read_mail_uid  :  variable to hold read mail uid information
  * return  : 
  */
-INTERNAL_FUNC int emstorage_get_downloaded_list(int account_id, char *local_mbox, emstorage_read_mail_uid_tbl_t **read_mail_uid, int *count, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_get_downloaded_list(int account_id, int mailbox_id, emstorage_read_mail_uid_tbl_t **read_mail_uid, int *count, int transaction, int *err_code);
 
 INTERNAL_FUNC int emstorage_get_downloaded_mail(int mail_id, emstorage_mail_tbl_t **mail, int transaction, int *err_code);
 
@@ -657,7 +696,7 @@ INTERNAL_FUNC int emstorage_add_downloaded_mail(emstorage_read_mail_uid_tbl_t *r
  * arguments : 
  * return  : 
  */
-INTERNAL_FUNC int emstorage_change_read_mail_uid(int account_id, char *local_mbox, int local_uid, char *mailbox_name, char *uid, 
+INTERNAL_FUNC int emstorage_change_read_mail_uid(int account_id, int local_mailbox_id, int local_uid, char *mailbox_name, char *uid,
 	                             emstorage_read_mail_uid_tbl_t *read_mail_uid, int transaction, int *err_code);
 
 /*
@@ -767,8 +806,6 @@ INTERNAL_FUNC int emstorage_delete_rule(int account_id, int rule_id, int transac
 INTERNAL_FUNC int emstorage_free_rule(emstorage_rule_tbl_t **rule_list, int count, int *err_code);
 
 
-INTERNAL_FUNC int emstorage_filter_mails_by_rule(int account_id, char *dest_mailbox_name, emstorage_rule_tbl_t *rule, int **filtered_mail_id_list, int *count_of_mails, int *err_code);
-
 /************** Mail Management ******************/
 
 /*
@@ -822,11 +859,25 @@ INTERNAL_FUNC int emstorage_get_mail_field_by_id(int mail_id, int type, emstorag
 INTERNAL_FUNC int emstorage_get_mail_field_by_multiple_mail_id(int mail_ids[], int number_of_mails, int type, emstorage_mail_tbl_t** mail, int transaction, int *err_code);
 
 /*
+ * emstorage_query_mail_count
+ *
+ * description :  query mail count
+ */
+INTERNAL_FUNC int emstorage_query_mail_count(const char *input_conditional_clause, int input_transaction, int *output_total_mail_count, int *output_unseen_mail_count);
+
+/*
+ * emstorage_query_mail_list
+ *
+ * description :  query mail id list
+ */
+INTERNAL_FUNC int emstorage_query_mail_id_list(const char *input_conditional_clause, int input_transaction, int **output_mail_id_list, int *output_mail_id_count);
+
+/*
  * emstorage_query_mail_list
  *
  * description :  query mail list information
  */
-INTERNAL_FUNC int emstorage_query_mail_list(const char *conditional_clause, int transaction, emf_mail_list_item_t** result_mail_list,  int *result_count,  int *err_code);
+INTERNAL_FUNC int emstorage_query_mail_list(const char *conditional_clause, int transaction, email_mail_list_item_t** result_mail_list,  int *result_count,  int *err_code);
 
 /*
  * emstorage_query_mail_tbl
@@ -836,18 +887,27 @@ INTERNAL_FUNC int emstorage_query_mail_list(const char *conditional_clause, int 
 INTERNAL_FUNC int emstorage_query_mail_tbl(const char *conditional_clause, int transaction, emstorage_mail_tbl_t** result_mail_tbl, int *result_count, int *err_code);
 
 /*
+ * emstorage_query_mailbox_tbl
+ *
+ * description :  query mail box table information
+ */
+
+INTERNAL_FUNC int emstorage_query_mailbox_tbl(const char *input_conditional_clause, int input_get_mail_count,  int input_transaction, emstorage_mailbox_tbl_t **output_mailbox_list, int *output_mailbox_count);
+
+/*
  * emstorage_get_mail_list
  *
  * description :  search mail list information
  */
-INTERNAL_FUNC int emstorage_get_mail_list(int account_id, const char *mailbox_name, emf_email_address_list_t* addr_list, int thread_id, int start_index, int limit_count, int search_type, const char *search_value, emf_sort_type_t sorting, int transaction, emf_mail_list_item_t** mail_list,  int *result_count,  int *err_code);
+
+INTERNAL_FUNC int emstorage_get_mail_list(int account_id, int mailbox_id, email_email_address_list_t* addr_list, int thread_id, int start_index, int limit_count, int search_type, const char *search_value, email_sort_type_t sorting, int transaction, email_mail_list_item_t** mail_list,  int *result_count,  int *err_code);
 /*
  * emstorage_get_mails
  *
  * description :  search mail list information
  */
-INTERNAL_FUNC int emstorage_get_mails(int account_id, const char *mailbox_name, emf_email_address_list_t* addr_list, int thread_id, int start_index, int limit_count, emf_sort_type_t sorting,  int transaction, emstorage_mail_tbl_t** mail_list, int *result_count, int *err_code);
-INTERNAL_FUNC int emstorage_get_searched_mail_list(int account_id, const char *mailbox_name, int thread_id, int search_type, const char *search_value, int start_index, int limit_count, emf_sort_type_t sorting, int transaction, emf_mail_list_item_t **mail_list,  int *result_count,  int *err_code);
+INTERNAL_FUNC int emstorage_get_mails(int account_id, int mailbox_id, email_email_address_list_t* addr_list, int thread_id, int start_index, int limit_count, email_sort_type_t sorting,  int transaction, emstorage_mail_tbl_t** mail_list, int *result_count, int *err_code);
+INTERNAL_FUNC int emstorage_get_searched_mail_list(int account_id, int mailbox_id, int thread_id, int search_type, const char *search_value, int start_index, int limit_count, email_sort_type_t sorting, int transaction, email_mail_list_item_t **mail_list,  int *result_count,  int *err_code);
 INTERNAL_FUNC int emstorage_get_maildata_by_servermailid(int account_id, char *server_mail_id, emstorage_mail_tbl_t **mail, int transaction, int *err_code);
 INTERNAL_FUNC int emstorage_get_latest_unread_mailid(int account_id, int *mail_id, int *err_code);
 
@@ -913,7 +973,7 @@ INTERNAL_FUNC int emstorage_set_field_of_mails_with_integer_value(int account_id
  *    mail  :  mail pointer
  * return  : 
  */
-INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, emf_mail_change_type_t type, emstorage_mail_tbl_t *mail, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_type_t type, emstorage_mail_tbl_t *mail, int transaction, int *err_code);
 
 /*
  * emstorage_increase_mail_id
@@ -957,14 +1017,14 @@ INTERNAL_FUNC int emstorage_add_mail(emstorage_mail_tbl_t *mail, int get_id, int
  * description :
  * arguments : 
  *    account_id  :  
- *   target_mailbox_name :
+ *   input_mailbox_id :
  *   mail_ids :
  *   number_of_mails :
  *   transaction :
  *   err_code :
  * return  : 
  */
-INTERNAL_FUNC int emstorage_move_multiple_mails(int account_id, char *target_mailbox_name, int mail_ids[], int number_of_mails, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_move_multiple_mails(int account_id, int input_mailbox_id, int mail_ids[], int number_of_mails, int transaction, int *err_code);
 
 /*
  * emstorage_delete_mail
@@ -993,10 +1053,10 @@ INTERNAL_FUNC int emstorage_delete_mail_by_account(int account_id, int transacti
  * description :  delete mail from mail table
  * arguments : 
  *    account_id  :  account id.
- *    mbox  :  mail box
+ *    mailbox  :  mail box
  * return  : 
  */
-INTERNAL_FUNC int emstorage_delete_mail_by_mailbox(int account_id, char *mbox, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_delete_mail_by_mailbox(int account_id, char *mailbox, int transaction, int *err_code);
 
 /*
  * emstorage_delete_multiple_mails
@@ -1043,7 +1103,7 @@ INTERNAL_FUNC int emstorage_get_attachment_count(int mail_id, int *count, int tr
  *    input_transaction       : transaction option
  *    attachment_list         : result attachment list
  *    output_attachment_count : result attachment count
- * return  : This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR__XXX) on failure.
+ * return  : This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR__XXX) on failure.
  *    
  */
 INTERNAL_FUNC int emstorage_get_attachment_list(int input_mail_id, int input_transaction, emstorage_attachment_tbl_t** output_attachment_list, int *output_attachment_count);
@@ -1054,12 +1114,11 @@ INTERNAL_FUNC int emstorage_get_attachment_list(int input_mail_id, int input_tra
  *
  * description :  get attachment from attachment table
  * arguments : 
- *    mail_id  :  mail id
- *    no  :  attachment id
+ *    attachment_id  :  attachment id
  *    attachment  :  double pointer to hold attachment data
  * return  : 
  */
-INTERNAL_FUNC int emstorage_get_attachment(int mail_id, int no, emstorage_attachment_tbl_t **attachment, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_get_attachment(int attachment_id, emstorage_attachment_tbl_t **attachment, int transaction, int *err_code);
 
 /*
  * emstorage_get_attachment
@@ -1083,19 +1142,7 @@ INTERNAL_FUNC int emstorage_get_attachment_nth(int mail_id, int nth, emstorage_a
  *    mail  :  mail pointer
  * return  : 
  */
-INTERNAL_FUNC int emstorage_change_attachment_field(int mail_id, emf_mail_change_type_t type, emstorage_attachment_tbl_t *attachment, int transaction, int *err_code);
-
-/*
- * emstorage_change_attachment_mbox
- *
- * description :  update mailbox from attahcment table
- * arguments : 
- *    account_id  :  account id
- *    old_mailbox_name  :  old mail box
- *    new_mailbox_name  :  new mail box
- * return  : 
- */
-INTERNAL_FUNC int emstorage_change_attachment_mbox(int account_id, char *old_mailbox_name, char *new_mailbox_name, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_change_attachment_field(int mail_id, email_mail_change_type_t type, emstorage_attachment_tbl_t *attachment, int transaction, int *err_code);
 
 /* Get new attachment id */
 /*
@@ -1129,11 +1176,12 @@ INTERNAL_FUNC int emstorage_update_attachment(emstorage_attachment_tbl_t *attach
  *
  * description :  delete attachment from attachment table
  * arguments : 
- *    mail_id  :  mail id to contain attachment
- *    no  :  attachment sequence number
+ *    attachment_id  :  attachment id
  * return  : 
  */
-INTERNAL_FUNC int emstorage_delete_attachment_on_db(int mail_id, int no, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_delete_attachment_on_db(int attachment_id, int transaction, int *err_code);
+
+INTERNAL_FUNC int emstorage_delete_all_attachments_of_mail(int mail_id, int transaction, int *err_code);
 
 /*
  * emstorage_delete_attachment_all_on_db
@@ -1141,10 +1189,10 @@ INTERNAL_FUNC int emstorage_delete_attachment_on_db(int mail_id, int no, int tra
  * description :  delete attachment from mail table
  * arguments : 
  *    account_id  :  account id.
- *    mbox  :  mail box
+ *    mailbox  :  mail box
  * return  : 
  */
-INTERNAL_FUNC int emstorage_delete_attachment_all_on_db(int account_id, char *mbox, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_delete_attachment_all_on_db(int account_id, char *mailbox, int transaction, int *err_code);
 
 /*
  * emstorage_free_attachment
@@ -1157,13 +1205,7 @@ INTERNAL_FUNC int emstorage_delete_attachment_all_on_db(int account_id, char *mb
  */
 INTERNAL_FUNC int emstorage_free_attachment(emstorage_attachment_tbl_t **attachment_list, int count, int *err_code);
 
-/*  emstorage_get_mail_count_with_draft_flag - Send number of mails in a mailbox with draft flag enabled */
-INTERNAL_FUNC int emstorage_get_mail_count_with_draft_flag(int account_id, const char *mailbox, int *total, int transaction, int *err_code);
-
-/*  emstorage_get_mail_count_on_sending - Send number of mails being sent in a mailbox (status == EMF_MAIL_STATUS_SENDING) */
-INTERNAL_FUNC int emstorage_get_mail_count_on_sending(int account_id, const char *mailbox, int *total, int transaction, int * err_code);
-
-INTERNAL_FUNC int emstorage_is_mailbox_full(int account_id, emf_mailbox_t *mailbox, int *result, int *err_code);
+INTERNAL_FUNC int emstorage_is_mailbox_full(int account_id, email_mailbox_t *mailbox, int *result, int *err_code);
 
 INTERNAL_FUNC int emstorage_get_max_mail_count();
 
@@ -1299,17 +1341,21 @@ INTERNAL_FUNC void emstorage_flush_db_cache();
 INTERNAL_FUNC int emstorage_test(int mail_id, int account_id, char *full_address_to, char *full_address_cc, char *full_address_bcc, int *err_code);
 /**
  * emstorage_notify_storage_event - Notification for storage related operations
- * 
  */
-INTERNAL_FUNC int emstorage_notify_storage_event(emf_noti_on_storage_event event_type, int data1, int data2 , char *data3, int data4);
+INTERNAL_FUNC int emstorage_notify_storage_event(email_noti_on_storage_event event_type, int data1, int data2 , char *data3, int data4);
 
 /**
  * emstorage_notify_network_event - Notification for network related operations
- * 
  */
-INTERNAL_FUNC int emstorage_notify_network_event(emf_noti_on_network_event event_type, int data1, char *data2, int data3, int data4);
-INTERNAL_FUNC int emstorage_get_sender_list(int account_id, const char *mailbox_name, int search_type, const char *search_value, emf_sort_type_t sorting, emf_sender_list_t** sender_list, int *sender_count,  int *err_code);
-INTERNAL_FUNC int emstorage_free_sender_list(emf_sender_list_t **sender_list, int count);
+INTERNAL_FUNC int emstorage_notify_network_event(email_noti_on_network_event event_type, int data1, char *data2, int data3, int data4);
+
+/**
+ * emstorage_notify_response_to_api - Notification for response to API
+ */
+INTERNAL_FUNC int emstorage_notify_response_to_api(email_event_type_t event_type, int data1, int data2);
+
+INTERNAL_FUNC int emstorage_get_sender_list(int account_id, const char *mailbox_name, int search_type, const char *search_value, email_sort_type_t sorting, email_sender_list_t** sender_list, int *sender_count,  int *err_code);
+INTERNAL_FUNC int emstorage_free_sender_list(email_sender_list_t **sender_list, int count);
 
 /* Handling Thread mail */
 INTERNAL_FUNC int emstorage_get_thread_information(int thread_id, emstorage_mail_tbl_t **mail_table_data, int transaction, int *err_code);
@@ -1327,25 +1373,25 @@ enum
 	SERVER_MAIL_IDX_IN_MAIL_PARTIAL_BODY_ACTIVITY_TBL, 
 	ACTIVITY_IDX_IN_MAIL_PARTIAL_BODY_ACTIVITY_TBL, 
 	ACTIVITY_TYPE_IDX_IN_MAIL_PARTIAL_BODY_ACTIVITY_TBL, 
-	MAILBOX_NAME_IDX_IN_MAIL_PARTIAL_BODY_ACTIVITY_TBL, 
+	MAILBOX_ID_IDX_IN_MAIL_PARTIAL_BODY_ACTIVITY_TBL, 
+	MAILBOX_NAME_IDX_IN_MAIL_PARTIAL_BODY_ACTIVITY_TBL,
 };
 
 
-INTERNAL_FUNC int   emstorage_get_pbd_activity_data(int account_id, char *mailbox_name, emf_event_partial_body_thd** event_start, int *count, int transaction, int *err_code);
-INTERNAL_FUNC int   emstorage_add_pbd_activity(emf_event_partial_body_thd *local_activity, int *activity_id, int transaction, int *err_code);
-INTERNAL_FUNC int   emstorage_get_pbd_mailbox_list(int account_id, char ***mailbox_list, int *count, int transaction, int *err_code);
+INTERNAL_FUNC int   emstorage_get_pbd_activity_data(int account_id, int input_mailbox_id, email_event_partial_body_thd** event_start, int *count, int transaction, int *err_code);
+INTERNAL_FUNC int   emstorage_add_pbd_activity(email_event_partial_body_thd *local_activity, int *activity_id, int transaction, int *err_code);
+INTERNAL_FUNC int   emstorage_get_pbd_mailbox_list(int account_id, int **mailbox_list, int *count, int transaction, int *err_code);
 INTERNAL_FUNC int   emstorage_get_pbd_account_list(int **account_list, int *count, int transaction, int *err_code);
 INTERNAL_FUNC int   emstorage_get_pbd_activity_count(int *activity_id_count, int transaction, int *err_code);
 INTERNAL_FUNC int   emstorage_delete_full_pbd_activity_data(int account_id, int transaction, int *err_code);
 INTERNAL_FUNC int   emstorage_delete_pbd_activity(int account_id, int mail_id, int activity_id, int transaction, int *err_code);
-INTERNAL_FUNC int   emstorage_get_mailbox_pbd_activity_count(int account_id, char *mailbox_name, int *activity_count, int transaction, int *err_code);
+INTERNAL_FUNC int   emstorage_get_mailbox_pbd_activity_count(int account_id, int input_mailbox_id, int *activity_count, int transaction, int *err_code);
 INTERNAL_FUNC int   emstorage_update_pbd_activity(char *old_server_uid, char *new_server_uid, char *mbox_name, int *err_code);
 INTERNAL_FUNC int   emstorage_create_file(char *buf, size_t file_size, char *dst_file, int *err_code);
 
 #endif  
 
-INTERNAL_FUNC int   emstorage_free_address_info_list(emf_address_info_list_t **address_info_list);
-
+INTERNAL_FUNC int   emstorage_free_address_info_list(email_address_info_list_t **address_info_list);
 
 INTERNAL_FUNC void  emstorage_create_dir_if_delete();
 
@@ -1353,7 +1399,7 @@ INTERNAL_FUNC void  emstorage_create_dir_if_delete();
 INTERNAL_FUNC int emstorage_update_read_mail_uid_by_server_uid(char *old_server_uid, char *new_server_uid, char *mbox_name, int *err_code);
 
 /**
- * @fn emstorage_get_id_set_from_mail_ids(int mail_ids[], int mail_id_count, emf_id_set_t **server_uids, int *id_set_count, int *err_code);
+ * @fn emstorage_get_id_set_from_mail_ids(int mail_ids[], int mail_id_count, email_id_set_t **server_uids, int *id_set_count, int *err_code);
  * Prepare an array of mail_id and corresponding server mail id.
  *
  *@author 					h.gahlaut@samsung.com
@@ -1367,12 +1413,12 @@ INTERNAL_FUNC int emstorage_update_read_mail_uid_by_server_uid(char *old_server_
  * @return This function returns true on success or false on failure.
  */
 
-INTERNAL_FUNC int emstorage_get_id_set_from_mail_ids(char *mail_ids, emf_id_set_t **idset, int *id_set_count, int *err_code);
+INTERNAL_FUNC int emstorage_get_id_set_from_mail_ids(char *mail_ids, email_id_set_t **idset, int *id_set_count, int *err_code);
 
 #endif
 
 /**
- * @fn emstorage_filter_mails_by_rule(int account_id, char dest_mailbox_name, emf_rule_t *rule, int **filtered_mail_id_list, int *count_of_mails, int err_code)
+ * @fn emstorage_filter_mails_by_rule(int account_id, char dest_mailbox_name, email_rule_t *rule, int **filtered_mail_id_list, int *count_of_mails, int err_code)
  * Move mails by specified rule for spam filtering. 
  *
  * @author 								kyuho.jo@samsung.com
@@ -1386,14 +1432,16 @@ INTERNAL_FUNC int emstorage_get_id_set_from_mail_ids(char *mail_ids, emf_id_set_
  * @remarks 									
  * @return This function returns true on success or false on failure.
  */
+INTERNAL_FUNC int emstorage_filter_mails_by_rule(int account_id, int dest_mailbox_id, emstorage_rule_tbl_t *rule, int **filtered_mail_id_list, int *count_of_mails, int *err_code);
 
-INTERNAL_FUNC int emstorage_add_meeting_request(int account_id, char *mailbox_name, emf_meeting_request_t *meeting_req, int transaction, int *err_code);
-INTERNAL_FUNC int emstorage_get_meeting_request(int mail_id, emf_meeting_request_t **meeting_req, int transaction, int *err_code);
-INTERNAL_FUNC int emstorage_update_meeting_request(emf_meeting_request_t *meeting_req, int transaction, int *err_code);
-INTERNAL_FUNC int emstorage_change_meeting_request_field(int account_id, char *mailbox_name, emf_mail_change_type_t type, emf_meeting_request_t *meeting_req, int transaction, int *err_code);
-INTERNAL_FUNC int emstorage_change_meeting_request_mailbox(int account_id, char *old_mailbox_name, char *new_mailbox_name, int transaction, int *err_code);
-INTERNAL_FUNC int emstorage_delete_meeting_request(int account_id, int mail_id, char *mailbox_name, int transaction, int *err_code);
-INTERNAL_FUNC int emstorage_free_meeting_request(emf_meeting_request_t **meeting_req, int count, int *err_code);
+INTERNAL_FUNC int emstorage_add_meeting_request(int account_id, int input_mailbox_id, email_meeting_request_t *meeting_req, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_get_meeting_request(int mail_id, email_meeting_request_t **meeting_req, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_update_meeting_request(email_meeting_request_t *meeting_req, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_delete_meeting_request(int account_id, int mail_id, int input_mailbox_id, int transaction, int *err_code);
+INTERNAL_FUNC void emstorage_free_meeting_request(email_meeting_request_t *meeting_req);
+
+INTERNAL_FUNC int emstorage_write_conditional_clause_for_getting_mail_list(email_list_filter_t *input_filter_list, int input_filter_count, email_list_sorting_rule_t *input_sorting_rule_list, int input_sorting_rule_count, int input_start_index, int input_limit_count, char **output_conditional_clause);
+INTERNAL_FUNC int emstorage_free_list_filter(email_list_filter_t **input_filter_list, int input_filter_count);
 
 #ifdef __FEATURE_LOCAL_ACTIVITY__
 /*
@@ -1410,7 +1458,7 @@ INTERNAL_FUNC int emstorage_get_next_activity_id(int *activity_id, int *err_code
  *return  : 
  *
  */
- INTERNAL_FUNC int emstorage_get_activity_id_list(int account_id, int **activity_id_list, int *activity_count, int lowest_activity_type, int highest_activity_type, int transaction, int*err_code);
+INTERNAL_FUNC int emstorage_get_activity_id_list(int account_id, int **activity_id_list, int *activity_count, int lowest_activity_type, int highest_activity_type, int transaction, int*err_code);
  /*
  * emstorage_add_activity
  *
@@ -1448,6 +1496,18 @@ INTERNAL_FUNC int emstorage_free_local_activity(emstorage_activity_tbl_t **local
 INTERNAL_FUNC int emstorage_free_activity_id_list(int *activity_id_list, int *error_code);
 
 #endif
+
+INTERNAL_FUNC int emstorage_add_certificate(emstorage_certificate_tbl_t *certificate, int transaction, int *err_code);
+
+INTERNAL_FUNC int emstorage_free_certificate(emstorage_certificate_tbl_t **certificate_list, int count, int *err_code);
+
+INTERNAL_FUNC int emstorage_get_certificate_list(int *select_num, emstorage_certificate_tbl_t **certificate_list, int transaction, int with_password, int *err_code);
+
+INTERNAL_FUNC int emstorage_get_certificate_by_email_address(char *email_address, emstorage_certificate_tbl_t **certificate, int transaction, int with_password, int *err_code);
+
+INTERNAL_FUNC int emstorage_get_certificate_by_index(int index, emstorage_certificate_tbl_t **certificate, int transaction, int with_password, int *err_code);
+
+INTERNAL_FUNC int emstorage_delete_certificate(int index, int transaction, int *err_code);
 
 #ifdef __cplusplus
 }

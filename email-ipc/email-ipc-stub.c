@@ -31,20 +31,12 @@ EXPORT_API bool emipc_initialize_stub(PFN_EXECUTE_API api_mapper)
 	EM_DEBUG_LOG("[IPCLib] ipcEmailStub_Initialize ");
 
 	return emipc_initialize_stub_main(api_mapper);
-/*
-	return ipcEmailStubMain::Instance()->Initialize(api_mapper);
-*/
 }
 
 EXPORT_API bool emipc_finalize_stub()
 {
 	emipc_finalize_stub_main();
 	return true;
-/*
-	ipcEmailStubMain::Instance()->Finalize();
-	ipcEmailStubMain::Instance()->FreeInstance();
-	return true;
-*/
 }
 
 EXPORT_API bool emipc_execute_stub_api(HIPC_API api)
@@ -55,11 +47,5 @@ EXPORT_API bool emipc_execute_stub_api(HIPC_API api)
 		return false;
 
 	return emipc_execute_api_stub_to_proxy(api_info);
-/*
-	ipcEmailAPIInfo *pApi = static_cast<ipcEmailAPIInfo *>(a_hAPI);
-	if(pApi == NULL)
-		return false;
-	return ipcEmailStubMain::Instance()->ExecuteAPIStubToProxy(pApi);
-*/
 }    
 

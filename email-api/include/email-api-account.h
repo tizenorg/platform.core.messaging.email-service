@@ -51,50 +51,46 @@
 * @{
 
 * @code
-*	#include "emf_mapi_account.h"
+*	#include "email-api-account.h"
 *	 bool
 *      	other_app_invoke_uniform_api_sample(int* error_code)
 *	{
-*	emf_account_t *account = NULL;
-*	emf_account_t *new_account = NULL;
+*	email_account_t *account = NULL;
+*	email_account_t *new_account = NULL;
 *
-*	account = malloc(sizeof(emf_account_t));
-*	memset(account, 0x00, sizeof(emf_account_t));
+*	account = malloc(sizeof(email_account_t));
+*	memset(account, 0x00, sizeof(email_account_t));
 *
-* 	account->account_bind_type      = 1;
 *	account->retrieval_mode         = 1;
-*	account->use_security           = 1;
-*	account->sending_server_type    = EMF_SERVER_TYPE_SMTP;
-*	account->sending_port_num       = EMF_SMTP_PORT;
-*	account->sending_auth           = 1;
-*	account->flag1 = 2;
-*	account->account_bind_type      = 1;
+*	account->incoming_server_secure_connection           = 1;
+*	account->outgoing_server_type    = EMAIL_SERVER_TYPE_SMTP;
+*	account->outgoing_server_port_number       = EMAIL_SMTP_PORT;
+*	account->outgoing_server_need_authentication           = 1;
 *	account->account_name           = strdup("gmail");
 *	account->display_name           = strdup("Tom");
-*	account->email_addr             = strdup("tom@gmail.com");
+*	account->user_email_address             = strdup("tom@gmail.com");
 *	account->reply_to_addr          = strdup("tom@gmail.com");
 *	account->return_addr            = strdup("tom@gmail.com");
-*	account->receiving_server_type  = EMF_SERVER_TYPE_POP3;
-*	account->receiving_server_addr  = strdup("pop3.gmail.com");
-*	account->port_num               = 995;
-*	account->use_security           = 1;
-*	account->retrieval_mode         = EMF_IMAP4_RETRIEVAL_MODE_ALL;
-*	account->user_name              = strdup("tom");
+*	account->incoming_server_type  = EMAIL_SERVER_TYPE_POP3;
+*	account->incoming_server_address  = strdup("pop3.gmail.com");
+*	account->incoming_server_port_number               = 995;
+*	account->incoming_server_secure_connection           = 1;
+*	account->retrieval_mode         = EMAIL_IMAP4_RETRIEVAL_MODE_ALL;
+*	account->incoming_server_user_name              = strdup("tom");
 *	account->password               = strdup("password");
-*	account->sending_server_type    = EMF_SERVER_TYPE_SMTP;
-*	account->sending_server_addr    = strdup("smtp.gmail.com");
-*	account->sending_port_num       = 587;
-*	account->sending_security       = 0x02;
-*	account->sending_auth           = 1;
-*	account->sending_user           = strdup("tom@gmail.com");
+*	account->outgoing_server_type    = EMAIL_SERVER_TYPE_SMTP;
+*	account->outgoing_server_address    = strdup("smtp.gmail.com");
+*	account->outgoing_server_port_number       = 587;
+*	account->outgoing_server_secure_connection       = 0x02;
+*	account->outgoing_server_need_authentication           = 1;
+*	account->outgoing_server_user_name           = strdup("tom@gmail.com");
 *	account->sending_password       = strdup("password");
 *	account->pop_before_smtp        = 0;
-*	account->apop                   = 0;
+*	account->incoming_server_requires_apop                   = 0;
 *	account->flag1                  = 2;
 *	account->flag2                  = 1;
-*	account->preset_account         = 1;
+*	account->is_preset_account         = 1;
 *	account->logo_icon_path         = strdup("Logo Icon Path");
-*	account->target_storage         = 0;
 *	account->options.priority = 3;
 *	account->options.keep_local_copy = 0;
 *	account->options.req_delivery_receipt = 0;
@@ -110,7 +106,7 @@
 *	account->options.signature= strdup("Signature");
 *	account->check_interval = 0;
 *	// Add account
-*	if(EMF_ERROR_NONE != email_add_account(account))
+*	if(EMAIL_ERROR_NONE != email_add_account(account))
 *		//failure
 *	//else
 *	{
@@ -118,33 +114,33 @@
 *		if(account_id)
 *			*account_id = account->account_id;
 *	}
-*	if(EMF_ERROR_NONE != email_validate_account(account_id,&account_handle))
+*	if(EMAIL_ERROR_NONE != email_validate_account(account_id,&account_handle))
 *		//failure
 *	else
 *	      //success
-*	if(EMF_ERROR_NONE != email_delete_account(account_id))
+*	if(EMAIL_ERROR_NONE != email_delete_account(account_id))
 *		//failure
 *	else
 *		//success
-*	new_account = malloc(sizeof(emf_account_t));
-*	memset(new_account, 0x00, sizeof(emf_account_t));
-*	new_account->flag1 = 1;
-*	new_account->account_name           = strdup("samsung001");
-*	new_account->display_name           = strdup("Tom001");
+*	new_account = malloc(sizeof(email_account_t));
+*	memset(new_account, 0x00, sizeof(email_account_t));
+*	new_account->flag1                   = 1;
+*	new_account->account_name            = strdup("samsung001");
+*	new_account->display_name            = strdup("Tom001");
 *	new_account->options.keep_local_copy = 1;
-*	new_account->check_interval = 55;
+*	new_account->check_interval          = 55;
 *	// Update account
-*	if(EMF_ERROR_NONE != email_update_account(acount_id,new_account))
+*	if(EMAIL_ERROR_NONE != email_update_account(acount_id,new_account))
 *		//failure
 *	else
 *		//success
 *	// Get account
-*	if(EMF_ERROR_NONE != email_get_account(account_id,GET_FULL_DATA,&account))
+*	if(EMAIL_ERROR_NONE != email_get_account(account_id,GET_FULL_DATA,&account))
 *		//failure
 *	else
 *		//success
 *	// Get list of accounts
-*	if(EMF_ERROR_NONE != email_get_account_list(&account_list,&count))
+*	if(EMAIL_ERROR_NONE != email_get_account_list(&account_list,&count))
 *		//failure
 *	else
 *		//success
@@ -163,16 +159,16 @@ extern "C" {
 
 /**
  * @open
- * @fn email_add_account(emf_account_t* account)
+ * @fn email_add_account(email_account_t* account)
  * @brief	Create a new email account.This function is invoked when user wants to add new email account
  *
  * @param[in] account	Specifies the structure pointer of account.
  * @exception  none
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure.
- * @see         emf_account_t
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
+ * @see         email_account_t
  * @remarks N/A
  */
-EXPORT_API int email_add_account(emf_account_t* account);
+EXPORT_API int email_add_account(email_account_t* account);
 
 /**
  * @open
@@ -180,8 +176,8 @@ EXPORT_API int email_add_account(emf_account_t* account);
  * @brief	 Delete a email account.This function is invoked when user wants to delete an existing email account
  *
  * @param[in] account_id	Specifies the account ID.
- * @exception  #EMF_ERROR_INVALID_PARAM		-Invalid argument
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure.
+ * @exception  #EMAIL_ERROR_INVALID_PARAM		-Invalid argument
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
  * @see
  * @remarks N/A
  */
@@ -189,79 +185,79 @@ EXPORT_API int email_delete_account(int account_id);
 
 /**
  * @open
- * @fn email_update_account(int account_id, emf_account_t* new_account)
+ * @fn email_update_account(int account_id, email_account_t* new_account)
  * @brief	Change the information of a email account.This function is getting invoked when user wants to change some information of existing email account.
  *
  * @param[in] account_id	Specifies the orignal account ID.
  * @param[in] new_account	Specifies the information of new account.
  * @param[in] with_validation	If this is 1, email-service will validate the account before updating. If this is 0, email-service will update the account without validation.
- * @exception #EMF_ERROR_INVALID_PARAM      	-Invalid argument
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure.
- * @see emf_account_t
+ * @exception #EMAIL_ERROR_INVALID_PARAM      	-Invalid argument
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
+ * @see email_account_t
  * @remarks N/A
  */
-EXPORT_API int email_update_account(int account_id, emf_account_t* new_account);
+EXPORT_API int email_update_account(int account_id, email_account_t* new_account);
 
 /**
  * @open
- * @fn email_update_account_with_validation(int account_id, emf_account_t* new_account)
+ * @fn email_update_account_with_validation(int account_id, email_account_t* new_account)
  * @brief	Change the information of a email account.This function is getting invoked when user wants to change some information of existing email account.
  *
  * @param[in] account_id	Specifies the orignal account ID.
  * @param[in] new_account	Specifies the information of new account.
  * @param[in] with_validation	If this is 1, email-service will validate the account before updating. If this is 0, email-service will update the account without validation.
- * @exception #EMF_ERROR_INVALID_PARAM      	-Invalid argument
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure.
- * @see emf_account_t
+ * @exception #EMAIL_ERROR_INVALID_PARAM      	-Invalid argument
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
+ * @see email_account_t
  * @remarks N/A
  */
-EXPORT_API int email_update_account_with_validation(int account_id, emf_account_t* new_account);
+EXPORT_API int email_update_account_with_validation(int account_id, email_account_t* new_account);
 
 /**
  * @open
- * @fn  email_get_account(int account_id, int pulloption, emf_account_t** account)
+ * @fn  email_get_account(int account_id, int pulloption, email_account_t** account)
  * @brief	Get an email account by ID. This function is getting invoked when user wants to get the account informantion based on account id and option (GET_FULL_DATA/WITHOUT_OPTION/ONLY_OPTION).<br>
  * 			Memory for account information will be allocated to 3rd param(account). The allocated memory should be freed by email_free_account().
  *
  * @param[in] account_id	Specifies the account ID.This function is invoked when user
- * @param[in] pulloption	Option to specify to get full details or partial, see definition of EMF_ACC_GET_OPT_XXX
+ * @param[in] pulloption	Option to specify to get full details or partial, see definition of EMAIL_ACC_GET_OPT_XXX
  * @param[out] account		The returned account is saved here.
- * @exception #EMF_ERR_INVALID_PARAM     	-Invalid argument
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure.
- * @see emf_account_t
+ * @exception #EMAIL_ERR_INVALID_PARAM     	-Invalid argument
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
+ * @see email_account_t
  * @remarks N/A
  */
 
-EXPORT_API int email_get_account(int account_id, int pulloption, emf_account_t** account);
+EXPORT_API int email_get_account(int account_id, int pulloption, email_account_t** account);
 
 /**
  * @open
- * @fn email_get_account_list(emf_account_t** account_list, int* count);
+ * @fn email_get_account_list(email_account_t** account_list, int* count);
  * @brief	Get Account List.This function is getting invoked when user wants to get all account information based on the count of accounts provided by user.<br>
  * 			Memory for account information will be allocated to 3rd param(account). The allocated memory should be freed by email_free_account().
  *
  * @param[in] account_list	Specifies the structure pointer of account.
  * @param[out] count			Specifies the count of accounts.
- * @exception #EMF_ERR_INVALID_PARAM     	-Invalid argument
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure.
- * @see emf_account_t
+ * @exception #EMAIL_ERR_INVALID_PARAM     	-Invalid argument
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
+ * @see email_account_t
  * @remarks N/A
  */
-EXPORT_API int email_get_account_list(emf_account_t** account_list, int* count);
+EXPORT_API int email_get_account_list(email_account_t** account_list, int* count);
 
  /**
  * @open
- * @fn   email_free_account(emf_account_t** account_list, int count);
+ * @fn   email_free_account(email_account_t** account_list, int count);
  * @brief	Free allocated memory.This function is getting invoked when user wants to delete all account information.
  *
  * @param[in] account_list	Specifies the structure pointer of account.
  * @param[out] count			Specifies the count of accounts.
- * @exception #EMF_ERR_INVALID_PARAM     	-Invalid argument
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure.
- * @see emf_account_t
+ * @exception #EMAIL_ERR_INVALID_PARAM     	-Invalid argument
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
+ * @see email_account_t
  * @remarks N/A
  */
-EXPORT_API int email_free_account(emf_account_t** account_list, int count);
+EXPORT_API int email_free_account(email_account_t** account_list, int count);
 
 
 /**
@@ -272,8 +268,8 @@ EXPORT_API int email_free_account(emf_account_t** account_list, int count);
  * @param[in] account_id	       Specifies the account Id to validate.
  * @param[out] handle 		Specifies the sending handle.
  * @remarks N/A
- * @exception #EMF_ERR_INVALID_PARAM     	-Invalid argument
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure.
+ * @exception #EMAIL_ERR_INVALID_PARAM     	-Invalid argument
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
  * @see		none
  * @remarks N/A
  */
@@ -281,7 +277,7 @@ EXPORT_API int email_validate_account(int account_id, unsigned* handle);
 
 /**
  * @open
- * @fn email_add_account_with_validation(emf_account_t* account, unsigned* handle)
+ * @fn email_add_account_with_validation(email_account_t* account, unsigned* handle)
  * @brief	Add an account when the account is validated. This function is getting invoked when user want to validate an account. If account is not validated then user should retry once again to add the account.<br>
  *              Validation is executed without saving an account to DB
  *
@@ -290,7 +286,7 @@ EXPORT_API int email_validate_account(int account_id, unsigned* handle);
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-EXPORT_API int email_add_account_with_validation(emf_account_t* account, unsigned* handle);
+EXPORT_API int email_add_account_with_validation(email_account_t* account, unsigned* handle);
 
 
 /**
@@ -333,7 +329,7 @@ EXPORT_API int email_get_password_length_of_account(const int account_id, int *p
 
 /**
  * @open
- * @fn email_query_server_info(const char* domain_name, emf_server_info_t **result_server_info)
+ * @fn email_query_server_info(const char* domain_name, email_server_info_t **result_server_info)
  * @brief	Query email server information.
  *          This function is getting invoked when user want to get email server information.
  *
@@ -342,19 +338,19 @@ EXPORT_API int email_get_password_length_of_account(const int account_id, int *p
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-EXPORT_API int email_query_server_info(const char* domain_name, emf_server_info_t **result_server_info);
+EXPORT_API int email_query_server_info(const char* domain_name, email_server_info_t **result_server_info);
 
 /**
  * @open
- * @fn email_free_server_info(emf_server_info_t **result_server_info)
- * @brief	Free emf_server_info_t.
- *          This function is getting invoked when user want to free emf_server_info_t.
+ * @fn email_free_server_info(email_server_info_t **result_server_info)
+ * @brief	Free email_server_info_t.
+ *          This function is getting invoked when user want to free email_server_info_t.
  *
  * @param[in] result_server_info	Specifies the pointer of  in secure storage
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-EXPORT_API int email_free_server_info(emf_server_info_t **result_server_info);
+EXPORT_API int email_free_server_info(email_server_info_t **result_server_info);
 
 /**
  * @open

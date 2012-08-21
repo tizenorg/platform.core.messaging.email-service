@@ -35,14 +35,14 @@
 #include <string.h>
 #include "email-core-global.h"
 
-emf_account_t g_new_account;
-emf_account_list_t *g_account_list = NULL;
+email_account_t g_new_account;
+email_account_list_t *g_account_list = NULL;
 int g_account_num = 0;
 int g_account_retrieved = 0;
 
 extern int pthread_mutexattr_settype (pthread_mutexattr_t *__attr, int __kind) __THROW __nonnull ((1));
 
-INTERNAL_FUNC emf_account_t *emcore_get_new_account_reference()
+INTERNAL_FUNC email_account_t *emcore_get_new_account_reference()
 {
 	return &g_new_account;
 }

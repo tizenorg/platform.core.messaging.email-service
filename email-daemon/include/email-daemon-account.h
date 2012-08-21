@@ -40,7 +40,7 @@ extern "C"
 #include "email-daemon.h"
 
 int            emdaemon_initialize_account_reference();
-emf_account_t* emdaemon_get_account_reference(int account_id);
+email_account_t* emdaemon_get_account_reference(int account_id);
 int            emdaemon_free_account_reference(void);
 
 #ifdef __cplusplus

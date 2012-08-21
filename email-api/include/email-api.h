@@ -32,6 +32,8 @@
 #include "email-api-mailbox.h"
 #include "email-api-network.h"
 #include "email-api-rule.h"
+#include "email-api-smime.h"
+#include "email-api-etc.h"
 
 
 /**

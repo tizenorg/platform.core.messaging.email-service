@@ -4,7 +4,7 @@
 * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -45,7 +45,7 @@ EXPORT_API bool emipc_start_proxy_socket()
 
 	ret = emipc_connect_email_socket(proxy_socket_fd);
 
-	return ret;	
+	return ret;
 }
 
 EXPORT_API bool emipc_end_proxy_socket()
@@ -54,21 +54,27 @@ EXPORT_API bool emipc_end_proxy_socket()
 	EM_DEBUG_LOG("[IPCLib] emipc_end_proxy_socket_fd");
 	
 	if (proxy_socket_fd) {
-		emipc_close_email_socket(proxy_socket_fd);
-		proxy_socket_fd = 0;
+		emipc_close_email_socket(&proxy_socket_fd);
 	}
-	
+
 	return true;
 }
 
+/* return result of emipc_send_email_socket
+ * EMAIL_ERROR_IPC_SOCKET_FAILURE, when no IPC connection */
 EXPORT_API int emipc_send_proxy_socket(unsigned char *data, int len)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	if (!proxy_socket_fd) {
 		EM_DEBUG_EXCEPTION("[IPCLib] emipc_send_proxy_socket_fd not connect");
-		return false;
+		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
-	return emipc_send_email_socket(proxy_socket_fd, data, len);
+	int send_len = emipc_send_email_socket(proxy_socket_fd, data, len);
+	if (send_len == 0) {
+		EM_DEBUG_EXCEPTION("[IPCLib] server closed connection %x", proxy_socket_fd);
+		emipc_close_email_socket(&proxy_socket_fd);
+	}
+	return send_len;
 }
 
 EXPORT_API int emipc_get_proxy_socket_id()
@@ -77,9 +83,17 @@ EXPORT_API int emipc_get_proxy_socket_id()
 	return proxy_socket_fd;
 }
 
+/* return true, when event occurred
+ * false, when select error
+ */
 static bool wait_for_reply (int fd)
 {
 	fd_set fds;
+
+	if (fd == 0) {
+		EM_DEBUG_EXCEPTION("Invalid file description : [%d]", fd);
+		return false;
+	}
 
 	FD_ZERO(&fds);
 	FD_SET(fd, &fds);
@@ -90,33 +104,33 @@ static bool wait_for_reply (int fd)
 	}
 
 	if (FD_ISSET(fd, &fds)) return true;
-	else return false;
+
+	return false;
 }
 
 
+/* return result of emipc_recv_email_socket
+ * EMAIL_ERROR_IPC_SOCKET_FAILURE, when no IPC connection, or wrong fd */
 EXPORT_API int emipc_recv_proxy_socket(char **data)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	
-	int recv_len = 0;
-	
+
 	if (!proxy_socket_fd) {
 		EM_DEBUG_EXCEPTION("[IPCLib] proxy_socket_fd[%p] is not available or disconnected", proxy_socket_fd);
-		return 0;
+		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
-	if( !wait_for_reply(proxy_socket_fd) ) 	return 0;
+	if( !wait_for_reply(proxy_socket_fd) ) {
 
-	recv_len = emipc_recv_email_socket(proxy_socket_fd, data);
+		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
+	}
 
+	int recv_len = emipc_recv_email_socket(proxy_socket_fd, data);
 	if (recv_len == 0) {
-		EM_DEBUG_EXCEPTION("[IPCLib] Proxy recv delete %x", proxy_socket_fd);
-		emipc_close_email_socket(proxy_socket_fd);
-		proxy_socket_fd = 0;
-	} else if (recv_len == -1) {
-		EM_DEBUG_EXCEPTION("[IPCLib] Proxy recv error");
+		EM_DEBUG_EXCEPTION("[IPCLib] server closed connection %x", proxy_socket_fd);
+		emipc_close_email_socket(&proxy_socket_fd);
 	}
-	
+
 	return recv_len;
 }
 

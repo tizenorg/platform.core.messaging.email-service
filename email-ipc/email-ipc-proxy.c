@@ -25,6 +25,9 @@
 #include "email-debug-log.h"
 #include "email-api.h"
 #include "email-types.h"
+#include "email-internal-types.h"
+
+pthread_mutex_t proxy_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 EXPORT_API int emipc_initialize_proxy()
 {
@@ -42,40 +45,48 @@ EXPORT_API int emipc_finalize_proxy()
 	return emipc_finalize_proxy_main();
 }
 
-EXPORT_API bool emipc_execute_proxy_api(HIPC_API api)
+EXPORT_API int emipc_execute_proxy_api(HIPC_API api)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int ret;
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
 
 	EM_DEBUG_LOG("API [%p]", api_info);
 		
 	if(api_info == NULL) {
-		EM_DEBUG_EXCEPTION("EMF_ERROR_INVALID_PARAM");
-		return EMF_ERROR_INVALID_PARAM;
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		return EMAIL_ERROR_INVALID_PARAM;
 	}
 		
-	EM_DEBUG_LOG("APIID [%s], ResponseID [%d], APPID[%d]", EM_APIID_TO_STR(emipc_get_api_id_of_api_info(api_info)), emipc_get_response_id_of_api_info(api_info), emipc_get_app_id_of_api_info(api_info));
+	EM_DEBUG_LOG("APIID [%s], ResponseID [%d], APPID[%d]",
+				EM_APIID_TO_STR(api_info->api_id), api_info->response_id, api_info->app_id);
 
+	ENTER_CRITICAL_SECTION(proxy_mutex);
 	ret = emipc_execute_api_of_proxy_main(api_info);
 
 	/* connection retry */
 	if (!ret) {
+		EM_DEBUG_LOG("Connection retry");
 		emipc_finalize_proxy();
 
 		err = emipc_initialize_proxy();
-		if (err != EMF_ERROR_NONE) {
+		if (err != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("Failed to open the socket : [%d]", err);
-			return EMF_ERROR_CONNECTION_FAILURE;
+			err = EMAIL_ERROR_CONNECTION_FAILURE;
+			goto FINISH_OFF;
 		}
 
 		ret = emipc_execute_api_of_proxy_main(api_info);
 		if (!ret) {
 			EM_DEBUG_EXCEPTION("emipc_proxy_main : emipc_execute_api failed [%d]", err);
-			return EMF_ERROR_CONNECTION_FAILURE;
+			err = EMAIL_ERROR_CONNECTION_FAILURE;
+			goto FINISH_OFF;
 		}
 	}
+	
+FINISH_OFF:
+	LEAVE_CRITICAL_SECTION(proxy_mutex);
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;	
 }

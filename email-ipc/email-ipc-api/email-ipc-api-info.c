@@ -30,126 +30,98 @@
 
 #include "email-debug-log.h"
 
-static long emipc_parse_api_id_of_api_info(emipc_email_api_info *api_info, void *stream);
-static long emipc_parse_response_id_of_api_info(emipc_email_api_info *api_info, void* stream);
-static long emipc_parse_app_id_of_api_info(emipc_email_api_info *api_info, void* stream);
 
-EXPORT_API bool emipc_set_api_id_of_api_info(emipc_email_api_info *api_info, long api_id)
+/* deserializing data from stream */
+EXPORT_API bool emipc_deserialize_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction, void *stream)
 {
-	api_info->api_id = api_id;
-	return true;
-}
-
-EXPORT_API long emipc_get_api_id_of_api_info(emipc_email_api_info *api_info)
-{
-	return api_info->api_id;
-}
-
-EXPORT_API bool emipc_set_app_id_of_api_info(emipc_email_api_info *api_info, long app_id)
-{
-	api_info->app_id = app_id;
-	return true;
-}
-
-EXPORT_API long emipc_get_app_id_of_api_info(emipc_email_api_info *api_info)
-{
-	return api_info->app_id;
-}
-
-EXPORT_API bool emipc_set_response_id_of_api_info(emipc_email_api_info *api_info, long response_id)
-{
-	api_info->response_id = response_id;
-	return true;
-}
-
-EXPORT_API long emipc_get_response_id_of_api_info(emipc_email_api_info *api_info)
-{
-	return api_info->response_id;
-}
-
-EXPORT_API bool emipc_parse_stream_of_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction, void *stream)
-{
-	emipc_param_list *new_param_list = NULL;
-
-	if (api_info->params[direction] == NULL) {
-		new_param_list = (emipc_param_list *)malloc(sizeof(emipc_param_list));
-		if (new_param_list == NULL) {
-			EM_DEBUG_EXCEPTION("Memory allocation failed.");
-			return false;
-		}
-		memset(new_param_list, 0x00, sizeof(emipc_param_list));
-		api_info->params[direction] = new_param_list;
+	EM_DEBUG_FUNC_BEGIN("emipc_email_api_info : [%p], direction : [%d]", api_info, direction);
+	
+	if (!api_info || !stream) {
+		EM_DEBUG_EXCEPTION("Invalid parameter.");
+		return false;
 	}
 
-	emipc_parse_api_id_of_api_info(api_info, stream);
-	emipc_parse_app_id_of_api_info(api_info, stream);
-	emipc_parse_response_id_of_api_info(api_info, stream);
+	if (api_info->params[direction] == NULL) {
+		api_info->params[direction] = emipc_create_param_list();
+		if (api_info->params[direction] == NULL) {
+			EM_DEBUG_EXCEPTION("Malloc failed");
+			return false;
+		}
+	}
+
+	api_info->api_id = *((long *)stream + eSTREAM_APIID);
+	api_info->app_id = *((long*)stream + eSTREAM_APPID);
+	api_info->response_id = *((long*)stream + eSTREAM_RESID);
+
 	return emipc_parse_stream_of_param_list(api_info->params[direction], stream);
 }
 
-EXPORT_API unsigned char *emipc_get_stream_of_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction)
+EXPORT_API unsigned char *emipc_serialize_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction, int *stream_len)
 {
-	emipc_param_list *new_param_list = NULL;
+	EM_DEBUG_FUNC_BEGIN();
 	unsigned char *stream = NULL;
-
-	if (api_info->params[direction] == NULL) {
-		new_param_list = (emipc_param_list *)malloc(sizeof(emipc_param_list));
-		if (new_param_list == NULL) {
-			EM_DEBUG_EXCEPTION("Memory allocation failed.");
-			return false;
-		}
-		memset(new_param_list, 0x00, sizeof(emipc_param_list));
-		api_info->params[direction] = new_param_list;
+	
+	if (!api_info) {
+		EM_DEBUG_EXCEPTION("Invalid parameter.");
+		return stream;
 	}
 
-	stream = emipc_get_stream_of_param_list(api_info->params[direction]);
+	if (api_info->params[direction] == NULL) {
+		api_info->params[direction] = emipc_create_param_list();
+		if (api_info->params[direction] == NULL) {
+			EM_DEBUG_EXCEPTION("Malloc failed");
+			return NULL;
+		}
+	}
+
+	stream = emipc_serialize_param_list(api_info->params[direction], stream_len);
 	if (stream != NULL) {
 		memcpy(stream, &(api_info->api_id), sizeof(api_info->api_id));
 		memcpy(stream+(sizeof(long)*eSTREAM_RESID), &(api_info->response_id), sizeof(api_info->response_id));
 		memcpy(stream+(sizeof(long)*eSTREAM_APPID), &(api_info->app_id), sizeof(api_info->app_id));
 	}
+	EM_DEBUG_FUNC_END();
 	return stream;
-}
-
-EXPORT_API int emipc_get_stream_length_of_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction)
-{
-	if (api_info->params[direction] == NULL)
-		return 0;
-
-	return emipc_get_stream_length_of_param_list(api_info->params[direction]);
 }
 
 EXPORT_API void *emipc_get_parameters_of_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction)
 {
-	emipc_param_list *new_param_list = NULL;
-
-	if (api_info->params[direction] == NULL) {
-		new_param_list = (emipc_param_list *)malloc(sizeof(emipc_param_list));
-		if (new_param_list == NULL) {
-			EM_DEBUG_EXCEPTION("Memory allocation failed.");
-			return false;
-		}
-		memset(new_param_list, 0x00, sizeof(emipc_param_list));
-		api_info->params[direction] = new_param_list;
+	EM_DEBUG_FUNC_BEGIN("emipc_email_api_info : [%p], direction : [%d]", api_info, direction);
+	
+	if (!api_info) {
+		EM_DEBUG_EXCEPTION("INVALID_PARAM");
+		return NULL;
 	}
+	
+	if (api_info->params[direction] == NULL) {
+		api_info->params[direction] = emipc_create_param_list();
+		if (api_info->params[direction] == NULL) {
+			EM_DEBUG_EXCEPTION("emipc_create_param_list failed");
+			return NULL;
+		}
+	}
+
 	return api_info->params[direction];
 }
 
-static long emipc_parse_api_id_of_api_info(emipc_email_api_info *api_info, void *stream)
+EXPORT_API bool emipc_free_api_info(emipc_email_api_info *api_info)
 {
-	api_info->api_id = *((long *)stream + eSTREAM_APIID);
-	return api_info->api_id;
+	if (!api_info) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		return false;
+	}
+
+	if (!emipc_destroy_param_list(api_info->params[ePARAMETER_IN])) {
+		EM_DEBUG_EXCEPTION("emipc_destroy_param_list failed : ePARAMETER[%d]", ePARAMETER_IN);
+		return false;
+	}
+
+	if (!emipc_destroy_param_list(api_info->params[ePARAMETER_OUT])) {
+		EM_DEBUG_EXCEPTION("emipc_destroy_param_list failed : ePARAMETER[%d]", ePARAMETER_OUT);
+		return false;
+	}
+
+	return true;
 }
 
-static long emipc_parse_response_id_of_api_info(emipc_email_api_info *api_info, void* stream)
-{
-	api_info->response_id = *((long*)stream + eSTREAM_RESID);
-	return api_info->response_id;
-}
 
-static long emipc_parse_app_id_of_api_info(emipc_email_api_info *api_info, void* stream)
-{
-	api_info->app_id = *((long*)stream + eSTREAM_APPID);
-	return api_info->app_id;
-
-}

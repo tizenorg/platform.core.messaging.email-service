@@ -41,7 +41,7 @@
 EXPORT_API int email_open_db(void)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int error  = EMF_ERROR_NONE;
+	int error  = EMAIL_ERROR_NONE;
 	
 	if (emstorage_db_open(&error) == NULL)
 		EM_DEBUG_EXCEPTION("emstorage_db_open failed [%d]", error);
@@ -55,7 +55,7 @@ EXPORT_API int email_open_db(void)
 EXPORT_API int email_close_db(void)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int error  = EMF_ERROR_NONE;
+	int error  = EMAIL_ERROR_NONE;
 
 	if ( !emstorage_db_close(&error)) 
 		EM_DEBUG_EXCEPTION("emstorage_db_close failed [%d]", error);
@@ -70,12 +70,11 @@ EXPORT_API int email_service_begin(void)
 	EM_DEBUG_FUNC_BEGIN();
 	int ret = -1;
 
-	signal(SIGPIPE, SIG_IGN); /*  to ignore signal 13(SIGPIPE) */
+	signal(SIGPIPE, SIG_IGN); /* to ignore signal 13(SIGPIPE) */
 	
 	ret = emipc_initialize_proxy();
-	if (ret != EMF_ERROR_NONE)
-		EM_DEBUG_FUNC_END("err[%d]", ret);
-	
+
+	EM_DEBUG_FUNC_END("err[%d]", ret);
 	return ret;
 }
 
@@ -86,7 +85,7 @@ EXPORT_API int email_service_end(void)
 	int ret = -1;
 	
 	ret = emipc_finalize_proxy();
-	if (ret != EMF_ERROR_NONE)
+	if (ret != EMAIL_ERROR_NONE)
 		EM_DEBUG_FUNC_END("err[%d]", ret);
 	
 	return ret;
@@ -98,9 +97,9 @@ EXPORT_API int email_service_end(void)
 EXPORT_API int email_init_storage(void)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int error  = EMF_ERROR_NONE;
+	int error  = EMAIL_ERROR_NONE;
 	
-	if (!emstorage_create_table(EMF_CREATE_DB_CHECK, &error))  {
+	if (!emstorage_create_table(EMAIL_CREATE_DB_CHECK, &error))  {
 		EM_DEBUG_EXCEPTION("emstorage_create_table failed [%d]", error);
 	}
 
@@ -111,14 +110,14 @@ EXPORT_API int email_init_storage(void)
 EXPORT_API int email_ping_service(void)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int error  = EMF_ERROR_NONE;
+	int error  = EMAIL_ERROR_NONE;
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_PING_SERVICE);
 
-	EM_IF_NULL_RETURN_VALUE(hAPI, EMF_ERROR_NULL_VALUE);
+	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 		
-	if(emipc_execute_proxy_api(hAPI) != EMF_ERROR_NONE) {
+	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMF_ERROR_IPC_SOCKET_FAILURE);
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
 	}
 
 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &error);

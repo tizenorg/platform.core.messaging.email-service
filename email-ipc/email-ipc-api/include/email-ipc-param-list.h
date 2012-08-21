@@ -41,20 +41,24 @@ typedef struct {
 	unsigned char *byte_stream;
 } emipc_param_list;
 
+EXPORT_API emipc_param_list *emipc_create_param_list();
+
+EXPORT_API bool emipc_destroy_param_list(emipc_param_list *param_list);
+
 EXPORT_API bool emipc_parse_stream_of_param_list(emipc_param_list *param_list, void *stream_data);
 
-EXPORT_API unsigned char *emipc_get_stream_of_param_list(emipc_param_list *param_list);
+EXPORT_API unsigned char *emipc_serialize_param_list(emipc_param_list *param_list, int *stream_length);
 
-EXPORT_API int emipc_get_stream_length_of_param_list(emipc_param_list *param_list);
+EXPORT_API int emipc_sum_param_list_length (emipc_param_list *param_list);
 
-EXPORT_API bool emipc_add_param_of_param_list(emipc_param_list *param_list, void *data, int len);
+EXPORT_API bool emipc_add_param_to_param_list(emipc_param_list *param_list, void *data, int len);
+
+EXPORT_API void emipc_add_dynamic_param_to_param_list(emipc_param_list *param_list, void *data, int len);
 
 EXPORT_API void *emipc_get_param_of_param_list(emipc_param_list *param_list, int index);
 
 EXPORT_API int emipc_get_param_len_of_param_list(emipc_param_list *param_list, int index);
 
-EXPORT_API int emipc_get_param_count_of_param_list(emipc_param_list *param_list);
- 
 #endif	/* _IPC_PARAMLIST_H_ */
 
 

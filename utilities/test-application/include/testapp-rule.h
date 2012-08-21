@@ -21,11 +21,11 @@
 
 
 
-#ifndef EMF_TEST_RULE_H
-#define EMF_TEST_RULE_H
+#ifndef EMAIL_TEST_RULE_H
+#define EMAIL_TEST_RULE_H
 
 /* export API */
-void 		emf_test_rule_main					(void);
+void 		email_test_rule_main					(void);
 
 #endif
 

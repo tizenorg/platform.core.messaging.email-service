@@ -21,7 +21,7 @@
 
 #include "email-internal-types.h"
 
-typedef void (*EMF_TIMER_CALLBACK)(void *a_pData);
+typedef void (*EMAIL_TIMER_CALLBACK)(void *a_pData);
 
 /**
  * Callback for timeout action
@@ -40,7 +40,7 @@ INTERNAL_FUNC int emcore_timer_ex_callback(void *a_pData);
  * @remarks N/A
  * @return This function returns the timer id.
  */
-INTERNAL_FUNC int emcore_set_timer_ex(long a_nSetTimeValue, EMF_TIMER_CALLBACK a_pCallBack, void *a_pData);
+INTERNAL_FUNC int emcore_set_timer_ex(long a_nSetTimeValue, EMAIL_TIMER_CALLBACK a_pCallBack, void *a_pData);
 
 /**
  * Kill timer.

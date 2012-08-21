@@ -21,26 +21,26 @@
 
 
 
-#ifndef EMF_TEST_UTILITY_H
-#define EMF_TEST_UTILITY_H
+#ifndef EMAIL_TEST_UTILITY_H
+#define EMAIL_TEST_UTILITY_H
 
 #include <glib.h>
 
 typedef enum
 {
-	EMF_MAIN_MENU = 0x0,
-	EMF_ACCOUNT_MENU,
-	EMF_MAIL_MENU,
-	EMF_MAILBOX_MENU,
-	EMF_RULE_MENU,
-	EMF_THREAD_MENU,
-	EMF_OTHERS_MENU,
-} eEMF_MENU;
+	EMAIL_MAIN_MENU = 0x0,
+	EMAIL_ACCOUNT_MENU,
+	EMAIL_MAIL_MENU,
+	EMAIL_MAILBOX_MENU,
+	EMAIL_RULE_MENU,
+	EMAIL_THREAD_MENU,
+	EMAIL_OTHERS_MENU,
+} eEMAIL_MENU;
 
 
 void testapp_print(char *fmt, ...);
-void testapp_show_menu(eEMF_MENU menu);
-void testapp_show_prompt(eEMF_MENU menu);
+void testapp_show_menu(eEMAIL_MENU menu);
+void testapp_show_prompt(eEMAIL_MENU menu);
 
 #endif
 

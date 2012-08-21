@@ -54,9 +54,8 @@ ADD_SUBDIRECTORY(utilities)
 
 CONFIGURE_FILE(email-service.pc.in email-service.pc @ONLY)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/email-service.pc DESTINATION lib/pkgconfig) 
-INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/config/.email-service.db DESTINATION /opt/dbspace)
-INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/config/.email-service.db-journal DESTINATION /opt/dbspace)
 
 #SET(RC_LOCAL_SCRIPT email-service)
 #INSTALL(PROGRAMS ${RC_LOCAL_SCRIPT} DESTINATION /etc/rc.d/init.d)
 
+INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/res/ DESTINATION /opt/data/email/res/image FILES_MATCHING PATTERN "*.png")

@@ -38,7 +38,6 @@
 #include <errno.h>
 #include <unistd.h>
 
-
 EXPORT_API bool emipc_init_email_socket(int *fd)
 {
 	bool ret = true;
@@ -56,18 +55,16 @@ EXPORT_API bool emipc_init_email_socket(int *fd)
 }
 
 /*  Close */
-EXPORT_API bool emipc_close_email_socket(int fd)
+EXPORT_API void emipc_close_email_socket(int* fd)
 {
-	EM_DEBUG_FUNC_BEGIN("fd[%d] to be removed", fd);
-	int ret = true;
-
 	EM_DEBUG_LOG("fd %d removal done", fd);
-	close(fd);
-
-	EM_DEBUG_FUNC_END();
-	return ret;
+	close(*fd);
+	*fd = 0;
 }
 
+/* returns positive write length,
+ * 0, when connection is closed
+ * -1, when send error */
 static int emipc_writen(int fd, const char *buf, int len)
 {
 	int length = len;
@@ -78,7 +75,8 @@ static int emipc_writen(int fd, const char *buf, int len)
 		if (passed_len == -1) {
 			EM_DEBUG_LOG("write : %s", EM_STRERROR(errno));
 			if (errno == EINTR) continue;
-			return passed_len;
+			else if (errno == EPIPE) return 0; /* connection closed */
+			else return passed_len; /* -1 */
 		} else if (passed_len == 0)
 			break;
 		length -= passed_len;
@@ -87,21 +85,26 @@ static int emipc_writen(int fd, const char *buf, int len)
 	return (len - length);
 }
 
+/* returns positive value, when write success,
+ * 0, when socket connection is broken,
+ * EMAIL_ERROR_IPC_SOCKET_FAILURE, when write failure,
+ * EMAIL_ERROR_INVALID_PARAM, when wrong parameter */
 EXPORT_API int emipc_send_email_socket(int fd, unsigned char *buf, int len)
 {
 	EM_DEBUG_FUNC_BEGIN("fd [%d], buffer [%p], buf_len [%d]", fd, buf, len);
 
-	if (!buf) {
-		EM_DEBUG_EXCEPTION("No data to send");
-		return 0;
+	if (!buf || len <= 0) {
+		EM_DEBUG_EXCEPTION("No data to send %p, %d", buf, len);
+		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
 	EM_DEBUG_LOG("Sending %dB data to [fd = %d]", len, fd);
 	
 	int write_len = emipc_writen(fd, (char*) buf, len);
 	if ( write_len != len) {
+		if ( write_len == 0 ) return 0;
 		EM_DEBUG_LOG("WARNING: buf_size [%d] != write_len[%d]", len, write_len);
-		return EMF_ERROR_IPC_SOCKET_FAILURE;
+		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 	EM_DEBUG_FUNC_END();
 	return write_len;
@@ -127,35 +130,44 @@ static int emipc_readn(int fd, char *buf, int len)
 	return (len-length);
 }
 
-
+/* returns positive value when read success,
+ * 0, when socket is closed
+ * EMAIL_ERROR_IPC_SOCKET_FAILURE, when read failed
+ * EMAIL_ERROR_INVALID_PARAM when wrong parameter */
 EXPORT_API int emipc_recv_email_socket(int fd, char **buf)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	
 	if (!buf) {
 		EM_DEBUG_LOG("Buffer must not null");
-		return EMF_ERROR_INVALID_PARAM;
+		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
 	int read_len = 0;
+	/* read the size of message. note that ioctl is non-blocking */
 	if (ioctl(fd, FIONREAD, &read_len)) {
 		EM_DEBUG_EXCEPTION("ioctl: %s", strerror(errno));
-		return EMF_ERROR_IPC_SOCKET_FAILURE;
+		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
+	}
+	/* server closed socket or is downed*/
+	if ( read_len == 0 ) {
+		EM_DEBUG_EXCEPTION("[IPC Socket] server closed connection");
+		return 0;
 	}
 
 	*buf = (char *) malloc(read_len);
 	if (*buf == NULL) {
 		EM_DEBUG_EXCEPTION("Malloc failed");
-		return EMF_ERROR_OUT_OF_MEMORY;
+		return EMAIL_ERROR_OUT_OF_MEMORY;
 	}
 	memset(*buf, 0x00, read_len);
 	
-	EM_DEBUG_LOG("[IPC Socket] Receiving Body begins for [%d] bytes", read_len);
+	EM_DEBUG_LOG("[IPC Socket] Receiving [%d] bytes", read_len);
 	int len = emipc_readn(fd, *buf, read_len);
 	if (read_len != len) {
 		EM_SAFE_FREE(*buf);
 		EM_DEBUG_LOG("WARNING: buf_size [%d] != read_len[%d]", read_len, len);
-		return EMF_ERROR_IPC_SOCKET_FAILURE;
+		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
 	EM_DEBUG_LOG("[IPC Socket] Receiving [%d] bytes Completed", len);
@@ -169,7 +181,7 @@ EXPORT_API int emipc_accept_email_socket(int fd)
 	
 	if (fd == -1) {
 		EM_DEBUG_LOG("Server_socket not init");
-		return EMF_ERROR_INVALID_PARAM;
+		return EMAIL_ERROR_INVALID_PARAM;
 	}
 	
 	struct sockaddr_un remote;
@@ -177,7 +189,7 @@ EXPORT_API int emipc_accept_email_socket(int fd)
 	int client_fd = accept(fd, (struct sockaddr *)&remote, (socklen_t*) &remote_len);
 	if (client_fd == -1) {
 		EM_DEBUG_LOG("accept: %s", EM_STRERROR(errno));
-		return EMF_ERROR_IPC_SOCKET_FAILURE;
+		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
 	EM_DEBUG_LOG("%d is added", client_fd);
@@ -192,12 +204,12 @@ EXPORT_API int emipc_open_email_socket(int fd, const char *path)
 
 	if (!path || strlen(path) > 108) {
 		EM_DEBUG_LOG("Path is null");
-		return EMF_ERROR_IPC_SOCKET_FAILURE;
+		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 	
 	if (fd <= 0) {
 		EM_DEBUG_LOG("Socket not created %d", fd);
-		return EMF_ERROR_IPC_SOCKET_FAILURE;
+		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
 	struct sockaddr_un local;
@@ -209,7 +221,7 @@ EXPORT_API int emipc_open_email_socket(int fd, const char *path)
 
 	if (bind(fd, (struct sockaddr *)&local, len) == -1) {
 		EM_DEBUG_LOG("bind: %s", EM_STRERROR(errno));
-		return EMF_ERROR_IPC_SOCKET_FAILURE;
+		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
 	/**
@@ -227,12 +239,12 @@ EXPORT_API int emipc_open_email_socket(int fd, const char *path)
 
 	if (chmod(path, sock_mode) == -1) {
 		EM_DEBUG_LOG("chmod: %s", EM_STRERROR(errno));
-		return EMF_ERROR_IPC_SOCKET_FAILURE;
+		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
 	if (listen(fd, 10) == -1) {
 		EM_DEBUG_LOG("listen: %s", EM_STRERROR(errno));
-		return EMF_ERROR_IPC_SOCKET_FAILURE;
+		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
 	EM_DEBUG_FUNC_END();

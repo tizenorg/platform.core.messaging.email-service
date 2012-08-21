@@ -20,9 +20,9 @@
 */
 
 
-#ifndef EMF_TEST_MAILBOX_H
-#define EMF_TEST_MAILBOX_H
+#ifndef EMAIL_TEST_MAILBOX_H
+#define EMAIL_TEST_MAILBOX_H
 
 /* export API */
-void emf_test_mailbox_main	(void);
+void email_test_mailbox_main	(void);
 #endif

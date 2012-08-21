@@ -37,21 +37,21 @@
 #include "email-utilities.h"
 #include "email-ipc.h"
 
-EXPORT_API int email_get_rule(int filter_id, emf_rule_t** filtering_set)
+EXPORT_API int email_get_rule(int filter_id, email_rule_t** filtering_set)
 {
 	EM_DEBUG_FUNC_BEGIN("filter_id[%d], filtering_set[%p]", filter_id, filtering_set);
 
 	int err = 0;
 
-	EM_IF_NULL_RETURN_VALUE(filtering_set, EMF_ERROR_INVALID_PARAM);
-	EM_IF_NULL_RETURN_VALUE(filter_id, EMF_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(filtering_set, EMAIL_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(filter_id, EMAIL_ERROR_INVALID_PARAM);
 
 	if (!emstorage_get_rule_by_id(0, filter_id, (emstorage_rule_tbl_t**)filtering_set, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_rule_by_id failed [%d]", err);
 
 		goto FINISH_OFF;
 	} else
-		err = EMF_ERROR_NONE;
+		err = EMAIL_ERROR_NONE;
 
 FINISH_OFF:
 	EM_DEBUG_FUNC_END("error value [%d]", err);
@@ -59,15 +59,15 @@ FINISH_OFF:
 }
 
 
-EXPORT_API int email_get_rule_list(emf_rule_t** filtering_set, int* count)
+EXPORT_API int email_get_rule_list(email_rule_t** filtering_set, int* count)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 	int is_completed = 0;
 	
-	EM_IF_NULL_RETURN_VALUE(filtering_set, EMF_ERROR_INVALID_PARAM);
-	EM_IF_NULL_RETURN_VALUE(count, EMF_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(filtering_set, EMAIL_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(count, EMAIL_ERROR_INVALID_PARAM);
 
 	*count = 1000;
 	
@@ -77,7 +77,7 @@ EXPORT_API int email_get_rule_list(emf_rule_t** filtering_set, int* count)
 
 		goto FINISH_OFF;
 	} else
-		err = EMF_ERROR_NONE;
+		err = EMAIL_ERROR_NONE;
 
 
 FINISH_OFF:
@@ -86,38 +86,35 @@ FINISH_OFF:
 
 }
 
-EXPORT_API int email_add_rule(emf_rule_t* filtering_set)
+EXPORT_API int email_add_rule(email_rule_t* filtering_set)
 {
 	EM_DEBUG_FUNC_BEGIN("filtering_set[%p]", filtering_set);
 	
 	int size = 0;
-	int err = EMF_ERROR_NONE;
-	char* pRuleStream = NULL;
+	int err = EMAIL_ERROR_NONE;
+	char* stream = NULL;
 	
-	EM_IF_NULL_RETURN_VALUE(filtering_set, EMF_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(filtering_set, EMAIL_ERROR_INVALID_PARAM);
 
+	/* make rule info */
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_ADD_RULE);	
+	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 
-	EM_IF_NULL_RETURN_VALUE(hAPI, EMF_ERROR_NULL_VALUE);
-
-	pRuleStream = em_convert_rule_to_byte_stream(filtering_set, &size);
-
-	EM_PROXY_IF_NULL_RETURN_VALUE(pRuleStream, hAPI, EMF_ERROR_NULL_VALUE);
-	
-	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, pRuleStream, size)) {
+	stream = em_convert_rule_to_byte_stream(filtering_set, &size);
+	EM_PROXY_IF_NULL_RETURN_VALUE(stream, hAPI, EMAIL_ERROR_NULL_VALUE);
+	if(!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, stream, size)) {
 		EM_DEBUG_EXCEPTION("Add Param Failed");
-		EM_SAFE_FREE(pRuleStream);
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMF_ERROR_NULL_VALUE);
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 	}
 
-	if(emipc_execute_proxy_api(hAPI) != EMF_ERROR_NONE) {
+	/* pass rule info */
+	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api Failed");
-		EM_SAFE_FREE(pRuleStream);
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMF_ERROR_IPC_SOCKET_FAILURE);
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
 	}
 		
 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);	
-	EM_SAFE_FREE(pRuleStream);
+
 	emipc_destroy_email_api(hAPI);
 	hAPI = NULL;
 	EM_DEBUG_FUNC_END("error value [%d]", err);
@@ -126,49 +123,44 @@ EXPORT_API int email_add_rule(emf_rule_t* filtering_set)
 
 
 
-EXPORT_API int email_update_rule(int filter_id, emf_rule_t* new_set)
+EXPORT_API int email_update_rule(int filter_id, email_rule_t* new_set)
 {
 	EM_DEBUG_FUNC_BEGIN("filter_id[%d], new_set[%p]", filter_id, new_set);
 	
 	int size = 0;
-	char* pFilterStream =  NULL;
-	int err = EMF_ERROR_NONE;
+	char* stream =  NULL;
+	int err = EMAIL_ERROR_NONE;
 
-	EM_IF_NULL_RETURN_VALUE(filter_id, EMF_ERROR_INVALID_PARAM);
-	EM_IF_NULL_RETURN_VALUE(new_set, EMF_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(filter_id, EMAIL_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(new_set, EMAIL_ERROR_INVALID_PARAM);
 	
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_UPDATE_RULE);
+	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 
-	EM_IF_NULL_RETURN_VALUE(hAPI, EMF_ERROR_NULL_VALUE);
-
-	/* filter_id */
+	/* make filter info */
 	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)&filter_id, sizeof(int))) {
 		EM_DEBUG_EXCEPTION("Add Param filter_id Failed");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMF_ERROR_NULL_VALUE);
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 	}
 
-	/* new_set */
-	pFilterStream = em_convert_rule_to_byte_stream(new_set, &size);
-
-	if(NULL == pFilterStream) {
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMF_ERROR_NULL_VALUE);
+	stream = em_convert_rule_to_byte_stream(new_set, &size);
+	if(NULL == stream) {
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 	}
-
-	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, pFilterStream, size)){
+	if(!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, stream, size)){
 		EM_DEBUG_EXCEPTION("Add Param new_set Failed");
-		EM_SAFE_FREE(pFilterStream);
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMF_ERROR_NULL_VALUE);
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 	}
 	
-	if(emipc_execute_proxy_api(hAPI) != EMF_ERROR_NONE) {
+	/* request update rule with filter info */
+	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api Failed");
-		EM_SAFE_FREE(pFilterStream);
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMF_ERROR_IPC_SOCKET_FAILURE);
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
 	}
 
+	/* get result */
 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
 	 	
-	EM_SAFE_FREE(pFilterStream);
 	emipc_destroy_email_api(hAPI);
 
 	hAPI = NULL;
@@ -183,23 +175,23 @@ EXPORT_API int email_delete_rule(int filter_id)
 {
 	EM_DEBUG_FUNC_BEGIN("filter_id[%d]", filter_id);
 	
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 		
-	EM_IF_NULL_RETURN_VALUE(filter_id, EMF_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(filter_id, EMAIL_ERROR_INVALID_PARAM);
 			
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_DELETE_RULE);
 	
-	EM_IF_NULL_RETURN_VALUE(hAPI, EMF_ERROR_NULL_VALUE);
+	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 	
 	/* filter_id */
 	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)&filter_id, sizeof(int))) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMF_ERROR_NULL_VALUE);
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 	}
 		
-	if(emipc_execute_proxy_api(hAPI) != EMF_ERROR_NONE) {
+	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMF_ERROR_IPC_SOCKET_FAILURE);
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
 	}
 	
 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
@@ -210,20 +202,19 @@ EXPORT_API int email_delete_rule(int filter_id)
 	return err;
 }
 
-EXPORT_API int email_free_rule (emf_rule_t** filtering_set, int count)
+EXPORT_API int email_free_rule (email_rule_t** filtering_set, int count)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int err = EMF_ERROR_NONE, i;	
+	int err = EMAIL_ERROR_NONE, i;	
 
-	EM_IF_NULL_RETURN_VALUE(filtering_set, EMF_ERROR_INVALID_PARAM);
-	EM_IF_NULL_RETURN_VALUE(count, EMF_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(filtering_set, EMAIL_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(count, EMAIL_ERROR_INVALID_PARAM);
 	
 	if (count > 0)  {
-		emf_rule_t* p = *filtering_set;
+		email_rule_t* p = *filtering_set;
 		
 		for (i = 0; i < count; i++) {
 			EM_SAFE_FREE(p[i].value);
-			EM_SAFE_FREE(p[i].mailbox);
 		}
 		
 		EM_SAFE_FREE(p); *filtering_set = NULL;

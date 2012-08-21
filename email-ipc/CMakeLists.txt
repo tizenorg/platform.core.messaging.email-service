@@ -16,7 +16,7 @@ MESSAGE(">>> Build type: ${CMAKE_BUILD_TYPE}")
 #SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${VISIBILITY} -fvisibility=hidden")
 
 SET(IPC-LIB "email-ipc")
-SET(IPC-SRCS 
+SET(IPC-SRCS
 	${CMAKE_SOURCE_DIR}/email-ipc/email-ipc-api.c
 	${CMAKE_SOURCE_DIR}/email-ipc/email-ipc-build.c
 	${CMAKE_SOURCE_DIR}/email-ipc/email-ipc-proxy.c
@@ -24,14 +24,10 @@ SET(IPC-SRCS
 	${CMAKE_SOURCE_DIR}/email-ipc/email-ipc-api/email-ipc-api-info.c
 	${CMAKE_SOURCE_DIR}/email-ipc/email-ipc-api/email-ipc-param.c
 	${CMAKE_SOURCE_DIR}/email-ipc/email-ipc-api/email-ipc-param-list.c
-#	${CMAKE_SOURCE_DIR}/email-ipc/email-common/email-common-list.c
-#	${CMAKE_SOURCE_DIR}/email-ipc/email-common/email-common-msg-queue.c
 	${CMAKE_SOURCE_DIR}/email-ipc/email-proxy/email-proxy-callback-info.c
 	${CMAKE_SOURCE_DIR}/email-ipc/email-proxy/email-proxy-main.c
 	${CMAKE_SOURCE_DIR}/email-ipc/email-proxy/email-proxy-socket.c
 	${CMAKE_SOURCE_DIR}/email-ipc/email-socket/email-ipc-socket.c
-	${CMAKE_SOURCE_DIR}/email-ipc/email-stub/email-stub-queue.c
-	${CMAKE_SOURCE_DIR}/email-ipc/email-stub/email-stub-response-info.c
 	${CMAKE_SOURCE_DIR}/email-ipc/email-stub/email-stub-main.c
 	${CMAKE_SOURCE_DIR}/email-ipc/email-stub/email-stub-socket.c
 	${CMAKE_SOURCE_DIR}/email-ipc/email-stub/email-stub-task.c
@@ -48,6 +44,7 @@ INCLUDE_DIRECTORIES(
 	${CMAKE_SOURCE_DIR}/email-ipc/email-ipc-api/include
 	${CMAKE_SOURCE_DIR}/email-common-use/include
 	${CMAKE_SOURCE_DIR}/email-api/include
+	${CMAKE_SOURCE_DIR}/email-core/email-storage/include/
 )
 
 INCLUDE(FindPkgConfig)
