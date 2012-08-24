@@ -106,7 +106,6 @@ static const EVP_CIPHER *emcore_get_cipher_algorithm(email_cipher_type cipher_ty
 	case CIPHER_TYPE_AES256 :
 		cipher = EVP_aes_256_cbc();
 		break;
-#endif
 #ifndef OPENSSL_NO_CAMELLIA		
 	case CIPHER_TYPE_CAMELLIA128 :
 		cipher = EVP_camellia_128_cbc();
@@ -117,6 +116,7 @@ static const EVP_CIPHER *emcore_get_cipher_algorithm(email_cipher_type cipher_ty
 	case CIPHER_TYPE_CAMELLIA256 :
 		cipher = EVP_camellia_256_cbc();
 		break;
+#endif
 #endif
 	case CIPHER_TYPE_RC2_40 :
 	default :
