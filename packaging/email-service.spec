@@ -85,13 +85,13 @@ echo "[EMAIL-SERVICE] Start adding preset account information..."
 ################################################################################################
 
 # for default mail slot szie
-vconftool set -t int    db/private/email-service/slot_size "100"
+vconftool set -t int    db/private/email-service/slot_size "100"        -g 6514
 
 # for latest mail id
-vconftool set -t int    db/private/email-service/latest_mail_id "0"
+vconftool set -t int    db/private/email-service/latest_mail_id "0"     -g 6514
 
 # for default account id
-vconftool set -t int    db/private/email-service/default_account_id "0"
+vconftool set -t int    db/private/email-service/default_account_id "0" -g 6514
 
 
 #################################################################
