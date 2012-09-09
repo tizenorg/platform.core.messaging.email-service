@@ -35,8 +35,8 @@ INTERNAL_FUNC int   em_convert_account_tbl_to_account(emstorage_account_tbl_t *a
 
 
 /* Mail */
-INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_data, int *stream_size);
-INTERNAL_FUNC void  em_convert_byte_stream_to_mail_data(char *stream, int stream_len, email_mail_data_t *mail_data);
+INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_data, int input_mail_data_count, int *stream_size);
+INTERNAL_FUNC void  em_convert_byte_stream_to_mail_data(char *stream, email_mail_data_t **mail_data, int *output_mail_data_count);
 
 INTERNAL_FUNC int   em_convert_mail_tbl_to_mail_data(emstorage_mail_tbl_t *mail_table_data, int item_count, email_mail_data_t **mail_data, int *error);
 INTERNAL_FUNC int   em_convert_mail_data_to_mail_tbl(email_mail_data_t *mail_data, int item_count, emstorage_mail_tbl_t **mail_table_data, int *error);

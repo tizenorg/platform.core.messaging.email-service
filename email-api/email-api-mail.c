@@ -79,7 +79,7 @@ EXPORT_API int email_add_mail(email_mail_data_t *input_mail_data, email_attachme
 		}
 
 		/* email_mail_data_t */
-		mail_data_stream = em_convert_mail_data_to_byte_stream(input_mail_data, &size);
+		mail_data_stream = em_convert_mail_data_to_byte_stream(input_mail_data, 1, &size);
 
 		if(!mail_data_stream) {
 			EM_DEBUG_EXCEPTION("em_convert_mail_data_to_byte_stream failed");
@@ -270,7 +270,7 @@ EXPORT_API int email_update_mail(email_mail_data_t *input_mail_data, email_attac
 		}
 
 		/* email_mail_data_t */
-		mail_data_stream = em_convert_mail_data_to_byte_stream(input_mail_data, &size);
+		mail_data_stream = em_convert_mail_data_to_byte_stream(input_mail_data, 1, &size);
 
 		if(!mail_data_stream) {
 			EM_DEBUG_EXCEPTION("em_convert_mail_data_to_byte_stream failed");

@@ -997,6 +997,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_account(char *stream, int stream_le
 #define EMAIL_MAIL_DATA_FMT  "S(" "iiiis" "iisss" "sssss" "sssss" "isssi"\
                             "ccccc" "cciii" "iiiii" "isiii" "i" ")"
 
+#if 0
 INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_data, int *stream_len)
 {
 	EM_DEBUG_FUNC_END();
@@ -1018,7 +1019,9 @@ INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_
 	EM_DEBUG_FUNC_END();
 	return (char*) buf;
 
-#if 0
+#endif
+INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *input_mail_data, int input_mail_data_count, int *output_stream_size)
+{
 	EM_DEBUG_FUNC_BEGIN("input_mail_data [%p], input_mail_data_count[%d], output_stream_size[%p]", input_mail_data, input_mail_data_count, output_stream_size);
 
 	char *result_stream = NULL;
@@ -1083,9 +1086,8 @@ INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_
 
 	EM_DEBUG_FUNC_END("stream_size [%d]", stream_size);
 	return result_stream;
-#endif
 }
-
+#if 0
 INTERNAL_FUNC void em_convert_byte_stream_to_mail_data(char *stream, int stream_len, email_mail_data_t *mail_data)
 {
 	EM_NULL_CHECK_FOR_VOID(stream);
@@ -1099,7 +1101,9 @@ INTERNAL_FUNC void em_convert_byte_stream_to_mail_data(char *stream, int stream_
 	tpl_free(tn);
 
 	EM_DEBUG_FUNC_END();
-#if 0
+#endif
+INTERNAL_FUNC void em_convert_byte_stream_to_mail_data(char *input_stream, email_mail_data_t **output_mail_data, int *output_mail_data_count) 
+{
 	EM_DEBUG_FUNC_BEGIN("input_stream [%p], output_mail_data[%p], output_mail_data_count[%p]", input_stream, output_mail_data, output_mail_data_count);
 
 	int stream_offset = 0;
@@ -1175,7 +1179,6 @@ INTERNAL_FUNC void em_convert_byte_stream_to_mail_data(char *stream, int stream_
 	}
 
 	EM_DEBUG_FUNC_END();
-#endif
 }
 
 
@@ -1183,6 +1186,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_mail_data(char *stream, int stream_
 
 INTERNAL_FUNC char* em_convert_attachment_data_to_byte_stream(email_attachment_data_t *attachment, int attachment_count, int* stream_len)
 {
+#if 0
 	EM_DEBUG_FUNC_BEGIN();
 	EM_IF_NULL_RETURN_VALUE(stream_len, NULL);
 	if(!attachment) {
@@ -1216,42 +1220,43 @@ INTERNAL_FUNC char* em_convert_attachment_data_to_byte_stream(email_attachment_d
 
 	EM_DEBUG_FUNC_END();
 	return (char*) buf;
+#endif
 
-#if 0
-	EM_DEBUG_FUNC_BEGIN("input_attachment_data [%p], input_attachment_count [%d], output_stream_size [%p]", input_attachment_data, input_attachment_count, output_stream_size);
+	EM_DEBUG_FUNC_BEGIN("attachment [%p], input_attachment_count [%d], output_stream_size [%p]", attachment, attachment_count, stream_len);
 
 	char *result_stream = NULL;
 	int stream_size = 0;
 	int i = 0;
 
-	if(input_attachment_count > 0)
-		EM_IF_NULL_RETURN_VALUE(input_attachment_data, NULL);
-	EM_IF_NULL_RETURN_VALUE(output_stream_size, NULL);
+	if(attachment_count > 0)
+		EM_IF_NULL_RETURN_VALUE(attachment, NULL);
+	EM_IF_NULL_RETURN_VALUE(stream_len, NULL);
 
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_count, sizeof(int));
+	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&attachment_count, sizeof(int));
 
-	for(i = 0; i < input_attachment_count; i++) {
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].attachment_id, sizeof(int));
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_attachment_data[i].attachment_name);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_attachment_data[i].attachment_path);
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].attachment_size, sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].mail_id, sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].account_id, sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].mailbox_id, sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].save_status, sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].drm_status, sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].inline_content_status,sizeof(int));
+	for(i = 0; i < attachment_count; i++) {
+		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&attachment[i].attachment_id, sizeof(int));
+		result_stream = append_string_to_stream(result_stream, &stream_size, attachment[i].attachment_name);
+		result_stream = append_string_to_stream(result_stream, &stream_size, attachment[i].attachment_path);
+		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&attachment[i].attachment_size, sizeof(int));
+		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&attachment[i].mail_id, sizeof(int));
+		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&attachment[i].account_id, sizeof(int));
+		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&attachment[i].mailbox_id, sizeof(int));
+		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&attachment[i].save_status, sizeof(int));
+		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&attachment[i].drm_status, sizeof(int));
+		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&attachment[i].inline_content_status,sizeof(int));
 	}
 
-	*output_stream_size = stream_size;
+	*stream_len = stream_size;
 
 	EM_DEBUG_FUNC_END("stream_size [%d]", stream_size);
 	return result_stream;
-#endif
+
 }
 
 INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int stream_len, email_attachment_data_t **attachment_data, int *attachment_count)
 {
+#if 0
 	EM_DEBUG_FUNC_BEGIN();
 	EM_NULL_CHECK_FOR_VOID(stream);
 	EM_NULL_CHECK_FOR_VOID(attachment_data);
@@ -1295,47 +1300,46 @@ INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int s
 	*attachment_count = count;
 	*attachment_data = attached;
 	EM_DEBUG_FUNC_END();
-#if 0
-	EM_DEBUG_FUNC_BEGIN("input_stream [%p], output_attachment_data[%p]", input_stream, output_attachment_data);
+#endif
+	EM_DEBUG_FUNC_BEGIN("stream [%p], attachment_data[%p]", stream, attachment_data);
 
 	int stream_offset = 0;
 	int i = 0;
 
-	EM_NULL_CHECK_FOR_VOID(input_stream);
-	EM_NULL_CHECK_FOR_VOID(output_attachment_data);
-	EM_NULL_CHECK_FOR_VOID(output_attachment_count);
+	EM_NULL_CHECK_FOR_VOID(stream);
+	EM_NULL_CHECK_FOR_VOID(attachment_data);
+	EM_NULL_CHECK_FOR_VOID(attachment_count);
 
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)output_attachment_count);
+	fetch_sized_data_from_stream(stream, &stream_offset, sizeof(int), (char*)attachment_count);
 
-	EM_DEBUG_LOG("*output_attachment_count [%d]", *output_attachment_count);
+	EM_DEBUG_LOG("*attachment_count [%d]", *attachment_count);
 
-	if(output_attachment_count <= 0) {
+	if(attachment_count <= 0) {
 		EM_DEBUG_EXCEPTION("no attachment data.");
 		return;
 	}
 
-	*output_attachment_data = (email_attachment_data_t*)em_malloc(sizeof(email_attachment_data_t) * (*output_attachment_count));
+	*attachment_data = (email_attachment_data_t*)em_malloc(sizeof(email_attachment_data_t) * (*attachment_count));
 
-	if(!*output_attachment_data) {
+	if(!*attachment_data) {
 		EM_DEBUG_EXCEPTION("em_malloc failed");
 		return;
 	}
 
-	for(i = 0; i < *output_attachment_count; i++) {
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].attachment_id));
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_attachment_data)[i].attachment_name);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_attachment_data)[i].attachment_path);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].attachment_size));
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].mail_id));
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].account_id));
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].mailbox_id));
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].save_status));
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].drm_status));
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].inline_content_status));
+	for(i = 0; i < *attachment_count; i++) {
+		fetch_sized_data_from_stream(stream, &stream_offset, sizeof(int), (char*)&((*attachment_data)[i].attachment_id));
+		fetch_string_from_stream(stream, &stream_offset, &(*attachment_data)[i].attachment_name);
+		fetch_string_from_stream(stream, &stream_offset, &(*attachment_data)[i].attachment_path);
+		fetch_sized_data_from_stream(stream, &stream_offset, sizeof(int), (char*)&((*attachment_data)[i].attachment_size));
+		fetch_sized_data_from_stream(stream, &stream_offset, sizeof(int), (char*)&((*attachment_data)[i].mail_id));
+		fetch_sized_data_from_stream(stream, &stream_offset, sizeof(int), (char*)&((*attachment_data)[i].account_id));
+		fetch_sized_data_from_stream(stream, &stream_offset, sizeof(int), (char*)&((*attachment_data)[i].mailbox_id));
+		fetch_sized_data_from_stream(stream, &stream_offset, sizeof(int), (char*)&((*attachment_data)[i].save_status));
+		fetch_sized_data_from_stream(stream, &stream_offset, sizeof(int), (char*)&((*attachment_data)[i].drm_status));
+		fetch_sized_data_from_stream(stream, &stream_offset, sizeof(int), (char*)&((*attachment_data)[i].inline_content_status));
 	}
 
 	EM_DEBUG_FUNC_END();
-#endif
 }
 
 

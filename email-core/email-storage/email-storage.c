@@ -10327,7 +10327,7 @@ INTERNAL_FUNC int emstorage_copy_file(char *src_file, char *dst_file, int sync_s
 			if (nread > 0 && nread <= buf_size)  {		
 				EM_DEBUG_LOG("Nread Value [%d]", nread);
 				if ((nwritten = write(fp_dst, buf, nread)) != nread) {
-					EM_DEBUG_EXCEPTION("fwrite failed...");
+					EM_DEBUG_EXCEPTION("fwrite failed... : [%d], Error:[%s]", nwritten, strerror(errno));
 					error = EMAIL_ERROR_UNKNOWN;
 					goto FINISH_OFF;
 				}

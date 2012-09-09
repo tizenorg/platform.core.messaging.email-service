@@ -1380,8 +1380,9 @@ void stb_add_mail(HIPC_API a_hAPI)
 	int  result_attachment_data_count = 0;
 	int  param_index = 0;
 	int  sync_server = 0;
+	int  mail_count = 0;
 	int  err = EMAIL_ERROR_NONE;
-	email_mail_data_t result_mail_data = {0};
+	email_mail_data_t *result_mail_data = NULL;
 	email_attachment_data_t *result_attachment_data = NULL;
 	email_meeting_request_t result_meeting_request = {0};
 
@@ -1393,7 +1394,7 @@ void stb_add_mail(HIPC_API a_hAPI)
 	/* mail_data */
 	if(buffer_size > 0)	 {
 		char *stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
-		em_convert_byte_stream_to_mail_data(stream, buffer_size, &result_mail_data);
+		em_convert_byte_stream_to_mail_data(stream, &result_mail_data, &mail_count);
 	}
 
 	/* attachment */
@@ -1417,9 +1418,9 @@ void stb_add_mail(HIPC_API a_hAPI)
 
 	/* meeting request */
 	EM_DEBUG_LOG("email_meeting_request_t");
-	if ( result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_REQUEST
-		|| result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_RESPONSE
-		|| result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_ORIGINATINGREQUEST) {
+	if ( result_mail_data->meeting_request_status == EMAIL_MAIL_TYPE_MEETING_REQUEST
+		|| result_mail_data->meeting_request_status == EMAIL_MAIL_TYPE_MEETING_RESPONSE
+		|| result_mail_data->meeting_request_status == EMAIL_MAIL_TYPE_MEETING_ORIGINATINGREQUEST) {
 		buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
 
 		if(buffer_size > 0) {
@@ -1431,7 +1432,7 @@ void stb_add_mail(HIPC_API a_hAPI)
 	EM_DEBUG_LOG("sync_server");
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, param_index++, sizeof(int), &sync_server);
 
-	if( (err = emdaemon_add_mail(&result_mail_data, result_attachment_data, result_attachment_data_count, &result_meeting_request, sync_server)) != EMAIL_ERROR_NONE) {
+	if( (err = emdaemon_add_mail(result_mail_data, result_attachment_data, result_attachment_data_count, &result_meeting_request, sync_server)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emdaemon_add_mail failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1439,9 +1440,9 @@ void stb_add_mail(HIPC_API a_hAPI)
 	local_result = 1;
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.mail_id, sizeof(int)))
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &(result_mail_data->mail_id), sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.thread_id, sizeof(int)))
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &(result_mail_data->thread_id), sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
@@ -1454,7 +1455,7 @@ FINISH_OFF:
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 	}
 
-	emcore_free_mail_data(&result_mail_data);
+	emcore_free_mail_data(result_mail_data);
 
 	if(result_attachment_data)
 		emcore_free_attachment_data(&result_attachment_data, result_attachment_data_count, NULL);
@@ -1581,9 +1582,10 @@ void stb_update_mail(HIPC_API a_hAPI)
 	int  result_attachment_data_count = 0;
 	int  param_index = 0;
 	int  sync_server = 0;
+	int  mail_count = 0;
 	int *temp_buffer = NULL;
 	int  err = EMAIL_ERROR_NONE;
-	email_mail_data_t result_mail_data = {0};
+	email_mail_data_t *result_mail_data = NULL;
 	email_attachment_data_t *result_attachment_data = NULL;
 	email_meeting_request_t result_meeting_request = {0};
 
@@ -1592,7 +1594,7 @@ void stb_update_mail(HIPC_API a_hAPI)
 
 	if(buffer_size > 0)	 {
 		char* stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
-		em_convert_byte_stream_to_mail_data(stream, buffer_size, &result_mail_data);
+		em_convert_byte_stream_to_mail_data(stream, &result_mail_data, &mail_count);
 	}
 
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
@@ -1615,9 +1617,9 @@ void stb_update_mail(HIPC_API a_hAPI)
 
 	EM_DEBUG_LOG("email_meeting_request_t");
 
-	if ( result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_REQUEST
-		|| result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_RESPONSE
-		|| result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_ORIGINATINGREQUEST) {
+	if ( result_mail_data->meeting_request_status == EMAIL_MAIL_TYPE_MEETING_REQUEST
+		|| result_mail_data->meeting_request_status == EMAIL_MAIL_TYPE_MEETING_RESPONSE
+		|| result_mail_data->meeting_request_status == EMAIL_MAIL_TYPE_MEETING_ORIGINATINGREQUEST) {
 		buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
 
 		if(buffer_size > 0) {
@@ -1637,7 +1639,7 @@ void stb_update_mail(HIPC_API a_hAPI)
 
 	sync_server = *temp_buffer;
 
-	if( (err = emdaemon_update_mail(&result_mail_data, result_attachment_data,
+	if( (err = emdaemon_update_mail(result_mail_data, result_attachment_data,
 			result_attachment_data_count, &result_meeting_request, sync_server)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emdaemon_update_mail failed [%d]", err);
 		goto FINISH_OFF;
@@ -1646,9 +1648,9 @@ void stb_update_mail(HIPC_API a_hAPI)
 	local_result = 1;
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.mail_id, sizeof(int)))
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &(result_mail_data->mail_id), sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.thread_id, sizeof(int)))
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &(result_mail_data->thread_id), sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
@@ -1661,7 +1663,7 @@ FINISH_OFF:
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 	}
 
-	emcore_free_mail_data(&result_mail_data);
+	emcore_free_mail_data(result_mail_data);
 
 	if(result_attachment_data)
 		emcore_free_attachment_data(&result_attachment_data, result_attachment_data_count, NULL);
