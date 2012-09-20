@@ -1,0 +1,8 @@
+Change-Id: Ib163391a122d812058dc9ab211b81e60204fffc7
+Code-Review+2: Hotae Kim <hotae.kim@samsung.com>
+Verified+1: Hotae Kim <hotae.kim@samsung.com>
+Submitted-by: Hotae Kim <hotae.kim@samsung.com>
+Submitted-at: Fri, 21 Sep 2012 00:11:46 +0900
+Reviewed-on: http://review.tizen.org/gerrit/1796
+Project: framework/messaging/email-service
+Branch: refs/heads/master
