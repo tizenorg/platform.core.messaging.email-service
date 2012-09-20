@@ -49,13 +49,13 @@ static void mm_get_error(char *string, int *err_code);
 INTERNAL_FUNC void mm_lsub(MAILSTREAM *stream, int delimiter, char *mailbox, long attributes)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	emf_callback_holder_t *p_holder = (emf_callback_holder_t *)stream->sparep;
-	emf_mailbox_t *p, *p_old = p_holder->data;
+	email_callback_holder_t *p_holder = (email_callback_holder_t *)stream->sparep;
+	email_mailbox_t *p, *p_old = p_holder->data;
 	int count = p_holder->num;
 	char *s, *enc_path;
 
 	/* memory allocation */
-	p = realloc(p_old, sizeof(emf_mailbox_t) * (count + 1));
+	p = realloc(p_old, sizeof(email_mailbox_t) * (count + 1));
 	if (!p) return ;
 
 	/* uw-imap mailbox name format (ex : "{mail.test.com...}inbox" or "{mail.test.com...}anybox/anysubbox") */
@@ -63,7 +63,7 @@ INTERNAL_FUNC void mm_lsub(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 	if (enc_path)	
 		enc_path += 1;
 	else {
-		emcore_free_mailbox(&p, count+1, NULL);				
+		emcore_free_mailbox_list(&p, count+1);
 		return ;
 	}
 
@@ -77,10 +77,10 @@ INTERNAL_FUNC void mm_lsub(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 	}
 
 	/* coyp string */
-	p[count].name = cpystr(enc_path);
-	p[count].alias = cpystr(enc_path);
-	p[count].local = 0;
-	p[count].account_id = stream->spare8;
+	p[count].mailbox_name = cpystr(enc_path);
+	p[count].alias        = cpystr(enc_path);
+	p[count].local        = 0;
+	p[count].account_id   = stream->spare8;
 
 
 	p_holder->data = p;
@@ -102,13 +102,13 @@ INTERNAL_FUNC void mm_lsub(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, long attributes)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	emf_callback_holder_t *p_holder = (emf_callback_holder_t *)stream->sparep;
-	emf_mailbox_t *p, *p_old = p_holder->data;
+	email_callback_holder_t *p_holder = (email_callback_holder_t *)stream->sparep;
+	email_internal_mailbox_t *p, *p_old = p_holder->data;
 	int count = p_holder->num;
 	char *s, *enc_path;
 
 	/* memory allocation */
-	p = realloc(p_old, sizeof(emf_mailbox_t) * (count + 1));
+	p = realloc(p_old, sizeof(email_internal_mailbox_t) * (count + 1));
 	if (!p) return ;
 
 	/* uw-imap mailbox name format (ex : "{mail.test.com...}inbox" or "{mail.test.com...}anybox/anysubbox") */
@@ -116,7 +116,7 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 	if (enc_path)	
 		enc_path += 1;
 	else {
-		emcore_free_mailbox(&p, count+1, NULL);
+		emcore_free_internal_mailbox(&p, count+1, NULL);
 		return ;
 	}
 
@@ -125,11 +125,36 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 		if (*s == (char)delimiter) 
 			*s = '/';
 
-	/* coyp string */
-	memset(p + count, 0x00, sizeof(emf_mailbox_t));
-	p[count].name = cpystr(enc_path);
-	p[count].alias = cpystr(enc_path);
+	/* copy string */
+	memset(p + count, 0x00, sizeof(email_internal_mailbox_t));
+
+#ifdef __FEATURE_XLIST_SUPPORT__
+	if(attributes & LATT_XLIST_INBOX)
+		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_INBOX;
+	else if(attributes & LATT_XLIST_ALL)
+		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_ALL_EMAILS;
+	else if(attributes & LATT_XLIST_DRAFTS)
+		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_DRAFT;
+	else if(attributes & LATT_XLIST_SENT)
+		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_SENTBOX;
+	else if(attributes & LATT_XLIST_JUNK)
+		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_SPAMBOX;
+	else if(attributes & LATT_XLIST_FLAGGED)
+		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_FLAGGED;
+	else if(attributes & LATT_XLIST_TRASH)
+		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_TRASH;
+#endif /* __FEATURE_XLIST_SUPPORT__ */
+
+	if(p[count].mailbox_type == EMAIL_MAILBOX_TYPE_INBOX) /* For exception handling of Gmail inbox*/
+		p[count].mailbox_name  = cpystr("INBOX");
+	else
+		p[count].mailbox_name  = cpystr(enc_path);
+
+	EM_DEBUG_LOG("mm_list mailbox name is %s ", p[count].mailbox_name);
+
+	p[count].alias = emcore_get_alias_of_mailbox((const char *)enc_path);
 	p[count].local = 0;
+
 	EM_DEBUG_LOG("mm_list account_id %d", stream->spare8);
 
 	char *tmp = NULL;
@@ -141,8 +166,8 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 		*s = '\0';
 		p[count].account_id = atoi(tmp);
 	}
-	EM_DEBUG_LOG("mm_list account_id1 %d ", p[count].account_id);
-	EM_DEBUG_LOG("mm_list mailbox name r %s ", p[count].name);
+	EM_DEBUG_LOG("mm_list account_id %d ", p[count].account_id);
+
 	p_holder->data = p;
 	p_holder->num++;
 
@@ -158,7 +183,7 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 INTERNAL_FUNC void mm_status(MAILSTREAM *stream, char *mailbox, MAILSTATUS* status)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	emf_callback_holder_t *p = stream->sparep;
+	email_callback_holder_t *p = stream->sparep;
 
 	EM_DEBUG_FUNC_BEGIN();
 	if (status->flags & SA_MESSAGES) 
@@ -176,7 +201,7 @@ INTERNAL_FUNC void mm_login(NETMBX *mb, char *user, char *pwd, long trial)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int account_id;
-	emf_account_t *ref_account;
+	email_account_t *ref_account;
 	char *username = NULL;
 	char *password = NULL;
 
@@ -194,19 +219,19 @@ INTERNAL_FUNC void mm_login(NETMBX *mb, char *user, char *pwd, long trial)
 		return;
 	}
 
-	if (ref_account->user_name == NULL) {
-		EM_DEBUG_EXCEPTION("invalid user_name...");
+	if (ref_account->incoming_server_user_name == NULL) {
+		EM_DEBUG_EXCEPTION("invalid incoming_server_user_name...");
 		return;
 	}
-	username = EM_SAFE_STRDUP(ref_account->user_name);
+	username = EM_SAFE_STRDUP(ref_account->incoming_server_user_name);
 
-	if (ref_account->password == NULL) {
+	if (ref_account->incoming_server_password == NULL) {
 		EM_SAFE_FREE(username);
 		EM_DEBUG_EXCEPTION("invalid password...");
 		return;
 	}
 
-	password = EM_SAFE_STRDUP(ref_account->password);
+	password = EM_SAFE_STRDUP(ref_account->incoming_server_password);
 
 	if (username && password && strlen(username) > 0 && strlen(password) > 0) {
 		strcpy(user, username);
@@ -263,7 +288,7 @@ INTERNAL_FUNC void mm_log(char *string, long errflg)
 			break;
 			
 		case ERROR: {
-			emf_session_t *session = NULL;
+			email_session_t *session = NULL;
 			
 			EM_DEBUG_EXCEPTION("IMAP_TOOLKIT_LOG ERROR [%s]", string);
 
@@ -279,11 +304,11 @@ INTERNAL_FUNC void mm_log(char *string, long errflg)
 			if (string) {
 				if (strstr(string, "15 minute") != 0) {
 					if (session)
-						session->error = EMF_ERROR_LOGIN_ALLOWED_EVERY_15_MINS;
+						session->error = EMAIL_ERROR_LOGIN_ALLOWED_EVERY_15_MINS;
 				}
 				else if (strstr(string, "Too many login failures") == 0) {
 					if (session)
-						session->error = EMF_ERROR_TOO_MANY_LOGIN_FAILURE;
+						session->error = EMAIL_ERROR_TOO_MANY_LOGIN_FAILURE;
 				}
 			}
 			*/
@@ -361,52 +386,52 @@ INTERNAL_FUNC void mm_get_error(char *string, int *err_code)
 	EM_DEBUG_LOG("string [%s]", string);
 
 	if (strstr(string, "login failure") || strstr(string, "Login aborted") || strstr(string, "Can't login"))
-		*err_code = EMF_ERROR_LOGIN_FAILURE;
+		*err_code = EMAIL_ERROR_LOGIN_FAILURE;
 	else if (strstr(string, "Scan not valid"))
-		*err_code = EMF_ERROR_MAILBOX_FAILURE;
+		*err_code = EMAIL_ERROR_MAILBOX_FAILURE;
 	else if (strstr(string, "Authentication cancelled"))
-		*err_code = EMF_ERROR_AUTHENTICATE;
+		*err_code = EMAIL_ERROR_AUTHENTICATE;
 	else if (strstr(string, "authuser"))
-		*err_code = EMF_ERROR_AUTH_NOT_SUPPORTED;
+		*err_code = EMAIL_ERROR_AUTH_NOT_SUPPORTED;
 	else if (strstr(string, "negotiate TLS"))
-		*err_code = EMF_ERROR_CANNOT_NEGOTIATE_TLS;
+		*err_code = EMAIL_ERROR_CANNOT_NEGOTIATE_TLS;
 	else if (strstr(string, "TLS/SSL failure"))
-		*err_code = EMF_ERROR_TLS_SSL_FAILURE;
+		*err_code = EMAIL_ERROR_TLS_SSL_FAILURE;
 	else if (strstr(string, "STARTLS"))
-		*err_code = EMF_ERROR_STARTLS;
+		*err_code = EMAIL_ERROR_STARTLS;
 	else if (strstr(string, "TLS unavailable"))
-		*err_code = EMF_ERROR_TLS_NOT_SUPPORTED;
+		*err_code = EMAIL_ERROR_TLS_NOT_SUPPORTED;
 	else if (strstr(string, "Can't access"))
-		*err_code = EMF_ERROR_APPEND_FAILURE;
+		*err_code = EMAIL_ERROR_APPEND_FAILURE;
 	else if (strstr(string, "Can not authenticate"))
-		*err_code = EMF_ERROR_AUTHENTICATE;
+		*err_code = EMAIL_ERROR_AUTHENTICATE;
 	else if (strstr(string, "Unexpected IMAP response") || strstr(string, "hello"))
-		*err_code = EMF_ERROR_INVALID_RESPONSE;
+		*err_code = EMAIL_ERROR_INVALID_RESPONSE;
 	else if (strstr(string, "NOTIMAP4REV1"))
-		*err_code = EMF_ERROR_COMMAND_NOT_SUPPORTED;
+		*err_code = EMAIL_ERROR_COMMAND_NOT_SUPPORTED;
 	else if (strstr(string, "Anonymous"))
-		*err_code = EMF_ERROR_ANNONYM_NOT_SUPPORTED;
+		*err_code = EMAIL_ERROR_ANNONYM_NOT_SUPPORTED;
 	else if (strstr(string, "connection broken"))
-		*err_code = EMF_ERROR_CONNECTION_BROKEN;
+		*err_code = EMAIL_ERROR_CONNECTION_BROKEN;
 	else if (strstr(string, "SMTP greeting"))
-		*err_code = EMF_ERROR_NO_RESPONSE;
+		*err_code = EMAIL_ERROR_NO_RESPONSE;
 	else if (strstr(string, "ESMTP failure"))
-		*err_code = EMF_ERROR_SMTP_SEND_FAILURE;
+		*err_code = EMAIL_ERROR_SMTP_SEND_FAILURE;
 	else if (strstr(string, "socket") || strstr(string, "Socket"))
-		*err_code = EMF_ERROR_SOCKET_FAILURE;
+		*err_code = EMAIL_ERROR_SOCKET_FAILURE;
 	else if (strstr(string, "connect to") || strstr(string, "Connection failed"))
-		*err_code = EMF_ERROR_CONNECTION_FAILURE;
+		*err_code = EMAIL_ERROR_CONNECTION_FAILURE;
 	else if (strstr(string, "Certificate failure"))
-		*err_code = EMF_ERROR_CERTIFICATE_FAILURE;
+		*err_code = EMAIL_ERROR_CERTIFICATE_FAILURE;
 	else if (strstr(string, "ESMTP failure"))
-		*err_code = EMF_ERROR_INVALID_PARAM;
+		*err_code = EMAIL_ERROR_INVALID_PARAM;
 	else if (strstr(string, "No such host"))
-		*err_code = EMF_ERROR_NO_SUCH_HOST;
+		*err_code = EMAIL_ERROR_NO_SUCH_HOST;
 	else if (strstr(string, "host") || strstr(string, "Host"))
-		*err_code = EMF_ERROR_INVALID_SERVER;
+		*err_code = EMAIL_ERROR_INVALID_SERVER;
 	else if (strstr(string, "SELECT failed"))
-		*err_code = EMF_ERROR_MAILBOX_NOT_FOUND;
+		*err_code = EMAIL_ERROR_MAILBOX_NOT_FOUND;
 	else
-		*err_code = EMF_ERROR_UNKNOWN;
+		*err_code = EMAIL_ERROR_UNKNOWN;
 }
 /* EOF */

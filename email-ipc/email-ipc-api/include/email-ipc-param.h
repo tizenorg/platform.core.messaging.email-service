@@ -32,6 +32,10 @@ typedef struct {
 
 EXPORT_API bool emipc_set_param(emipc_param *param, void *data, int len);
 
+EXPORT_API void emipc_set_dynamic_param(emipc_param *param, void *data, int len);
+
+EXPORT_API void emipc_free_param(emipc_param param);
+
 EXPORT_API int emipc_get_length(emipc_param param);
 
 EXPORT_API void *emipc_get_data(emipc_param param);

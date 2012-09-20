@@ -164,8 +164,8 @@ EXPORT_API void emipc_wait_for_ipc_request()
 						EM_DEBUG_LOG("[IPCLib]Stub Socket Recv [Socket ID = %d], [recv_len = %d]", event_fd, recv_len);
 						EM_DEBUG_LOG("====================================================================");
 						emipc_create_task((unsigned char *)sz_buf, event_fd);
-					}  else {
-						EM_DEBUG_LOG("[IPCLib] Socket [%d] removed - [%d] ", event_fd, recv_len);
+					} else if( recv_len == 0 ) {
+						EM_DEBUG_LOG("[IPCLib] Client closed connection [%d]", event_fd);
 						epoll_ctl(epfd, EPOLL_CTL_DEL, event_fd, events);
 						close(event_fd);
 					} 
@@ -181,7 +181,7 @@ EXPORT_API bool emipc_end_stub_socket()
 	EM_DEBUG_FUNC_BEGIN();
 	
 	if (stub_socket) {
-		emipc_close_email_socket(stub_socket);
+		emipc_close_email_socket(&stub_socket);
 	}
 
 	if (stub_socket_thread) {

@@ -44,9 +44,10 @@ extern "C"
 #include "email-core-mail.h"
 
 /*  This is used for emcore_get_long_encoded_path */
+#define EMAIL_CONNECT_FOR_SENDING	-1
 #define	ENCODED_PATH_SMTP	"UHDF_ENCODED_PATH_SMTP_EKJD"
 
-typedef int (*emf_get_unread_email_count_cb)(int unread, int *err_code);
+typedef int (*email_get_unread_email_count_cb)(int unread, int *err_code);
 
 /* parse the Full mailbox Path and get the Alias Name of the Mailbox */
 char* emcore_get_alias_of_mailbox(const char *mailbox_path);
@@ -58,26 +59,26 @@ int   emcore_get_encoded_mailbox_name(char *name, char **enc_name, int *err_code
 int   emcore_get_file_name(char *path, char **filename, int *err_code);
 int   emcore_get_file_size(char *path, int *size, int *err_code);
 int   emcore_get_actual_mail_size(char *pBodyPlane, char *pBodyHtml, struct attachment_info *pAttachment, int *error_code);
-int   emcore_calc_mail_size(emf_mail_data_t *mail_data_src, emf_attachment_data_t *attachment_data_src, int attachment_count, int *error_code);
+int   emcore_calc_mail_size(email_mail_data_t *mail_data_src, email_attachment_data_t *attachment_data_src, int attachment_count, int *error_code);
 int   emcore_get_address_count(char *addr_str, int *to_num, int *err_code);
 int   emcore_is_storage_full(int *error);
-int   emcore_show_popup(int id, emf_action_t action, int error);
-int   emcore_get_long_encoded_path_with_account_info(emf_account_t *account, char *path, int delimiter, char **long_enc_path, int *err_code);
+int   emcore_get_long_encoded_path_with_account_info(email_account_t *account, char *path, int delimiter, char **long_enc_path, int *err_code);
 void  emcore_fill_address_information_of_mail_tbl(emstorage_mail_tbl_t *mail_data);
 
 
 int   emcore_get_preview_text_from_file(const char *input_plain_path, const char *input_html_path, int input_preview_buffer_length, char **output_preview_buffer);
+int   reg_replace (char *input_source_text, char *input_old_pattern_string, char *input_new_string);
 int   emcore_strip_HTML(char *source_string);
 int   emcore_send_noti_for_new_mail(int account_id, char *mailbox_name, char *subject, char *from, char *uid, char *datetime);
 int   emcore_make_attachment_file_name_with_extension(char *source_file_name, char *sub_type, char *result_file_name, int result_file_name_buffer_length, int *err_code);
 
 /* Session Handling */
-int   emcore_get_empty_session(emf_session_t **session);
-int   emcore_clear_session(emf_session_t *session);
-int   emcore_get_current_session(emf_session_t **session);
+int   emcore_get_empty_session(email_session_t **session);
+int   emcore_clear_session(email_session_t *session);
+int   emcore_get_current_session(email_session_t **session);
 
-INTERNAL_FUNC emf_option_t *emcore_get_option(int *err_code);
-INTERNAL_FUNC int emcore_set_option(emf_option_t *opt, int *err_code);
+INTERNAL_FUNC email_option_t *emcore_get_option(int *err_code);
+INTERNAL_FUNC int emcore_set_option(email_option_t *opt, int *err_code);
 
 INTERNAL_FUNC int emcore_check_unread_mail();
 INTERNAL_FUNC int emcore_set_network_error(int err_code);
@@ -95,12 +96,12 @@ INTERNAL_FUNC int emcore_delete_notification_for_read_mail(int mail_id);
 INTERNAL_FUNC int emcore_delete_notification_by_account(int account_id);
 INTERNAL_FUNC int emcore_finalize_sync(int account_id, int *error);
 
-
+INTERNAL_FUNC int emcore_show_user_message(int id, email_action_t action, int error);
 
 #ifdef __FEATURE_BULK_DELETE_MOVE_UPDATE_REQUEST_OPTI__
 
 /**
- * @fn emcore_convert_to_uid_range_set(emf_id_set_t *id_set, int id_set_count, emf_uid_range_set **uid_range_set, int range_len, int *err_code)
+ * @fn emcore_convert_to_uid_range_set(email_id_set_t *id_set, int id_set_count, email_uid_range_set **uid_range_set, int range_len, int *err_code)
  * Prepare a linked list of uid ranges with each node having a uid_range and lowest and highest uid in it.
  *
  *@author 					h.gahlaut@samsung.com
@@ -114,10 +115,10 @@ INTERNAL_FUNC int emcore_finalize_sync(int account_id, int *error);
  * @return This function returns true on success or false on failure.
  */
  
-INTERNAL_FUNC int emcore_convert_to_uid_range_set(emf_id_set_t *id_set, int id_set_count, emf_uid_range_set **uid_range_set, int range_len, int *err_code);
+INTERNAL_FUNC int emcore_convert_to_uid_range_set(email_id_set_t *id_set, int id_set_count, email_uid_range_set **uid_range_set, int range_len, int *err_code);
 
 /**
- * void emcore_free_uid_range_set(emf_uid_range_set **uid_range_head)
+ * void emcore_free_uid_range_set(email_uid_range_set **uid_range_head)
  * Frees the linked list of uid ranges 
  *
  * @author 					h.gahlaut@samsung.com
@@ -125,10 +126,10 @@ INTERNAL_FUNC int emcore_convert_to_uid_range_set(emf_id_set_t *id_set, int id_s
  * @remarks 									
  * @return This function does not return anything.
  */
-INTERNAL_FUNC void emcore_free_uid_range_set(emf_uid_range_set **uid_range_set);
+INTERNAL_FUNC void emcore_free_uid_range_set(email_uid_range_set **uid_range_set);
 
 /**
- * @fn emcore_append_subset_string_to_uid_range(char *subset_string, emf_uid_range_set **uid_range_set, int range_len, unsigned long luid, unsigned long huid)
+ * @fn emcore_append_subset_string_to_uid_range(char *subset_string, email_uid_range_set **uid_range_set, int range_len, unsigned long luid, unsigned long huid)
  * Appends the subset_string to uid range if the uid range has not exceeded maximum length(range_len), otherwise creates a new node in linked list of uid range set 
  * and stores the subset_string in its uid_range. Also sets the lowest and highest uids for the corresponsing uid_range
  * 
@@ -143,7 +144,7 @@ INTERNAL_FUNC void emcore_free_uid_range_set(emf_uid_range_set **uid_range_set);
  * @return This function returns true on success or false on failure.
  */
  
-int emcore_append_subset_string_to_uid_range(char *subset_string, emf_uid_range_set **current_node_adr, emf_uid_range_set **uid_range_set, int range_len, unsigned long luid, unsigned long huid);
+int emcore_append_subset_string_to_uid_range(char *subset_string, email_uid_range_set **current_node_adr, email_uid_range_set **uid_range_set, int range_len, unsigned long luid, unsigned long huid);
 
 /**
  * @fn emcore_form_comma_separated_strings(int numbers[], int num_count, int max_string_len, char ***strings, int *string_count, int *err_code)
@@ -185,6 +186,9 @@ INTERNAL_FUNC int emcore_get_next_activity_id(int *activity_id, int *err_code);
 INTERNAL_FUNC int emcore_add_activity(emstorage_activity_tbl_t *new_activity, int *err_code);
 INTERNAL_FUNC int emcore_delete_activity(emstorage_activity_tbl_t *activity, int *err_code);
 #endif /* __FEATURE_LOCAL_ACTIVITY__ */
+
+INTERNAL_FUNC void emcore_free_rule(email_rule_t* rule);
+
 
 #ifdef __cplusplus
 }

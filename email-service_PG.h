@@ -1,6 +1,6 @@
 /**
  *
- * @ingroup   PG
+ * @ingroup   SLP_PG
  * @defgroup   EMAILSVC Email Service
 @{
 <h1 class="pg">Introduction</h1>
@@ -83,9 +83,9 @@ Whenever an application wants to use email-service, it will call APIs from Email
 <td>
 @n email_add_message()  
 @n email_update_message()
-@n email_count_message()  
-@n email_delete_message()  
-@n email_delete_all_message_in_mailbox()
+@n email_count_mail()  
+@n email_delete_mail()  
+@n email_delete_all_mails_in_mailbox()
 @n email_clear_mail_data()
 @n email_add_attachment()
 @n email_delete_attachment() 
@@ -95,7 +95,7 @@ Whenever an application wants to use email-service, it will call APIs from Email
 @n email_free_header_info()  
 @n email_get_body_info()
 @n email_free_body_info()
-@n email_get_attachment_info() 
+@n email_get_attachment_data() 
 @n email_free_attachment_info()  
 @n email_get_mail() 
 @n email_modify_mail_flag()
@@ -111,10 +111,10 @@ Whenever an application wants to use email-service, it will call APIs from Email
 @n email_get_mail_flag()
 @n email_free_mail_list()
 @n email_release_mail()
-@n email_retry_send_mail()
-@n email_create_db_full()
+@n email_retry_sending_mail()
+@n email_make_db_full()
 @n email_get_mailbox_name_by_mail_id()
-@n email_cancel_send_mail()
+@n email_cancel_sending_mail()
 @n email_count_message_all_mailboxes()
 @n email_get_latest_unread_mail_id()
 @n email_get_max_mail_count()
@@ -132,7 +132,7 @@ Whenever an application wants to use email-service, it will call APIs from Email
 @n email_get_network_status()
 @n email_send_report()
 @n email_send_saved()
-@n email_get_imap_mailbox_list()
+@n email_sync_imap_mailbox_list()
 @n email_sync_local_activity()
 </td></tr>
  
@@ -166,31 +166,31 @@ Whenever an application wants to use email-service, it will call APIs from Email
 Account Operations are a set of operations to manage email accounts like add, update, delete or get account related details.
 
 Structure:
-emf_account_t 
+email_account_t - refer to doxygen (SLP-SDK: http:/* slp-sdk.sec.samsung.net) */
 <table>
 <tr><td>API</td>
 <td>Return Value / Exceptions</td></tr>
 
-<tr><td>int email_add_account(emf_account_t* account)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param emf_account_t* account should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_add_account(email_account_t* account)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param email_account_t* account should be allocated and deallocated by Application</td></tr>
 
 <tr><td>int email_delete_account(int account_id) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
   
-<tr><td>int email_update_account(int account_id , emf_account_t* new_account) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks:  - Memory for param emf_account_t* new_account should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_update_account(int account_id , email_account_t* new_account) </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks:  - Memory for param email_account_t* new_account should be allocated and deallocated by Application</td></tr>
   
-<tr><td>int email_get_account(int account_id, int pulloption, emf_account_t** account) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory allocation for param account will happen in email_get_account (). To free this memory, application should call email_free_account ()</td></tr>
+<tr><td>int email_get_account(int account_id, int pulloption, email_account_t** account) </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory allocation for param account will happen in email_get_account (). To free this memory, application should call email_free_account ()</td></tr>
   
-<tr><td>int email_get_account_list(emf_account_t** account_list, int* count) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: Memory allocation for param ccount_list will happen in email_get_account_list (). To free this memory, application should call email_free_account () </td></tr>
+<tr><td>int email_get_account_list(email_account_t** account_list, int* count) </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: Memory allocation for param ccount_list will happen in email_get_account_list (). To free this memory, application should call email_free_account () </td></tr>
   
-<tr><td>int email_free_account(emf_account_t** account_list, int count) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<tr><td>int email_free_account(email_account_t** account_list, int count) </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
   
 <tr><td>int email_validate_account(int account_id, unsigned* handle)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
 </table> 
 
 <b>Sample Code</b>
@@ -199,61 +199,57 @@ emf_account_t
 /* Add account */       
 
 /*  Assign values for new account */
-emf_account_t *account = NULL;
+email_account_t *account = NULL;
  
-account = malloc(sizeof(emf_account_t));
-memset(account, 0x00, sizeof(emf_account_t));
+account = malloc(sizeof(email_account_t));
+memset(account, 0x00, sizeof(email_account_t));
  
-account->account_bind_type      = 1;                           
-account->retrieval_mode         = 1;                                                   
-account->use_security           = 1;                                                   
-account->sending_server_type    = EMF_SERVER_TYPE_SMTP; 
-account->sending_port_num       = EMF_SMTP_PORT;                          
-account->sending_auth           = 1;   
-account->flag1 = 2;
-account->account_bind_type      = 1;                           
-account->account_name           = strdup("gmail"); 
-account->display_name           = strdup("Tom"); 
-account->email_addr             = strdup("tom@gmail.com"); 
-account->reply_to_addr          = strdup("tom@gmail.com"); 
-account->return_addr            = strdup("tom@gmail.com"); 
-account->receiving_server_type  = EMF_SERVER_TYPE_POP3; 
-account->receiving_server_addr  = strdup("pop3.gmail.com"); 
-account->port_num               = 995;        
-account->use_security           = 1;                                                   
-account->retrieval_mode         = EMF_IMAP4_RETRIEVAL_MODE_ALL;
-account->user_name              = strdup("tom"); 
-account->password               = strdup("tioimi"); 
-account->sending_server_type    = EMF_SERVER_TYPE_SMTP;                               
-account->sending_server_addr    = strdup("smtp.gmail.com"); 
-account->sending_port_num       = 587;                                                        
-account->sending_security       = 0x02;  
-account->sending_auth           = 1;   
-account->sending_user           = strdup("tom@gmail.com"); 
-account->sending_password       = strdup("tioimi");
-account->pop_before_smtp        = 0;
-account->apop                   = 0;
-account->flag1                  = 2;                
-account->flag2                  = 1; 
-account->preset_account         = 1;       
-account->logo_icon_path         = strdup("Logo Icon Path"); 
-account->target_storage         = 0;                            
-account->options.priority = 3;   
-account->options.keep_local_copy = 0;   
+account->retrieval_mode               = 1;
+account->incoming_server_secure_connection                 = 1;
+account->outgoing_server_type          = EMAIL_SERVER_TYPE_SMTP;
+account->outgoing_server_port_number             = EMAIL_SMTP_PORT;
+account->outgoing_server_need_authentication                 = 1;
+account->account_name                 = strdup("gmail");
+account->display_name                 = strdup("Tom");
+account->user_email_address                   = strdup("tom@gmail.com");
+account->reply_to_addr                = strdup("tom@gmail.com");
+account->return_addr                  = strdup("tom@gmail.com");
+account->incoming_server_type        = EMAIL_SERVER_TYPE_POP3;
+account->incoming_server_address        = strdup("pop3.gmail.com");
+account->incoming_server_port_number                     = 995;
+account->incoming_server_secure_connection                 = 1;
+account->retrieval_mode               = EMAIL_IMAP4_RETRIEVAL_MODE_ALL;
+account->incoming_server_user_name                    = strdup("tom");
+account->password                     = strdup("tioimi");
+account->outgoing_server_type          = EMAIL_SERVER_TYPE_SMTP;
+account->outgoing_server_address          = strdup("smtp.gmail.com");
+account->outgoing_server_port_number             = 587;
+account->outgoing_server_secure_connection             = 0x02;
+account->outgoing_server_need_authentication                 = 1;
+account->outgoing_server_user_name                 = strdup("tom@gmail.com");
+account->sending_password             = strdup("tioimi");
+account->pop_before_smtp              = 0;
+account->incoming_server_requires_apop                         = 0;
+account->flag1                        = 2;
+account->flag2                        = 1;
+account->is_preset_account            = 1;
+account->logo_icon_path               = strdup("Logo Icon Path");
+account->options.priority             = 3;
+account->options.keep_local_copy      = 0;
 account->options.req_delivery_receipt = 0;   
-account->options.req_read_receipt = 0;   
-account->options.download_limit = 0;   
-account->options.block_address = 0;   
-account->options.block_subject = 0;   
-account->options.display_name_from = strdup("Display name from"); 
-account->options.reply_with_body = 0;   
-account->options.forward_with_files = 0;   
-account->options.add_myname_card = 0;   
-account->options.add_signature = 0;   
-account->options.signature= strdup("Signature");    
-account->check_interval = 0;  
+account->options.req_read_receipt     = 0;
+account->options.download_limit       = 0;
+account->options.block_address        = 0;
+account->options.block_subject        = 0;
+account->options.display_name_from    = strdup("Display name from");
+account->options.reply_with_body      = 0;
+account->options.forward_with_files   = 0;
+account->options.add_myname_card      = 0;
+account->options.add_signature        = 0;
+account->options.signature            = strdup("Signature");
+account->check_interval               = 0;
       
-if(EMF_ERROR_NONE != email_add_account(account))
+if(EMAIL_ERROR_NONE != email_add_account(account))
 	/* failure */
 else
 {
@@ -271,10 +267,10 @@ email_free_account(&account, 1);
 @code
 /* Get account */
  
-emf_account_t *account = NULL;
+email_account_t *account = NULL;
 int account_id = 1;		/*  account id to be gotten */
  
-if(EMF_ERROR_NONE != email_get_account(account_id,GET_FULL_DATA,&account))
+if(EMAIL_ERROR_NONE != email_get_account(account_id,GET_FULL_DATA,&account))
 	/* failure */
 else
 	/* success */
@@ -288,23 +284,23 @@ email_free_account(&account, 1);
 @code
 /* Update account */               
 
-emf_account_t *new_account = NULL;
+email_account_t *new_account = NULL;
 int account_id = 1;		/*  account id to be updated */
  
 /*  Get account to be updated */
-if(EMF_ERROR_NONE != email_get_account(account_id,GET_FULL_DATA,&new_account))
+if(EMAIL_ERROR_NONE != email_get_account(account_id,GET_FULL_DATA,&new_account))
 	/* failure */
 else
 	/* success */
  
 /*  Set the new values */
-new_account->flag1 = 1;
-new_account->account_name           = strdup("gmail"); 
-new_account->display_name           = strdup("Tom001");             
+new_account->flag1                   = 1;
+new_account->account_name            = strdup("gmail");
+new_account->display_name            = strdup("Tom001");
 new_account->options.keep_local_copy = 1;   
-new_account->check_interval = 55;  
+new_account->check_interval          = 55;
  
-if(EMF_ERROR_NONE != email_update_account(account_id,new_account))
+if(EMAIL_ERROR_NONE != email_update_account(account_id,new_account))
 	/* failure */
 else
 	/* success */
@@ -320,7 +316,7 @@ email_free_account(&new_account, 1);
 
 int account_id = 1;		/*  account id to be deleted */
  
-if(EMF_ERROR_NONE != email_delete_account(account_id))
+if(EMAIL_ERROR_NONE != email_delete_account(account_id))
       /* failure */
 else
       /* success */
@@ -332,11 +328,11 @@ else
 @code
 /* Get list of accounts */
 
-emf_account_t *account_list = NULL;
+email_account_t *account_list = NULL;
 int count = 0;		
 int i;
  
-if(EMF_ERROR_NONE != email_get_account_list(&account_list,&count))
+if(EMAIL_ERROR_NONE != email_get_account_list(&account_list,&count))
 	/* failure */
 else
 {
@@ -359,7 +355,7 @@ email_free_account(&account_list,count);
 unsigned account_handle = 0;
 int account_id = 1;
  
-if(EMF_ERROR_NONE != email_validate_account(account_id,&account_handle))
+if(EMAIL_ERROR_NONE != email_validate_account(account_id,&account_handle))
 	/* failure */
 else
 	/* success */
@@ -376,52 +372,52 @@ else
 mailbox Operations are a set of operations to manage email mailboxes like add, update, delete or get mailbox related details.
 
 Structure:
-emf_mailbox_t 
+email_mailbox_t - refer to doxygen (SLP-SDK: http:/* slp-sdk.sec.samsung.net) */
 
 <table>
 <tr><td>API</td><td>Return Value / Exceptions</td></tr>
  
-<tr><td>int email_add_mailbox(emf_mailbox_t* new_mailbox, int on_server, unsigned* handle) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: -  Memory for param emf_mailbox_t* new_mailbox should be allocated and deallocated by Application </td></tr>
+<tr><td>int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, unsigned* handle) </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: -  Memory for param email_mailbox_t* new_mailbox should be allocated and deallocated by Application </td></tr>
  
-<tr><td>int email_delete_mailbox(emf_mailbox_t* mailbox, int on_server,  unsigned* handle) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param emf_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_delete_mailbox(email_mailbox_t* mailbox, int on_server,  unsigned* handle) </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param email_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
 
-<tr><td>int email_update_mailbox(emf_mailbox_t*old_mailbox, emf_mailbox_t* new_mailbox)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for params emf_mailbox_t* old_mailbox and  emf_mailbox_t* new_mailbox should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_update_mailbox(email_mailbox_t*old_mailbox, email_mailbox_t* new_mailbox)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for params email_mailbox_t* old_mailbox and  email_mailbox_t* new_mailbox should be allocated and deallocated by Application</td></tr>
 
-<tr><td>int email_get_mailbox_list(int account_id, int local_yn, emf_mailbox_t** mailbox_list, int* count)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory allocation for param mailbox_list will happen in email_get_mailbox_list (). To free this memory application should call email_free_mailbox</td></tr>
+<tr><td>int email_get_mailbox_list(int account_id, int local_yn, email_mailbox_t** mailbox_list, int* count)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory allocation for param mailbox_list will happen in email_get_mailbox_list (). To free this memory application should call email_free_mailbox</td></tr>
  
-<tr><td>int email_get_mailbox_by_name(int account_id, const char *pMailboxName, emf_mailbox_t **pMailbox)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory allocation for param pMailbox will happen in email_get_mailbox_by_name (). To free this memory application should call email_free_mailbox</td></tr>
+<tr><td>int email_get_mailbox_by_name(int account_id, const char *pMailboxName, email_mailbox_t **pMailbox)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory allocation for param pMailbox will happen in email_get_mailbox_by_name (). To free this memory application should call email_free_mailbox</td></tr>
  
-<tr><td>int email_get_child_mailbox_list(int account_id, const char *parent_mailbox,  emf_mailbox_t** mailbox_list, int* count)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory allocation for param mailbox_list will happen in email_get_child_mailbox_list (). To free this memory application should call email_free_mailbox</td></tr>
+<tr><td>int email_get_child_mailbox_list(int account_id, const char *parent_mailbox,  email_mailbox_t** mailbox_list, int* count)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory allocation for param mailbox_list will happen in email_get_child_mailbox_list (). To free this memory application should call email_free_mailbox</td></tr>
  
-<tr><td>int email_get_mailbox_by_mailbox_type(int account_id, emf_mailbox_type_e mailbox_type,  emf_mailbox_t** mailbox)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory allocation for param mailbox_list will happen in email_get_mailbox_by_mailbox_type (). To free this memory application should call email_free_mailbox</td></tr>
+<tr><td>int email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_type_e mailbox_type,  email_mailbox_t** mailbox)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory allocation for param mailbox_list will happen in email_get_mailbox_by_mailbox_type (). To free this memory application should call email_free_mailbox</td></tr>
 </table>
  
 <b>Sample Code</b>
 
 @li Create new mailbox
 @code
-emf_mailbox_t *mailbox = NULL, *new_mailbox = NULL;
+email_mailbox_t *mailbox = NULL, *new_mailbox = NULL;
 unsigned handle = 0;
 int on_server = 0;
  
-mailbox = malloc(sizeof(emf_mailbox_t));
-memset(mailbox, 0x00, sizeof(emf_mailbox_t));
+mailbox = malloc(sizeof(email_mailbox_t));
+memset(mailbox, 0x00, sizeof(email_mailbox_t));
  
-mailbox->name           = strdup("Personal"); 
+mailbox->mailbox_name           = strdup("Personal"); 
 mailbox->alias          = strdup("selfuse");            
 mailbox->account_id     = 1; 
 mailbox->local          = on_server; 
 mailbox->mailbox_type    = 7;  
       
 /* create new mailbox */           
-if(EMF_ERROR_NONE != email_add_mailbox(mailbox,on_server,&handle))
+if(EMAIL_ERROR_NONE != email_add_mailbox(mailbox,on_server,&handle))
       /* failure */
 else
       /* success   */
@@ -431,23 +427,23 @@ else
 
 @li Update and Delete mailbox
 @code
-emf_mailbox_t *mailbox = NULL, *new_mailbox = NULL;
+email_mailbox_t *mailbox = NULL, *new_mailbox = NULL;
 int on_server = 0;
 unsigned handle = 0;
 
-new_mailbox = malloc(sizeof(emf_mailbox_t));
-memset(new_mailbox, 0x00, sizeof(emf_mailbox_t));
+new_mailbox = malloc(sizeof(email_mailbox_t));
+memset(new_mailbox, 0x00, sizeof(email_mailbox_t));
  
-new_mailbox->name =  strdup("Personal001");
+new_mailbox->mailbox_name =  strdup("Personal001");
  
 /* update mailbox */
-if(EMF_ERROR_NONE != email_update_mailbox(mailbox,new_mailbox))
+if(EMAIL_ERROR_NONE != email_update_mailbox(mailbox,new_mailbox))
       /* failure */
 else
       /* success   */
  
 /* delete mailbox */
-if(EMF_ERROR_NONE != email_delete_mailbox(mailbox,on_server,&handle))
+if(EMAIL_ERROR_NONE != email_delete_mailbox(mailbox,on_server,&handle))
       /* failure */
 else
       /* success   */
@@ -461,11 +457,11 @@ email_free_mailbox(&new_mailbox, 1);
 @code
 int account_id = 1;
 int local_yn = 0;
-emf_mailbox_t* mailbox_list = NULL;
+email_mailbox_t* mailbox_list = NULL;
 int count = 0;
  
 /*get list of mailboxes */
-if(EMF_ERROR_NONE != email_get_mailbox_list(account_id, local_yn, &mailbox_list, &count))
+if(EMAIL_ERROR_NONE != email_get_mailbox_list(account_id, local_yn, &mailbox_list, &count))
       /* failure */
 else
 {
@@ -485,116 +481,116 @@ else
 Message Operations are a set of operations to manage email messages like add, update, delete or get message related details.
 
 Structure:
-emf_mail_t 
+email_mail_data_t
 <table>
 <tr><td>API</td>
 <td>Return Value / Exceptions</td></tr>
  
-<tr><td>int email_add_mail(emf_mail_data_t *input_mail_data, emf_attachment_data_t *input_attachment_data_list, int input_attachment_count, emf_meeting_request_t* input_meeting_request, int input_from_eas)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: -  Memory for params emf_mail_data_t* input_mail_data and emf_attachment_data_t *input_attachment_data_list and emf_meeting_request_t* input_meeting_request should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_add_mail(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t* input_meeting_request, int input_from_eas)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: -  Memory for params email_mail_data_t* input_mail_data and email_attachment_data_t *input_attachment_data_list and email_meeting_request_t* input_meeting_request should be allocated and deallocated by Application</td></tr>
  
-<tr><td>int email_update_mail(emf_mail_data_t *input_mail_data, emf_attachment_data_t *input_attachment_data_list, int input_attachment_count, emf_meeting_request_t* input_meeting_request, int input_from_eas)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: -  Memory for params emf_mail_data_t* input_mail_data and emf_attachment_data_t *input_attachment_data_list and emf_meeting_request_t* input_meeting_request should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_update_mail(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t* input_meeting_request, int input_from_eas)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: -  Memory for params email_mail_data_t* input_mail_data and email_attachment_data_t *input_attachment_data_list and email_meeting_request_t* input_meeting_request should be allocated and deallocated by Application</td></tr>
  
-<tr><td>int email_count_message(emf_mailbox_t* mailbox, int* total, int* unseen)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param emf_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_count_mail(email_mailbox_t* mailbox, int* total, int* unseen)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param email_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
 
-<tr><td>int email_delete_message(emf_mailbox_t* mailbox, int *mail_ids, int num, int from_server)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for params int *mail_ids and mf_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_delete_mail(email_mailbox_t* mailbox, int *mail_ids, int num, int from_server)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for params int *mail_ids and mf_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
  
-<tr><td>int email_delete_all_message_in_mailbox(emf_mailbox_t* mailbox, int from_server)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param mf_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_delete_all_mails_in_mailbox(email_mailbox_t* mailbox, int from_server)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param mf_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
  
 <tr><td>int email_clear_mail_data()  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
 
-<tr><td>int email_add_attachment(emf_mailbox_t* mailbox, int mail_id, emf_attachment_info_t* attachment)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param mf_mailbox_t* mailbox and mf_attachment_info_t* attachment hould be allocated and deallocated by Application</td></tr>
+<tr><td>int email_add_attachment(email_mailbox_t* mailbox, int mail_id, email_attachment_data_t* attachment)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param mf_mailbox_t* mailbox and mf_attachment_info_t* attachment hould be allocated and deallocated by Application</td></tr>
  
-<tr><td>int email_delete_attachment(emf_mailbox_t * mailbox, int mail_id, const char * attachment_id)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param emf_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_delete_attachment(email_mailbox_t * mailbox, int mail_id, const char * attachment_id)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param email_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
  
-<tr><td>int email_get_attachment_info(emf_mailbox_t* mailbox, int mail_id, const char* attachment_id, emf_attachment_info_t** attachment)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure.@n Remarks:
--# Memory for param emf_mailbox_t* mailbox should be allocated and deallocated by Application 
--# Memory allocation for param emf_attachment_info_t** attachment will happen in email_get_attachment_info (). To free this memory, application should call email_free_attachment_info () </td></tr>
+<tr><td>int email_get_attachment_data(email_mailbox_t* mailbox, int mail_id, const char* attachment_id, email_attachment_data_t** attachment)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure.@n Remarks:
+-# Memory for param email_mailbox_t* mailbox should be allocated and deallocated by Application 
+-# Memory allocation for param email_attachment_data_t** attachment will happen in email_get_attachment_data (). To free this memory, application should call email_free_attachment_info () </td></tr>
  
-<tr><td>int email_free_attachment_info(emf_attachment_info_t** atch_info)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure.</td></tr>
+<tr><td>int email_free_attachment_info(email_attachment_data_t** atch_info)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure.</td></tr>
  
-<tr><td>int email_modify_mail_flag(int mail_id, emf_mail_flag_t new_flag, int onserver)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure.</td></tr>
+<tr><td>int email_modify_mail_flag(int mail_id, email_mail_flag_t new_flag, int onserver)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure.</td></tr>
  
 <tr><td>int email_modify_seen_flag(int *mail_ids, int num, int seen_flag, int onserver)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param int *mail_ids should be allocated and deallocated by Application</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param int *mail_ids should be allocated and deallocated by Application</td></tr>
 
-<tr><td>int email_modify_extra_mail_flag(int mail_id, emf_extra_flag_t new_flag)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<tr><td>int email_modify_extra_mail_flag(int mail_id, email_extra_flag_t new_flag)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
-<tr><td>int email_move_mail_to_mailbox(int *mail_ids, int num, emf_mailbox_t* new_mailbox)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for params int *mail_ids and emf_mailbox_t* new_mailbox should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_move_mail_to_mailbox(int *mail_ids, int num, email_mailbox_t* new_mailbox)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for params int *mail_ids and email_mailbox_t* new_mailbox should be allocated and deallocated by Application</td></tr>
  
-<tr><td>int email_move_all_mails_to_mailbox(emf_mailbox_t* src_mailbox, emf_mailbox_t* new_mailbox)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for params emf_mailbox_t* src_mailbox and emf_mailbox_t* new_mailbox should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_move_all_mails_to_mailbox(email_mailbox_t* src_mailbox, email_mailbox_t* new_mailbox)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for params email_mailbox_t* src_mailbox and email_mailbox_t* new_mailbox should be allocated and deallocated by Application</td></tr>
  
-<tr><td>int email_count_message_with_draft_flag(emf_mailbox_t* mailbox, int* total)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param emf_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_count_message_with_draft_flag(email_mailbox_t* mailbox, int* total)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param email_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
  
-<tr><td>int email_count_message_on_sending(emf_mailbox_t* mailbox, int* total)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param emf_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
+<tr><td>int email_count_message_on_sending(email_mailbox_t* mailbox, int* total)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param email_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
   
-<tr><td>int email_get_mailbox_list(int account_id, emf_mailbox_t** mailbox_list, int* count ) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: - Memory allocation for param emf_mailbox_t** mailbox_list will happen in email_get_mailbox_list (). To free this memory, application should call email_free_mailbox ()</td></tr>
+<tr><td>int email_get_mailbox_list(int account_id, email_mailbox_t** mailbox_list, int* count ) </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory allocation for param email_mailbox_t** mailbox_list will happen in email_get_mailbox_list (). To free this memory, application should call email_free_mailbox ()</td></tr>
  
-<tr><td>int email_free_mailbox(emf_mailbox_t** mailbox_list, int count)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<tr><td>int email_free_mailbox(email_mailbox_t** mailbox_list, int count)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
    
-<tr><td>int email_get_mail_flag(int account_id, int mail_id, emf_mail_flag_t* mail_flag)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<tr><td>int email_get_mail_flag(int account_id, int mail_id, email_mail_flag_t* mail_flag)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
-<tr><td>int email_retry_send_mail( int mail_id, int timeout_in_sec)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<tr><td>int email_retry_sending_mail( int mail_id, int timeout_in_sec)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
-<tr><td>int email_create_db_full()</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<tr><td>int email_make_db_full()</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
 <tr><td>int email_get_mailbox_name_by_mail_id(int mail_id, char **pMailbox_name)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
-<tr><td>int email_cancel_send_mail( int mail_id)  </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<tr><td>int email_cancel_sending_mail( int mail_id)  </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
-<tr><td>int email_count_message_all_mailboxes(emf_mailbox_t* mailbox, int* total, int* unseen) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<tr><td>int email_count_message_all_mailboxes(email_mailbox_t* mailbox, int* total, int* unseen) </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
 <tr><td>int email_get_latest_unread_mail_id(int account_id, int *pMailID) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
 <tr><td>int email_get_max_mail_count(int *Count) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
 <tr><td>int email_get_disk_space_usage(unsigned long *total_size)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
 </table>
  
 <b>Sample Code</b>
 
 @li Add, Update, Count and Delete message
 @code
-emf_mailbox_t *mailbox = NULL;
+email_mailbox_t *mailbox = NULL;
 int on_server = 0, account_id = 0, mail_id = 0;
 char *pFilePath = "/tmp/mail.txt";
 int                    i = 0;
 int                    account_id = 0;
 int                    from_eas = 0;
 int                    attachment_count = 0;
-int                    err = EMF_ERROR_NONE;
+int                    err = EMAIL_ERROR_NONE;
 char                   arg[50] = { 0 , };
 char                  *body_file_path = "/opt/data/email/.emfdata/tmp/mail.txt";
-emf_mailbox_t         *mailbox_data = NULL;
-emf_mail_data_t       *test_mail_data = NULL;
-emf_attachment_data_t *attachment_data = NULL;
-emf_meeting_request_t *meeting_req = NULL;
+email_mailbox_t         *mailbox_data = NULL;
+email_mail_data_t       *test_mail_data = NULL;
+email_attachment_data_t *attachment_data = NULL;
+email_meeting_request_t *meeting_req = NULL;
 FILE                  *body_file;
 
 printf("\n > Enter account id : ");
@@ -606,8 +602,8 @@ scanf("%s", arg);
 
 email_get_mailbox_by_name(account_id, arg, &mailbox_data);
 
-test_mail_data = malloc(sizeof(emf_mail_data_t));
-memset(test_mail_data, 0x00, sizeof(emf_mail_data_t));
+test_mail_data = malloc(sizeof(email_mail_data_t));
+memset(test_mail_data, 0x00, sizeof(email_mail_data_t));
 
 printf("\n From EAS? [0/1]> ");
 scanf("%d", &from_eas);
@@ -616,7 +612,7 @@ test_mail_data->account_id        = account_id;
 test_mail_data->save_status       = 1;
 test_mail_data->flags_seen_field  = 1;
 test_mail_data->file_path_plain   = strdup(body_file_path);
-test_mail_data->mailbox_name      = strdup(mailbox_data->name);
+test_mail_data->mailbox_name      = strdup(mailbox_data->mailbox_name);
 test_mail_data->mailbox_type      = mailbox_data->mailbox_type;
 test_mail_data->full_address_from = strdup("<test1@test.com>");
 test_mail_data->full_address_to   = strdup("<test2@test.com>");
@@ -632,7 +628,7 @@ fflush(body_file);
  fclose(body_file);
 
 
-if((err = email_add_mail(test_mail_data, attachment_data, attachment_count, meeting_req, from_eas)) != EMF_ERROR_NONE)
+if((err = email_add_mail(test_mail_data, attachment_data, attachment_count, meeting_req, from_eas)) != EMAIL_ERROR_NONE)
 	printf("email_add_mail failed. [%d]\n", err);
 else
 	printf("email_add_mail success.\n");
@@ -642,7 +638,7 @@ else
 /*  And change values you want to update. */
 mail->head->subject = strdup("save.mailbox again...");
  
-if(EMF_ERROR_NONE != email_update_message(mail_id,mail))
+if(EMAIL_ERROR_NONE != email_update_message(mail_id,mail))
 	/* failure */
 else
 	/* success   */
@@ -651,7 +647,7 @@ else
 int total = 0, unseen = 0;
  
 /*  Get the total number of mails and the number of unseen mails */
-if(EMF_ERROR_NONE != email_count_message(mailbox,&total,&unseen))
+if(EMAIL_ERROR_NONE != email_count_mail(mailbox,&total,&unseen))
 	/* failure */
 else
 	/* success   */
@@ -659,7 +655,7 @@ else
 /* Delete message */
 int *mail_ids, num = 0;
  
-if(EMF_ERROR_NONE != email_delete_message(mailbox,mail_ids,num,on_server))
+if(EMAIL_ERROR_NONE != email_delete_mail(mailbox,mail_ids,num,on_server))
 	/* failure */
 else
 	/* success   */
@@ -668,16 +664,16 @@ else
 @li Delete all message in a specific mailbox
 @code 
 /* Delete all message in mailbox */
-emf_mailbox_t *mailbox = NULL;
+email_mailbox_t *mailbox = NULL;
 int on_server = 0;
 
-mailbox = malloc(sizeof(emf_mailbox_t));
-memset(mailbox, 0x00, sizeof(emf_mailbox_t));
+mailbox = malloc(sizeof(email_mailbox_t));
+memset(mailbox, 0x00, sizeof(email_mailbox_t));
 
 mailbox->account_id = 1;
-mailbox->name = strdup("INBOX");		
+mailbox->mailbox_name = strdup("INBOX");		
 
-if( EMF_ERROR_NONE != email_delete_all_message_in_mailbox(mailbox, on_server))
+if( EMAIL_ERROR_NONE != email_delete_all_mails_in_mailbox(mailbox, on_server))
       /* failure */
 else
 
@@ -688,7 +684,7 @@ else
 @li Clear all messages
 @code
 /* clear mail data */
-if(EMF_ERROR_NONE !=  email_clear_mail_data())
+if(EMAIL_ERROR_NONE !=  email_clear_mail_data())
       /* failure */
 else
       /* success   */
@@ -696,12 +692,12 @@ else
 
 @li Modify flag
 @code
-emf_mail_flag_t newflag = {0};
+email_mail_flag_t newflag = {0};
 int mail_id = 0;
 int on_server = 0;
  
 /* Modify mail flag*/
-if(EMF_ERROR_NONE != email_modify_mail_flag(mail_id,newflag,on_server))
+if(EMAIL_ERROR_NONE != email_modify_mail_flag(mail_id,newflag,on_server))
        /* failure */
 else
        /* success   */
@@ -712,14 +708,14 @@ int seen_flag = 0;
 int on_server = 0;
  
 /* Modify seen flag*/
-if(EMF_ERROR_NONE != email_modify_seen_flag(mail_ids, num, seen_flag,on_server))
+if(EMAIL_ERROR_NONE != email_modify_seen_flag(mail_ids, num, seen_flag,on_server))
        /* failure */
 else
        /* success   */
  
 /* Modify extra flag*/
 int mail_id = 1;
-if(EMF_ERROR_NONE != email_modify_extra_mail_flag(mail_id, newflag))
+if(EMAIL_ERROR_NONE != email_modify_extra_mail_flag(mail_id, newflag))
        /* failure */
 else
        /* success   */
@@ -729,17 +725,17 @@ else
 @li Move mail
 @code 
 int mail_id[],account_id = 1;
-emf_mailbox_t *mailbox = NULL;
+email_mailbox_t *mailbox = NULL;
 char *mailbox_name = "INBOX";
  
-mailbox = malloc(sizeof(emf_mailbox_t));
-memset(mailbox, 0x00, sizeof(emf_mailbox_t));
+mailbox = malloc(sizeof(email_mailbox_t));
+memset(mailbox, 0x00, sizeof(email_mailbox_t));
  
 mailbox->account_id = account_id;
-mailbox->name = mailbox_name;
+mailbox->mailbox_name = mailbox_name;
  
 /* Move mail to given mailbox*/
-if(EMF_ERROR_NONE !=  email_move_mail_to_mailbox(/*mail_id*/,/*num*/,mailbox))
+if(EMAIL_ERROR_NONE !=  email_move_mail_to_mailbox(/*mail_id*/,/*num*/,mailbox))
       /* failure */
 else
       /* success   */
@@ -747,24 +743,24 @@ else
 /* free mailbox*/
 email_free_mailbox(&mailbox,1);
  
-emf_mailbox_t *src_mailbox = NULL,*dest_mailbox = NULL;
+email_mailbox_t *src_mailbox = NULL,*dest_mailbox = NULL;
 int src_account_id = 0, dest_account_id = 0;
 char * src_mailbox_name = NULL, *dest_mailbox_name = NULL;
  
-src_mailbox = malloc(sizeof(emf_mailbox_t));
-memset(src_mailbox, 0x00, sizeof(emf_mailbox_t));
+src_mailbox = malloc(sizeof(email_mailbox_t));
+memset(src_mailbox, 0x00, sizeof(email_mailbox_t));
  
-dest_mailbox = malloc(sizeof(emf_mailbox_t));
-memset(dest_mailbox, 0x00, sizeof(emf_mailbox_t));
+dest_mailbox = malloc(sizeof(email_mailbox_t));
+memset(dest_mailbox, 0x00, sizeof(email_mailbox_t));
  
 src_mailbox->account_id = /*src_account_id*/;
-src_mailbox->name = /*src_mailbox_name*/
+src_mailbox->mailbox_name = /*src_mailbox_name*/
  
 dest_mailbox->account_id = /*dest_account_id*/;
-dest_mailbox->name = /*dest_mailbox_name*/
+dest_mailbox->mailbox_name = /*dest_mailbox_name*/
  
 /*move all mails to given mailbox*/
-if(EMF_ERROR_NONE !=  email_move_all_mails_to_mailbox(src_mailbox,dest_mailbox))
+if(EMAIL_ERROR_NONE !=  email_move_all_mails_to_mailbox(src_mailbox,dest_mailbox))
       /* failure */
 else
       /* success   */
@@ -774,17 +770,17 @@ email_free_mailbox(&src_mailbox,1);
 email_free_mailbox(&dest_mailbox,1);
  
 int account_id = 0, total = 0;
-emf_mailbox_t *mailbox = NULL;
+email_mailbox_t *mailbox = NULL;
 char *mailbox_name = NULL;
  
-mailbox = malloc(sizeof(emf_mailbox_t));
-memset(mailbox, 0x00, sizeof(emf_mailbox_t));
+mailbox = malloc(sizeof(email_mailbox_t));
+memset(mailbox, 0x00, sizeof(email_mailbox_t));
  
 mailbox->account_id = /*account_id*/;
-mailbox->name = /*mailbox_name*/
+mailbox->mailbox_name = /*mailbox_name*/
  
 /*count of draft msgs*/
-if(EMF_ERROR_NONE !=  email_count_message_with_draft_flag(mailbox,&total))
+if(EMAIL_ERROR_NONE !=  email_count_message_with_draft_flag(mailbox,&total))
       /* failure */
 else
       /* success   */
@@ -796,17 +792,17 @@ email_free_mailbox(&mailbox,1);
 @li Count of msgs sent from given folde
 @code
 int account_id = 0, total = 0;
-emf_mailbox_t *mailbox = NULL;
+email_mailbox_t *mailbox = NULL;
 char *mailbox_name = NULL;
  
-mailbox = malloc(sizeof(emf_mailbox_t));
-memset(mailbox, 0x00, sizeof(emf_mailbox_t));
+mailbox = malloc(sizeof(email_mailbox_t));
+memset(mailbox, 0x00, sizeof(email_mailbox_t));
  
 mailbox->account_id = /*account_id*/;
-mailbox->name = /*mailbox_name*/
+mailbox->mailbox_name = /*mailbox_name*/
  
 /*count of msgs sent from given mailbox*/
-if(EMF_ERROR_NONE != email_count_message_on_sending(mailbox,&total))
+if(EMAIL_ERROR_NONE != email_count_message_on_sending(mailbox,&total))
       /* failure */
 else
       /* success   */
@@ -820,11 +816,11 @@ email_free_mailbox(&mailbox,1);
 @li Get mailbox list 
 @code
  
-emf_mailbox_t* mailbox_list = NULL;
+email_mailbox_t* mailbox_list = NULL;
 int account_id = 1, count = 0;
  
 /* Get mailbox list*/
-if(EMF_ERROR_NONE != email_get_mailbox_list(account_id,&mailbox_list,&count))
+if(EMAIL_ERROR_NONE != email_get_mailbox_list(account_id,&mailbox_list,&count))
       /* failure */
 else
       /* success   */
@@ -849,9 +845,9 @@ free(pMailbox_name);
 @li Cancel sending mail
 @code 
  
-/* email_cancel_send_mail*/
+/* email_cancel_sending_mail*/
 int mail_id = 1;	/*  mail id of a mail which is on sending */
-err = email_cancel_send_mail(mail_id);
+err = email_cancel_sending_mail(mail_id);
  
 @endcode
 
@@ -860,15 +856,15 @@ err = email_cancel_send_mail(mail_id);
 @li Get the Total count and Unread count of all mailboxes
 @code 
 /* Get the Total count and Unread count of all mailboxes */
-emf_mailbox_t* mailbox = NULL;
+email_mailbox_t* mailbox = NULL;
 int account_id = 1, total = 0, unseen = 0;
 char *mailbox_name = NULL;
  
-mailbox = malloc(sizeof(emf_mailbox_t));
-memset(mailbox, 0x00, sizeof(emf_mailbox_t));
+mailbox = malloc(sizeof(email_mailbox_t));
+memset(mailbox, 0x00, sizeof(email_mailbox_t));
  
 mailbox->account_id = /*account_id*/;
-mailbox->name = /*mailbox_name*/
+mailbox->mailbox_name = /*mailbox_name*/
  
 err = email_count_message_all_mailboxes(mailbox,&total,&unseen);
  
@@ -889,44 +885,44 @@ err = email_count_message_all_mailboxes(mailbox,&total,&unseen);
 Network Operations are a set of operations to manage email send, receive and cancel related details.
 
 Structure:
-emf_option_t 
+email_option_t - refer to doxygen (SLP-SDK: http:/* slp-sdk.sec.samsung.net) */
 <table>
 <tr><td>API</td>
 <td>Return Value / Exceptions</td></tr>
  
-<tr><td>int email_send_mail( emf_mailbox_t* mailbox, int mail_id, emf_option_t* sending_option, unsigned* handle)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: 
+<tr><td>int email_send_mail( email_mailbox_t* mailbox, int mail_id, email_option_t* sending_option, unsigned* handle)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: 
 -# Memory allocation and de-allocation for input param is to be done by application.</td></tr>
  
-<tr><td>int email_sync_header(emf_mailbox_t* mailbox, unsigned* handle)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks:
+<tr><td>int email_sync_header(email_mailbox_t* mailbox, unsigned* handle)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks:
 -# Memory allocation and de-allocation for input param is to be done by application.</td></tr>
  
-<tr><td>int email_download_body(emf_mailbox_t* mailbox, int mail_id, int with_attachment, unsigned* handle) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks:
+<tr><td>int email_download_body(email_mailbox_t* mailbox, int mail_id, int with_attachment, unsigned* handle) </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks:
 -# Memory allocation and de-allocation for input param is to be done by application.</td></tr>
  
-<tr><td>int email_download_attachment(emf_mailbox_t* mailbox, int mail_id, const char* nth,  unsigned* handle)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure.</td></tr>
+<tr><td>int email_download_attachment(email_mailbox_t* mailbox, int mail_id, const char* nth,  unsigned* handle)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure.</td></tr>
 
 <tr><td>int email_cancel_job(int account_id, int handle)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure.</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure.</td></tr>
  
-<tr><td>int email_get_pending_job(emf_action_t action, int account_id, int mail_id, emf_event_status_type_t * status)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure.</td></tr>
+<tr><td>int email_get_pending_job(email_action_t action, int account_id, int mail_id, email_event_status_type_t * status)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure.</td></tr>
  
 <tr><td>void email_get_network_status(int* on_sending, int* on_receiving) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
-<tr><td>int email_send_saved(int account_id, emf_option_t* sending_option, unsigned* handle)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks:
+<tr><td>int email_send_saved(int account_id, email_option_t* sending_option, unsigned* handle)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks:
 -# Memory allocation and de-allocation for input param is to be done by application.</td></tr>
  
-<tr><td>int email_get_imap_mailbox_list(int account_id, const char* mailbox, unsigned* handle)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure.</td></tr>
+<tr><td>int email_sync_imap_mailbox_list(int account_id, const char* mailbox, unsigned* handle)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure.</td></tr>
  
 <tr><td>int email_sync_local_activity(int account_id)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure.</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure.</td></tr>
 </table>
 
 <b>Sample Code</b>
@@ -938,16 +934,16 @@ emf_option_t
 @li Download header of new emails from mail server
 @code
 /* Download header of new emails from mail server*/
-emf_mailbox_t mbox;
+email_mailbox_t mailbox;
 int account_id = 1;
-int err = EMF_ERROR_NONE;
+int err = EMAIL_ERROR_NONE;
 unsigned handle = 0;
  
-memset(&mbox, 0x00, sizeof(emf_mailbox_t));
+memset(&mailbox, 0x00, sizeof(email_mailbox_t));
  
-mbox.account_id = account_id;
-mbox.name = strdup("INBOX");
-err = email_sync_header (&mbox,&handle);
+mailbox.account_id = account_id;
+mailbox.mailbox_name = strdup("INBOX");
+err = email_sync_header (&mailbox,&handle);
 @endcode
 
 
@@ -955,29 +951,29 @@ err = email_sync_header (&mbox,&handle);
 @code
  
 /*Download email body from server*/
-emf_mailbox_t mbox;
+email_mailbox_t mailbox;
 int mail_id = 1;
 int account_id = 1;
 int handle = 0;
-int err = EMF_ERROR_NONE;
+int err = EMAIL_ERROR_NONE;
  
-memset(&mailbox, 0x00, sizeof(emf_mailbox_t));
-mbox.account_id = account_id;
-mbox.name = strdup("INBOX");
-err= email_download_body (&mbox,mail_id,0,&handle);
+memset(&mailbox, 0x00, sizeof(email_mailbox_t));
+mailbox.account_id = account_id;
+mailbox.mailbox_name = strdup("INBOX");
+err= email_download_body (&mailbox,mail_id,0,&handle);
  
 @li Download a email nth-attachment from server
 @code
 /*Download a email nth-attachment from server*/
-emf_mailbox_t mailbox;
+email_mailbox_t mailbox;
 int mail_id = 1;
 int account_id = 1;     
 char arg[50]; /* Input attachment number need to be download */
 unsigned handle = 0;
-int err = EMF_ERROR_NONE;
+int err = EMAIL_ERROR_NONE;
  
-memset(&mailbox, 0x00, sizeof(emf_mailbox_t));
-mailbox.name = "INBOX";
+memset(&mailbox, 0x00, sizeof(email_mailbox_t));
+mailbox.mailbox_name = "INBOX";
 mailbox.account_id = account_id;
 err=email_download_attachment(&mailbox,mail_id,arg,&handle);
 @endcode
@@ -993,43 +989,43 @@ err=email_download_attachment(&mailbox,mail_id,arg,&handle);
 Rule Operations are a set of operations to manage email rules like add, get, delete or update rule related details.
 
 Structure:
-emf_rule_t
+email_rule_t- refer to doxygen (SLP-SDK: http:/* slp-sdk.sec.samsung.net) */
 <table>
 <tr><td>API</td>
 <td>Return Value / Exceptions</td></tr>
  
-<tr><td>int email_get_rule(int filter_id, emf_rule_t** filtering_set)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks: 
--# Memory allocation for the param emf_rule_t** filtering_set will be done in this api.
+<tr><td>int email_get_rule(int filter_id, email_rule_t** filtering_set)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: 
+-# Memory allocation for the param email_rule_t** filtering_set will be done in this api.
 -# De-allocation is to be done by application.</td></tr>
  
-<tr><td>int email_get_rule_list(emf_rule_t** filtering_set, int* count)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks:
--# Memory allocation for the param emf_rule_t** filtering_set will be done in this api.
+<tr><td>int email_get_rule_list(email_rule_t** filtering_set, int* count)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks:
+-# Memory allocation for the param email_rule_t** filtering_set will be done in this api.
 -# De-allocation is to be done by application.</td></tr>
  
-<tr><td>int email_add_rule(emf_rule_t* filtering_set) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks:
+<tr><td>int email_add_rule(email_rule_t* filtering_set) </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks:
 -# Memory allocation and de-allocation is to be done by application.
 -# Use email_free_rule to free allocated memory.</td></tr>
  
-<tr><td>int email_update_rule(int filter_id, emf_rule_t* new_set) </td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure@n Remarks:
+<tr><td>int email_update_rule(int filter_id, email_rule_t* new_set) </td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks:
 -# Memory allocation and de-allocation is to be done by application.</td></tr>
 -# Use email_free_rule to free allocated memory.
  
 <tr><td>int email_delete_rule(int filter_id)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure.</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure.</td></tr>
  
-<tr><td>int email_free_rule(emf_rule_t** filtering_set, int count)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<tr><td>int email_free_rule(email_rule_t** filtering_set, int count)</td>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
 </table>
 
 <b>Sample Code</b>
 @li Filter Operation
 @code
-int err = EMF_ERROR_NONE;
-emf_rule_t*  rule = NULL;
+int err = EMAIL_ERROR_NONE;
+email_rule_t*  rule = NULL;
 int filter_id = 1;
  
 /* Get a information of filtering*/
@@ -1073,23 +1069,23 @@ And it MUST finalize IPC proxy and disconnect to the DB if the application doesn
 <td>Return Value / Exceptions</td></tr>
  
 <tr><td>int email_init_storage(void)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
 <tr><td>int email_open_db(void)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure
 @n Remarks:
 @n Application should call email_close_db once db operation is over</td></tr>
  
 <tr><td>int email_close_db(void)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure
 @n Remarks: - 
 @n This API should be called only if email_open_db () is called.</td></tr>
  
 <tr><td>int email_service_begin(void)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure</td></tr>
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
 <tr><td>int email_service_end(void)</td>
-<td>Returns EMF_ERROR_NONE on success or negative value on failure
+<td>Returns EMAIL_ERROR_NONE on success or negative value on failure
 @n Remarks:
 @n This API should be called only if email_service_begin () is called.</td></tr>
 </table>
@@ -1097,16 +1093,16 @@ And it MUST finalize IPC proxy and disconnect to the DB if the application doesn
 <b>Sample Code</b>
 @li Initialize and Finalize Email MAPI Layer
 @code
-int err = EMF_ERROR_NONE;
+int err = EMAIL_ERROR_NONE;
  
 /*  Initialize Email MAPI Layer before calling other MAPIs */
-if(EMF_ERROR_NONE == email_service_begin())
+if(EMAIL_ERROR_NONE == email_service_begin())
 {
-	if(EMF_ERROR_NONE != email_open_db())
+	if(EMAIL_ERROR_NONE != email_open_db())
 	{
 		return false;
 	}
-	if(EMF_ERROR_NONE != email_init_storage())      
+	if(EMAIL_ERROR_NONE != email_init_storage())      
 	{
 		return false;
 	}
@@ -1130,7 +1126,7 @@ err = email_service_end();
 <h1 class="pg">System Configuration</h1>
 	<h2 class="pg">Files to be included</h2>
 email-api.h
-@n Emf_Mapi_Types.h
+@n email-types.h
 
 	<h2 class="pg">System Initialization and De-Initialization</h2>
 email_service_begin is used to initialize email-service at boot time.

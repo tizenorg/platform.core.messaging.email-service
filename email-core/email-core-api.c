@@ -54,7 +54,7 @@ INTERNAL_FUNC int emcore_init(int *err_code)
 	EM_DEBUG_FUNC_BEGIN();
 
 	if (err_code != NULL) {
-		*err_code = EMF_ERROR_NONE;
+		*err_code = EMAIL_ERROR_NONE;
 	}
 
 	mail_link(&imapdriver);  /*  link in the imap driver  */
@@ -87,7 +87,7 @@ INTERNAL_FUNC int emcore_init(int *err_code)
 	mail_parameters(NIL, SET_CLOSETIMEOUT , (void *)30);
 
 	if (err_code)
-		*err_code = EMF_ERROR_NONE;
+		*err_code = EMAIL_ERROR_NONE;
 
     return true;
 }

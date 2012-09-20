@@ -65,19 +65,19 @@ static int _get_network_status(int *network_status)
 	int value = 0;
 
 	if(!network_status) {
-		EM_DEBUG_EXCEPTION("EMF_ERROR_INVALID_PARAM");
-		return EMF_ERROR_INVALID_PARAM;
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
 	if (vconf_get_int(VCONFKEY_NETWORK_STATUS, &value)) {
 		EM_DEBUG_EXCEPTION("Failed vconf_get_int [VCONFKEY_NETWORK_STATUS]");
-		return EMF_ERROR_SYSTEM_FAILURE;
+		return EMAIL_ERROR_SYSTEM_FAILURE;
 	}
 
 	*network_status = value;
 
 	EM_DEBUG_FUNC_END("network_status [%d]", value);
-	return EMF_ERROR_NONE;
+	return EMAIL_ERROR_NONE;
 }
 
 /* Check code for SIM status */
@@ -87,19 +87,19 @@ static int  _get_sim_status(int *sim_status)
 	int value;
 
 	if(!sim_status) {
-		EM_DEBUG_EXCEPTION("EMF_ERROR_INVALID_PARAM");
-		return EMF_ERROR_INVALID_PARAM;
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
 	if (vconf_get_int(VCONFKEY_TELEPHONY_SIM_SLOT, &value)  != 0) {
 		EM_DEBUG_EXCEPTION("Failed vconf_get_int [VCONFKEY_TELEPHONY_SIM_SLOT]");
-		return EMF_ERROR_SYSTEM_FAILURE;
+		return EMAIL_ERROR_SYSTEM_FAILURE;
 	}
 
 	*sim_status = value;
 
 	EM_DEBUG_FUNC_END("status[%d]", value);
-	return EMF_ERROR_NONE;
+	return EMAIL_ERROR_NONE;
 }
 
 static int _get_wifi_status(int *wifi_status)
@@ -109,19 +109,19 @@ static int _get_wifi_status(int *wifi_status)
 	int value;
 
 	if(!wifi_status) {
-		EM_DEBUG_EXCEPTION("EMF_ERROR_INVALID_PARAM");
-		return EMF_ERROR_INVALID_PARAM;
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
 	if (vconf_get_int(VCONFKEY_WIFI_STATE, &value)  != 0) {
 		EM_DEBUG_EXCEPTION("vconf_get_int failed");
-		return EMF_ERROR_SYSTEM_FAILURE;
+		return EMAIL_ERROR_SYSTEM_FAILURE;
 	}
 
 	*wifi_status = value;
 
 	EM_DEBUG_FUNC_END("status[%d]", *wifi_status);
-	return EMF_ERROR_NONE;
+	return EMAIL_ERROR_NONE;
 }
 
 
@@ -131,35 +131,35 @@ INTERNAL_FUNC int emnetwork_check_network_status(int *err_code)
 	int network_status = 0;
 	int sim_status     = VCONFKEY_TELEPHONY_SIM_UNKNOWN;
 	int wifi_status    = 0;
-	int err            = EMF_ERROR_NONE;
+	int err            = EMAIL_ERROR_NONE;
 	int ret            = false;
 
-	if ( (err = _get_network_status(&network_status)) != EMF_ERROR_NONE) {
+	if ( (err = _get_network_status(&network_status)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("_get_network_status failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	if(network_status == 0) {
-		if ( (err = _get_sim_status(&sim_status)) != EMF_ERROR_NONE) {
+		if ( (err = _get_sim_status(&sim_status)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("_get_sim_status failed [%d]", err);
 			goto FINISH_OFF;
 		}
 
 		if (sim_status != VCONFKEY_TELEPHONY_SIM_INSERTED) {
-			EM_DEBUG_LOG("EMF_ERROR_NO_SIM_INSERTED");
-			if ( (err = _get_wifi_status(&wifi_status)) != EMF_ERROR_NONE) {
+			EM_DEBUG_LOG("EMAIL_ERROR_NO_SIM_INSERTED");
+			if ( (err = _get_wifi_status(&wifi_status)) != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("_get_wifi_status failed [%d]", err);
 				goto FINISH_OFF;
 			}
 
 			if (wifi_status == 0) {
 				EM_DEBUG_EXCEPTION("Furthermore, WIFI is off");
-				err = EMF_ERROR_NO_SIM_INSERTED;
+				err = EMAIL_ERROR_NO_SIM_INSERTED;
 				goto FINISH_OFF;
 			}
 		}
-		EM_DEBUG_EXCEPTION("EMF_ERROR_NETWORK_NOT_AVAILABLE");
-		err = EMF_ERROR_NETWORK_NOT_AVAILABLE;
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_NETWORK_NOT_AVAILABLE");
+		err = EMAIL_ERROR_NETWORK_NOT_AVAILABLE;
 		goto FINISH_OFF;
 	}
 
@@ -263,7 +263,7 @@ INTERNAL_FUNC long tcp_getbuffer_lnx(TCPSTREAM *stream, unsigned long size, char
 		else if (!sret) {
 			if (max_timeout >= 5) {
 				EM_DEBUG_EXCEPTION("max select timeout %d", max_timeout);
-				emcore_set_network_error(EMF_ERROR_NO_RESPONSE);
+				emcore_set_network_error(EMAIL_ERROR_NO_RESPONSE);
 				return 0;
 			}
 			EM_DEBUG_EXCEPTION("%d select timeout", max_timeout);
@@ -351,7 +351,7 @@ long tcp_getdata_lnx(TCPSTREAM *stream)
 			if (max_timeout >= 50) {
 				EM_DEBUG_EXCEPTION("max select timeout %d", max_timeout);
 				
-				emcore_set_network_error(EMF_ERROR_NO_RESPONSE);
+				emcore_set_network_error(EMAIL_ERROR_NO_RESPONSE);
 				return false;
 			}
 			
@@ -364,7 +364,7 @@ long tcp_getdata_lnx(TCPSTREAM *stream)
 		if ((nread = read(sockid, stream->ibuf, BUFLEN)) < 0) {
 			EM_DEBUG_EXCEPTION("socket read failed...");
 			
-			emcore_set_network_error(EMF_ERROR_SOCKET_FAILURE);
+			emcore_set_network_error(EMAIL_ERROR_SOCKET_FAILURE);
 			
 			/* if (errno == EINTR) contine; */
 			tcp_abort(stream);
@@ -374,7 +374,7 @@ long tcp_getdata_lnx(TCPSTREAM *stream)
 		if (!nread) {
 			EM_DEBUG_EXCEPTION("socket read no data...");
 			
-			emcore_set_network_error(EMF_ERROR_INVALID_RESPONSE);
+			emcore_set_network_error(EMAIL_ERROR_INVALID_RESPONSE);
 			
 			tcp_abort(stream);
 			return false;
@@ -440,7 +440,7 @@ INTERNAL_FUNC long tcp_sout_lnx(TCPSTREAM *stream, char *string, unsigned long s
 		else if (!sret) {
 			if (max_timeout >= 50) {
 				EM_DEBUG_EXCEPTION("max select timeout %d", max_timeout);
-				emcore_set_network_error(EMF_ERROR_NO_RESPONSE);
+				emcore_set_network_error(EMAIL_ERROR_NO_RESPONSE);
 				return 0;
 			}
 			EM_DEBUG_EXCEPTION("%d select timeout", max_timeout);

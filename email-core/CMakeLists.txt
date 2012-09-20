@@ -72,7 +72,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(storage_pkgs REQUIRED drm-service glib-2.0 dlog db-util openssl vconf secure-storage dbus-1 contacts-service)
+pkg_check_modules(storage_pkgs REQUIRED drm-client glib-2.0 dlog db-util openssl vconf secure-storage dbus-1 contacts-service)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${storage_pkgs_CFLAGS})
@@ -151,6 +151,8 @@ SET(CORE-SRCS
 	${CMAKE_SOURCE_DIR}/email-core/email-core-global.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-account.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-mime.c
+	${CMAKE_SOURCE_DIR}/email-core/email-core-smime.c
+	${CMAKE_SOURCE_DIR}/email-core/email-core-cert.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-sound.c
 )
 
@@ -165,7 +167,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-service dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf contacts-service secure-storage openssl accounts-svc mm-player mm-session devman_haptic alarm-service notification libcurl libxml-2.0)
+pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf contacts-service secure-storage openssl accounts-svc mm-player mm-session devman_haptic alarm-service notification libcurl libxml-2.0 cert-svc)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${core_pkgs_CFLAGS})

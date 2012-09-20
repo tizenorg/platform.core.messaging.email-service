@@ -4,7 +4,7 @@
 * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -27,100 +27,145 @@
 #include "email-ipc-param-list.h"
 
 #include "email-debug-log.h"
+#include "email-utilities.h"
 
 /*  stream */
 /*  +----------------------------------------------------------------------------------------------------------+ */
 /*  | API ID(4B) | Resp. ID (4B) | Param Count(4B) | Param1 Len | Param1 Data | ... | ParamN Len | ParamN data |  */
 /*  +----------------------------------------------------------------------------------------------------------+ */
 
-static long emipc_parse_parameter_count(void *stream);
 
-EXPORT_API bool emipc_parse_stream_of_param_list(emipc_param_list *param_list, void *stream_data)
+EXPORT_API emipc_param_list *emipc_create_param_list()
 {
-	EM_DEBUG_FUNC_BEGIN();
-	long parameter_count = emipc_parse_parameter_count(stream_data);
-	if(parameter_count <= 0) {
-		EM_DEBUG_EXCEPTION("There is no parameter. ");
+	emipc_param_list *new_param_list = NULL;
+
+	new_param_list = (emipc_param_list *) em_malloc (sizeof(emipc_param_list));
+	if (new_param_list == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed.");
+		return NULL;
+	}
+	memset(new_param_list, 0x00, sizeof(emipc_param_list));
+
+	return new_param_list;
+}
+
+EXPORT_API bool emipc_destroy_param_list(emipc_param_list *param_list)
+{
+	int count = 10;
+	int index = 0;
+
+	if (!param_list) {
+		EM_DEBUG_EXCEPTION("Invalid parameter.");
 		return false;
 	}
 
-	unsigned char* stream = (unsigned char*)stream_data;
-	long index, param_len, pos = sizeof(long)*eSTREAM_DATA;
-
-	for(index = 0; index < parameter_count; index++) {
-		long len =0;
-		memcpy(&len, stream+pos, sizeof(long));
-		param_len = len;
-		EM_DEBUG_LOG("Parameter Length [%d] : %d ", index, param_len);
-		pos += sizeof(long);	/*  Move from length position to data position */
-
-		emipc_add_param_of_param_list(param_list, (void*)(stream+pos), param_len);
-		pos += param_len;		/*  move to next parameter	 */
+	for (index = 0; index < count; index++) {
+		emipc_free_param(param_list->params[index]);
 	}
-	
+	EM_SAFE_FREE(param_list->byte_stream);
+	EM_SAFE_FREE(param_list);
 	return true;
 }
 
-EXPORT_API unsigned char *emipc_get_stream_of_param_list(emipc_param_list *param_list)
+/* making stream into param length and param data */
+EXPORT_API bool emipc_parse_stream_of_param_list(emipc_param_list *param_list, void *stream)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	long parameter_count = *((long *)stream + eSTREAM_COUNT);
+	if(parameter_count <= 0) {
+		EM_DEBUG_EXCEPTION("INVALID_PARAM : count %d", parameter_count);
+		return false;
+	}
+
+	unsigned char* cur = ((unsigned char*)stream) + sizeof(int)*eSTREAM_DATA;
+
+	int i = 0;
+	/* stream is composed of data type which is encoded into length and data field */
+	int len = 0;
+	for(i = 0; i < parameter_count; i++) {
+		/* reading length */
+		memcpy(&len, cur, sizeof(int));
+
+		/* moving from length field to data field */
+		cur += sizeof(int);
+		emipc_add_param_to_param_list(param_list, (void*)cur, len);
+
+		EM_DEBUG_LOG("Parsing stream : element %d is %dbyte long ", i, len);
+
+		/*  move to next parameter	 */
+		cur += len;
+	}
+
+	EM_DEBUG_FUNC_END();
+	return true;
+}
+
+EXPORT_API unsigned char *emipc_serialize_param_list(emipc_param_list *param_list, int *stream_length)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	if(param_list->byte_stream)
 		return param_list->byte_stream;
-	
-	int stream_len = emipc_get_stream_length_of_param_list(param_list);
-	
-	if (stream_len > 0) {
+
+	int stream_len = emipc_sum_param_list_length (param_list);
+
+	if (stream_len <= 0) {
+		EM_DEBUG_EXCEPTION("stream_len error %d", stream_len);
+		EM_SAFE_FREE(param_list->byte_stream);
+		return NULL;
+	}
+
 		param_list->byte_stream = (unsigned char*)calloc(1, stream_len);
 		int pos = sizeof(long)*eSTREAM_COUNT;
 
 		if (pos + (int)sizeof(param_list->param_count) > stream_len ) {
-			EM_DEBUG_EXCEPTION("%d > stream_len", pos + sizeof(param_list->param_count));			
+			EM_DEBUG_EXCEPTION("%d > stream_len", pos + sizeof(param_list->param_count));
 			EM_SAFE_FREE(param_list->byte_stream);
 			return NULL;
 		}
-		
+
 		memcpy((param_list->byte_stream + pos), &param_list->param_count, sizeof(param_list->param_count));
-		
+
 		pos += sizeof(long);
 		int index = 0, length = 0;
 
-		/*   check memory overflow */
-		for(index=0; index<param_list->param_count; index++) {
-			length = emipc_get_length(param_list->params[index]);
-			if (length <= 0) {
-			 	EM_DEBUG_EXCEPTION("index = %d, length = %d", index, length);			
-				EM_SAFE_FREE(param_list->byte_stream);
-				return NULL;
-			}
+	/* stream format */
+	/* | param1 length | (param1 data) | param2 length | (param2 data) | ... |*/
+	/* if param is 0 long, the param data is omitted */
+	for(index=0; index<param_list->param_count; index++) {
+		length = emipc_get_length(param_list->params[index]);
+		if (length < 0) {
+		 	EM_DEBUG_EXCEPTION("index = %d, length = %d", index, length);
+			EM_SAFE_FREE(param_list->byte_stream);
+			return NULL;
+		}
 
-			if (pos + (int)sizeof(long) > stream_len) {
-			 	EM_DEBUG_EXCEPTION("%d > stream_len", pos + sizeof(long));			
-				EM_SAFE_FREE(param_list->byte_stream);
-				return NULL;
-			}
-			memcpy((param_list->byte_stream+pos), &length, sizeof(long));
-			pos += sizeof(long);
+		if (pos + (int)sizeof(long) > stream_len) {
+		 	EM_DEBUG_EXCEPTION("%d > stream_len", pos + sizeof(long));
+			EM_SAFE_FREE(param_list->byte_stream);
+			return NULL;
+		}
+		/* write param i length */
+		memcpy((param_list->byte_stream+pos), &length, sizeof(long));
+		pos += sizeof(long);
 
-			if (pos + length > stream_len) {
-				EM_DEBUG_EXCEPTION("%d > stream_len", pos + length);			
-				EM_SAFE_FREE(param_list->byte_stream);
-				return NULL;
-			}
-			
+		if (pos + length > stream_len) {
+			EM_DEBUG_EXCEPTION("%d > stream_len", pos + length);
+			EM_SAFE_FREE(param_list->byte_stream);
+			return NULL;
+		}
+		/* write param i data if length is greater than 0 */
+		if( length > 0 ) {
 			memcpy((param_list->byte_stream+pos), emipc_get_data(param_list->params[index]), length);
 			pos += length;
 		}
-		return param_list->byte_stream;
 	}
-	
-	EM_DEBUG_EXCEPTION("failed.");			
-	EM_SAFE_FREE(param_list->byte_stream);
+	*stream_length = stream_len;
 
 	EM_DEBUG_FUNC_END();
-	return NULL;
+	return param_list->byte_stream;
 }
 
-EXPORT_API int emipc_get_stream_length_of_param_list(emipc_param_list *param_list)
+EXPORT_API int emipc_sum_param_list_length(emipc_param_list *param_list)
 {
 	int length = sizeof(long) * eSTREAM_DATA;
 	int index;
@@ -131,7 +176,7 @@ EXPORT_API int emipc_get_stream_length_of_param_list(emipc_param_list *param_lis
 	return length;
 }
 
-EXPORT_API bool emipc_add_param_of_param_list(emipc_param_list *param_list, void *data, int len)
+EXPORT_API bool emipc_add_param_to_param_list(emipc_param_list *param_list, void *data, int len)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	if (emipc_set_param(&(param_list->params[param_list->param_count]), data, len)) {
@@ -140,6 +185,14 @@ EXPORT_API bool emipc_add_param_of_param_list(emipc_param_list *param_list, void
 		return true;
 	}
 	return false;
+}
+
+EXPORT_API void emipc_add_dynamic_param_to_param_list(emipc_param_list *param_list, void *data, int len)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	emipc_set_dynamic_param(&(param_list->params[param_list->param_count]), data, len);
+	param_list->param_count++;
+	EM_SAFE_FREE(param_list->byte_stream);
 }
 
 EXPORT_API void *emipc_get_param_of_param_list(emipc_param_list *param_list, int index)
@@ -162,16 +215,4 @@ EXPORT_API int emipc_get_param_len_of_param_list(emipc_param_list *param_list, i
 	return emipc_get_length(param_list->params[index]);
 }
 
-EXPORT_API int emipc_get_param_count_of_param_list(emipc_param_list *param_list)
-{
-	EM_DEBUG_FUNC_BEGIN("Parameter count [%d]", param_list->param_count);
-	return param_list->param_count;
-}
 
-static long emipc_parse_parameter_count(void *stream)
-{
-	EM_DEBUG_FUNC_BEGIN();	
-	long *parameter_count_position = (long *)stream + eSTREAM_COUNT;
-	
-	return *parameter_count_position;
-}

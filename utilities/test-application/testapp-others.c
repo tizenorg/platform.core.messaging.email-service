@@ -55,18 +55,19 @@ static gboolean testapp_test_get_pending_job()
 	int action = -1;
 	int account_id = 0;
 	int mail_id = 0;
-	emf_event_status_type_t status = -1;
+	int result_from_scanf = 0;
+	email_event_status_type_t status = -1;
 	testapp_print( " Enter Action \n SEND_MAIL = 0 \n SYNC_HEADER = 1 \n" \
 			    " DOWNLOAD_BODY,= 2 \n DOWNLOAD_ATTACHMENT = 3 \n" \
 			    " DELETE_MAIL = 4 \n SEARCH_MAIL = 5 \n SAVE_MAIL = 6 \n" \
 			    " NUM = 7 \n");
-	scanf("%d",&action);
+	result_from_scanf = scanf("%d",&action);
 
 	testapp_print("\n > Enter account_id: ");
-	scanf("%d", &account_id);
+	result_from_scanf = scanf("%d", &account_id);
 
 	testapp_print("\n > Enter Mail Id: ");
-	scanf("%d", &mail_id);
+	result_from_scanf = scanf("%d", &mail_id);
 
 	if( email_get_pending_job( action, account_id, mail_id, &status) >= 0)
 		testapp_print("\t status - %d \n",status);
@@ -78,14 +79,15 @@ static gboolean testapp_test_cancel_job	()
 {
 	int account_id = 0;
 	int handle = 0;
+	int result_from_scanf = 0;
 
 	testapp_print("\n > Enter account_id (0: all account): ");
-	scanf("%d", &account_id);
+	result_from_scanf = scanf("%d", &account_id);
 
 	testapp_print("\n > Enter handle: ");
-	scanf("%d", &handle);
+	result_from_scanf = scanf("%d", &handle);
 
-	if(email_cancel_job(account_id, handle) < 0)
+	if(email_cancel_job(account_id, handle, EMAIL_CANCELED_BY_USER) < 0)
 		testapp_print("email_cancel_job failed..!");
 	return FALSE;
 }
@@ -110,12 +112,12 @@ static gboolean testapp_test_print_receving_queue_via_debug_msg()
 	void* hAPI = (void*)emipc_create_email_api(_EMAIL_API_PRINT_RECEIVING_EVENT_QUEUE);
 
 	if(hAPI == NULL)
-		return EMF_ERROR_NULL_VALUE;
+		return EMAIL_ERROR_NULL_VALUE;
 		
-	if(emipc_execute_proxy_api(hAPI) != EMF_ERROR_NONE) {
+	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 		testapp_print("testapp_test_print_receving_queue_via_debug_msg - emipc_execute_proxy_api failed \n ");
 		if(hAPI == NULL)
-			return EMF_ERROR_NULL_VALUE;
+			return EMAIL_ERROR_NULL_VALUE;
 	}
 
 	emipc_get_parameter(hAPI, 1, 0, sizeof(int), &err);
@@ -144,10 +146,10 @@ static int encode_base64(char *src, unsigned long src_len, char **enc, unsigned 
 {
 	unsigned char *content = NULL;
 	int ret = true; 
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 
 	if (err_code != NULL) {
-		*err_code = EMF_ERROR_NONE;
+		*err_code = EMAIL_ERROR_NONE;
 	}
 
 	content = rfc822_binary(src, src_len, enc_len);
@@ -155,7 +157,7 @@ static int encode_base64(char *src, unsigned long src_len, char **enc, unsigned 
 	if (content)
 		*enc = (char *)content;
 	else {
-		err = EMF_ERROR_UNKNOWN;
+		err = EMAIL_ERROR_UNKNOWN;
 		ret = false;
 	}
 
@@ -168,7 +170,7 @@ static int encode_base64(char *src, unsigned long src_len, char **enc, unsigned 
 
 static gboolean testapp_test_encoding_test()
 {
-	int error = EMF_ERROR_NONE;
+	int error = EMAIL_ERROR_NONE;
 	int has_special_character = 0, base64_file_name_length = 0, i;
 	gsize bytes_read, bytes_written;
 	char *encoded_file_name = NULL, *base64_file_name = NULL;
@@ -364,6 +366,33 @@ static gboolean email_test_dtt_Datastore_C()
 	return true;
 }
 
+static gboolean testapp_test_show_user_message()
+{
+	int mail_id;
+	int result_from_scanf = 0;
+
+	testapp_print("\n > Enter mail id : ");
+	result_from_scanf = scanf("%d", &mail_id);
+
+	email_show_user_message(mail_id, EMAIL_ACTION_SEND_MAIL, EMAIL_ERROR_NETWORK_NOT_AVAILABLE);
+	return FALSE;
+}
+
+static gboolean testapp_test_get_mime_entity()
+{
+	char mime_path[512] = {0, };
+	int result_from_scanf = 0;
+	char *mime_entity = NULL;
+
+	testapp_print("\n > Enter mime path for parsing : ");
+	result_from_scanf = scanf("%s", mime_path);
+	
+	email_get_mime_entity(mime_path, &mime_entity);
+
+	testapp_print("\nmime_entity = %s\n", mime_entity);
+	return true;
+}
+
 static gboolean testapp_test_interpret_command (int menu_number)
 {
 	gboolean go_to_loop = TRUE;
@@ -398,6 +427,12 @@ static gboolean testapp_test_interpret_command (int menu_number)
 			email_test_dtt_Datastore_C();
 			email_test_dtt_Datastore_R();
 			break;
+		case 15:
+			testapp_test_show_user_message();
+			break;
+		case 16:
+			testapp_test_get_mime_entity();
+			break;
 		case 0:
 			go_to_loop = FALSE;
 			break;
@@ -412,12 +447,13 @@ void testapp_others_main()
 {
 	gboolean go_to_loop = TRUE;
 	int menu_number = 0;
+	int result_from_scanf = 0;
 
 	while (go_to_loop) {
-		testapp_show_menu (EMF_OTHERS_MENU);
-		testapp_show_prompt (EMF_OTHERS_MENU);
+		testapp_show_menu (EMAIL_OTHERS_MENU);
+		testapp_show_prompt (EMAIL_OTHERS_MENU);
 
-		scanf ("%d", &menu_number);
+		result_from_scanf = scanf ("%d", &menu_number);
 
 		go_to_loop = testapp_test_interpret_command (menu_number);
 	}

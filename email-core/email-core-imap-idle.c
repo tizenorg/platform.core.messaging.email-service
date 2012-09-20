@@ -63,14 +63,14 @@ thread_t imap_idle_thread;
 int g_imap_idle_thread_alive = 0;
 
 void* emcore_imap_idle_run(void* thread_user_data);
-static int emcore_imap_idle_parse_response_stream(emf_mailbox_t *mailbox, int *err_code);
-static int emcore_imap_idle_connect_and_idle_on_mailbox(emf_mailbox_t *mailbox, int *err_code);
+static int emcore_imap_idle_parse_response_stream(email_mailbox_t *mailbox, int *err_code);
+static int emcore_imap_idle_connect_and_idle_on_mailbox(email_mailbox_t *mailbox, int *err_code);
 
 int emcore_create_imap_idle_thread(int account_id, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id [%d], err_code [%p]", account_id, err_code);
 	int ret = false;
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 	int thread_error;
 
 	g_imap_idle_thread_alive = 1;
@@ -78,7 +78,7 @@ int emcore_create_imap_idle_thread(int account_id, int *err_code)
 
 	if (thread_error != 0) {
 		EM_DEBUG_EXCEPTION("cannot make IMAP IDLE thread...");
-		err = EMF_ERROR_UNKNOWN;
+		err = EMAIL_ERROR_UNKNOWN;
 		g_imap_idle_thread_alive = 0;
 		goto FINISH_OFF;
    	}
@@ -102,7 +102,7 @@ int emcore_kill_imap_idle_thread(int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("err_code [%p]", err_code);
 	int ret = true;
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 
 	EM_DEBUG_LOG("killing thread");
 
@@ -122,22 +122,22 @@ int emcore_kill_imap_idle_thread(int *err_code)
 	return ret;
 }
 
-int emcore_imap_idle_loop_start(emf_mailbox_t *mailbox_list,  int num, int *err_code)
+int emcore_imap_idle_loop_start(email_mailbox_t *mailbox_list,  int num, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("mailbox_list[%p], num[%d]", mailbox_list, num);
 	fd_set readfds;
 	int maxfd = 0;
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 	int counter = 0;
 	int select_result = 0;
 	int ret = false;
-	emf_mailbox_t *temp = NULL;
+	email_mailbox_t *temp = NULL;
 	struct timeval timeout;
 
 	EM_DEBUG_EXCEPTION(">>>>>>> emcore_imap_idle_loop_start start ");
 	if (!mailbox_list || !num) {
-		EM_DEBUG_EXCEPTION("EMF_ERROR_INVALID_PARAM");
-		err = EMF_ERROR_INVALID_PARAM;
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
@@ -243,16 +243,16 @@ void* emcore_imap_idle_run(void* thread_user_data)
 	EM_DEBUG_FUNC_BEGIN("thread_user_data [%p]", thread_user_data);
 	char              *mailbox_list[3];
 	int                mailbox_num = 0;
-	int                err = EMF_ERROR_NONE;
+	int                err = EMAIL_ERROR_NONE;
 	int                flag = true;
 	int                num = 0;
 	int                counter = 0;
 	int                accountID = (int)thread_user_data;
-	emf_mailbox_t     *mail_box_list = NULL;
-	emf_mailbox_t     *curr_mailbox = NULL;
-	emf_mailbox_t     *prev_mailbox = NULL;
+	email_mailbox_t     *mail_box_list = NULL;
+	email_mailbox_t     *curr_mailbox = NULL;
+	email_mailbox_t     *prev_mailbox = NULL;
 	emstorage_mailbox_tbl_t *local_mailbox = NULL;
-	emf_session_t     *session = NULL;
+	email_session_t     *session = NULL;
 
 	if ( !emnetwork_check_network_status(&err)) {
 		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
@@ -282,13 +282,14 @@ void* emcore_imap_idle_run(void* thread_user_data)
 			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_name failed [%d]", err);
 		}
 		else {
-			curr_mailbox             = em_malloc(sizeof(emf_mailbox_t));
+			curr_mailbox             = em_malloc(sizeof(email_mailbox_t));
 			curr_mailbox->account_id = local_mailbox->account_id;
-			curr_mailbox->name       = EM_SAFE_STRDUP(local_mailbox->mailbox_name);
+			curr_mailbox->mailbox_name       = EM_SAFE_STRDUP(local_mailbox->mailbox_name);
 			curr_mailbox->local      = local_mailbox->local_yn;
 			if (!emcore_imap_idle_connect_and_idle_on_mailbox(curr_mailbox, &err)) {
 				EM_DEBUG_EXCEPTION("emcore_imap_idle_connect_and_idle_on_mailbox failed [%d]", err);
-				emcore_free_mailbox(&curr_mailbox, 1, NULL);
+				emcore_free_mailbox(curr_mailbox);
+				EM_SAFE_FREE(curr_mailbox);
 			}
 			else {
 				if (flag) {
@@ -321,23 +322,23 @@ FINISH_OFF:
 	return NULL;
 }
 
-int emcore_imap_idle_insert_sync_event(emf_mailbox_t *mailbox, int *err_code)
+int emcore_imap_idle_insert_sync_event(email_mailbox_t *mailbox, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	
 	int ret = false;
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 	int handle;
 	
 	if (!mailbox || mailbox->account_id <= 0) {
-		EM_DEBUG_EXCEPTION("EMF_ERROR_INVALID_PARAM");
-		err = EMF_ERROR_INVALID_PARAM;
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-	emf_event_t event_data = { 0 };
+	email_event_t event_data = { 0 };
 
-	event_data.type               = EMF_EVENT_SYNC_HEADER;
-	event_data.event_param_data_1 = mailbox ? EM_SAFE_STRDUP(mailbox->name)  :  NULL;
+	event_data.type               = EMAIL_EVENT_SYNC_HEADER;
+	event_data.event_param_data_1 = mailbox ? EM_SAFE_STRDUP(mailbox->mailbox_name)  :  NULL;
 	event_data.event_param_data_3 = NULL;
 	event_data.account_id         = mailbox->account_id;
 			
@@ -357,7 +358,7 @@ FINISH_OFF:
 }
 
 /* connects to given mailbox. send idle and returns socket id */
-static int emcore_imap_idle_connect_and_idle_on_mailbox(emf_mailbox_t *mailbox, int *err_code)
+static int emcore_imap_idle_connect_and_idle_on_mailbox(email_mailbox_t *mailbox, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("mailbox [%p], err_code [%p]", mailbox, err_code);
 	void          *mail_stream = NULL;
@@ -366,28 +367,28 @@ static int emcore_imap_idle_connect_and_idle_on_mailbox(emf_mailbox_t *mailbox, 
 	char          *p = NULL;
 	int            socket_id = 0;
 	int            ret = 0;
-	int            err = EMF_ERROR_NONE;
-	emf_account_t *ref_account = NULL;
+	int            err = EMAIL_ERROR_NONE;
+	email_account_t *ref_account = NULL;
 	IMAPLOCAL     *imap_local = NULL;
 	NETSTREAM     *net_stream = NULL;
 	TCPSTREAM     *tcp_stream = NULL;
 
 	/* NULL param check */
 	if (!mailbox) {
-		EM_DEBUG_EXCEPTION("EMF_ERROR_INVALID_PARAM");
-		err = EMF_ERROR_INVALID_PARAM;
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
 	ref_account = emcore_get_account_reference(mailbox->account_id);
 	if (!ref_account) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed. account_id[%d]", mailbox->account_id);
-		err = EMF_ERROR_INVALID_ACCOUNT;
+		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
 
 	/* Open connection to mailbox */
-	if (!emcore_connect_to_remote_mailbox(mailbox->account_id, mailbox->name, (void **)&mail_stream, &err) || !mail_stream) {
+	if (!emcore_connect_to_remote_mailbox(mailbox->account_id, mailbox->mailbox_name, (void **)&mail_stream, &err) || !mail_stream) {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -397,7 +398,7 @@ static int emcore_imap_idle_connect_and_idle_on_mailbox(emf_mailbox_t *mailbox, 
 	
 	/* check if ssl option is enabled on this account - shasikala.p */
 
-	if (ref_account->use_security){
+	if (ref_account->incoming_server_secure_connection){
 		SSLSTREAM *ssl_stream = net_stream->stream;
 		tcp_stream = ssl_stream->tcpstream;
 	}
@@ -412,8 +413,8 @@ static int emcore_imap_idle_connect_and_idle_on_mailbox(emf_mailbox_t *mailbox, 
 
 	/* Send IDLE command */
 	if (!imap_local->netstream || !net_sout(imap_local->netstream, cmd, (int)strlen(cmd))) {
-		EM_DEBUG_EXCEPTION("network error - failed to IDLE on Mailbox - %s ", mailbox->name);
-		err = EMF_ERROR_IMAP4_IDLE_FAILURE;
+		EM_DEBUG_EXCEPTION("network error - failed to IDLE on Mailbox - %s ", mailbox->mailbox_name);
+		err = EMAIL_ERROR_IMAP4_IDLE_FAILURE;
 		goto FINISH_OFF;
 	}
 
@@ -453,17 +454,17 @@ FINISH_OFF:
 	return ret;
 }
 
-static int emcore_imap_idle_parse_response_stream(emf_mailbox_t *mailbox, int *err_code)
+static int emcore_imap_idle_parse_response_stream(email_mailbox_t *mailbox, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("mailbox [%p], err_code [%p]", mailbox, err_code);
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 	char *p = NULL;
 	int ret = false;
 	IMAPLOCAL *imap_local = NULL;
 	
 	if (!mailbox || !mailbox->mail_stream) {
-		EM_DEBUG_EXCEPTION("EMF_ERROR_INVALID_PARAM");
-		err = EMF_ERROR_INVALID_PARAM;
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
@@ -471,7 +472,7 @@ static int emcore_imap_idle_parse_response_stream(emf_mailbox_t *mailbox, int *e
 
 	if (!imap_local){
 		EM_DEBUG_EXCEPTION("imap_local is NULL");
-		err = EMF_ERROR_INVALID_PARAM;
+		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
@@ -486,7 +487,7 @@ static int emcore_imap_idle_parse_response_stream(emf_mailbox_t *mailbox, int *e
 			}
 			else  {	
 				if (!emcore_imap_idle_insert_sync_event(mailbox, &err))
-					EM_DEBUG_EXCEPTION("Syncing mailbox %s failed with err_code [%d]", mailbox->name, err);
+					EM_DEBUG_EXCEPTION("Syncing mailbox %s failed with err_code [%d]", mailbox->mailbox_name, err);
 				EM_SAFE_FREE(p);	
 				break;
 			}

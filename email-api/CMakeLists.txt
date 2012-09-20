@@ -27,6 +27,8 @@ SET(API-SRCS
 	${CMAKE_SOURCE_DIR}/email-api/email-api-rule.c
 	${CMAKE_SOURCE_DIR}/email-api/email-api-mailbox.c
 	${CMAKE_SOURCE_DIR}/email-api/email-api-init.c
+	${CMAKE_SOURCE_DIR}/email-api/email-api-smime.c
+	${CMAKE_SOURCE_DIR}/email-api/email-api-etc.c
 )
 
 INCLUDE_DIRECTORIES(
@@ -69,6 +71,8 @@ SET(EMAIL-API-HEADERS
 	${CMAKE_SOURCE_DIR}/email-api/include/email-api-mailbox.h
 	${CMAKE_SOURCE_DIR}/email-api/include/email-api-network.h
 	${CMAKE_SOURCE_DIR}/email-api/include/email-api-rule.h
+	${CMAKE_SOURCE_DIR}/email-api/include/email-api-etc.h
+	${CMAKE_SOURCE_DIR}/email-api/include/email-api-smime.h
 	${CMAKE_SOURCE_DIR}/email-common-use/include/email-types.h
 	${CMAKE_SOURCE_DIR}/email-common-use/include/email-errors.h
 )

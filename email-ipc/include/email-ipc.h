@@ -57,7 +57,7 @@ EXPORT_API int emipc_initialize_proxy();
 
 EXPORT_API int emipc_finalize_proxy();
 
-EXPORT_API bool emipc_execute_proxy_api(HIPC_API input_api_handle);
+EXPORT_API int emipc_execute_proxy_api(HIPC_API input_api_handle);
 
 /*  ------------------------------------------------------------------------------------------------------------ */
 /* 	Stub AP */
@@ -77,11 +77,12 @@ EXPORT_API void     emipc_destroy_email_api(HIPC_API input_api_handle);
 EXPORT_API long     emipc_get_api_id(HIPC_API input_api_handle);
 EXPORT_API long     emipc_get_app_id(HIPC_API input_api_handle);
 
-EXPORT_API bool     emipc_add_parameter(HIPC_API input_api_handle, EPARAMETER_DIRECTION input_parameter_direction, void *input_parameter_data, int input_data_length);
-EXPORT_API int      emipc_get_parameter_count(HIPC_API input_api_handle, EPARAMETER_DIRECTION input_parameter_direction);
+EXPORT_API bool emipc_add_parameter(HIPC_API api, EPARAMETER_DIRECTION direction, void *data, int data_length);
+EXPORT_API bool emipc_add_dynamic_parameter(HIPC_API api, EPARAMETER_DIRECTION direction, void *data, int data_length);
 EXPORT_API int      emipc_get_parameter(HIPC_API input_api_handle, EPARAMETER_DIRECTION input_parameter_direction, int input_parameter_index, int input_parameter_buffer_size, void *output_parameter);
+EXPORT_API void* emipc_get_nth_parameter_data(HIPC_API api_handle, EPARAMETER_DIRECTION direction, int param_index);
 EXPORT_API int      emipc_get_parameter_length(HIPC_API input_api_handle, EPARAMETER_DIRECTION input_parameter_direction, int input_parameter_index);
-
+EXPORT_API int   emipc_get_nth_parameter_length(HIPC_API input_api_handle, EPARAMETER_DIRECTION input_parameter_direction, int input_parameter_index);
 
 #ifdef __cplusplus
 }

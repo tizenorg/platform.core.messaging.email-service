@@ -57,5 +57,5 @@ typedef enum
 #undef Min
 #endif
 
-INTERNAL_FUNC int  emcore_start_alert_thread(int *err_code);
+INTERNAL_FUNC int  emcore_start_thread_for_alerting_new_mails(int *err_code);
 INTERNAL_FUNC void emcore_start_alert();

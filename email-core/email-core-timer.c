@@ -37,7 +37,7 @@
 
 typedef struct
 {
-	EMF_TIMER_CALLBACK user_callback_function;
+	EMAIL_TIMER_CALLBACK user_callback_function;
 	void *callback_user_data;
 	int time_id;
 }em_timer_callback_data;
@@ -55,7 +55,7 @@ INTERNAL_FUNC int emcore_timer_ex_callback(void *a_pData)
 	em_timer_callback_data *pTimerData = (em_timer_callback_data *)a_pData;
 	if (pTimerData != NULL)
 		{
-		EMF_TIMER_CALLBACK pfn_UserCB = pTimerData->user_callback_function;
+		EMAIL_TIMER_CALLBACK pfn_UserCB = pTimerData->user_callback_function;
 			pUserData = pTimerData->callback_user_data;
 		if (pUserData)
 			EM_DEBUG_LOG("emcore_timer_ex_callback >>> data  :  %s", (char *)pTimerData->callback_user_data);
@@ -75,7 +75,7 @@ INTERNAL_FUNC int emcore_timer_ex_callback(void *a_pData)
 			return 1;
 }
 
-INTERNAL_FUNC int emcore_set_timer_ex(long a_nSetTimeValue, EMF_TIMER_CALLBACK a_pCallBack, void *a_pData)
+INTERNAL_FUNC int emcore_set_timer_ex(long a_nSetTimeValue, EMAIL_TIMER_CALLBACK a_pCallBack, void *a_pData)
 {
 	EM_DEBUG_LOG("emcore_set_timer_ex %d", a_nSetTimeValue);
 	em_timer_callback_data *pTimerData = NULL;

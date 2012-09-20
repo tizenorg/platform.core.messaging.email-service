@@ -43,24 +43,39 @@
 #include "email-internal-types.h"
 #include "email-utilities.h"
 
-INTERNAL_FUNC void* em_malloc(unsigned len)
+INTERNAL_FUNC void* em_malloc(int len)
 {
 	/* EM_DEBUG_LOG("Memory allocation size[%d] bytes", len); */
-	void *p = NULL;
-
 	if (len <= 0) {
 		EM_DEBUG_EXCEPTION("len should be positive.[%d]", len);
 		return NULL;
 	}
 
-	p = malloc(len);
+	void *p = calloc(1,len);
+	if (!p)
+		EM_DEBUG_PERROR("malloc failed");
 
-	if (p)
-		memset(p, 0x00, len);
-	else
-		EM_DEBUG_EXCEPTION("malloc failed");
 	return p;
 }
+
+
+INTERNAL_FUNC void* em_memdup(void* src, int len)
+{
+	/* EM_DEBUG_LOG("Memory allocation size[%d] bytes", len); */
+	if (len <= 0) {
+		EM_DEBUG_EXCEPTION("len should be positive.[%d]", len);
+		return NULL;
+	}
+
+	void *p = calloc(1,len);
+	if (!p)
+		EM_DEBUG_EXCEPTION("malloc failed");
+
+	memcpy(p, src, len);
+
+	return p;
+}
+
 
 /*  remove left space, tab, CR, L */
 INTERNAL_FUNC char *em_trim_left(char *str)
@@ -181,6 +196,56 @@ INTERNAL_FUNC char* em_skip_whitespace_without_strdup(char *source_string)
 	return source_string + i;
 }
 
+
+INTERNAL_FUNC char* em_replace_all_string(char *source_string, char *old_string, char *new_string)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	char *result_buffer = NULL;
+	char *p = NULL;
+	int i = 0, count = 0;
+	int old_str_length = 0;
+	int new_str_length = 0;
+	
+	EM_IF_NULL_RETURN_VALUE(source_string, NULL);
+	EM_IF_NULL_RETURN_VALUE(old_string, NULL);
+	EM_IF_NULL_RETURN_VALUE(new_string, NULL);
+
+	old_str_length = strlen(old_string);
+	new_str_length = strlen(new_string);
+	
+	if (old_str_length != new_str_length) {
+		for (i = 0; source_string[i] != '\0';) {
+			if (memcmp(&source_string[i], old_string, old_str_length) == 0) {
+				count++;
+				i += old_str_length;
+			} else {
+				i++;
+			}
+		}
+	} else {
+		i = strlen(source_string);
+	}
+
+	result_buffer = (char *)malloc(i + 1 + count*(new_str_length-old_str_length));
+	if (result_buffer == NULL) 
+		return NULL;
+
+	p = result_buffer;
+	while (*source_string) {
+		if (memcmp(source_string, old_string, old_str_length) == 0) {
+			memcpy(p, new_string, new_str_length);
+			p += new_str_length;
+			source_string += old_str_length;
+		} else {
+			*p++ = *source_string++;
+		}
+	}
+	*p = '\0';
+	
+	EM_DEBUG_FUNC_END("result_buffer : %s", result_buffer);
+	return result_buffer;
+}
+
 INTERNAL_FUNC char* em_replace_string(char *source_string, char *old_string, char *new_string)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -270,17 +335,72 @@ INTERNAL_FUNC void em_flush_memory()
 	EM_DEBUG_FUNC_END();
 }
 
-#define DATE_TIME_STRING_LEGNTH 14
+INTERNAL_FUNC int em_get_file_name_and_extension_from_file_path(char *input_source_file_path, char **output_file_name, char **output_extension)
+{
+	EM_DEBUG_FUNC_BEGIN("input_source_file_path[%s], output_file_name [%p], output_extension [%p]", input_source_file_path, output_file_name, output_extension);
+	int   err = EMAIL_ERROR_NONE;
+	int   pos_on_string = 0;
+	int   file_name_length = 0;
+	int   extention_length = 0;
+	char *start_pos_of_file_name = NULL;
+	char *end_pos_of_file_name = NULL;
+	char *dot_pos_of_file_path = NULL;
+	char *end_pos_of_file_path = NULL;
+	char  file_name_string[MAX_PATH] = { 0, };
+	char  extension_string[MAX_PATH] = { 0, };
+
+	if (!input_source_file_path || !output_file_name || !output_extension) {
+		EM_DEBUG_EXCEPTION("Invalid Parameter");
+		err  = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	pos_on_string        = strlen(input_source_file_path) - 1;
+	end_pos_of_file_path = input_source_file_path + pos_on_string;
+	end_pos_of_file_name = end_pos_of_file_path;
+
+	while(pos_on_string >= 0 && input_source_file_path[pos_on_string] != '/') {
+		if(input_source_file_path[pos_on_string] == '.') {
+			if(dot_pos_of_file_path == NULL) {
+				end_pos_of_file_name = input_source_file_path + pos_on_string;
+				dot_pos_of_file_path = end_pos_of_file_name;
+			}
+		}
+		pos_on_string--;
+	}
+
+	pos_on_string++;
+
+	if(pos_on_string >= 0) {
+		start_pos_of_file_name = input_source_file_path + pos_on_string;
+		file_name_length       = end_pos_of_file_name - start_pos_of_file_name;
+		memcpy(file_name_string, start_pos_of_file_name, file_name_length);
+	}
+
+	if(dot_pos_of_file_path != NULL) {
+		extention_length       = (end_pos_of_file_path + 1) - (dot_pos_of_file_path + 1);
+		memcpy(extension_string, dot_pos_of_file_path + 1, extention_length);
+	}
+
+	EM_DEBUG_LOG("*file_name_string [%s] pos_on_string [%d]", file_name_string, pos_on_string);
+
+	*output_file_name = EM_SAFE_STRDUP(file_name_string);
+	*output_extension = EM_SAFE_STRDUP(extension_string);
+
+FINISH_OFF:
+	EM_DEBUG_FUNC_END("err = [%d]", err);
+	return err;
+}
 
 INTERNAL_FUNC char *em_get_extension_from_file_path(char *source_file_path, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("source_file_path[%s]", source_file_path);
-	int err = EMF_ERROR_NONE, pos_on_string = 0;
+	int err = EMAIL_ERROR_NONE, pos_on_string = 0;
 	char *extension = NULL;
 
 	if (!source_file_path) {
 		EM_DEBUG_EXCEPTION("Invalid Parameter");
-		err  = EMF_ERROR_INVALID_PARAM;
+		err  = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
@@ -303,7 +423,7 @@ FINISH_OFF:
 INTERNAL_FUNC int em_get_encoding_type_from_file_path(const char *input_file_path, char **output_encoding_type)
 {
 	EM_DEBUG_FUNC_BEGIN("input_file_path[%d], output_encoding_type[%p]", input_file_path, output_encoding_type);
-	int   err = EMF_ERROR_NONE;
+	int   err = EMAIL_ERROR_NONE;
 	int   pos_of_filename = 0;
 	int   pos_of_dot = 0;
 	int   enf_of_string = 0;
@@ -313,11 +433,11 @@ INTERNAL_FUNC int em_get_encoding_type_from_file_path(const char *input_file_pat
 
 	if (!input_file_path || !output_encoding_type) {
 		EM_DEBUG_EXCEPTION("Invalid Parameter");
-		err  = EMF_ERROR_INVALID_PARAM;
+		err  = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
-	enf_of_string = pos_of_filename = strlen(input_file_path) - 1;
+	enf_of_string = pos_of_filename = strlen(input_file_path);
 
 	while(pos_of_filename >= 0 && input_file_path[pos_of_filename--] != '/') {
 		if(input_file_path[pos_of_filename] == '.')
@@ -337,8 +457,8 @@ INTERNAL_FUNC int em_get_encoding_type_from_file_path(const char *input_file_pat
 	EM_DEBUG_LOG("pos_of_dot [%d], pos_of_filename [%d], enf_of_string[%d],result_string_length [%d]", pos_of_dot, pos_of_filename, enf_of_string, result_string_length);
 
 	if( !(result_encoding_type = 	em_malloc(sizeof(char) * (result_string_length + 1))) ) {
-		EM_DEBUG_EXCEPTION("EMF_ERROR_OUT_OF_MEMORY");
-		err  = EMF_ERROR_OUT_OF_MEMORY;
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
+		err  = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}
 
@@ -356,12 +476,12 @@ FINISH_OFF:
 INTERNAL_FUNC int em_get_content_type_from_extension_string(const char *extension_string, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("extension_string[%s]", extension_string);
-	int i = 0, err = EMF_ERROR_NONE, result_content_type = TYPEAPPLICATION;
+	int i = 0, err = EMAIL_ERROR_NONE, result_content_type = TYPEAPPLICATION;
 	char *image_extension[] = { "jpeg", "jpg", "png", "gif", "bmp", "pic", "agif", "tif", "wbmp" , NULL};
 
 	if (!extension_string) {
 		EM_DEBUG_EXCEPTION("Invalid Parameter");
-		err  = EMF_ERROR_INVALID_PARAM;
+		err  = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
@@ -398,13 +518,13 @@ INTERNAL_FUNC int em_verify_email_address(char *address, int without_bracket, in
 
 	/*  this following code verfies the email alias string using reg. exp. */
 	regex_t alias_list_regex = {0};
-	int ret = false, error = EMF_ERROR_NONE;
+	int ret = false, error = EMAIL_ERROR_NONE;
 	char *reg_rule = NULL;
 
 	if(!address || strlen(address) == 0) {
-		EM_DEBUG_EXCEPTION("EMF_ERROR_INVALID_PARAM");
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		if (err_code)
-			*err_code = EMF_ERROR_INVALID_PARAM;
+			*err_code = EMAIL_ERROR_INVALID_PARAM;
 		return false;
 	}
 
@@ -416,7 +536,7 @@ INTERNAL_FUNC int em_verify_email_address(char *address, int without_bracket, in
 	if (regcomp(&alias_list_regex, reg_rule, REG_ICASE | REG_EXTENDED)) {
 		EM_DEBUG_EXCEPTION("email alias regex unrecognized");
 		if (err_code)
-			*err_code = EMF_ERROR_UNKNOWN;
+			*err_code = EMAIL_ERROR_UNKNOWN;
 		return false;
 	}
 
@@ -441,17 +561,17 @@ INTERNAL_FUNC int em_verify_email_address(char *address, int without_bracket, in
 	return ret;
 }
 
-INTERNAL_FUNC int em_verify_email_address_of_mail_data(emf_mail_data_t *mail_data, int without_bracket, int *err_code)
+INTERNAL_FUNC int em_verify_email_address_of_mail_data(email_mail_data_t *mail_data, int without_bracket, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("mail_data[%p] without_bracket[%d]", mail_data, without_bracket);
 	char *address_array[4] = { mail_data->full_address_from, mail_data->full_address_to, mail_data->full_address_cc, mail_data->full_address_bcc};
-	int  ret = false, err = EMF_ERROR_NONE, i;
+	int  ret = false, err = EMAIL_ERROR_NONE, i;
 
 	/* check for email_address validation */
 	for (i = 0; i < 4; i++) {
 		if (address_array[i] && address_array[i][0] != 0) {
 			if (!em_verify_email_address(address_array[i] , without_bracket, &err)) {
-				err = EMF_ERROR_INVALID_ADDRESS;
+				err = EMAIL_ERROR_INVALID_ADDRESS;
 				EM_DEBUG_EXCEPTION("Invalid Email Address [%d][%s]", i, address_array[i]);
 				goto FINISH_OFF;
 			}
@@ -467,13 +587,13 @@ INTERNAL_FUNC int em_verify_email_address_of_mail_tbl(emstorage_mail_tbl_t *inpu
 {
 	EM_DEBUG_FUNC_BEGIN("input_mail_tbl[%p] input_without_bracket[%d]", input_mail_tbl, input_without_bracket);
 	char *address_array[4] = { input_mail_tbl->full_address_to, input_mail_tbl->full_address_cc, input_mail_tbl->full_address_bcc, input_mail_tbl->full_address_from};
-	int  err = EMF_ERROR_NONE, i;
+	int  err = EMAIL_ERROR_NONE, i;
 
 	/* check for email_address validation */
 	for (i = 0; i < 4; i++) {
 		if (address_array[i] && address_array[i][0] != 0) {
 			if (!em_verify_email_address(address_array[i] , input_without_bracket, &err)) {
-				err = EMF_ERROR_INVALID_ADDRESS;
+				err = EMAIL_ERROR_INVALID_ADDRESS;
 				EM_DEBUG_EXCEPTION("Invalid Email Address [%d][%s]", i, address_array[i]);
 				goto FINISH_OFF;
 			}
@@ -488,11 +608,11 @@ FINISH_OFF:
 INTERNAL_FUNC int em_find_tag_for_thread_view(char *subject, int *result)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int error_code = EMF_ERROR_NONE;
+	int error_code = EMAIL_ERROR_NONE;
 	char *copy_of_subject = NULL;
 
-	EM_IF_NULL_RETURN_VALUE(subject, EMF_ERROR_INVALID_PARAM);
-	EM_IF_NULL_RETURN_VALUE(result, EMF_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(subject, EMAIL_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(result, EMAIL_ERROR_INVALID_PARAM);
 
 	*result = FALSE;
 
@@ -528,12 +648,12 @@ FINISH_OFF:
 INTERNAL_FUNC int em_find_pos_stripped_subject_for_thread_view(char *subject, char *stripped_subject)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int error_code = EMF_ERROR_NONE;
+	int error_code = EMAIL_ERROR_NONE;
 	int gap;
 	char *copy_of_subject = NULL, *curpos = NULL, *result;
 
-	EM_IF_NULL_RETURN_VALUE(subject, EMF_ERROR_INVALID_PARAM);
-	EM_IF_NULL_RETURN_VALUE(stripped_subject, EMF_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(subject, EMAIL_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(stripped_subject, EMAIL_ERROR_INVALID_PARAM);
 
 	copy_of_subject = EM_SAFE_STRDUP(subject);
 
@@ -573,7 +693,7 @@ INTERNAL_FUNC int em_find_pos_stripped_subject_for_thread_view(char *subject, ch
 FINISH_OFF:
 	EM_SAFE_FREE(copy_of_subject);
 
-	if (error_code == EMF_ERROR_NONE && stripped_subject)
+	if (error_code == EMAIL_ERROR_NONE && stripped_subject)
 		EM_DEBUG_LOG("result[%s]", stripped_subject);
 
 	EM_DEBUG_FUNC_END("error_code[%d]", error_code);
@@ -589,10 +709,10 @@ INTERNAL_FUNC int em_encode_base64(char *src, unsigned long src_len, char **enc,
 	EM_DEBUG_FUNC_BEGIN();
 
     unsigned char *content;
-    int ret = true, err = EMF_ERROR_NONE;
+    int ret = true, err = EMAIL_ERROR_NONE;
 
 	if (err_code != NULL) {
-		*err_code = EMF_ERROR_NONE;
+		*err_code = EMAIL_ERROR_NONE;
 	}
 
     content = rfc822_binary(src, src_len, enc_len);
@@ -600,7 +720,7 @@ INTERNAL_FUNC int em_encode_base64(char *src, unsigned long src_len, char **enc,
     if (content)
         *enc = (char *)content;
     else {
-        err = EMF_ERROR_UNKNOWN;
+        err = EMAIL_ERROR_UNKNOWN;
         ret = false;
     }
 
@@ -619,10 +739,10 @@ INTERNAL_FUNC int em_decode_base64(unsigned char *enc_text, unsigned long enc_le
     unsigned char *text = enc_text;
     unsigned long size = enc_len;
     unsigned char *content;
-    int ret = true, err = EMF_ERROR_NONE;
+    int ret = true, err = EMAIL_ERROR_NONE;
 
 	if (err_code != NULL) {
-		*err_code = EMF_ERROR_NONE;
+		*err_code = EMAIL_ERROR_NONE;
 	}
 
     EM_DEBUG_FUNC_BEGIN();
@@ -632,7 +752,7 @@ INTERNAL_FUNC int em_decode_base64(unsigned char *enc_text, unsigned long enc_le
         *dec_text = (char *)content;
     else
     {
-        err = EMF_ERROR_UNKNOWN;
+        err = EMAIL_ERROR_UNKNOWN;
         ret = false;
     }
 
@@ -640,4 +760,320 @@ INTERNAL_FUNC int em_decode_base64(unsigned char *enc_text, unsigned long enc_le
         *err_code = err;
 
     return ret;
+}
+
+INTERNAL_FUNC int em_get_account_server_type_by_account_id(int account_id, email_account_server_t* account_server_type, int flag, int *error)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	emstorage_account_tbl_t *account_tbl_data = NULL;
+	int ret = false;
+	int err= EMAIL_ERROR_NONE;
+
+	if (account_server_type == NULL ) {
+		EM_DEBUG_EXCEPTION("account_server_type is NULL");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		ret = false;
+		goto FINISH_OFF;
+	}
+
+	if( !emstorage_get_account_by_id(account_id, WITHOUT_OPTION, &account_tbl_data, false, &err)) {
+		EM_DEBUG_EXCEPTION ("emstorage_get_account_by_id failed [%d] ", err);
+		ret = false;
+		goto FINISH_OFF;
+	}
+
+	if ( flag == false )  {	/*  sending server */
+		*account_server_type = account_tbl_data->outgoing_server_type;
+	} else if ( flag == true ) {	/*  receiving server */
+		*account_server_type = account_tbl_data->incoming_server_type;
+	}
+
+	ret = true;
+
+FINISH_OFF:
+	if ( account_tbl_data != NULL ) {
+		emstorage_free_account(&account_tbl_data, 1, NULL);
+	}
+	if ( error != NULL ) {
+		*error = err;
+	}
+
+	return ret;
+}
+
+#include <vconf.h>
+#include <dbus/dbus.h>
+
+#define ACTIVE_SYNC_HANDLE_INIT_VALUE		(-1)
+#define ACTIVE_SYNC_HANDLE_BOUNDARY			(-100000000)
+
+
+INTERNAL_FUNC int em_get_handle_for_activesync(int *handle, int *error)
+{
+	EM_DEBUG_FUNC_BEGIN();
+
+	static int next_handle = 0;
+	int ret = false;
+	int err = EMAIL_ERROR_NONE;
+
+	if ( handle == NULL ) {
+		EM_DEBUG_EXCEPTION("em_get_handle_for_activesync failed : handle is NULL");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	if ( vconf_get_int(VCONFKEY_EMAIL_SERVICE_ACTIVE_SYNC_HANDLE, &next_handle)  != 0 ) {
+		EM_DEBUG_EXCEPTION("vconf_get_int failed");
+		if ( next_handle != 0 ) {
+			err = EMAIL_ERROR_GCONF_FAILURE;
+			goto FINISH_OFF;
+		}
+	}
+
+	EM_DEBUG_LOG(">>>>>> VCONFKEY_EMAIL_SERVICE_ACTIVE_SYNC_HANDLE : get lastest handle[%d]", next_handle);
+
+	/*  set the value of the handle for active sync */
+	next_handle--;
+	if ( next_handle < ACTIVE_SYNC_HANDLE_BOUNDARY ) {
+		next_handle = ACTIVE_SYNC_HANDLE_INIT_VALUE;
+	}
+	if ( vconf_set_int(VCONFKEY_EMAIL_SERVICE_ACTIVE_SYNC_HANDLE, next_handle) != 0) {
+		EM_DEBUG_EXCEPTION("vconf_set_int failed");
+		err = EMAIL_ERROR_GCONF_FAILURE;
+		goto FINISH_OFF;
+	}
+	ret = true;
+	*handle = next_handle;
+	EM_DEBUG_LOG(">>>>>> return next handle[%d]", *handle);
+
+FINISH_OFF:
+	if ( error != NULL ) {
+		*error = err;
+	}
+
+	return ret;
+}
+
+INTERNAL_FUNC int em_send_notification_to_active_sync_engine(int subType, ASNotiData *data)
+{
+	EM_DEBUG_FUNC_BEGIN("subType [%d], data [%p]", subType, data);
+
+	DBusConnection     *connection;
+	DBusMessage        *signal = NULL;
+	DBusError           error;
+	const char         *nullString = "";
+	int                 i = 0;
+
+	dbus_error_init (&error);
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
+
+	if(connection == NULL)
+		goto FINISH_OFF;
+
+	signal = dbus_message_new_signal("/User/Email/ActiveSync", EMAIL_ACTIVE_SYNC_NOTI, "email");
+
+	dbus_message_append_args(signal, DBUS_TYPE_INT32, &subType, DBUS_TYPE_INVALID);
+	switch ( subType ) {
+		case ACTIVE_SYNC_NOTI_SEND_MAIL:
+			EM_DEBUG_LOG("handle:[%d]", data->send_mail.handle);
+			EM_DEBUG_LOG("account_id:[%d]", data->send_mail.account_id);
+			EM_DEBUG_LOG("mail_id:[%d]", data->send_mail.mail_id);
+			EM_DEBUG_LOG("options.priority:[%d]", data->send_mail.options.priority);
+			EM_DEBUG_LOG("options.keep_local_copy:[%d]", data->send_mail.options.keep_local_copy);
+			EM_DEBUG_LOG("options.req_delivery_receipt:[%d]", data->send_mail.options.req_delivery_receipt);
+			EM_DEBUG_LOG("options.req_read_receipt:[%d]", data->send_mail.options.req_read_receipt);
+			/* download_limit, block_address, block_subject might not be needed */
+			EM_DEBUG_LOG("options.download_limit:[%d]", data->send_mail.options.download_limit);
+			EM_DEBUG_LOG("options.block_address:[%d]", data->send_mail.options.block_address);
+			EM_DEBUG_LOG("options.block_subject:[%d]", data->send_mail.options.block_subject);
+			EM_DEBUG_LOG("options.display_name_from:[%s]", data->send_mail.options.display_name_from);
+			EM_DEBUG_LOG("options.reply_with_body:[%d]", data->send_mail.options.reply_with_body);
+			EM_DEBUG_LOG("options.forward_with_files:[%d]", data->send_mail.options.forward_with_files);
+			EM_DEBUG_LOG("options.add_myname_card:[%d]", data->send_mail.options.add_myname_card);
+			EM_DEBUG_LOG("options.add_signature:[%d]", data->send_mail.options.add_signature);
+			EM_DEBUG_LOG("options.signature:[%s]", data->send_mail.options.signature);
+
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.handle), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.mail_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.priority), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.keep_local_copy), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.req_delivery_receipt), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.req_read_receipt), DBUS_TYPE_INVALID);
+			if ( data->send_mail.options.display_name_from == NULL )
+				dbus_message_append_args(signal, DBUS_TYPE_STRING, &(nullString), DBUS_TYPE_INVALID);
+			else
+				dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->send_mail.options.display_name_from), DBUS_TYPE_INVALID);
+
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.reply_with_body), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.forward_with_files), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.add_myname_card), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.add_signature), DBUS_TYPE_INVALID);
+			if ( data->send_mail.options.signature == NULL )
+				dbus_message_append_args(signal, DBUS_TYPE_STRING, &(nullString), DBUS_TYPE_INVALID);
+			else
+				dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->send_mail.options.signature), DBUS_TYPE_INVALID);
+
+			break;
+		case ACTIVE_SYNC_NOTI_SEND_SAVED:				/*  publish a send notification to ASE (active sync engine) */
+			EM_DEBUG_EXCEPTION("Not support yet : subType[ACTIVE_SYNC_NOTI_SEND_SAVED]", subType);
+			break;
+		case ACTIVE_SYNC_NOTI_SEND_REPORT:
+			EM_DEBUG_EXCEPTION("Not support yet : subType[ACTIVE_SYNC_NOTI_SEND_REPORT]", subType);
+			break;
+		case ACTIVE_SYNC_NOTI_SYNC_HEADER:
+			EM_DEBUG_LOG("handle:[%d]", data->sync_header.handle);
+			EM_DEBUG_LOG("account_id:[%d]", data->sync_header.account_id);
+			EM_DEBUG_LOG("mailbox_id:[%d]", data->sync_header.mailbox_id);
+
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->sync_header.handle ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->sync_header.account_id ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->sync_header.mailbox_id ), DBUS_TYPE_INVALID);
+			break;
+		case ACTIVE_SYNC_NOTI_DOWNLOAD_BODY:			/*  publish a download body notification to ASE */
+			EM_DEBUG_LOG("handle:[%d]", data->download_body.handle);
+			EM_DEBUG_LOG("account_id:[%d]", data->download_body.account_id);
+			EM_DEBUG_LOG("mail_id:[%d]", data->download_body.mail_id);
+			EM_DEBUG_LOG("with_attachment:[%d]", data->download_body.with_attachment);
+
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_body.handle  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_body.account_id  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_body.mail_id ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_body.with_attachment  ), DBUS_TYPE_INVALID);
+			break;
+		case ACTIVE_SYNC_NOTI_DOWNLOAD_ATTACHMENT:
+			EM_DEBUG_LOG("handle:[%d]", data->download_attachment.handle);
+			EM_DEBUG_LOG("account_id:[%d]", data->download_attachment.account_id );
+			EM_DEBUG_LOG("mail_id:[%d]", data->download_attachment.mail_id);
+			EM_DEBUG_LOG("with_attachment:[%d]", data->download_attachment.attachment_order );
+
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_attachment.handle  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_attachment.account_id  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_attachment.mail_id ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_attachment.attachment_order), DBUS_TYPE_INVALID);
+			break;
+		case ACTIVE_SYNC_NOTI_VALIDATE_ACCOUNT:
+			EM_DEBUG_EXCEPTION("Not support yet : subType[ACTIVE_SYNC_NOTI_VALIDATE_ACCOUNT]", subType);
+			break;
+		case ACTIVE_SYNC_NOTI_CANCEL_JOB:
+			EM_DEBUG_LOG("account_id:[%d]",       data->cancel_job.account_id );
+			EM_DEBUG_LOG("handle to cancel:[%d]", data->cancel_job.handle);
+			EM_DEBUG_LOG("cancel_type:[%d]",      data->cancel_job.cancel_type);
+
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_job.account_id  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_job.handle  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_job.cancel_type  ), DBUS_TYPE_INVALID);
+			break;
+		case ACTIVE_SYNC_NOTI_SEARCH_ON_SERVER:
+			EM_DEBUG_LOG("account_id:[%d]",          data->search_mail_on_server.account_id );
+			EM_DEBUG_LOG("mailbox_id:[%d]",        data->search_mail_on_server.mailbox_id );
+			EM_DEBUG_LOG("search_filter_count:[%d]", data->search_mail_on_server.search_filter_count );
+			EM_DEBUG_LOG("handle to cancel:[%d]",    data->search_mail_on_server.handle);
+
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->search_mail_on_server.mailbox_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.search_filter_count), DBUS_TYPE_INVALID);
+			for(i = 0; i < data->search_mail_on_server.search_filter_count; i++) {
+				dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.search_filter_list[i].search_filter_type), DBUS_TYPE_INVALID);
+				switch(data->search_mail_on_server.search_filter_list[i].search_filter_type) {
+					case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO       :
+					case EMAIL_SEARCH_FILTER_TYPE_UID              :
+					case EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER      :
+					case EMAIL_SEARCH_FILTER_TYPE_SIZE_SMALLER     :
+					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED   :
+					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED    :
+					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT      :
+					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED     :
+					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT     :
+					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN       :
+						dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->search_mail_on_server.search_filter_list[i].search_filter_key_value.integer_type_key_value), DBUS_TYPE_INVALID);
+						break;
+
+					case EMAIL_SEARCH_FILTER_TYPE_BCC              :
+					case EMAIL_SEARCH_FILTER_TYPE_CC               :
+					case EMAIL_SEARCH_FILTER_TYPE_FROM             :
+					case EMAIL_SEARCH_FILTER_TYPE_KEYWORD          :
+					case EMAIL_SEARCH_FILTER_TYPE_SUBJECT          :
+					case EMAIL_SEARCH_FILTER_TYPE_TO               :
+					case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
+						dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->search_mail_on_server.search_filter_list[i].search_filter_key_value.string_type_key_value), DBUS_TYPE_INVALID);
+						break;
+
+					case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :
+					case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON     :
+					case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE  :
+						dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->search_mail_on_server.search_filter_list[i].search_filter_key_value.time_type_key_value), DBUS_TYPE_INVALID);
+						break;
+					default :
+						EM_DEBUG_EXCEPTION("Invalid filter type [%d]", data->search_mail_on_server.search_filter_list[i].search_filter_type);
+						break;
+				}
+			}
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.handle), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_CLEAR_RESULT_OF_SEARCH_ON_SERVER :
+			EM_DEBUG_LOG("account_id:[%d]",          data->clear_result_of_search_mail_on_server.account_id );
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.account_id), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_EXPUNGE_MAILS_DELETED_FLAGGED :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->expunge_mails_deleted_flagged.mailbox_id  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->expunge_mails_deleted_flagged.on_server  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->expunge_mails_deleted_flagged.handle  ), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_RESOLVE_RECIPIENT :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->get_resolve_recipients.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->get_resolve_recipients.email_address), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->get_resolve_recipients.handle), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_VALIDATE_CERTIFICATE :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->validate_certificate.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->validate_certificate.email_address), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->validate_certificate.handle), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_ADD_MAILBOX :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->add_mailbox.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->add_mailbox.mailbox_path), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->add_mailbox.mailbox_alias), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->add_mailbox.handle), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_RENAME_MAILBOX :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->rename_mailbox.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->rename_mailbox.mailbox_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->rename_mailbox.mailbox_name), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->rename_mailbox.mailbox_alias), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->rename_mailbox.handle), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_DELETE_MAILBOX :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox.mailbox_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox.handle), DBUS_TYPE_INVALID);
+			break;
+
+		default:
+			EM_DEBUG_EXCEPTION("Invalid Notification type of Active Sync : subType[%d]", subType);
+			return FAILURE;
+	}
+
+	if(!dbus_connection_send (connection, signal, NULL)) {
+		EM_DEBUG_EXCEPTION("dbus_connection_send is failed");
+		return FAILURE;
+	} else
+		EM_DEBUG_LOG("dbus_connection_send is successful");
+
+	dbus_connection_flush(connection);
+
+FINISH_OFF:
+
+	if(signal)
+		dbus_message_unref(signal);
+
+	EM_DEBUG_FUNC_END();
+	return true;
 }

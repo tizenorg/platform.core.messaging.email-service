@@ -50,25 +50,25 @@
  *@{
  *@code
  *
- *	#include "emf_mapi_init.h"
+ *	#include "email-api-init.h"
  *
  *	bool
  *	other_app_invoke_uniform_api_sample(int* error_code)
  *	{
- *		 int err = EMF_ERROR_NONE;
+ *		 int err = EMAIL_ERROR_NONE;
  *
  *		// Open connections to email-service and DB
  *		// The connections will be maintain throughout application's execution
- *		if(EMF_ERROR_NONE == email_service_begin())
+ *		if(EMAIL_ERROR_NONE == email_service_begin())
  *		{
- *			If(EMF_ERROR_NONE != email_open_db())
+ *			If(EMAIL_ERROR_NONE != email_open_db())
  *			{
  *				return false;
  *			}
  *
  *			// Execute email_init_storage() if and only if there is no db file.
  *  			// This fuction will create db file and tables for email service
- *			If(EMF_ERROR_NONE !=email_init_storage())
+ *			If(EMAIL_ERROR_NONE !=email_init_storage())
  *			{
  *				return false;
  *			}
@@ -102,7 +102,7 @@ extern "C" {
  * @fn email_init_storage(void)
  * @brief	Create all table for email. Exposed to External Application- core team.Creates all Email DB tables [ EXTERNAL]
  *
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure
  * @exception none
  * @see none
  * @remarks N/A
@@ -115,7 +115,7 @@ EXPORT_API int email_init_storage(void);
  * @fn email_open_db(void)
  * @brief This function Open the email DB and register busy handler
  *
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure.
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
  * @exception none
  * @see 	none
  * @remarks N/A
@@ -129,7 +129,7 @@ EXPORT_API int email_open_db(void);
  * @fn email_close_db(void)
  * @brief	This function closes the connection of  the email DB
  *
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure.
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
  * @exception none
  * @see none
  * @remarks N/A
@@ -142,7 +142,7 @@ EXPORT_API int email_close_db(void);
  * @fn email_service_begin(void)
  * @brief	Does the IPC Proxy Initialization by the Application which used the Email FW API's
  *
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure.
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
  * @exception none
  * @see 	none
  * @remarks N/A
@@ -155,7 +155,7 @@ EXPORT_API int email_service_begin(void);
  * @fn email_service_end(void)
  * @brief	This function does the IPC Proxy Finaization by the Application which used the Email FW API's
  *
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure.
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
  * @exception 	none
  * @see 	none
  * @remarks N/A

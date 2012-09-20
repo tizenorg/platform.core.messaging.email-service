@@ -38,11 +38,11 @@ extern "C"
 
 #include "email-internal-types.h"
 
-extern emf_account_list_t *g_account_list;
+extern email_account_list_t *g_account_list;
 extern int g_account_num;
 extern int g_account_retrieved;
 
-INTERNAL_FUNC emf_account_t *emcore_get_new_account_reference();
+INTERNAL_FUNC email_account_t *emcore_get_new_account_reference();
 
 #ifdef __cplusplus
 }

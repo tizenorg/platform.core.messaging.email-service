@@ -48,6 +48,25 @@ EXPORT_API bool emipc_set_param(emipc_param *param, void *data, int len)
 	return true;
 }
 
+EXPORT_API void emipc_set_dynamic_param(emipc_param *param, void *data, int len)
+{
+	EM_DEBUG_FUNC_BEGIN();
+
+	if (!param) {
+		EM_DEBUG_EXCEPTION("Invalid paramter");
+		return;
+	}
+
+	/* even take care of null data */
+	param->data = data;
+	param->length = len;
+}
+
+EXPORT_API void emipc_free_param(emipc_param param)
+{
+	EM_SAFE_FREE(param.data);
+}
+
 EXPORT_API int emipc_get_length(emipc_param param)
 {
 	return param.length;

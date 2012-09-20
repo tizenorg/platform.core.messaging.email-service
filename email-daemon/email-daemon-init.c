@@ -36,8 +36,10 @@
 #include <glib.h>
 #include <glib-object.h>
 #include <vconf.h>
+#include <vconf-internal-account-keys.h>
 #include <dbus/dbus.h>
 #include <dlfcn.h>           /* added for Disabling the Pthread flag log */
+#include <heynoti/heynoti.h>
 
 #include "email-daemon.h"
 #include "email-storage.h"
@@ -56,12 +58,14 @@
 
 extern int g_client_count ;
 
+int fd_HibernationNoti;
+
 /*  static functions */
 static int _emdaemon_load_email_core()
 {
 	EM_DEBUG_FUNC_BEGIN();
 
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 
 	/* initialize mail core */
 	if (!emcore_init(&err))
@@ -70,16 +74,16 @@ static int _emdaemon_load_email_core()
 	if (emcore_start_event_loop(&err) < 0)
 		goto FINISH_OFF;
 
-	if (emcore_send_event_loop_start(&err) < 0)
+	if (emcore_start_event_loop_for_sending_mails(&err) < 0)
 		goto FINISH_OFF;
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
-	if (emcore_partial_body_thread_loop_start(&err) < 0) {
-		EM_DEBUG_EXCEPTION("emcore_partial_body_thread_loop_start failed [%d]",err);
+	if (emcore_start_thread_for_downloading_partial_body(&err) < 0) {
+		EM_DEBUG_EXCEPTION("emcore_start_thread_for_downloading_partial_body failed [%d]",err);
 		goto FINISH_OFF;
 	}
 #endif
-	if (emcore_start_alert_thread(&err) < 0)
+	if (emcore_start_thread_for_alerting_new_mails(&err) < 0)
 		goto FINISH_OFF;
 
 FINISH_OFF:
@@ -90,7 +94,7 @@ FINISH_OFF:
 static int _emdaemon_unload_email_core()
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 
 	/* finish event loop */
 	emcore_stop_event_loop(&err);
@@ -99,13 +103,110 @@ static int _emdaemon_unload_email_core()
 	return err;
 }
 
+static void hibernation_enter_callback()
+{
+	EM_DEBUG_FUNC_BEGIN();
+	emstorage_db_close(NULL);
+	EM_DEBUG_FUNC_END();
+}
+
+static void hibernation_leave_callback()
+{
+	EM_DEBUG_FUNC_BEGIN();
+	emstorage_db_open(NULL);
+	EM_DEBUG_FUNC_END();
+}
+
+static void callback_for_SYNC_ALL_STATUS_from_account_svc(keynode_t *input_node, void *input_user_data)
+{
+	EM_DEBUG_FUNC_BEGIN("input_node [%p], input_user_data [%p]", input_node, input_user_data);
+	unsigned handle = 0;
+	int i = 0;
+	int err = EMAIL_ERROR_NONE;
+	int account_count = 0;
+	email_account_t         *account_list = NULL;
+	emstorage_mailbox_tbl_t *mailbox_tbl_data = NULL;
+
+	if (!emdaemon_get_account_list(&account_list, &account_count, &err))  {
+		EM_DEBUG_EXCEPTION("emdaemon_get_account_list failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	for(i = 0; i < account_count; i++) {
+		if(!emstorage_get_mailbox_by_mailbox_type(account_list[i].account_id, EMAIL_MAILBOX_TYPE_INBOX, &mailbox_tbl_data, true, &err)) {
+			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type for [%d] failed [%d]", account_list[i].account_id, err);
+			continue;
+		}
+
+		if(!emdaemon_sync_header(account_list[i].account_id, mailbox_tbl_data->mailbox_id, &handle, &err)) {
+			EM_DEBUG_EXCEPTION("emdaemon_sync_header for [%d] failed [%d]", account_list[i].account_id, err);
+		}
+		if(mailbox_tbl_data)
+			emstorage_free_mailbox(&mailbox_tbl_data, 1, NULL);
+		mailbox_tbl_data = NULL;
+	}
+
+FINISH_OFF:
+	if(account_list)
+		emdaemon_free_account(&account_list, account_count, NULL);
+	if(mailbox_tbl_data)
+		emstorage_free_mailbox(&mailbox_tbl_data, 1, NULL);
+
+	EM_DEBUG_FUNC_END();
+}
+
+static void callback_for_AUTO_SYNC_STATUS_from_account_svc(keynode_t *input_node, void *input_user_data)
+{
+	EM_DEBUG_FUNC_BEGIN("input_node [%p], input_user_data [%p]", input_node, input_user_data);
+	int err = EMAIL_ERROR_NONE;
+	int i = 0;
+	int auto_sync_toggle = 0;
+	int account_count = 0;
+	email_account_t *account_list = NULL;
+	email_account_t *account_info = NULL;
+
+	if (!emdaemon_get_account_list(&account_list, &account_count, &err))  {
+		EM_DEBUG_EXCEPTION("emdaemon_get_account_list failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	if(input_node)
+		auto_sync_toggle = vconf_keynode_get_int(input_node);
+
+	for(i = 0; i < account_count; i++) {
+		account_info = account_list + i;
+
+		if(auto_sync_toggle == 1) { /* on */
+			/* start sync */
+			if(account_info->check_interval < 0)
+				account_info->check_interval = ~account_info->check_interval + 1;
+		}
+		else { /* off */
+			/* terminate sync */
+			if(account_info->check_interval > 0)
+				account_info->check_interval = ~account_info->check_interval + 1;
+		}
+
+		if(!emdaemon_update_account(account_info->account_id, account_info, &err)) {
+			EM_DEBUG_EXCEPTION("emdaemon_update_account failed [%d]", err);
+			goto FINISH_OFF;
+		}
+	}
+
+FINISH_OFF:
+	if(account_list)
+		emdaemon_free_account(&account_list, account_count, NULL);
+
+	EM_DEBUG_FUNC_END();
+}
+
 INTERNAL_FUNC int emdaemon_initialize(int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	
 	/*  default variable */
 	int ret = false;
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 	
 	if (g_client_count > 0)  {
 		EM_DEBUG_LOG("Initialization was already done. increased counter=[%d]", g_client_count);
@@ -131,24 +232,42 @@ INTERNAL_FUNC int emdaemon_initialize(int* err_code)
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_clean_save_status(EMF_MAIL_STATUS_SAVED, &err))
+	if (!emstorage_clean_save_status(EMAIL_MAIL_STATUS_SAVED, &err))
 		EM_DEBUG_EXCEPTION("emstorage_check_mail_status Failed [%d]", err );
 	
 	g_client_count = 0;    
 	
 	if (!emdaemon_initialize_account_reference())  {
 		EM_DEBUG_EXCEPTION("emdaemon_initialize_account_reference fail...");
-		err = EMF_ERROR_DB_FAILURE;
+		err = EMAIL_ERROR_DB_FAILURE;
 		goto FINISH_OFF;
 	}
     EM_DEBUG_LOG("emdaemon_initialize_account_reference over - g_client_count [%d]", g_client_count);	
 	
-	if ((err = _emdaemon_load_email_core()) != EMF_ERROR_NONE)  {
+	if ((err = _emdaemon_load_email_core()) != EMAIL_ERROR_NONE)  {
 		EM_DEBUG_EXCEPTION("_emdaemon_load_email_core failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	emcore_check_unread_mail(); 
+	/* Subscribe Events */
+	fd_HibernationNoti = heynoti_init();
+
+	if(fd_HibernationNoti == -1)
+		EM_DEBUG_EXCEPTION("heynoti_init failed");
+	else {
+		EM_DEBUG_LOG("heynoti_init Success");
+		ret = heynoti_subscribe(fd_HibernationNoti, "HIBERNATION_ENTER", hibernation_enter_callback, (void *)fd_HibernationNoti);
+		EM_DEBUG_LOG("heynoti_subscribe returns %d", ret);
+		ret = heynoti_subscribe(fd_HibernationNoti, "HIBERNATION_LEAVE", hibernation_leave_callback, (void *)fd_HibernationNoti);
+		EM_DEBUG_LOG("heynoti_subscribe returns %d", ret);
+		ret = heynoti_attach_handler(fd_HibernationNoti);
+		EM_DEBUG_LOG("heynoti_attach_handler returns %d", ret);
+	}
+
+	vconf_notify_key_changed(VCONFKEY_ACCOUNT_SYNC_ALL_STATUS_INT,  callback_for_SYNC_ALL_STATUS_from_account_svc,  NULL);
+	vconf_notify_key_changed(VCONFKEY_ACCOUNT_AUTO_SYNC_STATUS_INT, callback_for_AUTO_SYNC_STATUS_from_account_svc, NULL);
+
+	emcore_check_unread_mail();
 	
 	ret = true;
 	
@@ -169,16 +288,16 @@ INTERNAL_FUNC int emdaemon_finalize(int* err_code)
 	
 	/*  default variable */
 	int ret = false;
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 	
 	if (g_client_count > 1) {
 		EM_DEBUG_EXCEPTION("engine is still used by application. decreased counter=[%d]", g_client_count);
 		g_client_count--;
-		err = EMF_ERROR_CLOSE_FAILURE;
+		err = EMAIL_ERROR_CLOSE_FAILURE;
 		goto FINISH_OFF;
 	}
 	
-	if ( (err = _emdaemon_unload_email_core()) != EMF_ERROR_NONE) {
+	if ( (err = _emdaemon_unload_email_core()) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("_emdaemon_unload_email_core failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -192,6 +311,14 @@ INTERNAL_FUNC int emdaemon_finalize(int* err_code)
 		goto FINISH_OFF;
 	}
 	
+	/* Unsubscribe Events */
+
+	if(fd_HibernationNoti != -1) {
+		heynoti_unsubscribe(fd_HibernationNoti, "HIBERNATION_ENTER", hibernation_enter_callback);
+		heynoti_unsubscribe(fd_HibernationNoti, "HIBERNATION_LEAVE", hibernation_leave_callback);
+		heynoti_close(fd_HibernationNoti);
+	}
+
 	g_client_count = 0;
 	
 #ifdef __FEATURE_AUTO_POLLING__
@@ -214,7 +341,7 @@ INTERNAL_FUNC int emdaemon_start_auto_polling(int* err_code)
 	
 	/*  default variable */
 	int ret = false, count = 0, i= 0;
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 	emstorage_account_tbl_t* account_list = NULL;
 
 	/* get account list */

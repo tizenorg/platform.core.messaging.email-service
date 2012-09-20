@@ -21,8 +21,8 @@
 
 
 
-#ifndef EMF_TEST_MESSAGE_H
-#define EMF_TEST_MESSAGE_H
+#ifndef EMAIL_TEST_MESSAGE_H
+#define EMAIL_TEST_MESSAGE_H
 
 #include <glib.h>
 
@@ -31,5 +31,5 @@
 void 		testapp_mail_main 		(void);
 
  
-#endif	/* EMF_TEST_MESSAGE_H */
+#endif	/* EMAIL_TEST_MESSAGE_H */
 

@@ -17,6 +17,7 @@ SET(COMMON-USE-LIB "email-common-use")
 SET(COMMON-USE-SRCS 
 	${CMAKE_SOURCE_DIR}/email-common-use/email-convert.c
 	${CMAKE_SOURCE_DIR}/email-common-use/email-utilities.c
+	${CMAKE_SOURCE_DIR}/email-common-use/tpl.c
 )
 
 INCLUDE_DIRECTORIES(
@@ -27,7 +28,7 @@ INCLUDE_DIRECTORIES(
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(common_pkgs REQUIRED glib-2.0 dlog vconf contacts-service uw-imap-toolkit) 
+pkg_check_modules(common_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf contacts-service uw-imap-toolkit) 
 
 FOREACH(flag ${common_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")

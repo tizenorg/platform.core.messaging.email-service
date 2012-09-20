@@ -50,20 +50,20 @@ typedef struct
 	char *content_id;
 	int   dec_len;
 	char *mime_type;
-} emf_image_data;
+} email_image_data;
 
 typedef struct 
 {
 	char *buffer;
 	int buflen;
-} emf_partial_buffer;
+} email_partial_buffer;
 
 #endif
 
 typedef struct emcore_uid_elem {
 	int msgno;
 	char *uid;
-	emf_mail_flag_t flag;
+	email_mail_flag_t flag;
 	struct emcore_uid_elem *next;
 } emcore_uid_list; 
 
@@ -74,6 +74,10 @@ int imap4_mail_calc_rfc822_size(MAILSTREAM *stream, int msgno, int *size, int *e
 int imap4_mailbox_get_uids(MAILSTREAM *stream, emcore_uid_list** uid_list, int *err_code);
 
 int emcore_check_rule(const char *input_full_address_from, const char *input_subject, emstorage_rule_tbl_t *rule, int rule_len, int *matched, int *err_code);
+
+int emcore_make_mail_tbl_data_from_envelope(MAILSTREAM *mail_stream, ENVELOPE *input_envelope, emcore_uid_list *input_uid_elem, emstorage_mail_tbl_t **output_mail_tbl_data,  int *err_code);
+
+int emcore_add_mail_to_mailbox(emstorage_mailbox_tbl_t *input_maibox_data, emstorage_mail_tbl_t *input_new_mail_tbl_data, int *output_mail_id, int *output_thread_id);
 
 /**
  * Download unread all headers from mail server.
@@ -108,7 +112,7 @@ typedef enum
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-int emcore_download_uid_all(emf_mailbox_t *mailbox, 
+int emcore_download_uid_all(email_internal_mailbox_t *mailbox,
 							emcore_uid_list		**uid_list,
 							int 							*total,
 							emstorage_read_mail_uid_tbl_t *read_mail_uids, 
@@ -128,7 +132,7 @@ int emcore_download_uid_all(emf_mailbox_t *mailbox,
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-int emcore_download_imap_msgno(emf_mailbox_t *mailbox, char *uid, int *msgno, int *err_code);
+int emcore_download_imap_msgno(email_internal_mailbox_t *mailbox, char *uid, int *msgno, int *err_code);
 
 /**
  * Get a message number to be related to uid.
@@ -166,7 +170,7 @@ int emcore_free_uids(emcore_uid_list *uid_list, int *err_code);
 INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int account_id, int mail_id, int *err_code);
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
-INTERNAL_FUNC int emcore_download_bulk_partial_mail_body(MAILSTREAM *stream, emf_event_partial_body_thd *pbd_event, int count, int *error);
+INTERNAL_FUNC int emcore_download_bulk_partial_mail_body(MAILSTREAM *stream, email_event_partial_body_thd *pbd_event, int count, int *error);
 #endif /* __FEATURE_PARTIAL_BODY_DOWNLOAD__ */
 
 

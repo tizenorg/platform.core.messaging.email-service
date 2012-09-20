@@ -78,7 +78,7 @@ static gboolean testapp_initialize_testing ()
 	
 	gettimeofday(&tv_1, NULL);
 	
-	if ( email_service_begin() != EMF_ERROR_NONE ) {
+	if ( email_service_begin() != EMAIL_ERROR_NONE ) {
 		testapp_print ("unexpected error: opening email service fail\n");
 		return FALSE;
 	}
@@ -87,7 +87,7 @@ static gboolean testapp_initialize_testing ()
 	testapp_print("\t email_service_begin Proceed time %d us\n",interval);
 
 	gettimeofday(&tv_1, NULL);
-	if ( (error = email_open_db()) != EMF_ERROR_NONE) {
+	if ( (error = email_open_db()) != EMAIL_ERROR_NONE) {
 		testapp_print("email_open_db failed [%d]\n", error);
 	}
 	gettimeofday(&tv_2, NULL);
@@ -101,11 +101,11 @@ static gboolean testapp_finalize_testing ()
 {
 	int error;
 
-	if ( (error = email_close_db()) != EMF_ERROR_NONE) {
+	if ( (error = email_close_db()) != EMAIL_ERROR_NONE) {
 		testapp_print("email_close_db failed [%d]\n", error);
 	}	
 
-	if ( email_service_end() != EMF_ERROR_NONE) {
+	if ( email_service_end() != EMAIL_ERROR_NONE) {
 		testapp_print ("unexpected error: closing email service fail \n");
 	}
 
@@ -145,14 +145,14 @@ static gboolean testapp_interpret_command (int menu_number)
 			break;
 			
 		case 3:
-			emf_test_mailbox_main();
+			email_test_mailbox_main();
 			break;
 			
 		case 4:
 			break;
 			
 		case 5:
-			emf_test_rule_main();
+			email_test_rule_main();
 			break;
 			
 		case 6:
@@ -176,6 +176,7 @@ int main (int argc, char *argv[])
 {
 	gboolean go_to_loop = TRUE;
 	int menu_number = 0;
+	int result_from_scanf = 0;
 
 	if ( testapp_initialize_testing() == FALSE ) {
 		testapp_print ("email-serivce is not ready\n");
@@ -183,10 +184,10 @@ int main (int argc, char *argv[])
 	}
 
 	while (go_to_loop) {
-		testapp_show_menu (EMF_MAIN_MENU);
-		testapp_show_prompt (EMF_MAIN_MENU);
+		testapp_show_menu (EMAIL_MAIN_MENU);
+		testapp_show_prompt (EMAIL_MAIN_MENU);
 
-		scanf ("%d", &menu_number);
+		result_from_scanf = scanf ("%d", &menu_number);
 
 		go_to_loop = testapp_interpret_command (menu_number);
 	}

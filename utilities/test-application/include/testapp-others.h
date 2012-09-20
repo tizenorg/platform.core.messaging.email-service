@@ -21,8 +21,8 @@
 
 
 
-#ifndef EMF_TEST_OTHERS_H
-#define EMF_TEST_OTHERS_H
+#ifndef EMAIL_TEST_OTHERS_H
+#define EMAIL_TEST_OTHERS_H
 
 /* export API */
 void testapp_others_main(void);

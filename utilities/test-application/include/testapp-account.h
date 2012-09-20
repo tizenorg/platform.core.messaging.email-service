@@ -20,8 +20,8 @@
 */
 
 
-#ifndef EMF_TEST_ACCOUNT_H
-#define EMF_TEST_ACCOUNT_H
+#ifndef EMAIL_TEST_ACCOUNT_H
+#define EMAIL_TEST_ACCOUNT_H
 
 /* export API */
 void testapp_account_main();

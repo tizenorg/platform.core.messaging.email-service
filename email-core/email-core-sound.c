@@ -22,6 +22,7 @@
 
 #include <stdlib.h>
 #include <pthread.h>
+
 #include "email-debug-log.h"
 #include "email-storage.h"
 #include "email-core-utils.h"
@@ -29,10 +30,10 @@
 #include "email-core-sound.h"
 #include "email-utilities.h"
 
-#define TIMER 7000
+#define TIMER 30000   // 30 seconds
 #define HAPTIC_TEST_ITERATION 1
 
-static MMHandleType email_mmhandle = MM_PLAYER_STATE_NONE;
+static MMHandleType email_mmhandle = 0;
 static alarm_id_t email_alarm_id = 0;
 static int email_vibe_handle = 0;
 
@@ -212,6 +213,11 @@ bool emcore_sound_mp_player_create()
 	EM_DEBUG_FUNC_BEGIN();
 	int err = 0;
 	
+	if (email_mmhandle) {
+		EM_DEBUG_LOG("already create the handle");
+		return false;
+	}
+
 	if ((err = mm_player_create(&email_mmhandle)) != MM_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("mm_player create fail [%d]", err);
 		return false;
@@ -276,11 +282,11 @@ bool emcore_alert_create()
 	}
 	
 	/* Set the music file in alert */
-	if (!emcore_set_mp_filepath(VCONFKEY_SETAPPL_NOTI_EMAIL_RINGTONE_PATH_STR))
-		if (!emcore_set_mp_filepath(VCONFKEY_SETAPPL_DEFAULT_NOTI_EMAIL_RINGTONE_PATH_STR)) {
-			EM_DEBUG_EXCEPTION("emcore_set_mp_filepath failed.");
-			return false;
-		}
+	if (!emcore_set_mp_filepath(VCONFKEY_SETAPPL_NOTI_EMAIL_RINGTONE_PATH_STR)) {
+		/* TODO : Add code to set default ringtone path */
+		EM_DEBUG_EXCEPTION("emcore_set_mp_filepath failed.");
+		return false;
+	}
 	
 	EM_DEBUG_FUNC_END();
 	return true;
@@ -322,7 +328,7 @@ gboolean mp_player_timeout_cb(void *data)
 	EM_DEBUG_FUNC_BEGIN();
 
 	ENTER_CRITICAL_SECTION(mmhandle_mutex);	
-	if (email_mmhandle == MM_PLAYER_STATE_PLAYING)
+	if (email_mmhandle)
 	{			
 		emcore_sound_mp_player_stop();
 		emcore_sound_mp_player_destory();
@@ -471,6 +477,8 @@ bool emcore_sound_mp_player_destory()
 		return false;
 	}
 
+	email_mmhandle = 0;
+
 	EM_DEBUG_FUNC_END();
 	return true;
 }	
@@ -552,20 +560,20 @@ int emcore_get_alert_type()
 }
 
 
-INTERNAL_FUNC int emcore_start_alert_thread(int *err_code)
+INTERNAL_FUNC int emcore_start_thread_for_alerting_new_mails(int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
 
 	int thread_error;
 
 	if (err_code != NULL)
-		*err_code = EMF_ERROR_NONE;
+		*err_code = EMAIL_ERROR_NONE;
 	
 	if (g_alert_thread)
 	{
 		EM_DEBUG_EXCEPTION("Alert service is already running...");
 		if (err_code != NULL)
-			*err_code = EMF_ERROR_UNKNOWN;
+			*err_code = EMAIL_ERROR_UNKNOWN;
 		
 		return 1;
 	}
@@ -575,13 +583,13 @@ INTERNAL_FUNC int emcore_start_alert_thread(int *err_code)
 	{
 		EM_DEBUG_EXCEPTION("Cannot create alert thread");
 		if (err_code != NULL)
-			*err_code = EMF_ERROR_SYSTEM_FAILURE;
+			*err_code = EMAIL_ERROR_SYSTEM_FAILURE;
 
 		return -1;
 	}
 		
 	if (err_code != NULL)
-		*err_code = EMF_ERROR_NONE;
+		*err_code = EMAIL_ERROR_NONE;
 
 	return 0;
 }
@@ -590,15 +598,15 @@ int emcore_alarm_timeout_cb(int timer_id, void *user_parm)
 {
 	EM_DEBUG_FUNC_BEGIN();
 
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 	int total_unread_count = 0;
 	int total_mail_count = 0;
-	emf_mailbox_t mailbox;
+	email_mailbox_t mailbox;
 
-	memset(&mailbox, 0x00, sizeof(emf_mailbox_t));
+	memset(&mailbox, 0x00, sizeof(email_mailbox_t));
 
 	mailbox.account_id = ALL_ACCOUNT;
-	mailbox.name = NULL;
+	mailbox.mailbox_name = NULL;
 
 	if (!emcore_get_mail_count(&mailbox, &total_mail_count, &total_unread_count, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_get_mail_count failed - %d\n", err);
@@ -729,7 +737,10 @@ void *start_alert_thread(void *arg)
 		switch (emcore_get_alert_type())
 		{
 			case EMAIL_ALERT_TYPE_MELODY:
-				emcore_sound_mp_player_create();
+				if (!emcore_sound_mp_player_create()) {
+					EM_DEBUG_LOG("emcore_sound_mp_player_create failed : [%d]", email_mmhandle);
+					break;
+				}
 				emcore_sound_mp_player_start(filename);
 				break;
 			case EMAIL_ALERT_TYPE_VIB:
@@ -739,7 +750,10 @@ void *start_alert_thread(void *arg)
 			case EMAIL_ALERT_TYPE_MELODY_AND_VIB:
 				emcore_vibration_create();
 				emcore_vibration_start(level);
-				emcore_sound_mp_player_create();
+				if (!emcore_sound_mp_player_create()) {
+					EM_DEBUG_LOG("emcore_sound_mp_player_create failed : [%d]", email_mmhandle);
+					break;
+				}
 				emcore_sound_mp_player_start(filename);
 				break;
 			case EMAIL_ALERT_TYPE_MUTE:
@@ -751,7 +765,7 @@ void *start_alert_thread(void *arg)
 				break;
 		}
 		LEAVE_CRITICAL_SECTION(sound_mutex);
-
+		EM_DEBUG_LOG("Start FINISH");
 		emcore_alarm_destory();
 	}
 	return 0;

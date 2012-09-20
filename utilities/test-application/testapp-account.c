@@ -27,6 +27,7 @@
 /* open header */
 #include <glib.h>
 
+#include "email-api.h"
 #include "email-api-account.h"
 #include "email-api-network.h"
 
@@ -46,7 +47,7 @@
 
 /*  SAMSUNG 3G TEST */
 #define S3G_RECV_SERVER_ADDR		    "165.213.73.235"
-#define S3G_RECV_SERVER_PORT		    EMF_POP3_PORT
+#define S3G_RECV_SERVER_PORT		    EMAIL_POP3_PORT
 #define S3G_RECV_USE_SECURITY		    0
 #define S3G_RECV_IMAP_USE_SECURITY	1
 #define S3G_SMTP_SERVER_ADDR		    "165.213.73.235"
@@ -57,9 +58,10 @@
 
 gboolean testapp_test_create_account_by_account_type(int account_type,int *account_id) 
 {
-	emf_account_t *account = NULL;
+	email_account_t *account = NULL;
 	char id_string[100] = { 0, }, password_string[100] = { 0, }, address_string[100]  = { 0, };
-	int err_code = EMF_ERROR_NONE, samsung3g_account_index;
+	int err_code = EMAIL_ERROR_NONE, samsung3g_account_index;
+	int result_from_scanf = 0;
 	unsigned handle;
 
 	switch(account_type) {
@@ -67,7 +69,7 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 		case 5 :
 			do {
 				testapp_print("Enter your account index [1~10] : ");
-				scanf("%d",&samsung3g_account_index);
+				result_from_scanf = scanf("%d",&samsung3g_account_index);
 			}while( samsung3g_account_index > 10 || samsung3g_account_index < 1);
 			sprintf(id_string, "test%02d", samsung3g_account_index);
 			sprintf(address_string, "<test%02d@streaming.s3glab.net>", samsung3g_account_index);
@@ -75,178 +77,188 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 			break;
 		default:
 			testapp_print("Enter email address : ");
-			scanf("%s", address_string);
+			result_from_scanf = scanf("%s", address_string);
 
 			testapp_print("Enter id : ");
-			scanf("%s", id_string);
+			result_from_scanf = scanf("%s", id_string);
 
 			testapp_print("Enter password_string : ");
-			scanf("%s", password_string);
+			result_from_scanf = scanf("%s", password_string);
 			break;
 	}
 
-	account = malloc(sizeof(emf_account_t));
-	memset(account, 0x00, sizeof(emf_account_t));
+	account = malloc(sizeof(email_account_t));
+	memset(account, 0x00, sizeof(email_account_t));
+
+	typedef struct {
+		int is_preset_account;
+		int index_color;
+	} user_data_t;
+	user_data_t data = (user_data_t) {1, 0};
+	/* if user_data_t has any pointer member, please don't use sizeof(). */
+	/* You need to serialize user_data to buffer and then take its length */
+	int data_length = sizeof(data);
 
 	/* Common Options */
-	account->account_bind_type             = EMF_BIND_TYPE_EM_CORE;                           
-	account->retrieval_mode                = EMF_IMAP4_RETRIEVAL_MODE_ALL;                                                   
-	account->use_security                  = 1;                                                   
-	account->sending_server_type           = EMF_SERVER_TYPE_SMTP;                                                   
-	account->flag1                         = 2;
-	account->flag2                         = 1;
+	account->retrieval_mode                = EMAIL_IMAP4_RETRIEVAL_MODE_ALL;
+	account->incoming_server_secure_connection	= 1;
+	account->outgoing_server_type          = EMAIL_SERVER_TYPE_SMTP;
+	account->auto_download_size			   = 2;
+	account->outgoing_server_use_same_authenticator = 1;
 	account->pop_before_smtp               = 0;
-	account->apop                          = 0;
-	account->logo_icon_path                = NULL;   
-	account->preset_account                = 0;   
-	account->options.priority              = 3;   
-	account->options.keep_local_copy       = 0;   
-	account->options.req_delivery_receipt  = 0;   
-	account->options.req_read_receipt      = 0;   
-	account->options.download_limit        = 0;   
-	account->options.block_address         = 0;   
-	account->options.block_subject         = 0;   
-	account->options.display_name_from     = NULL;   
-	account->options.reply_with_body       = 0;   
-	account->options.forward_with_files    = 0;   
-	account->options.add_myname_card       = 0;   
-	account->options.add_signature         = 0;   
+	account->incoming_server_requires_apop = 0;
+	account->logo_icon_path                = NULL;
+	account->user_data                     = malloc (data_length);
+	memcpy( account->user_data, (void*) &data, data_length );
+	account->user_data_length              = data_length;
+	account->options.priority              = 3;
+	account->options.keep_local_copy       = 0;
+	account->options.req_delivery_receipt  = 0;
+	account->options.req_read_receipt      = 0;
+	account->options.download_limit        = 0;
+	account->options.block_address         = 0;
+	account->options.block_subject         = 0;
+	account->options.display_name_from     = NULL;
+	account->options.reply_with_body       = 0;
+	account->options.forward_with_files    = 0;
+	account->options.add_myname_card       = 0;
+	account->options.add_signature         = 0;
 	account->options.signature             = NULL;
-	account->options.add_my_address_to_bcc = 0;   
-	account->target_storage                = 0;   
-	account->check_interval                = 0; 
-	account->keep_on_server	               = 1;
+	account->options.add_my_address_to_bcc = 0;
+	account->check_interval                = 0;
+	account->keep_mails_on_pop_server_after_download	= 1;
+	account->default_mail_slot_size        = 200;
 
-	account->account_name                  = strdup(address_string); 
-	account->display_name                  = strdup(id_string); 
-	account->email_addr                    = strdup(address_string); 
-	account->reply_to_addr                 = strdup(address_string); 
-	account->return_addr                   = strdup(address_string); 
-	
-	account->user_name                     = strdup(id_string); 
-	account->password                      = strdup(password_string); 
-	account->sending_user                  = strdup(id_string); 
-	account->sending_password              = strdup(password_string); 
+	account->account_name                  = strdup(address_string);
+	account->user_display_name             = strdup(id_string);
+	account->user_email_address            = strdup(address_string);
+	account->reply_to_address              = strdup(address_string);
+	account->return_address                = strdup(address_string);
+
+	account->incoming_server_user_name     = strdup(id_string);
+	account->incoming_server_password      = strdup(password_string);
+	account->outgoing_server_user_name     = strdup(id_string);
+	account->outgoing_server_password	   = strdup(password_string);
 
 	switch (account_type) {
 		case 1:/*  gawab */
-			account->receiving_server_type  = EMF_SERVER_TYPE_POP3 ; 
-			account->receiving_server_addr  = strdup(GWB_RECV_SERVER_ADDR); 
-			account->port_num               = EMF_POP3S_PORT;     			
-			account->sending_server_addr    = strdup(GWB_SMTP_SERVER_ADDR); 
-			account->use_security           = 1;  
-			account->sending_auth           = 1; 
-			account->sending_port_num       = EMF_SMTPS_PORT; 
-			account->sending_security       = 1;
+			account->incoming_server_type  		 = EMAIL_SERVER_TYPE_POP3 ;
+			account->incoming_server_address	 = strdup(GWB_RECV_SERVER_ADDR);
+			account->incoming_server_port_number = EMAIL_POP3S_PORT;
+			account->outgoing_server_address     = strdup(GWB_SMTP_SERVER_ADDR);
+			account->incoming_server_secure_connection	= 1;
+			account->outgoing_server_need_authentication = 1;
+			account->outgoing_server_port_number = EMAIL_SMTPS_PORT;
+			account->outgoing_server_secure_connection       = 1;
 
 			break;
 
 		case 2:/*  vadofone */
-			account->receiving_server_type  = EMF_SERVER_TYPE_IMAP4; 
-			account->receiving_server_addr  = strdup(VDF_RECV_SERVER_ADDR); 
-			account->port_num               = EMF_IMAP_PORT;        
-			account->sending_server_addr    = strdup(VDF_SMTP_SERVER_ADDR); 
-			account->use_security           = 0;  
-			account->sending_auth           = 0; 
+			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
+			account->incoming_server_address= strdup(VDF_RECV_SERVER_ADDR);
+			account->incoming_server_port_number = EMAIL_IMAP_PORT;
+			account->outgoing_server_address     = strdup(VDF_SMTP_SERVER_ADDR);
+			account->incoming_server_secure_connection	= 0;
+			account->outgoing_server_need_authentication = 0;
 			break;
 
 		case 4:/*  SAMSUNG 3G TEST */
-			account->receiving_server_type  = EMF_SERVER_TYPE_POP3;
-			account->receiving_server_addr  = strdup(S3G_RECV_SERVER_ADDR); 
-			account->port_num               = S3G_RECV_SERVER_PORT;        
-			account->sending_server_addr    = strdup(S3G_SMTP_SERVER_ADDR); 
-			account->sending_port_num       = S3G_SMTP_SERVER_PORT;
- 			account->use_security           = S3G_RECV_USE_SECURITY;                                                   
-			account->sending_security       = S3G_SMTP_USE_SECURITY;
-			account->sending_auth		        = S3G_SMTP_AUTH;
+			account->incoming_server_type  		 = EMAIL_SERVER_TYPE_POP3;
+			account->incoming_server_address	 = strdup(S3G_RECV_SERVER_ADDR);
+			account->incoming_server_port_number = S3G_RECV_SERVER_PORT;
+			account->outgoing_server_address     = strdup(S3G_SMTP_SERVER_ADDR);
+			account->outgoing_server_port_number = S3G_SMTP_SERVER_PORT;
+ 			account->incoming_server_secure_connection	= S3G_RECV_USE_SECURITY;
+			account->outgoing_server_secure_connection  = S3G_SMTP_USE_SECURITY;
+			account->outgoing_server_need_authentication = S3G_SMTP_AUTH;
 			break;
-	
+
 		case 5:/*  SAMSUNG 3G TEST */
-			account->receiving_server_type  = EMF_SERVER_TYPE_IMAP4;
-			account->receiving_server_addr  = strdup(S3G_RECV_SERVER_ADDR); 
-			account->port_num               = EMF_IMAPS_PORT;        
-			account->sending_server_addr    = strdup(S3G_SMTP_SERVER_ADDR); 
-			account->sending_port_num       = S3G_SMTP_SERVER_PORT;
- 			account->use_security           = 1;                                                   
-			account->sending_security 	    = S3G_SMTP_USE_SECURITY;
-			account->sending_auth		        = S3G_SMTP_AUTH;
+			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
+			account->incoming_server_address= strdup(S3G_RECV_SERVER_ADDR);
+			account->incoming_server_port_number = EMAIL_IMAPS_PORT;
+			account->outgoing_server_address     = strdup(S3G_SMTP_SERVER_ADDR);
+			account->outgoing_server_port_number = S3G_SMTP_SERVER_PORT;
+ 			account->incoming_server_secure_connection	= 1;
+			account->outgoing_server_secure_connection  = S3G_SMTP_USE_SECURITY;
+			account->outgoing_server_need_authentication = S3G_SMTP_AUTH;
 			break;
 
 		case 6:/*  Gmail POP3 */
-			account->receiving_server_type  = EMF_SERVER_TYPE_POP3; 
-			account->receiving_server_addr  = strdup("pop.gmail.com"); 
-			account->port_num               = 995;        
-			account->use_security           = 1;                                                   
-			account->sending_server_addr    = strdup("smtp.gmail.com"); 
-			account->sending_port_num       = 465;                                                        
-			account->sending_security       = 1;  
-			account->sending_auth           = 1;   
+			account->incoming_server_type  = EMAIL_SERVER_TYPE_POP3;
+			account->incoming_server_address= strdup("pop.gmail.com");
+			account->incoming_server_port_number = 995;
+			account->incoming_server_secure_connection	= 1;
+			account->outgoing_server_address    = strdup("smtp.gmail.com");
+			account->outgoing_server_port_number = 465;
+			account->outgoing_server_secure_connection = 1;
+			account->outgoing_server_need_authentication = 1;
 			break;
 
 		case 7 : /*  Gmail IMAP4 */
-			account->receiving_server_type  = EMF_SERVER_TYPE_IMAP4; 
-			account->receiving_server_addr  = strdup("imap.gmail.com"); 
-			account->port_num               = 993;        
-			account->use_security           = 1;                                                   
-			account->sending_server_addr    = strdup("smtp.gmail.com"); 
-			account->sending_port_num       = 465;                                                        
-			account->sending_security       = 1;  
-			account->sending_auth           = 1;   
+			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
+			account->incoming_server_address= strdup("imap.gmail.com");
+			account->incoming_server_port_number = 993;
+			account->incoming_server_secure_connection	= 1;
+			account->outgoing_server_address    = strdup("smtp.gmail.com");
+			account->outgoing_server_port_number = 465;
+			account->outgoing_server_secure_connection = 1;
+			account->outgoing_server_need_authentication = 1;
 			break;
 
 		case 8: /*  Active Sync */
-			account->receiving_server_type  = EMF_SERVER_TYPE_ACTIVE_SYNC; 
-			account->receiving_server_addr  = strdup(""); 
-			account->port_num               = 0;        
-			account->use_security           = 1;                                                   
-			account->sending_server_addr    = strdup(""); 
-			account->sending_port_num       = 0;                                                        
-			account->sending_security       = 1;  
-			account->sending_auth           = 1;   
+			account->incoming_server_type  = EMAIL_SERVER_TYPE_ACTIVE_SYNC;
+			account->incoming_server_address= strdup("");
+			account->incoming_server_port_number = 0;
+			account->incoming_server_secure_connection	= 1;
+			account->outgoing_server_address    = strdup("");
+			account->outgoing_server_port_number = 0;
+			account->outgoing_server_secure_connection = 1;
+			account->outgoing_server_need_authentication = 1;
 			break;
 
 		case 9: /*  AOL */
-			account->receiving_server_type  = EMF_SERVER_TYPE_IMAP4; 
-			account->receiving_server_addr  = strdup("imap.aol.com"); 
-			account->port_num               = 143;        
-			account->use_security           = 0;                                                   
-			account->sending_server_addr    = strdup("smtp.aol.com"); 
-			account->sending_port_num       = 587;                                                        
-			account->sending_security       = 0;  
-			account->sending_auth           = 1;   
+			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
+			account->incoming_server_address= strdup("imap.aol.com");
+			account->incoming_server_port_number = 143;
+			account->incoming_server_secure_connection	= 0;
+			account->outgoing_server_address    = strdup("smtp.aol.com");
+			account->outgoing_server_port_number = 587;
+			account->outgoing_server_secure_connection = 0;
+			account->outgoing_server_need_authentication = 1;
 			break;
 
 		case 10: /*  Hotmail */
-			account->receiving_server_type  = EMF_SERVER_TYPE_POP3; 
-			account->receiving_server_addr  = strdup("pop3.live.com"); 
-			account->port_num               = 995;        
-			account->use_security           = 1;                                                   
-			account->sending_server_addr    = strdup("smtp.live.com"); 
-			account->sending_port_num       = 587;                                                        
-			account->sending_security       = 0x02;  
-			account->sending_auth           = 1;   
+			account->incoming_server_type  = EMAIL_SERVER_TYPE_POP3;
+			account->incoming_server_address= strdup("pop3.live.com");
+			account->incoming_server_port_number = 995;
+			account->incoming_server_secure_connection	= 1;
+			account->outgoing_server_address    = strdup("smtp.live.com");
+			account->outgoing_server_port_number = 587;
+			account->outgoing_server_secure_connection  = 0x02;
+			account->outgoing_server_need_authentication = 1;
 			break;
 
 		case 11:/*  Daum IMAP4*/
-			account->receiving_server_type  = EMF_SERVER_TYPE_IMAP4;
-			account->receiving_server_addr  = strdup("imap.daum.net");
-			account->port_num               = 993;
-			account->use_security           = 1;
-			account->sending_server_addr    = strdup("smtp.daum.net");
-			account->sending_port_num       = 465;
-            account->sending_security 	    = 1;
-			account->sending_auth		    = 1;
+			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
+			account->incoming_server_address= strdup("imap.daum.net");
+			account->incoming_server_port_number = 993;
+			account->incoming_server_secure_connection	= 1;
+			account->outgoing_server_address    = strdup("smtp.daum.net");
+			account->outgoing_server_port_number = 465;
+            account->outgoing_server_secure_connection = 1;
+			account->outgoing_server_need_authentication = 1;
 			break;
 
 		case 12:/*  Daum POP3*/
-			account->receiving_server_type  = EMF_SERVER_TYPE_POP3;
-			account->receiving_server_addr  = strdup("pop.daum.net");
-			account->port_num               = 995;
-			account->use_security           = 1;
-			account->sending_server_addr    = strdup("smtp.daum.net");
-			account->sending_port_num       = 465;
-            account->sending_security 	    = 1;
-			account->sending_auth		    = 1;
+			account->incoming_server_type  = EMAIL_SERVER_TYPE_POP3;
+			account->incoming_server_address= strdup("pop.daum.net");
+			account->incoming_server_port_number = 995;
+			account->incoming_server_secure_connection	= 1;
+			account->outgoing_server_address    = strdup("smtp.daum.net");
+			account->outgoing_server_port_number = 465;
+            account->outgoing_server_secure_connection = 1;
+			account->outgoing_server_need_authentication = 1;
 			break;
 
 		default:
@@ -254,12 +266,12 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 			return FALSE;
 			break;
 	}
-	account->my_account_id = 77;   
+	account->account_svc_id = 77;
 	err_code = email_add_account_with_validation(account, &handle);
 	if( err_code < 0) {
 		testapp_print ("   email_add_account_with_validation error : %d\n",err_code);
 		return FALSE;
-	} 
+	}
 
 	testapp_print ("   email_add_account succeed\n");
 
@@ -274,7 +286,8 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 static gboolean testapp_test_create_account() 
 {
 	int account_type = 0 ;
-	int err = EMF_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
+	int result_from_scanf = 0;
 	
 	testapp_print("1. Gawab\n");
 	testapp_print("2. Vodafone\n");
@@ -289,7 +302,7 @@ static gboolean testapp_test_create_account()
 	testapp_print("12. Daum (POP3)\n");
 	testapp_print("Choose server type: ");
 	
-	scanf("%d",&account_type);
+	result_from_scanf = scanf("%d",&account_type);
 
 	if(!testapp_test_create_account_by_account_type(account_type,&err)) {
 		testapp_print ("   testapp_test_create_account_by_account_type error\n");
@@ -300,25 +313,27 @@ static gboolean testapp_test_create_account()
 
 static gboolean testapp_test_update_account()
 {
+	int result_from_scanf = 0;
 	int account_id;
-	emf_account_t *account = NULL;
-	char account_name[20];	
-	int err = EMF_ERROR_NONE;
+	email_account_t *account = NULL;
+	char account_name[256];
+	int err = EMAIL_ERROR_NONE;
 	char signature[100] = {0};
-	char email_addr[50] = {0,};
+	char user_email_address[256] = {0,};
 	int add_my_address_to_bcc = 0;
-	int my_account_id = 0, with_validation = 0;
+	int account_svc_id = 0, with_validation = 0;
 
 	
 	testapp_print("\n>> Enter Account No: ");
-	scanf("%d",&account_id);
+	result_from_scanf = scanf("%d",&account_id);
 
-/* sowmya.kr, 281209 Adding signature to options in emf_account_t changes */
-	if( (err = email_get_account(account_id, GET_FULL_DATA,&account)) < 0) {
-		testapp_print ("email_get_account failed \n");
+/* sowmya.kr, 281209 Adding signature to options in email_account_t changes */
+	if( (err = email_get_account(account_id, GET_FULL_DATA,&account)) != EMAIL_ERROR_NONE) {
+		testapp_print ("email_get_account failed - %d\n", err);
+		return false;
 	}
-	else
-		testapp_print ("email_get_account result account_name - %s \n", account->account_name);
+
+	testapp_print ("email_get_account result account_name - %s \n", account->account_name);
 
 	testapp_print ("email_get_account result signature - %s \n", account->options.signature);
 
@@ -327,57 +342,65 @@ static gboolean testapp_test_update_account()
 #endif
 
 	testapp_print("\n Enter new Account name:");
-	scanf("%s",account_name);
+	result_from_scanf = scanf("%s",account_name);
 
 	
 	testapp_print("\n Enter new email addr:");
-	scanf("%s",email_addr);
+	result_from_scanf = scanf("%s",user_email_address);
 #ifdef __FEATURE_AUTO_POLLING__
 	testapp_print("\n Enter new check interval (in mins):");
-	scanf("%d",&(account->check_interval));
+	result_from_scanf = scanf("%d",&(account->check_interval));
 #endif
 	testapp_print("\n Enter new signature:");
-	scanf("%s",signature);
+	result_from_scanf = scanf("%s",signature);
 
 	testapp_print("\n>> Enter add_my_address_to_bcc:(0:off, 1:on) ");
-	scanf("%d",&add_my_address_to_bcc);
+	result_from_scanf = scanf("%d",&add_my_address_to_bcc);
 
-	testapp_print("\n>> Enter my_account_id: ");
-	scanf("%d",&my_account_id);
+	testapp_print("\n>> Enter account_svc_id: ");
+	result_from_scanf = scanf("%d",&account_svc_id);
 
 	testapp_print("\n>> With validation ? (0: No, 1:Yes) ");
-	scanf("%d",&with_validation);
+	result_from_scanf = scanf("%d",&with_validation);
 
     if( account )  {
 		account->account_name = strdup(account_name);
-		testapp_print("\n Assigning New Account name: %p", account->account_name);
-		account->email_addr = strdup(email_addr);
+		testapp_print("\n Assigning New Account name: (%s)", account->account_name);
+		account->user_email_address = strdup(user_email_address);
 		account->options.signature = strdup(signature);
-		testapp_print("\n Assigning New Account name: %p", account->options.signature);
+		testapp_print("\n Assigning New Signature: (%s)\n", account->options.signature);
 		account->options.add_my_address_to_bcc = add_my_address_to_bcc;
-		account->my_account_id= my_account_id;
+		account->account_svc_id = account_svc_id;
 
 		if(with_validation) {
-			if((err = email_update_account_with_validation(account_id, account)) < 0) 
+			if((err = email_update_account_with_validation(account_id, account)) != EMAIL_ERROR_NONE){
+				testapp_print ("email_update_account_with_validation failed - %d\n", err);
+				return false;
+			}
 				testapp_print ("email_update_account_with_validation successful \n");
 		}
 		else {
-			if((err = email_update_account(account_id, account)) < 0) 
-				testapp_print ("email_update_account_with_validation successful \n");
+			if((err = email_update_account(account_id, account)) != EMAIL_ERROR_NONE) {
+				testapp_print ("email_update_account failed - %d\n", err);
+				return false;
+			}
+			testapp_print ("email_update_account successful \n");
 		}
     }
-	return FALSE;
+	return true;
 }
 
 static gboolean testapp_test_delete_account ()
 {
 	int account_id;
-	emf_account_t *account=NULL;
-	int err = EMF_ERROR_NONE;
-	testapp_print("\n>> Enter Account No: ");
-	scanf("%d",&account_id);
+	email_account_t *account=NULL;
+	int err = EMAIL_ERROR_NONE;
+	int result_from_scanf = 0;
 
-/* sowmya.kr, 281209 Adding signature to options in emf_account_t changes */
+	testapp_print("\n>> Enter Account No: ");
+	result_from_scanf = scanf("%d",&account_id);
+
+/* sowmya.kr, 281209 Adding signature to options in email_account_t changes */
 	if( (err = email_get_account(account_id, WITHOUT_OPTION,&account)) < 0) {
 		testapp_print ("email_get_account failed \n");
 		testapp_print("testapp_test_delete_account failed\n");
@@ -397,15 +420,16 @@ static gboolean testapp_test_delete_account ()
 
 static gboolean testapp_test_validate_account ()
 {
+	int result_from_scanf = 0;
 	int account_id;
-	emf_account_t *account=NULL;
-	int err_code = EMF_ERROR_NONE;
+	email_account_t *account=NULL;
+	int err_code = EMAIL_ERROR_NONE;
 	unsigned account_handle = 0;
 	
 	testapp_print("\n>> Enter Account No: ");
-	scanf("%d",&account_id);
+	result_from_scanf = scanf("%d",&account_id);
 
-/* sowmya.kr, 281209 Adding signature to options in emf_account_t changes */
+/* sowmya.kr, 281209 Adding signature to options in email_account_t changes */
 	if( (err_code = email_get_account(account_id, WITHOUT_OPTION,&account)) < 0 ) {
 		testapp_print ("email_get_account failed \n");
 		return FALSE;
@@ -413,7 +437,7 @@ static gboolean testapp_test_validate_account ()
 	else
 		testapp_print ("email_get_account result account_name - %s \n", account->account_name);
 
-	if((err_code = email_validate_account(account_id, &account_handle)) == EMF_ERROR_NONE ) 
+	if((err_code = email_validate_account(account_id, &account_handle)) == EMAIL_ERROR_NONE ) 
 		testapp_print ("email_validate_account successful  account_handle : %u\n",account_handle);
 	else
 		testapp_print ("email_validate_account failed err_code: %d \n",err_code);
@@ -425,17 +449,18 @@ static gboolean testapp_test_validate_account ()
 
 static gboolean testapp_test_cancel_validate_account ()
 {
+	int result_from_scanf = 0;
 	int account_id = 0;
-	int err_code = EMF_ERROR_NONE;
+	int err_code = EMAIL_ERROR_NONE;
 	unsigned account_handle = 0;
 
 	testapp_print("\n > Enter account_id: ");
-	scanf("%d", &account_id);
+	result_from_scanf = scanf("%d", &account_id);
 
 	testapp_print("\n > Enter handle: ");
-	scanf("%d", &account_handle);
+	result_from_scanf = scanf("%d", &account_handle);
 
-	err_code = email_cancel_job(account_id, account_handle);
+	err_code = email_cancel_job(account_id, account_handle, EMAIL_CANCELED_BY_USER);
 	if(err_code == 0)
 		testapp_print("email_cancel_job Success..!handle:[%d]", account_handle);
 	else
@@ -446,63 +471,110 @@ static gboolean testapp_test_cancel_validate_account ()
 
 static gboolean testapp_test_get_account()
 {
+	int result_from_scanf = 0;
 	int account_id;
-	emf_account_t *account=NULL;
-	int err_code = EMF_ERROR_NONE;
+	email_account_t *account=NULL;
+	int err_code = EMAIL_ERROR_NONE;
 	testapp_print("\n>> Enter Account No: ");
-	scanf("%d",&account_id);
+	result_from_scanf = scanf("%d",&account_id);
 
-/* sowmya.kr, 281209 Adding signature to options in emf_account_t changes */
+	typedef struct {
+		int is_preset_account;
+		int index_color;
+	} user_data_t;
+
+	testapp_print ("\n----------------------------------------------------------\n");
 	testapp_print ("email_get_account GET_FULL_DATA \n");
 	if( (err_code = email_get_account(account_id,GET_FULL_DATA,&account)) < 0) {
-		testapp_print ("email_get_account failed \n");
+		testapp_print ("email_get_account failed - %d\n", err_code);
 		return FALSE;
 	}
-	else
-		testapp_print ("email_get_account result account_name - %s \n email_addr - %s \n use_security %d \n add_sig : %d \n  signature %s \n add_my_address_to_bcc %d \nmy_account_id %d\n", 
+
+	user_data_t* val = (user_data_t*) account->user_data;
+	int is_preset_account =  val? val->is_preset_account : 0;
+	int index_color = val? val->index_color : 0;
+
+	testapp_print ("email_get_account result\n"
+			"account_name - %s \n"
+			"user_email_address - %s \n"
+			"incoming_server_secure_connection %d \n"
+			"add_sig : %d \n"
+			"signature %s \n"
+			"add_my_address_to_bcc %d \n"
+			"account_svc_id %d\n"
+			"incoming_server_address %s\n"
+			"outgoing_server_address %s\n"
+			"default_mail_slot_size %d\n"
+			"sync_status %d\n"
+			"sync_disabled %d\n"
+			"is_preset %d\n"
+			"index_color %d\n"
+			"certificate_path %s\n"
+			"digest_type %d\n"
+		,
 		account->account_name,
-		account->email_addr,
-		account->use_security,
+		account->user_email_address,
+		account->incoming_server_secure_connection,
 		account->options.add_signature,
 		account->options.signature,
 		account->options.add_my_address_to_bcc,
-		account->my_account_id
+		account->account_svc_id,
+		account->incoming_server_address,
+		account->outgoing_server_address,
+		account->default_mail_slot_size,
+		account->sync_status,
+		account->sync_disabled,
+		is_preset_account,
+		index_color,
+		account->certificate_path,
+		account->digest_type
 		);
 
 	err_code = email_free_account(&account, 1);
 
+	testapp_print ("\n----------------------------------------------------------\n");
 	testapp_print ("email_get_account WITHOUT_OPTION \n");
 
-	if( (err_code = email_get_account(account_id,WITHOUT_OPTION,&account)) < 0) {
+	if( (err_code = email_get_account(account_id, WITHOUT_OPTION, &account)) < 0) {
 		testapp_print ("email_get_account failed \n");
 		return FALSE;
 	}
-	else
-		testapp_print ("email_get_account result account_name - %s \n email_addr - %s \n use_security %d \n add_sig : %d \n ", 
+
+	testapp_print ("email_get_account result\n"
+			"account_name - %s \n"
+			"user_email_address - %s \n"
+			"incoming_server_secure_connection %d \n"
+			"add_signature : %d \n",
 		account->account_name,
-		account->email_addr,
-		account->use_security,
-		account->options.add_signature);
+		account->user_email_address,
+		account->incoming_server_secure_connection,
+		account->options.add_signature
+	);
 
 	if(account->options.signature)
-		testapp_print ("signature : %s \n", account->options.signature);
+		testapp_print ("signature : %s\n", account->options.signature);
 	else
 		testapp_print ("signature not retrieved \n");
 
 	err_code = email_free_account(&account, 1);
 
+	testapp_print ("\n----------------------------------------------------------\n");
 	testapp_print ("email_get_account ONLY_OPTION \n");
 
-	if( (err_code = email_get_account(account_id,ONLY_OPTION,&account)) < 0) {
+	if( (err_code = email_get_account(account_id, ONLY_OPTION, &account)) < 0) {
 		testapp_print ("email_get_account failed \n");
 		return FALSE;
 	}
-	else
-		testapp_print ("email_get_account result add_sig : %d \n signature %s \n add_my_address_to_bcc %d\n my_account_id %d\n", 
+
+	testapp_print ("email_get_account result\n"
+			"add_sig : %d \n"
+			"signature %s \n"
+			"add_my_address_to_bcc %d\n"
+			"account_svc_id %d\n",
 		account->options.add_signature,
 		account->options.signature,
 		account->options.add_my_address_to_bcc,
-		account->my_account_id
+		account->account_svc_id
 		);
 
 	if(account->account_name)
@@ -510,10 +582,10 @@ static gboolean testapp_test_get_account()
 	else
 		testapp_print ("account_name not retrieved \n");	
 
-	if(account->email_addr)
-		testapp_print ("email_addr : %s \n", account->email_addr);
+	if(account->user_email_address)
+		testapp_print ("user_email_address : %s \n", account->user_email_address);
 	else
-		testapp_print ("email_addr not retrieved \n");	
+		testapp_print ("user_email_address not retrieved \n");	
 	err_code = email_free_account(&account, 1);
 		
 	return FALSE;
@@ -523,10 +595,10 @@ static gboolean testapp_test_get_account_list ()
 {
 
 	int count, i;
-	emf_account_t *account_list=NULL;
+	email_account_t *account_list=NULL;
 	struct timeval tv_1, tv_2;
 	int interval;
-	int err_code = EMF_ERROR_NONE;
+	int err_code = EMAIL_ERROR_NONE;
 
 	gettimeofday(&tv_1, NULL);
 
@@ -542,7 +614,7 @@ static gboolean testapp_test_get_account_list ()
 	for(i=0;i<count;i++){
 		testapp_print("   %2d) %-15s %-30s\n",account_list[i].account_id, 
 			account_list[i].account_name, 
-			account_list[i].email_addr);
+			account_list[i].user_email_address);
 	}
 
 	err_code = email_free_account(&account_list, count);
@@ -568,10 +640,11 @@ static gboolean testapp_test_restore_account()
 
 static gboolean testapp_test_get_password_length_of_account()
 {
+	int result_from_scanf = 0;
 	int error_code, password_length, account_id;
 
 	testapp_print("\n input account id\n");
-	scanf("%d", &account_id);
+	result_from_scanf = scanf("%d", &account_id);
 	error_code = email_get_password_length_of_account(account_id, &password_length);
 	testapp_print("testapp_test_get_password_length_of_account returned [%d]\n",password_length);
 	return FALSE;
@@ -579,16 +652,17 @@ static gboolean testapp_test_get_password_length_of_account()
 
 static gboolean testapp_test_query_server_info()
 {
+	int result_from_scanf = 0;
 	int error_code;
 	char domain_name[255];
-	emf_server_info_t *result_server_info;
+	email_server_info_t *result_server_info;
 
 	testapp_print("\n input domain name\n");
-	scanf("%s", domain_name);
+	result_from_scanf = scanf("%s", domain_name);
 
 	error_code = email_query_server_info(domain_name, &result_server_info);
 	testapp_print("email_query_server_info returned [%d]\n",error_code);
-	if(error_code == EMF_ERROR_NONE)
+	if(error_code == EMAIL_ERROR_NONE)
 		testapp_print("service_name [%s]\n", result_server_info->service_name);
 	return FALSE;
 }
@@ -601,6 +675,113 @@ static gboolean testapp_test_clear_all_notification()
 	testapp_print("email_clear_all_notification_bar returned [%d]\n",error_code);
 	return FALSE;
 }
+
+static gboolean testapp_test_save_default_account_id()
+{
+	int result_from_scanf = 0;
+	int error_code;
+	int account_id = 0;
+
+	testapp_print ("\nInput default account id : ");
+
+	result_from_scanf = scanf("%d", &account_id);
+
+	error_code = email_save_default_account_id(account_id);
+
+	testapp_print("email_save_default_account_id returned [%d]\n",error_code);
+	return FALSE;
+}
+
+static gboolean testapp_test_load_default_account_id()
+{
+	int error_code;
+	int account_id = 0;
+
+	error_code = email_load_default_account_id(&account_id);
+
+	testapp_print ("\ndefault account id : %d\n", account_id);
+	testapp_print("email_load_default_account_id returned [%d]\n",error_code);
+	return FALSE;
+}
+
+static gboolean testapp_test_add_certificate()
+{
+	int result_from_scanf = 0;
+	int ret = 0;
+	char save_name[50] = {0, };
+	char certificate_path[255] = {0, };
+
+	testapp_print("Input cert path : ");
+	result_from_scanf = scanf("%s", certificate_path);	
+
+	testapp_print("Input cert email-address : ");
+	result_from_scanf = scanf("%s", save_name);
+
+	testapp_print("cert path : [%s]", certificate_path);
+	testapp_print("email-address : [%s]", save_name);
+
+	ret = email_add_certificate(certificate_path, save_name);
+	if (ret != EMAIL_ERROR_NONE) {
+		testapp_print("Add certificate failed\n");
+		return false;
+	}
+
+	testapp_print("Add certificate success\n");
+	return true;
+}
+
+static gboolean testapp_test_get_certificate()
+{
+	int result_from_scanf = 0;
+	int ret = 0;
+	char save_name[20] = {0, };
+	email_certificate_t *certificate = NULL;
+
+	testapp_print("Input cert email-address : ");
+	result_from_scanf = scanf("%s", save_name);
+
+	ret = email_get_certificate(save_name, &certificate);
+	if (ret != EMAIL_ERROR_NONE) {
+		testapp_print("Get certificate failed\n");
+		return false;
+	}
+
+	testapp_print("certificate_id : %d\n", certificate->certificate_id);
+	testapp_print("issue_year : %d\n", certificate->issue_year);
+	testapp_print("issue_month : %d\n", certificate->issue_month);
+	testapp_print("issue_day : %d\n", certificate->issue_day);
+	testapp_print("expiration_year : %d\n", certificate->expiration_year);
+	testapp_print("expiration_month : %d\n", certificate->expiration_month);
+	testapp_print("expiration_day : %d\n", certificate->expiration_day);
+	testapp_print("issue_organization_name : %s\n", certificate->issue_organization_name);
+	testapp_print("subject_string : %s\n", certificate->subject_str);
+	testapp_print("file path : %s\n", certificate->filepath);
+
+	if (certificate)
+		email_free_certificate(&certificate, 1);
+
+	testapp_print("Get certificate success\n");
+	return true;
+}
+
+static gboolean testapp_test_delete_certificate()
+{
+	int result_from_scanf = 0;
+	int ret = 0;
+	char save_name[20] = {0, };
+
+	testapp_print("Input cert email-address : ");
+	result_from_scanf = scanf("%s", save_name);
+
+	ret = email_delete_certificate(save_name);
+	if (ret != EMAIL_ERROR_NONE) {
+		testapp_print("Delete certificate failed\n");
+		return false;
+	}
+
+	testapp_print("Delete certificate success\n");
+	return true;
+}
 static gboolean testapp_test_interpret_command (int selected_number)
 {
 	gboolean go_to_loop = TRUE;
@@ -609,12 +790,15 @@ static gboolean testapp_test_interpret_command (int selected_number)
 		case 1:
 			testapp_test_create_account();
 			break;
+
 		case 2:
 			testapp_test_update_account();
 			break;
+
 		case 3:
 			testapp_test_delete_account();
 			break;
+
 		case 4:
 			testapp_test_get_account();
 			break;
@@ -651,6 +835,26 @@ static gboolean testapp_test_interpret_command (int selected_number)
 			testapp_test_clear_all_notification();
 			break;
 
+		case 14:
+			testapp_test_save_default_account_id();
+			break;
+
+		case 15:
+			testapp_test_load_default_account_id();
+			break;
+
+		case 16:
+			testapp_test_add_certificate();
+			break;
+
+		case 17:
+			testapp_test_get_certificate();
+			break;
+
+		case 18:
+			testapp_test_delete_certificate();
+			break;
+
 		case 0:
 			go_to_loop = FALSE;
 			break;
@@ -666,12 +870,13 @@ void testapp_account_main ()
 {
 	gboolean go_to_loop = TRUE;
 	int menu_number = 0;
+	int result_from_scanf = 0;
 	
 	while (go_to_loop) {
-		testapp_show_menu (EMF_ACCOUNT_MENU);
-		testapp_show_prompt (EMF_ACCOUNT_MENU);
+		testapp_show_menu (EMAIL_ACCOUNT_MENU);
+		testapp_show_prompt (EMAIL_ACCOUNT_MENU);
 			
-		scanf ("%d", &menu_number);
+		result_from_scanf = scanf ("%d", &menu_number);
 
 		go_to_loop = testapp_test_interpret_command (menu_number);
 	}	

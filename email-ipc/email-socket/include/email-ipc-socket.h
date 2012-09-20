@@ -36,7 +36,7 @@
 
 EXPORT_API bool emipc_init_email_socket(int *fd);
 
-EXPORT_API bool emipc_close_email_socket(int fd);
+EXPORT_API void emipc_close_email_socket(int *fd);
 
 EXPORT_API int emipc_send_email_socket(int fd, unsigned char *buf, int len);
 

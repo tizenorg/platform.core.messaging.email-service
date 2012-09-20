@@ -23,7 +23,6 @@
 
 #include "email-stub-main.h"
 #include "email-ipc.h"
-#include "email-stub-response-info.h"
 #include "email-ipc-param-list.h"
 #include "email-ipc-build.h"
 #include "email-stub-socket.h"
@@ -32,7 +31,6 @@
 #include "email-debug-log.h"
 
 static bool stub_socket = false;
-static GList *response_list = NULL;
 static PFN_EXECUTE_API this_fn_api_mapper = NULL;
 
 EXPORT_API bool emipc_initialize_stub_main(PFN_EXECUTE_API fn_api_mapper)
@@ -60,9 +58,6 @@ EXPORT_API bool emipc_initialize_stub_main(PFN_EXECUTE_API fn_api_mapper)
 EXPORT_API bool emipc_finalize_stub_main()
 {
 	EM_DEBUG_FUNC_BEGIN();
-
-	if (response_list)
-		response_list = NULL;
 
 	if (stub_socket) {
 		emipc_end_stub_socket();
@@ -96,14 +91,16 @@ EXPORT_API bool emipc_execute_api_stub_to_proxy(emipc_email_api_info *api_info)
 {
 	EM_DEBUG_FUNC_BEGIN("api_info [%p]", api_info);
 	EM_IF_NULL_RETURN_VALUE(api_info, false);
-	EM_DEBUG_LOG("APIID [%s], response Socket ID [%d], APPID [%d]", EM_APIID_TO_STR(emipc_get_api_id_of_api_info(api_info)), emipc_get_response_id_of_api_info(api_info), emipc_get_app_id_of_api_info(api_info));
+	EM_DEBUG_LOG("APIID [%s], response Socket ID [%d], APPID [%d]",
+				EM_APIID_TO_STR(api_info->api_id), api_info->response_id, api_info->app_id);
 	
-	unsigned char *stream = emipc_get_stream_of_api_info(api_info, ePARAMETER_OUT);
-	int stream_length = emipc_get_stream_length_of_api_info(api_info, ePARAMETER_OUT);
+	unsigned char *stream = NULL;
+	int stream_length = 0;
 	
-	EM_DEBUG_LOG("Data : %p, Data length : %dB", stream, stream_length);
+	stream = emipc_serialize_api_info(api_info, ePARAMETER_OUT, &stream_length);
 	EM_DEBUG_LOG("Stub => Proxy Sending %dB", stream_length);
-	emipc_send_stub_socket(emipc_get_response_id_of_api_info(api_info), stream, stream_length);
+
+	emipc_send_stub_socket(api_info->response_id, stream, stream_length);
 	
 #ifdef IPCLIB_STREAM_TRACE_ON
 	int index = 0;
@@ -113,28 +110,4 @@ EXPORT_API bool emipc_execute_api_stub_to_proxy(emipc_email_api_info *api_info)
 
 	EM_DEBUG_FUNC_END();
 	return true;
-}
-
-EXPORT_API bool emipc_set_response_info(long app_id, long api_id)
-{
-	EM_DEBUG_FUNC_BEGIN("Response ID [%d]", app_id);
-	
-	if (app_id <= 0)
-		return true;
-
-	emipc_email_response_info *response_info = NULL;
-	response_info = (emipc_email_response_info *)malloc(sizeof(response_info));
-	if (response_info == NULL) {
-		EM_DEBUG_EXCEPTION("Malloc failed");
-		return false;
-	}
-	memset(response_info, 0x00, sizeof(response_info));
-
-	if (response_info) {
-		emipc_set_value_in_response_info(response_info, app_id, api_id);
-		response_list = g_list_append(response_list, response_info);
-		return true;
-	}
-	EM_DEBUG_FUNC_END();
-	return false;
 }

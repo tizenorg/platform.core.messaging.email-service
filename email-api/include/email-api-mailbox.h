@@ -54,44 +54,34 @@
  *
  *  bool other_app_invoke_uniform_api_sample(int *error_code)
  *	{
- *		emf_mailbox_t mbox;
- *		emf_mailbox_t *new_mailbox =NULL;
- *		emf_mailbox_t *mailbox_list = NULL;
+ *		email_mailbox_t mailbox;
+ *		email_mailbox_t *new_mailbox =NULL;
+ *		email_mailbox_t *mailbox_list = NULL;
  *		int count = 0;
  *		int mailbox_type;
  *		unsigned handle = 0;
  *		char *pMaiboxName;
  *		char *pParentMailbox;
  *
- *		memset(&mbox,0x00,sizeof(emf_mailbox_t));
- *		mbox.name = strdup("test");
- *		mbox.alias = strdup("Personal");
- *		mbox.account_id = 1;
+ *		memset(&mailbox,0x00,sizeof(email_mailbox_t));
+ *		mailbox.mailbox_name = strdup("test");
+ *		mailbox.alias = strdup("Personal");
+ *		mailbox.account_id = 1;
  *		printf("Enter local_yn(1/0)");
  *		scanf("%d",&local_yn);
- *		mbox.local=local_yn;
- *		mbox.mailbox_type = 7;
+ *		mailbox.local=local_yn;
+ *		mailbox.mailbox_type = 7;
  *
  *		//create new mailbox
  *
- *		if(EMF_ERR_NONE != email_add_mailbox(&mbox,local_yn,&handle))
+ *		if(EMAIL_ERR_NONE != email_add_mailbox(&mailbox,local_yn,&handle))
  *			printf("email_add_mailbox failed\n");
  *		else
  *			printf("email_add_mailbox success");
  *
- *		//update mailbox
- *	       new_mailbox = malloc(sizeof(emf_mailbox_t));
- *	       memset(new_mailbox,0x00,sizeof(emf_mailbox_t));
- *
- *	       new_mailbox->name = strdup("PersonalUse");
- *
- *  	       if(EMF_ERROR_NONE != email_update_mailbox(&mbox,new_mailbox))
- *	       	 	printf("email_update_mailbox failed\n");
- *	       else
- *     			printf("email_update_mailbox success\n");
  *		//delete mailbox
  *
- *		if(EMF_ERROR_NONE != email_delete_mailbox(mbox,local_yn,&handle))
+ *		if(EMAIL_ERROR_NONE != email_delete_mailbox(mailbox,local_yn,&handle))
  *			printf("email_delete_mailbox failed\n");
  *		else
  *			printf("email_delete_mailbox success\n");
@@ -100,21 +90,21 @@
  *		email_free_mailbox("new_mailbox,1");
  *
  *		//Get mailbox list
- *		if(EMF_ERROR_NONE != email_get_mailbox_list(account_id,local_yn,&mailbox_list,&count))
+ *		if(EMAIL_ERROR_NONE != email_get_mailbox_list(account_id,local_yn,&mailbox_list,&count))
  *			//failure
  *		else
  *			//success
  *
  *		//Get mailbox by name
  *		pMailboxName = strdup("test");
- *		if(EMF_ERROR_NONE != email_get_mailbox_by_name(account_id,pMailboxName,&mailbox_list))
+ *		if(EMAIL_ERROR_NONE != email_get_mailbox_by_name(account_id,pMailboxName,&mailbox_list))
  *			//failure
  *		else
  *			//success
  *
  *		//Get child mailbox list
  *		pParentMailbox = strdup("test");
- *		if(EMF_ERROR_NONE != email_get_child_mailbox_list(account_id, paerent_mailbox,&mailbox_list,&count))
+ *		if(EMAIL_ERROR_NONE != email_get_child_mailbox_list(account_id, paerent_mailbox,&mailbox_list,&count))
  *			//failure
  *		else
  *			//success
@@ -122,7 +112,7 @@
  *		//Get mailbox by mailbox_type
  *		printf("Enter mailbox_type\n");
  *		scanf("%d",&mailbox_type);
- *		if(EMF_ERROR_NONE != email_get_mailbox_by_mailbox_type(account_id,mailbox_type,&mailbox_list))
+ *		if(EMAIL_ERROR_NONE != email_get_mailbox_by_mailbox_type(account_id,mailbox_type,&mailbox_list))
  *			//failure
  *		else
  *			//success
@@ -142,69 +132,80 @@ extern "C"
 
 
 /**
-
  * @open
- * @fn EXPORT_API int email_add_mailbox(emf_mailbox_t* new_mailbox, int on_server, unsigned* handle)
+ * @fn int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, unsigned* handle)
  * @brief	Create a new mailbox or mailbox.This function is invoked when user wants to create a new mailbox for the specified account.
  * 		If On_server is true then it will create the mailbox on server as well as in local also.
  *
- * @return This function returns EMF_ERROR_NONE on success or error code(refer to EMF_ERROR_XXX) on failure.
+ * @return This function returns EMAIL_ERROR_NONE on success or error code(refer to EMAIL_ERROR_XXX) on failure.
  * @param[in] new_mailbox	Specifies the pointer of creating mailbox information.
-*  @param[in] on_server		Specifies the creating mailbox information on server.
+*  @param[in] on_server		Specifies the creating mailbox on server.
  * @param[out] handle 		Specifies the sending handle.
  * @exception 	none
- * @see 	emf_mailbox_t
+ * @see 	email_mailbox_t
   * @remarks N/A
  */
-EXPORT_API int email_add_mailbox(emf_mailbox_t* new_mailbox, int on_server, unsigned* handle);
-
+EXPORT_API int email_add_mailbox(email_mailbox_t *new_mailbox, int on_server, unsigned* handle);
 
 /**
+ * @fn int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_name, char *input_mailbox_alias)
+ * @brief	Change mailbox name. This function is invoked when user wants to change the name of existing mail box.
+ *
+ * @return This function returns EMAIL_ERROR_NONE on success or error code(refer to EMAIL_ERROR_XXX) on failure.
+ * @param[in] input_mailbox_id	Specifies the id of the mailbox.
+ * @param[in] input_mailbox_name	Specifies the name of the mailbox.
+ * @param[in] input_mailbox_alias	Specifies the alias of the mailbox.
+ * @param[in] input_on_server	Specifies the moving mailbox on server.
+ * @param[out] output_handle	Specifies the handle to manage tasks.
+ *
+ * @exception see email-errors.h
+ * @see 	email_mailbox_t, email_mailbox_type_e
+ * @remarks N/A
+ */
+EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_name, char *input_mailbox_alias, int input_on_server, unsigned *output_handle);
 
+/**
  * @open
- * @fn EXPORT_API int email_delete_mailbox(emf_mailbox_t* mailbox, int on_server,  unsigned* handle)
+ * @fn int email_delete_mailbox(int input_mailbox_id, int input_on_server, unsigned* output_handle)
  * @brief	Delete a mailbox or mailbox.This function deletes the existing mailbox for specified account based on the option on_server.
  * 		If the on_server is true then it deletes mailbox from server as well as locally.
  *
- * @return This function returns EMF_ERROR_NONE on success or error code(refer to EMF_ERROR_XXX) on failure.
- * @param[in] mailbox	Specifies the pointer of deleting mailbox information.
- * @param[in] on_server		Specifies the creating mailbox information on server.
- * @param[out] handle 		Specifies the sending handle.
- * @exception 	#EMF_ERROR_INVALID_PARAM	-Invaid argument
- * @see 	emf_mailbox_t
+ * @return This function returns EMAIL_ERROR_NONE on success or error code(refer to EMAIL_ERROR_XXX) on failure.
+ * @param[in] input_mailbox_id	Specifies the id of target mailbox .
+ * @param[in] input_on_server	Specifies the deleting mailbox on server.
+ * @param[out] output_handle 	Specifies the sending handle.
+ * @exception 	see email-errors.h
+ * @see 	email_mailbox_t
  * @remarks N/A
  */
-EXPORT_API int email_delete_mailbox(emf_mailbox_t* mailbox, int on_server,  unsigned* handle);
-
+EXPORT_API int email_delete_mailbox(int input_mailbox_id, int input_on_server, unsigned* output_handle);
 
 /**
-
- * @fn EXPORT_API int email_update_mailbox(emf_mailbox_t* old_mailbox, emf_mailbox_t* new_mailbox)
- * @brief	Change mailbox or mailbox information.This function is invoked when user wants to change the existing mail box information.
- *			This supports ONLY updating mailbox_type in local db. This can be used to match a specific mail box and a specific mailbox_type.
+ * @fn int email_set_mailbox_type(int input_mailbox_id, email_mailbox_type_e input_mailbox_type)
+ * @brief	Change the mailbox type. This function is invoked when user wants to change the mailbox type.
  *
- * @return This function returns EMF_ERROR_NONE on success or error code(refer to EMF_ERROR_XXX) on failure.
- * @param[in] old_mailbox	Specifies the information of previous mailbox. <br>mandatory field : account_id, name
- * @param[in] new_mailbox	Specifies the information of new mailbox. <br
- * @exception #EMF_ERROR_INVALID_PARAM 		-Invaid argument
- * @see 	emf_mailbox_t, emf_mailbox_type_e
-  * @remarks N/A
+ * @return This function returns EMAIL_ERROR_NONE on success or error code(refer to EMAIL_ERROR_XXX) on failure.
+ * @param[in] input_mailbox_id		Specifies the id of the mailbox.
+ * @param[in] input_mailbox_type	Specifies the mailbox type.
+ * @exception see email-errors.h
+ * @see 	email_mailbox_type_e
+ * @remarks N/A
  */
-EXPORT_API int email_update_mailbox(emf_mailbox_t* old_mailbox, emf_mailbox_t* new_mailbox);
+EXPORT_API int email_set_mailbox_type(int input_mailbox_id, email_mailbox_type_e input_mailbox_type);
 
 /**
 
  * @open
- * @fn email_get_mailbox_list(int account_id, int mailbox_sync_type, emf_mailbox_t** mailbox_list, int* count)
+ * @fn email_get_mailbox_list(int account_id, int mailbox_sync_type, email_mailbox_t** mailbox_list, int* count)
  * @brief	Get all mailboxes from account.
  *
- * @return This function returns EMF_ERROR_NONE on success or error code(refer to EMF_ERROR_XXX) on failure.
+ * @return This function returns EMAIL_ERROR_NONE on success or error code(refer to EMAIL_ERROR_XXX) on failure.
  * @param[in] account_id		Specifies the account ID.
  * @param[in] mailbox_sync_type		Specifies the sync type.
  * @param[out] mailbox_list	Specifies the pointer of mailbox structure pointer.(possibly NULL)
  * @param[out] count			The mailbox count is saved here.(possibly 0)
  * @exception 		none
- * @see 	emf_mailbox_t
+ * @see 	email_mailbox_t
 
  * @code
  *    	#include "email-api-mailbox.h"
@@ -213,15 +214,15 @@ EXPORT_API int email_update_mailbox(emf_mailbox_t* old_mailbox, emf_mailbox_t* n
  *   	{
  *   		int account_id =0,count = 0;
  *   		int mailbox_sync_type;
- *   		int error_code = EMF_ERROR_NONE;
- *   		emf_mailbox_t *mailbox_list=NULL;
+ *   		int error_code = EMAIL_ERROR_NONE;
+ *   		email_mailbox_t *mailbox_list=NULL;
  *
  *   		printf("\n > Enter account id: ");
  *   		scanf("%d", &account_id);
  *   		printf("\n > Enter mailbox_sync_type: ");
  *   		scanf("%d", &mailbox_sync_type);
  *
- *   		if((EMF_ERROR_NONE != email_get_mailbox_list(account_id, mailbox_sync_type, &mailbox_list, &count)))
+ *   		if((EMAIL_ERROR_NONE != email_get_mailbox_list(account_id, mailbox_sync_type, &mailbox_list, &count)))
  *   		{
  *   			printf(" Error\n");
  *   		}
@@ -234,99 +235,89 @@ EXPORT_API int email_update_mailbox(emf_mailbox_t* old_mailbox, emf_mailbox_t* n
  * @endcode
  * @remarks N/A
  */
-EXPORT_API int email_get_mailbox_list(int account_id, int mailbox_sync_type, emf_mailbox_t** mailbox_list, int* count);
+EXPORT_API int email_get_mailbox_list(int account_id, int mailbox_sync_type, email_mailbox_t** mailbox_list, int* count);
 
-EXPORT_API int email_get_mailbox_list_ex(int account_id, int mailbox_sync_type, int with_count, emf_mailbox_t** mailbox_list, int* count);
-
-/**
-
- * @open
- * @fn EXPORT_API int email_get_mailbox_by_name(int account_id, const char *pMailboxName, emf_mailbox_t **pMailbox);
- * @brief 	Get the mailbox information by name.This function gets the mailbox by given mailbox name for a specified account.
- *
- * @return This function returns EMF_ERROR_NONE on success or error code(refer to EMF_ERROR_XXX) on failure.
- * @param[in] account_id		Specifies the information of account Id.
- * @param[in] pMailboxName		Specifies the mailbox name.
- * @param[out] pMailbox			Specifies the information of mailbox
- * @exception none
- * @see 	emf_mailbox_t
- * @remarks N/A
- */
-
-EXPORT_API int email_get_mailbox_by_name(int account_id, const char *pMailboxName, emf_mailbox_t **pMailbox);
-
-// Belows are for A Project
-
-/**
-
- * @open
- * @fn email_get_child_mailbox_list(int account_id, char *parent_mailbox,  emf_mailbox_t** mailbox_list, int* count)
- * @brief	Get all sub mailboxes for given parent mailbox.This function gives all the child mailbox list for a given parent mailbox for specified account.
- *
- * @return This function returns EMF_ERROR_NONE on success or error code(refer to EMF_ERROR_XXX) on failure.
- * @param[in] account_id		Specifies the account ID.
- * @param[in] parent_mailbox		Specifies the parent mailbox
- * @param[out] mailbox_list	       Specifies the pointer of mailbox structure pointer.(possibly NULL)
- * @param[out] count			The mailbox count
- * @exception  #EMF_ERROR_INVALID_PARAM  	-Invalid argument
- * @see 	emf_mailbox_t
- * @remarks N/A
- * @return This function returns true on success or false on failure.
- */
-EXPORT_API int email_get_child_mailbox_list(int account_id, const char *parent_mailbox,  emf_mailbox_t** mailbox_list, int* count);
-
+EXPORT_API int email_get_mailbox_list_ex(int account_id, int mailbox_sync_type, int with_count, email_mailbox_t** mailbox_list, int* count);
 
 /**
  * @open
- * @fn email_get_mailbox_by_mailbox_type(int account_id, emf_mailbox_type_e mailbox_type,  emf_mailbox_t** mailbox)
+ * @fn email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_type_e mailbox_type,  email_mailbox_t** mailbox)
  * @brief	Get mailbox by mailbox_type.This function is invoked when user wants to know the mailbox information by mailbox_type for the given account.
  *
- * @return This function returns EMF_ERROR_NONE on success or error code(refer to EMF_ERROR_XXX) on failure.
+ * @return This function returns EMAIL_ERROR_NONE on success or error code(refer to EMAIL_ERROR_XXX) on failure.
  * @param[in] account_id		Specifies the account ID.
  * @param[in] mailbox_type		Specifies the mailbox type.
  * @param[out] mailbox		Specifies the pointer of mailbox structure pointer.(possibly NULL)
  * @exception none
- * @see  	emf_mailbox_t
+ * @see  	email_mailbox_t
  * @remarks N/A
  */
-EXPORT_API int email_get_mailbox_by_mailbox_type(int account_id, emf_mailbox_type_e mailbox_type,  emf_mailbox_t** mailbox);
+EXPORT_API int email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_type_e mailbox_type,  email_mailbox_t** mailbox);
 
 /**
  * @open
- * @fn email_set_mail_slot_size(int account_id, char* mailbox_name, int new_slot_size, unsigned* handle)
+ * @fn email_get_mailbox_by_mailbox_id(int input_mailbox_id, email_mailbox_t** output_mailbox)
+ * @brief	Get mailbox by mailbox_id. This function is invoked when user wants to know the mailbox information by mailbox id.
+ *
+ * @return This function returns EMAIL_ERROR_NONE on success or error code(refer to EMAIL_ERROR_XXX) on failure.
+ * @param[in]  input_mailbox_id	Specifies the mailbox id.
+ * @param[out] output_mailbox	Specifies the pointer of mailbox structure pointer.(possibly NULL)
+ * @exception none
+ * @see  	email_mailbox_t
+ * @remarks N/A
+ */
+EXPORT_API int email_get_mailbox_by_mailbox_id(int input_mailbox_id, email_mailbox_t** output_mailbox);
+
+/**
+ * @open
+ * @fn email_set_mail_slot_size(int input_account_id, int input_mailbox_id, int input_new_slot_size)
  * @brief	Set mail slot size.This function is invoked when user wants to set the size of mail slot.
  *
- * @return This function returns EMF_ERROR_NONE on success or error code(refer to EMF_ERROR_XXX) on failure.
- * @param[in] account_id		Specifies the account ID.
- * @param[in] mailbox_name		Specifies the mailbox name.
- * @param[in] new_slot_size		Specifies the mail slot size.
+ * @return This function returns EMAIL_ERROR_NONE on success or error code(refer to EMAIL_ERROR_XXX) on failure.
+ * @param[in] input_account_id		Specifies the account ID.
+ * @param[in] input_mailbox_id		Specifies the mailbox id.
+ * @param[in] input_new_slot_size	Specifies the mail slot size.
  * @exception none
- * @see  	emf_mailbox_t
+ * @see  	email_mailbox_t
  * @remarks N/A
  */
-EXPORT_API int email_set_mail_slot_size(int account_id, char* mailbox_name, int new_slot_size/*, unsigned* handle*/);
+EXPORT_API int email_set_mail_slot_size(int input_account_id, int input_mailbox_id, int input_new_slot_size);
 
 /**
  * @open
- * @fn email_free_mailbox(emf_mailbox_t** mailbox_list, int count)
+ * @fn email_stamp_sync_time_of_mailbox(int input_mailbox_id)
+ * @brief	Stamp sync time of mailbox. This function is invoked when user wants to set the sync time of the mailbox.
+ *
+ * @return This function returns EMAIL_ERROR_NONE on success or error code(refer to EMAIL_ERROR_XXX) on failure.
+ * @param[in] input_mailbox_id		Specifies the mailbox id.
+ * @exception none
+ * @see  	email_mailbox_t
+ * @remarks N/A
+ */
+EXPORT_API int email_stamp_sync_time_of_mailbox(int input_mailbox_id);
+
+
+/**
+ * @open
+ * @fn email_free_mailbox(email_mailbox_t** mailbox_list, int count)
  * @brief	Free allocated memory for mailbox information.
  *
- * @return This function returns EMF_ERROR_NONE on success or error code (refer to EMF_ERROR_XXX) on failure.
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
  * @param[in] mailbox_list	Specifies the pointer for searching mailbox structure pointer.
  * @param[in] count			Specifies the count of mailboxes.
  * @exception 		none
- * @see                 emf_mailbox_t
+ * @see                 email_mailbox_t
 
  * @code
  *    	#include "email-api-mailbox.h"
  *   	bool
  *   	_api_sample_free_mailbox_info()
  *   	{
- *		emf_mailbox_t *mailbox;
+ *		email_mailbox_t *mailbox;
  *
  *		//fill the mailbox structure
  *		//count - number of mailbox structure user want to free
- *		 if(EMF_ERROR_NONE == email_free_mailbox(&mailbox,count))
+ *		 if(EMAIL_ERROR_NONE == email_free_mailbox(&mailbox,count))
  *		 	//success
  *		 else
  *		 	//failure
@@ -336,7 +327,7 @@ EXPORT_API int email_set_mail_slot_size(int account_id, char* mailbox_name, int 
  * @remarks N/A
  */
 
-EXPORT_API int email_free_mailbox(emf_mailbox_t** mailbox_list, int count);
+EXPORT_API int email_free_mailbox(email_mailbox_t** mailbox_list, int count);
 
 #ifdef __cplusplus
 }
@@ -345,8 +336,6 @@ EXPORT_API int email_free_mailbox(emf_mailbox_t** mailbox_list, int count);
 /**
 * @} @}
 */
-
-
 
 #endif /* __EMAIL_API_MAILBOX_H__ */
 

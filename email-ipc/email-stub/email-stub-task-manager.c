@@ -76,7 +76,6 @@ EXPORT_API bool emipc_stop_task_thread()
 	return true;
 }
 
-
 EXPORT_API void *emipc_do_task_thread()
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -95,7 +94,7 @@ EXPORT_API void *emipc_do_task_thread()
 
 		if (task) {
 			emipc_run_task(task);
-			EM_SAFE_FREE(task);
+			emipc_free_email_task(task);
 		}
 	}
 	
@@ -117,9 +116,9 @@ EXPORT_API bool emipc_create_task(unsigned char *task_stream, int response_chann
 		
 		EM_DEBUG_LOG("[IPCLib] ======================================================");
 		EM_DEBUG_LOG("[IPCLib] Register new task : %p", task);
-		EM_DEBUG_LOG("[IPCLib] Task API ID : %s", EM_APIID_TO_STR(emipc_get_api_info(task)->api_id));
-		EM_DEBUG_LOG("[IPCLib] Task Response ID : %d", EM_APIID_TO_STR(emipc_get_api_info(task)->response_id));
-		EM_DEBUG_LOG("[IPCLib] Task APP ID : %d", emipc_get_api_info(task)->app_id);
+		EM_DEBUG_LOG("[IPCLib] Task API ID : %s (%d)", EM_APIID_TO_STR(task->api_info->api_id), task->api_info->api_id);
+		EM_DEBUG_LOG("[IPCLib] Task Response ID : %d", EM_APIID_TO_STR(task->api_info->response_id));
+		EM_DEBUG_LOG("[IPCLib] Task APP ID : %d", task->api_info->app_id);
 		EM_DEBUG_LOG("[IPCLib] ======================================================");
 
 		ENTER_CRITICAL_SECTION(ipc_task_mutex);
@@ -130,4 +129,3 @@ EXPORT_API bool emipc_create_task(unsigned char *task_stream, int response_chann
 	}
 	return ret;
 }
-

@@ -51,6 +51,9 @@ INTERNAL_FUNC int   emcore_get_body_structure(MAILSTREAM *stream, int msg_uid, B
 INTERNAL_FUNC char *emcore_decode_rfc2047_text(char *rfc2047_text, int *err_code);
 INTERNAL_FUNC int   emcore_decode_body_text(char *enc_buf, int enc_len, int enc_type, int *dec_len, int *err_code);
 INTERNAL_FUNC int   emcore_set_fetch_body_section(BODY *body, int enable_inline_list, int *total_mail_size, int *err_code);
+INTERNAL_FUNC int   emcore_load_eml_file_to_mail(char *eml_file_path, email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count, int *err_code);
+INTERNAL_FUNC int   emcore_delete_eml_data(email_mail_data_t *input_mail_data, int *err_code);
+INTERNAL_FUNC int   emcore_get_mime_entity(char *mime_path, char **mime_entity, int *err_code);
 
 #ifdef __cplusplus
 }

@@ -39,7 +39,7 @@ extern "C"
 {
 #endif /* __cplusplus */
 
-INTERNAL_FUNC int emcore_check_sync_imap_mailbox(emf_mailbox_t *mailbox, int *synchronous, int *err_code);
+INTERNAL_FUNC int emcore_check_sync_imap_mailbox(email_mailbox_t *mailbox, int *synchronous, int *err_code);
 /**
  * Get mailbox list from imap server.
  *
@@ -63,12 +63,12 @@ INTERNAL_FUNC int emcore_sync_mailbox_list(int account_id, char *mailbox, int *e
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emcore_download_mailbox_list(void *mail_stream, char *mailbox, emf_mailbox_t **mailbox_list, int *count, int *err_code);
-INTERNAL_FUNC int emcore_delete_imap_mailbox(emf_mailbox_t *mailbox, int *err_code);
-INTERNAL_FUNC int emcore_create_imap_mailbox(emf_mailbox_t *mailbox, int *err_code);
-INTERNAL_FUNC int emcore_modify_imap_mailbox(emf_mailbox_t *old_mailbox,  emf_mailbox_t *new_mailbox, int *err_code);
-INTERNAL_FUNC int emcore_set_sync_imap_mailbox(emf_mailbox_t *mailbox, int synchronous, int *err_code);
-INTERNAL_FUNC int emcore_set_mail_slot_size(int account_id, char *mailbox_name, int new_slot_size, int *err_code);
+INTERNAL_FUNC int emcore_download_mailbox_list(void *mail_stream, char *mailbox, email_internal_mailbox_t **mailbox_list, int *count, int *err_code);
+INTERNAL_FUNC int emcore_delete_imap_mailbox(int input_mailbox_id, int *err_code);
+INTERNAL_FUNC int emcore_create_imap_mailbox(email_mailbox_t *mailbox, int *err_code);
+INTERNAL_FUNC int emcore_move_mailbox_on_imap_server(int input_account_id, char *input_old_mailbox_path, char *input_new_mailbox_path);
+INTERNAL_FUNC int emcore_set_sync_imap_mailbox(email_internal_mailbox_t *mailbox, int synchronous, int *err_code);
+INTERNAL_FUNC int emcore_set_mail_slot_size(int account_id, int mailbox_id, int new_slot_size, int *err_code);
 INTERNAL_FUNC int emcore_remove_overflowed_mails(emstorage_mailbox_tbl_t *intput_mailbox_tbl, int *err_code);	
 INTERNAL_FUNC int emcore_get_default_mail_slot_count(int *output_count, int *err_code);
 

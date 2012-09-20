@@ -4,7 +4,7 @@
 * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -41,11 +41,12 @@ extern "C"
 #include <stdio.h>
 #include <string.h>
 #include <dlog.h>
+#include <errno.h>
 
 #define __FEATURE_DEBUG_LOG__
 
 #ifdef  __FEATURE_DEBUG_LOG__
-	
+
 /* definition of LOG_TAG */
 #ifdef LOG_TAG
 #undef LOG_TAG
@@ -53,13 +54,17 @@ extern "C"
 
 #define LOG_TAG "email-service"
 
-#define	EM_DEBUG_LOG(format, arg...)        SLOGD("[%s:%s():%d] " format "\n", (rindex(__FILE__, '/')? rindex(__FILE__,'/')+1 : __FILE__ ), __FUNCTION__, __LINE__, ##arg)
-#define	EM_DEBUG_EXCEPTION(format, arg...)  SLOGE("[%s:%s():%d][EXCEPTION!!] " format "\n", (rindex(__FILE__, '/')? rindex(__FILE__,'/')+1 : __FILE__ ), __FUNCTION__,  __LINE__, ##arg)
+#define	EM_DEBUG_LOG(format, arg...)   \
+			SLOGD("[%s() :%s:%d] " format "\n", 	__FUNCTION__, \
+				 (rindex(__FILE__, '/')? rindex(__FILE__,'/')+1 : __FILE__ ),  __LINE__, ##arg)
+#define	EM_DEBUG_EXCEPTION(format, arg...) \
+			SLOGE("[%s() :%s:%d][EXCEPTION!!] " format "\n", __FUNCTION__, \
+				(rindex(__FILE__, '/')? rindex(__FILE__,'/')+1 : __FILE__ ),   __LINE__, ##arg)
 
 #ifdef  _DEBUG_MIME_PARSE_
 #define EM_DEBUG_LOG_MIME(format, arg...)   EM_DEBUG_LOG(format, ##arg)
 #else   /*  _DEBUG_MIME_PARSE */
-#define EM_DEBUG_LOG_MIME(format, arg...)	
+#define EM_DEBUG_LOG_MIME(format, arg...)
 #endif /*  _DEBUG_MIME_PARSE */
 
 #define	EM_DEBUG_FUNC_BEGIN(format, arg...) EM_DEBUG_LOG("BEGIN - "format, ##arg)
@@ -68,9 +73,23 @@ extern "C"
 #define EM_DEBUG_DB_EXEC(eval, expr, X)     if (eval) { EM_DEBUG_LOG X; expr;} else {;}
 
 #define EM_DEBUG_ERROR_FILE_PATH            "/opt/data/email/.emfdata/.critical_error.log"
-#define EM_DEBUG_CRITICAL_EXCEPTION(format, arg...)   {   FILE *fp_error = NULL; fp_error = fopen(EM_DEBUG_ERROR_FILE_PATH, "a");\
-                                                          if(fp_error) {fprintf(fp_error, "[%s:%s():%d] " format "\n", (rindex(__FILE__, '/')? rindex(__FILE__,'/')+1 : __FILE__ ), __FUNCTION__,  __LINE__, ##arg); \
-                                                          fclose(fp_error);}}
+#define EM_DEBUG_CRITICAL_EXCEPTION(format, arg...)   \
+			{\
+				FILE *fp_error = NULL;\
+				fp_error = fopen(EM_DEBUG_ERROR_FILE_PATH, "a");\
+				if(fp_error) {\
+					fprintf(fp_error, "[%s() :%s:%d] " format "\n", \
+						__FUNCTION__, (rindex(__FILE__, '/')? rindex(__FILE__,'/')+1 : __FILE__ ),\
+						__LINE__, ##arg); \
+					fclose(fp_error);\
+				}\
+			}
+#define EM_DEBUG_PERROR(str) 	({\
+		char buf[128] = {0};\
+		strerror_r(errno, buf, sizeof(buf));\
+		EM_DEBUG_EXCEPTION("%s: %s(%d)", str, buf, errno);\
+	})
+
 #ifdef _USE_PROFILE_DEBUG_
 #define EM_PROFILE_BEGIN(pfid) \
 	unsigned int __prf_l1_##pfid = __LINE__;\
@@ -78,10 +97,10 @@ extern "C"
 	struct timeval __prf_2_##pfid;\
 	do {\
 		gettimeofday(&__prf_1_##pfid, 0);\
-		EM_DEBUG_LOG("**PROFILE BEGIN** [EMAILFW: %s: %s() %u ~ ] " #pfid \
+		EM_DEBUG_LOG("**PROFILE BEGIN** [EMAILFW: %s() :%s %u ~ ] " #pfid \
 		" ->  Start Time: %u.%06u seconds\n",\
+			__FUNCTION__,\
 		rindex(__FILE__,'/')+1, \
-		__FUNCTION__,\
 		__prf_l1_##pfid,\
 		(unsigned int)__prf_1_##pfid.tv_sec,\
 		(unsigned int)__prf_1_##pfid.tv_usec );\
@@ -94,10 +113,10 @@ extern "C"
 		long __ds = __prf_2_##pfid.tv_sec - __prf_1_##pfid.tv_sec;\
 		long __dm = __prf_2_##pfid.tv_usec - __prf_1_##pfid.tv_usec;\
 		if ( __dm < 0 ) { __ds--; __dm = 1000000 + __dm; } \
-		EM_DEBUG_LOG("**PROFILE END** [EMAILFW: %s: %s() %u ~ %u] " #pfid                            \
+		EM_DEBUG_LOG("**PROFILE END** [EMAILFW: %s() :%s %u ~ %u] " #pfid                            \
 		" -> Elapsed Time: %u.%06u seconds\n",\
+			__FUNCTION__,\
 		rindex(__FILE__, '/')+1,\
-		__FUNCTION__,\
 		__prf_l1_##pfid,\
 		__prf_l2_##pfid,\
 		(unsigned int)(__ds),\
@@ -109,12 +128,12 @@ extern "C"
 #define EM_PROFILE_END(pfid)
 
 #endif
-	
-	
+
+
 #else /* __FEATURE_DEBUG_LOG__ */
-	
+
 	#define EM_DEBUG_LINE
-	#define EM_DEBUG_LOG(format, arg...)	
+	#define EM_DEBUG_LOG(format, arg...)
 	#define EM_DEBUG_ASSERT(format, arg...)
 	#define EM_DEBUG_EXCEPTION(format, arg...)
 
@@ -211,7 +230,7 @@ extern "C"
 			return ret;\
 		}\
 	}
-	
+
 
 #define EM_STRERROR(err) ({ char buf[128]; strerror_r(err, buf, sizeof(buf));})
 

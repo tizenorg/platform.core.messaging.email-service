@@ -83,7 +83,7 @@ int emdaemon_finalize_emn(int bExtDest);
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-typedef int (*emf_emn_noti_cb)(
+typedef int (*email_emn_noti_cb)(
 	void*					user_data,
 	int                     err_code
 );
@@ -98,7 +98,7 @@ typedef int (*emf_emn_noti_cb)(
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_handle_emn_notification(unsigned char* wbxml_b64, emf_emn_noti_cb callback, int* err_code);
+INTERNAL_FUNC int emdaemon_handle_emn_notification(unsigned char* wbxml_b64, email_emn_noti_cb callback, int* err_code);
 #endif
 
 #ifdef __cplusplus

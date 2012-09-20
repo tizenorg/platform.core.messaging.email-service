@@ -43,10 +43,10 @@ void testapp_print (char *fmt, ...)
 	fflush (stdout);
 }
 
-void testapp_show_menu (eEMF_MENU menu)
+void testapp_show_menu (eEMAIL_MENU menu)
 {
 	switch (menu) {
-		case EMF_MAIN_MENU:
+		case EMAIL_MAIN_MENU:
 			testapp_print ("==========================================\n");
 			testapp_print ("    Email test application \n");
 			testapp_print ("==========================================\n");
@@ -60,47 +60,49 @@ void testapp_show_menu (eEMF_MENU menu)
 			testapp_print ("------------------------------------------\n");
 			break;
 			
-		case EMF_ACCOUNT_MENU:
+		case EMAIL_ACCOUNT_MENU:
 			testapp_print ("==========================================\n");
 			testapp_print ("    ACCOUNT MENU \n");
 			testapp_print ("==========================================\n");
-			testapp_print (" 1.  Create Account\n");
-			testapp_print (" 2.  Update Account\n");
-			testapp_print (" 3.  Delete Account\n");
-			testapp_print (" 4.  Get Account\n");
-			testapp_print (" 5.  Get Account List\n");
-			testapp_print (" 7.  Validate Account\n");
+			testapp_print (" 1.  Create account\n");
+			testapp_print (" 2.  Update account\n");
+			testapp_print (" 3.  Delete account\n");
+			testapp_print (" 4.  Get account\n");
+			testapp_print (" 5.  Get account list\n");
+			testapp_print (" 7.  Validate account\n");
 			testapp_print (" 8.  Cancel validate Account\n");
-			testapp_print (" 9.  Backup All Accounts\n");
+			testapp_print (" 9.  Backup All accounts\n");
 			testapp_print (" 10. Restore accounts\n");
 			testapp_print (" 11. Get password length of account\n");
 			testapp_print (" 12. Query server info\n");
 			testapp_print (" 13. Clear all notifications\n");
+			testapp_print (" 14. Save default account ID\n");
+			testapp_print (" 15. Load default account ID\n");
+			testapp_print (" 16. Add certificate\n");
+			testapp_print (" 17. Get certificate\n");
+			testapp_print (" 18. Delete certificate\n");
 			testapp_print (" 0.  Go to Main Menu\n");
 			testapp_print ("------------------------------------------\n");
 			break;
 			
-		case EMF_MAIL_MENU:
+		case EMAIL_MAIL_MENU:
 			testapp_print ("==========================================\n");
 			testapp_print ("    MAIL MENU\n");
 			testapp_print ("==========================================\n");
 			testapp_print ("1.  Get mails\n");
 			testapp_print ("2.  Send a mail \n");
+			testapp_print ("3.  Get mail list\n");
 			testapp_print ("4.  Add Attachment\n");
+			testapp_print ("5.  Set deleted flag\n");
+			testapp_print ("6.  Expunge deleted flagged mails\n");
 			testapp_print ("9.  Mail Count \n");
-			testapp_print ("10. Modify mail flag \n");
-			testapp_print ("11. Modify mail extra flag modify\n");
 			testapp_print ("14. Delete a mail \n");
 			testapp_print ("16. Download mail body\n");
 			testapp_print ("17. Download an attachment\n");
 			testapp_print ("20. Delete all mail\n");
 			testapp_print ("21. Move Mail \n");
 			testapp_print ("23. Resend Mail \n");
-			testapp_print ("24. Find mails\n");				
-			testapp_print ("26. Count mails On Sending\n");
 			testapp_print ("27. Move all mails to mailbox\n");
-			testapp_print ("28. Count mails with Draft Flag\n");
-			testapp_print ("29. Get latest unread mail Id\n");
 			testapp_print ("38. Get total email disk usage \n");	
 			testapp_print ("40. Verify Email Address Format\n");
 			testapp_print ("41. Get Max Mail Count\n");
@@ -108,7 +110,6 @@ void testapp_show_menu (eEMF_MENU menu)
 			testapp_print ("43. Send mail Cancel\n");
 			testapp_print ("44. Cancel Download Body\n");
  			testapp_print ("48. Get thread information\n");
-			testapp_print ("49. Get sender list\n");
 			testapp_print ("51. Get mail list ex\n");
 			testapp_print ("52. Get address info list\n");
 			testapp_print ("55. Set a field of flags\n");
@@ -116,28 +117,30 @@ void testapp_show_menu (eEMF_MENU menu)
 			testapp_print ("57. Update mail\n");
 			testapp_print ("58. Search on server\n");
 			testapp_print ("59. Add mail to search result table\n");
+			testapp_print ("60. Open eml file\n");
 			testapp_print ("0.  Go to Main Menu\n");
 			testapp_print ("------------------------------------------\n");
 			break;
 			
-		case EMF_MAILBOX_MENU:
+		case EMAIL_MAILBOX_MENU:
 			testapp_print ("==========================================\n");
 			testapp_print ("   MAILBOX MENU\n");
 			testapp_print ("==========================================\n");
 			testapp_print (" 1. Add mailbox\n");
 			testapp_print (" 2. Delete mailbox\n");
-			testapp_print (" 3. Update mailbox\n");
+			testapp_print (" 3. Raname mailbox\n");
 			testapp_print (" 4. Get IMAP mailbox List\n");
-			testapp_print (" 6. Get Child List for given mailbox \n");
 			testapp_print (" 7. Get mailbox by mailbox type\n");
-			testapp_print (" 8. Set mail slot size\n");
-			testapp_print (" 9. Get mailbox list\n");
-			testapp_print ("10. Sync mailbox\n");
+			testapp_print (" 8. Set mailbox type\n");
+			testapp_print (" 9. Set mail slot size\n");
+			testapp_print ("10. Get mailbox list\n");
+			testapp_print ("11. Sync mailbox\n");
+			testapp_print ("12. Stamp sync time\n");
 			testapp_print ("0. Go to Main Menu\n");
 			testapp_print ("------------------------------------------\n");
 			break;
 			
-		case EMF_RULE_MENU:
+		case EMAIL_RULE_MENU:
 			testapp_print ("==========================================\n");
 			testapp_print ("   RULE MENU\n");
 			testapp_print ("==========================================\n");
@@ -150,7 +153,7 @@ void testapp_show_menu (eEMF_MENU menu)
 			testapp_print ("------------------------------------------\n");
 			break;
 			
-		case EMF_THREAD_MENU:
+		case EMAIL_THREAD_MENU:
 			testapp_print ("==========================================\n");
 			testapp_print ("   TRHEAD MENU\n");
 			testapp_print ("==========================================\n");
@@ -161,7 +164,7 @@ void testapp_show_menu (eEMF_MENU menu)
 			testapp_print ("------------------------------------------\n");
 			break;
 			
-		case EMF_OTHERS_MENU:
+		case EMAIL_OTHERS_MENU:
 			testapp_print ("==========================================\n");
 			testapp_print ("   OTHERS\n");
 			testapp_print ("==========================================\n");
@@ -175,6 +178,8 @@ void testapp_show_menu (eEMF_MENU menu)
 			testapp_print ("12. Create DB full\n");
 			testapp_print ("13. Encoding Test\n");
 			testapp_print ("14. DTT Test\n");
+			testapp_print ("15. Show User Message\n");
+			testapp_print ("16. Get mime entity in signed file\n");
 			testapp_print ("0.  Go to Main Menu\n");
 			testapp_print ("------------------------------------------\n");
 			break;
@@ -183,34 +188,34 @@ void testapp_show_menu (eEMF_MENU menu)
 			break;
 	}
 }
-void testapp_show_prompt (eEMF_MENU menu)
+void testapp_show_prompt (eEMAIL_MENU menu)
 {
 	switch (menu) {
-		case EMF_MAIN_MENU:
+		case EMAIL_MAIN_MENU:
 			testapp_print ("[MAIN]# ");
 			break;
 			
-		case EMF_ACCOUNT_MENU:
+		case EMAIL_ACCOUNT_MENU:
 			testapp_print ("[ACCOUNT]# ");
 			break;
 			
-		case EMF_MAIL_MENU:
+		case EMAIL_MAIL_MENU:
 			testapp_print ("[MAIL]# ");
 			break;
 			
-		case EMF_MAILBOX_MENU:
+		case EMAIL_MAILBOX_MENU:
 			testapp_print ("[MAILBOX]# ");
 			break;
 			
-		case EMF_RULE_MENU:
+		case EMAIL_RULE_MENU:
 			testapp_print ("[RULE]# ");
 			break;
 			
-		case EMF_THREAD_MENU:
+		case EMAIL_THREAD_MENU:
 			testapp_print ("[THREAD]# ");
 			break;
 			
-		case EMF_OTHERS_MENU:
+		case EMAIL_OTHERS_MENU:
 			testapp_print ("[OTHERS]# ");
 			break;
 			

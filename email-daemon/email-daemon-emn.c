@@ -43,9 +43,9 @@
 typedef struct
 {
 	int account_id;
-	emf_emn_noti_cb callback;
+	email_emn_noti_cb callback;
 	void* user_data;
-} emf_emn_noti_pack_t;
+} email_emn_noti_pack_t;
 
 
 /* Parse the Email address to Get the user Name for the account [deepam.p@samsung.com] */
@@ -162,7 +162,7 @@ static void _cb_parser_characters(void* ctx, WB_UTINY* ch, WB_ULONG start, WB_UL
 
 static int _get_addr_from_element(unsigned char* elm,
 						int* type,
-						unsigned char** user_name,
+						unsigned char** incoming_server_user_name,
 						unsigned char** host_addr,
 						unsigned char** mbox_name,
 						unsigned char** auth_type)
@@ -171,7 +171,7 @@ static int _get_addr_from_element(unsigned char* elm,
     unsigned char*	s;
     unsigned char*	user = NULL;
     unsigned char*	host = NULL;
-    unsigned char*	mbox = NULL;
+    unsigned char*	mailbox = NULL;
     unsigned char*	auth = NULL;
     
      EM_DEBUG_FUNC_BEGIN();
@@ -198,7 +198,7 @@ static int _get_addr_from_element(unsigned char* elm,
         user = (unsigned char*)EM_SAFE_STRDUP((char *)p);
         s++;
         host = (unsigned char*)EM_SAFE_STRDUP((char *)s);
-	  mbox = NULL;
+	  mailbox = NULL;
         auth = NULL;
         break;
 
@@ -229,7 +229,7 @@ static int _get_addr_from_element(unsigned char* elm,
             EM_DEBUG_LOG("PORT:%s\n", s);
         }
         host = (unsigned char*)EM_SAFE_STRDUP((char *)p);
-        mbox = NULL;
+        mailbox = NULL;
         break;
 
     case 'i':/*  imap (RFC2192) */
@@ -262,7 +262,7 @@ static int _get_addr_from_element(unsigned char* elm,
         else s = p + strlen((char *)p);
         if (*(s - 1) == '/') *(s - 1) = '\0';
 
-        if (strlen((char *)p)) mbox =(unsigned char*) EM_SAFE_STRDUP((char *)p);
+        if (strlen((char *)p)) mailbox =(unsigned char*) EM_SAFE_STRDUP((char *)p);
         break;
 
     case 'h': /*  not supported */
@@ -273,9 +273,9 @@ static int _get_addr_from_element(unsigned char* elm,
         return 0;
     }
 
-    *user_name = user;
+    *incoming_server_user_name = user;
     *host_addr = host;
-    *mbox_name = mbox;
+    *mbox_name = mailbox;
     *auth_type = auth;
 
     return 1;
@@ -321,7 +321,7 @@ static int _get_time_from_element(unsigned char* elm,
 /*  <emn mailbox="mailat:user@wapforum.org" timestamp="2002-04-16T06:40:00Z"/> */
 static int _get_data_from_element(unsigned char* elm,
                           int* type,
-                          unsigned char** user_name,
+                          unsigned char** incoming_server_user_name,
                           unsigned char** host_addr,
                           unsigned char** mbox_name,
                           unsigned char** auth_type,
@@ -335,7 +335,7 @@ static int _get_data_from_element(unsigned char* elm,
 	}
 
     /*  must call get_addr_from_element after calling _get_time_from_element */
-    if (!_get_addr_from_element(elm, type, user_name, host_addr, mbox_name, auth_type))
+    if (!_get_addr_from_element(elm, type, incoming_server_user_name, host_addr, mbox_name, auth_type))
     {
 	    EM_SAFE_FREE*time_stamp)	/*  added acetrack.20080331.K8.4046 */
    	    return 0;
@@ -357,7 +357,7 @@ static int _get_data_from_element(unsigned char* elm,
  *    succeed : 1
  *    fail : 0
  */
-static int _get_emn_account(unsigned char* wbxml_b64, emf_account_t* account, char** mailbox, int* err_code)
+static int _get_emn_account(unsigned char* wbxml_b64, email_account_t* account, char** mailbox, int* err_code)
 {
 	EM_DEBUG_LOG("_get_emn_account Enter");
     WBXMLContentHandler parse_handler = {
@@ -375,8 +375,8 @@ static int _get_emn_account(unsigned char* wbxml_b64, emf_account_t* account, ch
     WB_ULONG		wbxml_len = 0;
     WB_ULONG		err_idx = 0;
     WBXMLError		ret = WBXML_OK;
-    emf_account_t*	accounts = NULL;
-    unsigned char*	user_name = NULL;
+    email_account_t*	accounts = NULL;
+    unsigned char*	incoming_server_user_name = NULL;
     unsigned char*	host_addr = NULL;
     unsigned char*	mbox_name = NULL;
     unsigned char*	auth_type = NULL;
@@ -385,14 +385,14 @@ static int _get_emn_account(unsigned char* wbxml_b64, emf_account_t* account, ch
     int				i = 0;
     int				count = 0;
     int				retr = false;
-    int				err = EMF_ERROR_NONE;
+    int				err = EMAIL_ERROR_NONE;
 
     EM_DEBUG_LOG("");
 
     if (!wbxml_b64 || !account)
     {
     	 EM_DEBUG_EXCEPTION(">>>> Invalid Parameter >>>> \n");
-        err = EMF_ERROR_INVALID_PARAM;
+        err = EMAIL_ERROR_INVALID_PARAM;
         goto FINISH_OFF;
     }
 
@@ -403,7 +403,7 @@ static int _get_emn_account(unsigned char* wbxml_b64, emf_account_t* account, ch
     /*  create wbxml parser */
     if (!(wbxml_parser = wbxml_parser_create()))
     {
-        err = EMF_ERROR_OUT_OF_MEMORY;		
+        err = EMAIL_ERROR_OUT_OF_MEMORY;		
         goto FINISH_OFF;
     }
 
@@ -417,7 +417,7 @@ static int _get_emn_account(unsigned char* wbxml_b64, emf_account_t* account, ch
         err_idx = wbxml_parser_get_current_byte_index(wbxml_parser);
         EM_DEBUG_LOG("Parsing failed at %u - Token %x - %s", err_idx, wbxml[err_idx], wbxml_errors_string(ret));
 		
-        err = EMF_ERROR_XML_PARSER_FAILURE;		
+        err = EMAIL_ERROR_XML_PARSER_FAILURE;		
         goto FINISH_OFF;
     }
     else
@@ -437,17 +437,17 @@ static int _get_emn_account(unsigned char* wbxml_b64, emf_account_t* account, ch
     {
         EM_DEBUG_EXCEPTION("invalid elements\n");
 		
-        err = EMF_ERROR_XML_PARSER_FAILURE;		
+        err = EMAIL_ERROR_XML_PARSER_FAILURE;		
         goto FINISH_OFF;
     }
 
     EM_DEBUG_LOG("elements = [%s]\n", elm);
-    _get_data_from_element(elm, &type, &user_name, &host_addr, &mbox_name, &auth_type, &time_stamp);
+    _get_data_from_element(elm, &type, &incoming_server_user_name, &host_addr, &mbox_name, &auth_type, &time_stamp);
 
     EM_SAFE_FREE(elm);
 
     EM_DEBUG_LOG("user_type = [%d]\n", type);
-    EM_DEBUG_LOG("user_name = [%s]\n", (char *)user_name ? (char*)user_name : "NIL");
+    EM_DEBUG_LOG("incoming_server_user_name = [%s]\n", (char *)incoming_server_user_name ? (char*)incoming_server_user_name : "NIL");
     EM_DEBUG_LOG("host_addr = [%s]\n", (char *)host_addr ? (char*)host_addr : "NIL");
     EM_DEBUG_LOG("mbox_name = [%s]\n", (char *)mbox_name ? (char*)mbox_name : "NIL");
     EM_DEBUG_LOG("auth_type = [%s]\n", (char *)auth_type ? (char*)auth_type : "NIL");
@@ -456,7 +456,7 @@ static int _get_emn_account(unsigned char* wbxml_b64, emf_account_t* account, ch
      if (!emdaemon_get_account_list(&accounts, &count, &err))
     {
         EM_DEBUG_EXCEPTION("   emdaemon_get_account_list error");
-        err = EMF_ERROR_DB_FAILURE;
+        err = EMAIL_ERROR_DB_FAILURE;
         goto FINISH_OFF;
     }
 	
@@ -465,24 +465,24 @@ static int _get_emn_account(unsigned char* wbxml_b64, emf_account_t* account, ch
         /* sowmya.kr, 201009, Fix for EMN */
         char* temp_account_name = NULL;
 		char *s = NULL;
-	    /* 	EM_DEBUG_LOG(">>>> Account Information UserName [ %s ] Email Addr [ %s], Account ID [ %d] >>> \n",accounts[i].user_name,accounts[i].email_addr, accounts[i].account_id); */
-	        temp_account_name =(char*) EM_SAFE_STRDUP((char *)accounts[i].user_name);
+	    /* 	EM_DEBUG_LOG(">>>> Account Information UserName [ %s ] Email Addr [ %s], Account ID [ %d] >>> \n",accounts[i].incoming_server_user_name,accounts[i].user_email_address, accounts[i].account_id); */
+	        temp_account_name =(char*) EM_SAFE_STRDUP((char *)accounts[i].incoming_server_user_name);
 
 		if ((s = (char*)strchr((char *)temp_account_name, '@')))  {
 			*s = '\0';
-			EM_SAFE_FREE(accounts[i].user_name);			
-			accounts[i].user_name  = (char*)EM_SAFE_STRDUP((char *)temp_account_name);			
+			EM_SAFE_FREE(accounts[i].incoming_server_user_name);			
+			accounts[i].incoming_server_user_name  = (char*)EM_SAFE_STRDUP((char *)temp_account_name);			
 		}
 		EM_SAFE_FREE(temp_account_name);
-		if (user_name)  {	
-			if (strcmp(accounts[i].user_name, (char *)user_name) == 0 &&
-				strstr(accounts[i].email_addr, (char *)host_addr)) {
+		if (incoming_server_user_name)  {	
+			if (strcmp(accounts[i].incoming_server_user_name, (char *)incoming_server_user_name) == 0 &&
+				strstr(accounts[i].user_email_address, (char *)host_addr)) {
 		        	EM_DEBUG_LOG(">>>> Account Match >>> \n");
 				if ((type == 1) ||
-					(type == 2 && accounts[i].receiving_server_type == EMF_SERVER_TYPE_POP3) ||
-					(type == 3 && accounts[i].receiving_server_type == EMF_SERVER_TYPE_IMAP4)) {
+					(type == 2 && accounts[i].incoming_server_type == EMAIL_SERVER_TYPE_POP3) ||
+					(type == 3 && accounts[i].incoming_server_type == EMAIL_SERVER_TYPE_IMAP4)) {
 					accounts[i].flag2 = type;
-					EM_DEBUG_LOG("found target account id[%d] name[%s]", accounts[i].account_id, accounts[i].user_name);
+					EM_DEBUG_LOG("found target account id[%d] name[%s]", accounts[i].account_id, accounts[i].incoming_server_user_name);
 					break;
 				}
 			}
@@ -491,11 +491,10 @@ static int _get_emn_account(unsigned char* wbxml_b64, emf_account_t* account, ch
 
     	if (i >= count) {
 	        EM_DEBUG_EXCEPTION("no account was found");
-        	err = EMF_ERROR_ACCOUNT_NOT_FOUND;
+        	err = EMAIL_ERROR_ACCOUNT_NOT_FOUND;
 	        goto FINISH_OFF;
 	}
 	if (account) {
-		account->account_bind_type = accounts[i].account_bind_type;
 		account->account_id = accounts[i].account_id;
 		account->flag2 = accounts[i].flag2;
 	}
@@ -515,7 +514,7 @@ FINISH_OFF:
     if (wbxml_parser) wbxml_parser_destroy(wbxml_parser);
     EM_SAFE_FREE(elm);
     if (accounts) emdaemon_free_account(&accounts, count, NULL);
-    EM_SAFE_FREE(user_name);
+    EM_SAFE_FREE(incoming_server_user_name);
     EM_SAFE_FREE(mbox_name);
     EM_SAFE_FREE(auth_type);
     EM_SAFE_FREE(time_stamp);
@@ -523,28 +522,28 @@ FINISH_OFF:
     return retr;
 }
 
-INTERNAL_FUNC int emdaemon_handle_emn_notification(unsigned char* wbxml_b64, emf_emn_noti_cb callback, int* err_code)
+INTERNAL_FUNC int emdaemon_handle_emn_notification(unsigned char* wbxml_b64, email_emn_noti_cb callback, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("wbxml_b64[%p], callback[%p], err_code[%p]", wbxml_b64, callback, err_code);
 	
 	int ret = false;
-	int err = EMF_ERROR_NONE;;
+	int err = EMAIL_ERROR_NONE;;
 	char* mailbox_name = NULL;
-	emf_mailbox_t mailbox = { 0 };
-	emf_account_t account = { 0 };
-	emf_emn_noti_pack_t* pack = NULL;
+	email_mailbox_t mailbox = { 0 };
+	email_account_t account = { 0 };
+	email_emn_noti_pack_t* pack = NULL;
 	char* pmailbox = NULL;
 	
 	if (!wbxml_b64) {
-		EM_DEBUG_EXCEPTION("EMF_ERROR_INVALID_PARAM");
-		err = EMF_ERROR_INVALID_PARAM;
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 	
-	pack = (emf_emn_noti_pack_t*)em_malloc(sizeof(emf_emn_noti_pack_t));
+	pack = (email_emn_noti_pack_t*)em_malloc(sizeof(email_emn_noti_pack_t));
 	if (!pack) {
 		EM_DEBUG_EXCEPTION("em_malloc failed");
-		err = EMF_ERROR_OUT_OF_MEMORY;
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}
 	
@@ -555,25 +554,25 @@ INTERNAL_FUNC int emdaemon_handle_emn_notification(unsigned char* wbxml_b64, emf
 
 	mailbox.account_id = account.account_id;
 
-	if (!emstorage_get_mailboxname_by_mailbox_type(mailbox.account_id,EMF_MAILBOX_TYPE_INBOX,&pmailbox, false, &err))  {
-		EM_DEBUG_EXCEPTION("emstorage_get_mailboxname_by_mailbox_type failed [%d", err);		
+	if (!emstorage_get_mailbox_name_by_mailbox_type(mailbox.account_id,EMAIL_MAILBOX_TYPE_INBOX,&pmailbox, false, &err))  {
+		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_name_by_mailbox_type failed [%d", err);		
 
 		goto FINISH_OFF;
 	}
 
-	if ((account.receiving_server_type == EMF_SERVER_TYPE_IMAP4) && (account.flag2 == 3))  {
+	if ((account.incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) && (account.flag2 == 3))  {
 
 		if (!mailbox_name || strncmp(pmailbox, mailbox_name, strlen(pmailbox)) != 0)  {
 			EM_DEBUG_EXCEPTION("invalid inbox name [%p]", mailbox_name);
-			err = EMF_ERROR_INVALID_MAILBOX;
+			err = EMAIL_ERROR_INVALID_MAILBOX;
 			goto FINISH_OFF;
 		}
 	}
 	
 	/* sync header with mail server */
-	mailbox.name = mailbox_tbl->mailbox_name;
+	mailbox.mailbox_name = mailbox_tbl->mailbox_name;
 	
-	if (!emdaemon_sync_header(&mailbox, NULL, &err))  {
+	if (!emdaemon_sync_header(mailbox.account_id, mailbox.mailbox_id, NULL, &err))  {
 		EM_DEBUG_EXCEPTION("emdaemon_sync_header falied [%d]", err);
 		goto FINISH_OFF;
 	}
