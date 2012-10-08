@@ -4,7 +4,7 @@
 * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -51,13 +51,13 @@ EXPORT_API bool emipc_init_email_socket(int *fd)
 
 	EM_DEBUG_LOG("Socket fd = %d", *fd);
 
-	return ret;	
+	return ret;
 }
 
 /*  Close */
 EXPORT_API void emipc_close_email_socket(int* fd)
 {
-	EM_DEBUG_LOG("fd %d removal done", fd);
+	EM_DEBUG_LOG("fd %d removal done", *fd);
 	close(*fd);
 	*fd = 0;
 }
@@ -99,7 +99,7 @@ EXPORT_API int emipc_send_email_socket(int fd, unsigned char *buf, int len)
 	}
 
 	EM_DEBUG_LOG("Sending %dB data to [fd = %d]", len, fd);
-	
+
 	int write_len = emipc_writen(fd, (char*) buf, len);
 	if ( write_len != len) {
 		if ( write_len == 0 ) return 0;
@@ -137,7 +137,7 @@ static int emipc_readn(int fd, char *buf, int len)
 EXPORT_API int emipc_recv_email_socket(int fd, char **buf)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	
+
 	if (!buf) {
 		EM_DEBUG_LOG("Buffer must not null");
 		return EMAIL_ERROR_INVALID_PARAM;
@@ -149,9 +149,9 @@ EXPORT_API int emipc_recv_email_socket(int fd, char **buf)
 		EM_DEBUG_EXCEPTION("ioctl: %s", strerror(errno));
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
-	/* server closed socket or is downed*/
+	/* when server or client closed socket */
 	if ( read_len == 0 ) {
-		EM_DEBUG_EXCEPTION("[IPC Socket] server closed connection");
+		EM_DEBUG_LOG("[IPC Socket] connection is closed");
 		return 0;
 	}
 
@@ -161,7 +161,7 @@ EXPORT_API int emipc_recv_email_socket(int fd, char **buf)
 		return EMAIL_ERROR_OUT_OF_MEMORY;
 	}
 	memset(*buf, 0x00, read_len);
-	
+
 	EM_DEBUG_LOG("[IPC Socket] Receiving [%d] bytes", read_len);
 	int len = emipc_readn(fd, *buf, read_len);
 	if (read_len != len) {
@@ -178,12 +178,12 @@ EXPORT_API int emipc_recv_email_socket(int fd, char **buf)
 EXPORT_API int emipc_accept_email_socket(int fd)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	
+
 	if (fd == -1) {
 		EM_DEBUG_LOG("Server_socket not init");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
-	
+
 	struct sockaddr_un remote;
 	int remote_len = sizeof(remote);
 	int client_fd = accept(fd, (struct sockaddr *)&remote, (socklen_t*) &remote_len);
@@ -193,7 +193,7 @@ EXPORT_API int emipc_accept_email_socket(int fd)
 	}
 
 	EM_DEBUG_LOG("%d is added", client_fd);
-	
+
 	EM_DEBUG_FUNC_END();
 	return client_fd;
 }
@@ -206,7 +206,7 @@ EXPORT_API int emipc_open_email_socket(int fd, const char *path)
 		EM_DEBUG_LOG("Path is null");
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
-	
+
 	if (fd <= 0) {
 		EM_DEBUG_LOG("Socket not created %d", fd);
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
@@ -259,7 +259,7 @@ EXPORT_API bool emipc_connect_email_socket(int fd)
 	strcpy(server.sun_path, EM_SOCKET_PATH);
 
 	int len = strlen(server.sun_path) + sizeof(server.sun_family);
-	
+
 	if (connect(fd, (struct sockaddr *)&server, len) == -1) {
 		EM_DEBUG_LOG("Cannot connect server %s", EM_STRERROR(errno));
 		return false;

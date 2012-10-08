@@ -29,33 +29,84 @@
 #include "email-ipc-socket.h"
 
 #include "email-debug-log.h"
+#include "email-internal-types.h"
+#include "email-utilities.h"
 #include <errno.h>
+#include <glib.h>
+#include <pthread.h>
+#include <sys/types.h>
+#include <unistd.h>
 
-static int proxy_socket_fd = 0;
+typedef struct {
+	pid_t pid;
+	pthread_t tid;
+	int socket_fd;
+} thread_socket_t;
+
+GList *socket_head = NULL;
+pthread_mutex_t proxy_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 EXPORT_API bool emipc_start_proxy_socket()
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int ret = true;
+	int socket_fd = 0;
 
-	ret = emipc_init_email_socket(&proxy_socket_fd);
+	ret = emipc_init_email_socket(&socket_fd);
 	if (!ret) {
+		EM_DEBUG_EXCEPTION("emipc_init_email_socket failed");
 		return false;
 	}
 
-	ret = emipc_connect_email_socket(proxy_socket_fd);
+	ret = emipc_connect_email_socket(socket_fd);
+	if( !ret ) {
+		EM_DEBUG_EXCEPTION("emipc_connect_email_socket failed");
+		return false;
+	}
 
-	return ret;
+	thread_socket_t* cur = (thread_socket_t*) em_malloc(sizeof(thread_socket_t));
+	if(!cur) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		return false;
+	}
+
+	/* add a socket */
+	cur->pid = getpid();
+	cur->tid = pthread_self();
+	cur->socket_fd = socket_fd;
+
+	ENTER_CRITICAL_SECTION(proxy_mutex);
+	socket_head = g_list_prepend(socket_head, cur);
+	LEAVE_CRITICAL_SECTION(proxy_mutex);
+
+	return true;
 }
 
 EXPORT_API bool emipc_end_proxy_socket()
 {
 	EM_DEBUG_FUNC_BEGIN();
 	EM_DEBUG_LOG("[IPCLib] emipc_end_proxy_socket_fd");
-	
-	if (proxy_socket_fd) {
-		emipc_close_email_socket(&proxy_socket_fd);
+
+	pid_t pid = getpid();
+
+	ENTER_CRITICAL_SECTION(proxy_mutex);
+	GList *cur = socket_head;
+	while( cur ) {
+		thread_socket_t* cur_socket = g_list_nth_data(cur,0);
+
+		/* close all sockets of the pid */
+		if( pid == cur_socket->pid ) {
+			emipc_close_email_socket(&cur_socket->socket_fd);
+			EM_SAFE_FREE(cur_socket);
+			GList *del = cur;
+			cur = g_list_next(cur);
+			socket_head = g_list_remove_link(socket_head, del);
+			continue;
+		}
+
+		cur = g_list_next(cur);
 	}
+	LEAVE_CRITICAL_SECTION(proxy_mutex);
 
 	return true;
 }
@@ -65,22 +116,46 @@ EXPORT_API bool emipc_end_proxy_socket()
 EXPORT_API int emipc_send_proxy_socket(unsigned char *data, int len)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	if (!proxy_socket_fd) {
-		EM_DEBUG_EXCEPTION("[IPCLib] emipc_send_proxy_socket_fd not connect");
-		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
+	int socket_fd = emipc_get_proxy_socket_id();
+
+	/* if thread socket is not created */
+	if (!socket_fd) {
+		int ret = emipc_start_proxy_socket();
+		if(!ret ) {
+			EM_DEBUG_EXCEPTION("[IPCLib] emipc_send_proxy_socket not connected");
+			return EMAIL_ERROR_IPC_SOCKET_FAILURE;
+		}
+		socket_fd = emipc_get_proxy_socket_id();
 	}
-	int send_len = emipc_send_email_socket(proxy_socket_fd, data, len);
+
+	int send_len = emipc_send_email_socket(socket_fd, data, len);
 	if (send_len == 0) {
-		EM_DEBUG_EXCEPTION("[IPCLib] server closed connection %x", proxy_socket_fd);
-		emipc_close_email_socket(&proxy_socket_fd);
+		EM_DEBUG_EXCEPTION("[IPCLib] server closed connection %x", socket_fd);
+		emipc_end_proxy_socket();
 	}
+
 	return send_len;
 }
 
 EXPORT_API int emipc_get_proxy_socket_id()
 {
 	EM_DEBUG_FUNC_BEGIN();
-	return proxy_socket_fd;
+	pthread_t tid = pthread_self();
+	int socket_fd = 0;
+
+	ENTER_CRITICAL_SECTION(proxy_mutex);
+	GList *cur = socket_head;
+	/* need to acquire lock */
+	for( ; cur ; cur = g_list_next(cur) ) {
+		thread_socket_t* cur_socket = g_list_nth_data(cur,0);
+		if( pthread_equal(tid, cur_socket->tid) ) {
+			socket_fd = cur_socket->socket_fd;
+			break;
+		}
+	}
+	LEAVE_CRITICAL_SECTION(proxy_mutex);
+	EM_DEBUG_LOG("tid %d, socket_fd %d", tid, socket_fd);
+	return socket_fd;
 }
 
 /* return true, when event occurred
@@ -114,21 +189,20 @@ static bool wait_for_reply (int fd)
 EXPORT_API int emipc_recv_proxy_socket(char **data)
 {
 	EM_DEBUG_FUNC_BEGIN();
-
-	if (!proxy_socket_fd) {
-		EM_DEBUG_EXCEPTION("[IPCLib] proxy_socket_fd[%p] is not available or disconnected", proxy_socket_fd);
+	int socket_fd = emipc_get_proxy_socket_id();
+	if (!socket_fd) {
+		EM_DEBUG_EXCEPTION("[IPCLib] proxy_socket_fd[%p] is not available or disconnected", socket_fd);
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
-	if( !wait_for_reply(proxy_socket_fd) ) {
-
+	if( !wait_for_reply(socket_fd) ) {
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
-	int recv_len = emipc_recv_email_socket(proxy_socket_fd, data);
+	int recv_len = emipc_recv_email_socket(socket_fd, data);
 	if (recv_len == 0) {
-		EM_DEBUG_EXCEPTION("[IPCLib] server closed connection %x", proxy_socket_fd);
-		emipc_close_email_socket(&proxy_socket_fd);
+		EM_DEBUG_EXCEPTION("[IPCLib] server closed connection %x", socket_fd);
+		emipc_end_proxy_socket();
 	}
 
 	return recv_len;

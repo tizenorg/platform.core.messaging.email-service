@@ -2805,7 +2805,7 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 						PARAMETER *param = body->disposition.parameter;
 
 						while (param)  {
-								EM_DEBUG_LOG("param->attribute [%s], param->value [%s]", param->attribute, param->value);
+							EM_DEBUG_LOG("param->attribute [%s], param->value [%s]", param->attribute, param->value);
 
 							if (!strcasecmp(param->attribute, "filename"))  {	/* attribute is "filename" */
 								strncpy(filename, param->value, MAX_PATH);
@@ -2831,8 +2831,8 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 				}
 				else {
 					/*  download all */
-			        EM_DEBUG_LOG("%d :  body->size.bytes[%ld]", counter+1, body->size.bytes);
-			        multi_part_body_size = multi_part_body_size + body->size.bytes;
+				        EM_DEBUG_LOG("%d :  body->size.bytes[%ld]", counter+1, body->size.bytes);
+			        	multi_part_body_size = multi_part_body_size + body->size.bytes;
 				}
 				part_child = part_child->next;
 				counter++;
@@ -3305,9 +3305,6 @@ int emcore_delete_mail(int account_id, int mail_ids[], int num, int from_server,
 		goto FINISH_OFF;
 	}
 
-	if (account->incoming_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC)
-		from_server = EMAIL_DELETE_LOCALLY;
-
 	FINISH_OFF_IF_CANCELED;
 
 	if (from_server == EMAIL_DELETE_LOCALLY) /* Delete mails from local storage*/ {
@@ -3449,7 +3446,7 @@ INTERNAL_FUNC int emcore_delete_mails_from_local_storage(int account_id, int *ma
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], mail_ids[%p], num [%d], noti_param_1 [%d], noti_param_2 [%d], err_code[%p]", account_id, mail_ids, num, noti_param_1, noti_param_2, num, err_code);
 	int ret = false, err = EMAIL_ERROR_NONE, i;
-	emstorage_mail_tbl_t *result_mail_list;
+	emstorage_mail_tbl_t *result_mail_list = NULL;
 	char mail_id_string[10], *noti_param_string = NULL, buf[512] = {0, };
 
 	/* Getting mail list by using select mail_id [in] */
@@ -3548,7 +3545,7 @@ static int emcore_delete_mails_from_pop3_server(email_account_t *input_account, 
 	int mail_id = 0;
 	int msgno = 0;
 	void *stream = NULL;
-	email_internal_mailbox_t mailbox_data;
+	email_internal_mailbox_t mailbox_data = { 0, };
 	emstorage_mail_tbl_t    *mail_tbl_data = NULL;
 	
 	if (!input_account || !input_mail_ids) {
@@ -3573,14 +3570,14 @@ static int emcore_delete_mails_from_pop3_server(email_account_t *input_account, 
 		}
 
 		if (stream == NULL)  {
-			if (!emcore_connect_to_remote_mailbox(input_account->account_id, mail_tbl_data->mailbox_id , (void **)&stream, &err))  {
+			if (!emcore_connect_to_remote_mailbox(input_account->account_id, 0, (void **)&stream, &err))  {
 				EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
 				goto FINISH_OFF;
 			}
 
 			mailbox_data.mail_stream  = stream;
 			mailbox_data.account_id   = input_account->account_id;
-			mailbox_data.mailbox_id = mail_tbl_data->mailbox_id;
+			mailbox_data.mailbox_id   = mail_tbl_data->mailbox_id;
 		}
 
 		if (mailbox_data.user_data != NULL) {
@@ -3763,6 +3760,7 @@ FINISH_OFF:
 	if(filter_list)
 		emstorage_free_list_filter(&filter_list, filter_count);
 
+	EM_SAFE_FREE(conditional_clause_string);
 	EM_SAFE_FREE(result_mail_id_list);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
@@ -3830,6 +3828,7 @@ FINISH_OFF:
 		emstorage_free_list_filter(&filter_list, filter_count);
 
 	EM_SAFE_FREE(result_mail_id_list);
+	EM_SAFE_FREE(conditional_clause_string);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 
@@ -4807,8 +4806,8 @@ INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_a
 			EM_DEBUG_EXCEPTION("emcore_save_mail_file failed [%d]", err);
 			goto FINISH_OFF2;
 		}
-		EM_SAFE_FREE(input_mail_data->file_path_html);
-		input_mail_data->file_path_html = EM_SAFE_STRDUP(filename_buf);
+		EM_SAFE_FREE(input_mail_data->file_path_mime_entity);
+		input_mail_data->file_path_mime_entity = EM_SAFE_STRDUP(filename_buf);
 	}
 
 	if (input_attachment_data_list && input_attachment_count)  {
@@ -4943,101 +4942,6 @@ FINISH_OFF2:
 	return err;
 }
 
-INTERNAL_FUNC int emcore_fetch_flags(int account_id, int mail_id, email_mail_flag_t *mail_flag, int *err_code)
-{
-	EM_DEBUG_FUNC_BEGIN();
-
-	int ret = false;
-	int err = 0;
-	emstorage_mail_tbl_t *mail = NULL;
-	
-	EM_IF_NULL_RETURN_VALUE(mail_flag, false);
-	if (account_id < FIRST_ACCOUNT_ID || mail_id < 1) {
-		EM_DEBUG_EXCEPTION("emcore_fetch_flags :  Invalid Param ");
-		goto FINISH_OFF;
-	}
-
-	if (!emstorage_get_mail_field_by_id(mail_id, RETRIEVE_FLAG, &mail, true, &err) || !mail)  {
-		EM_DEBUG_EXCEPTION("emstorage_get_mail_field_by_id failed - %d ", err);
-
-		goto FINISH_OFF;
-	}
-
-	if (!em_convert_mail_tbl_to_mail_flag(mail, mail_flag, &err))  {
-		EM_DEBUG_EXCEPTION("em_convert_mail_flag_to_int failed - %d ", err);
-		goto FINISH_OFF;
-	}
-
-	ret = true;
-
-FINISH_OFF:
-	if(mail)
-		emstorage_free_mail(&mail, 1, &err);
-
-	if (err_code != NULL)
-		*err_code = err;
-
-	EM_DEBUG_FUNC_END("err [%d]", err);
-	return ret;
-}
-/* description :  modify flag of msgno.
-   return 1(success), 0(failure)
-   */
-INTERNAL_FUNC int emcore_modify_flag(int mail_id, email_mail_flag_t new_flag, int sticky_flag, int *err_code)
-{
-	EM_DEBUG_FUNC_BEGIN("mail_id[%d], err_code[%p]", mail_id, err_code);
-
-	int ret = false;
-	int err = EMAIL_ERROR_NONE;
-	int old_seen, new_seen;
-
-	emstorage_mail_tbl_t *mail = NULL;
-	email_mail_flag_t old_flag;
-
-	if (!emstorage_get_mail_field_by_id(mail_id, RETRIEVE_FLAG, &mail, true, &err) || !mail)  {
-		EM_DEBUG_EXCEPTION("emstorage_get_mail_field_by_id failed [%d]", err);
-
-		goto FINISH_OFF;
-	}
-
-	if (!em_convert_mail_tbl_to_mail_flag(mail, &old_flag, &err))  {
-		EM_DEBUG_EXCEPTION("em_convert_mail_tbl_to_mail_flag failed [%d]", err);
-		goto  FINISH_OFF;
-	}
-
-	old_seen = mail->flags_seen_field;
-	new_seen = new_flag.seen;
-
-	if (!em_convert_mail_flag_to_mail_tbl(&new_flag, mail, &err))  {
-		EM_DEBUG_EXCEPTION("em_convert_mail_flag_to_mail_tbl failed [%d]", err);
-		goto FINISH_OFF;
-	}
-
-		mail->lock_status = sticky_flag;
-		
-	if (!emstorage_change_mail_field(mail_id, UPDATE_FLAG, mail, true, &err)) {
-			EM_DEBUG_EXCEPTION("emstorage_change_mail_field failed [%d]", err);
-		
-
-			goto FINISH_OFF;
-		}
-
-	if (old_seen != new_seen && new_seen == 0)
-		emcore_delete_notification_for_read_mail(mail_id);
-
-	emcore_check_unread_mail();
-
-	ret = true;
-
-FINISH_OFF:
-	if (mail)
-		emstorage_free_mail(&mail, 1, NULL);
-
-	if (err_code)
-		*err_code = err;
-	EM_DEBUG_FUNC_END("err [%d]", err);
-	return ret;
-}
 
 INTERNAL_FUNC int emcore_set_flags_field(int account_id, int mail_ids[], int num, email_flags_field_type field_type, int value, int *err_code)
 {
@@ -5072,43 +4976,6 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END("err [%d]", err);	
 	return ret;
 }
-
-
-/* description :  modify extra flag of msgno.
-   return 0(success), -1(failure)
-   */
-INTERNAL_FUNC int emcore_modify_extra_flag(int mail_id, email_extra_flag_t new_flag, int *err_code)
-{
-	EM_DEBUG_FUNC_BEGIN("mail_id[%d], err_code[%p]", mail_id, err_code);
-	
-	int ret = false;
-	int err = EMAIL_ERROR_NONE;
-	emstorage_mail_tbl_t mail;
-	
-	memset(&mail, 0x00, sizeof(emstorage_mail_tbl_t));
-
-	mail.mail_id 	= mail_id;
-	mail.save_status = new_flag.status;
-	mail.lock_status = new_flag.report;
-	mail.lock_status	= new_flag.lock;
-	mail.priority 	= new_flag.priority;
-	mail.DRM_status  = new_flag.drm;
-
-	if (!emstorage_change_mail_field(mail_id, UPDATE_EXTRA_FLAG, &mail, false, &err))  {
-		EM_DEBUG_EXCEPTION("emstorage_change_mail_field failed [%d]", err);
-
-		goto FINISH_OFF;
-	}
-	
-	ret = true;
-
-FINISH_OFF:
-	if (err_code != NULL)
-		*err_code = err;
-	EM_DEBUG_FUNC_END("err [%d]", err);
-	return ret;
-}
-
 
 int emcore_mail_cmd_read_mail_pop3(void *stream, int msgno, int limited_size, int *downloded_size, int *result_total_body_size, int *err_code)
 {
@@ -5256,7 +5123,6 @@ INTERNAL_FUNC int emcore_sync_flag_with_server(int mail_id, int *err_code)
 	email_account_t *ref_account = NULL;
 	int account_id = 0;
 	int msgno = 0;
-	email_mail_flag_t new_flag = {0};
 	char set_flags[100] = { 0, };
 	char clear_flags[100] = { 0, };
 	char tmp[100] = { 0, };
@@ -5273,7 +5139,6 @@ INTERNAL_FUNC int emcore_sync_flag_with_server(int mail_id, int *err_code)
 	}
 
 	account_id = mail->account_id;
-	em_convert_mail_tbl_to_mail_flag(mail, &new_flag, NULL);
 
 	if (!(ref_account = emcore_get_account_reference(account_id)))   {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
@@ -5311,22 +5176,22 @@ INTERNAL_FUNC int emcore_sync_flag_with_server(int mail_id, int *err_code)
 		
 	sprintf (tmp, "%d", msgno);
 
-	if (new_flag.seen)
+	if (mail->flags_seen_field)
 		sprintf(set_flags, "\\Seen");
 	else
 		sprintf(clear_flags, "\\Seen");
 
-	if (new_flag.answered)
+	if (mail->flags_answered_field)
 		sprintf(set_flags, "%s \\Answered", set_flags);
 	else
 		sprintf(clear_flags, "%s \\Answered", clear_flags);
 		
-	if (new_flag.flagged)
+	if (mail->flags_flagged_field)
 		sprintf(set_flags, "%s \\Flagged", set_flags);
 	else
 		sprintf(clear_flags, "%s \\Flagged", clear_flags);
 
-	if (new_flag.forwarded)
+	if (mail->flags_forwarded_field)
 		sprintf(set_flags, "%s $Forwarded", set_flags);
 	else
 		sprintf(clear_flags, "%s $Forwarded", clear_flags);
@@ -5364,8 +5229,11 @@ INTERNAL_FUNC int emcore_sync_flag_with_server(int mail_id, int *err_code)
 
 FINISH_OFF: 
 	
-	if (stream) emcore_close_mailbox(account_id, stream);
-	if (mail) emstorage_free_mail(&mail, 1, NULL);
+	if (stream)
+		emcore_close_mailbox(account_id, stream);
+
+	if (mail)
+		emstorage_free_mail(&mail, 1, NULL);
 
 	if (err_code != NULL)
 		*err_code = err;
@@ -5392,7 +5260,6 @@ INTERNAL_FUNC int emcore_sync_seen_flag_with_server(int mail_ids[], int num, int
 	email_account_t *ref_account = NULL;
 	int account_id = 0;
 	int msgno = 0;
-	email_mail_flag_t new_flag;
 	char set_flags[100];
 	char clear_flags[100];
 	char tmp[100];
@@ -5442,9 +5309,6 @@ INTERNAL_FUNC int emcore_sync_seen_flag_with_server(int mail_ids[], int num, int
 			goto FINISH_OFF;
 		}
 		
-		/* account_id = mail->account_id; */
-		em_convert_mail_tbl_to_mail_flag(mail, &new_flag, NULL);
-		
 		if (!emcore_check_thread_status())  {
 			err = EMAIL_ERROR_CANCELLED;
 			goto FINISH_OFF;
@@ -5462,7 +5326,7 @@ INTERNAL_FUNC int emcore_sync_seen_flag_with_server(int mail_ids[], int num, int
 		memset(set_flags, 0x00, 100);
 		memset(clear_flags, 0x00, 100);
 
-		if (new_flag.seen)
+		if (mail->flags_seen_field)
 			sprintf(set_flags, "\\Seen");
 		else
 			sprintf(clear_flags, "\\Seen");

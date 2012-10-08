@@ -159,7 +159,7 @@ static email_account_t* duplicate_account(email_account_t *src)
 	return dst;
 }
 
-INTERNAL_FUNC int emdaemon_validate_account(int account_id, unsigned* handle, int* err_code)
+INTERNAL_FUNC int emdaemon_validate_account(int account_id, int *handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], handle[%p], err_code[%p]", account_id, handle, err_code);
 
@@ -200,7 +200,7 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC int emdaemon_validate_account_and_create(email_account_t* new_account, unsigned* handle, int* err_code)
+INTERNAL_FUNC int emdaemon_validate_account_and_create(email_account_t* new_account, int *handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account[%p], handle[%p], err_code[%p]", new_account, handle, err_code);
 
@@ -310,7 +310,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_validate_account_and_update(int old_account_id, email_account_t* new_account_info, unsigned* handle,int *err_code)
+INTERNAL_FUNC int emdaemon_validate_account_and_update(int old_account_id, email_account_t* new_account_info, int *handle,int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account[%d], new_account_info[%p], handle[%p], err_code[%p]", old_account_id, new_account_info, handle, err_code);
 

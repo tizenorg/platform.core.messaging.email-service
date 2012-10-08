@@ -79,9 +79,6 @@
 #define EMAIL_CH_SPACE            ' '
 #define EMAIL_NOTI_ICON_PATH      "/opt/data/email/res/image/Q02_Notification_email.png"
 
-static char _g_display[G_DISPLAY_LENGTH];
-
-
 typedef struct  _em_transaction_info_type_t {
 	int mail_id;
 	int	handle;	
@@ -91,20 +88,7 @@ typedef struct  _em_transaction_info_type_t {
 
 em_transaction_info_type_t  *g_transaction_info_list;
 
-static email_option_t g_mail_option = 
-{
-	0, /* priority			*/
-	1, /* keep_local_copy */
-	0, /* req_delivery_receipt */
-	0, /* req_read_receipt */
-	0, /* download_limit */
-	0, /* block_address */
-	0, /* block_subject */
-	NULL, /*  diplay name */
-};
-
 static email_session_t g_session_list[SESSION_MAX] = { {0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0},};
-
 
 typedef struct emcore_account_list_t emcore_account_list_t;
 struct emcore_account_list_t {
@@ -125,48 +109,6 @@ INTERNAL_FUNC int emcore_set_account_reference(emcore_account_list_t **account_l
 	g_account_reference = (emcore_account_list_t **)account_list;
 	return 1;
 }
-
-email_option_t *emcore_get_option(int *err_code)
-{
-	if (err_code != NULL)
-		*err_code = EMAIL_ERROR_NONE;
-
-	return &g_mail_option;
-}
-
-INTERNAL_FUNC int emcore_set_option(email_option_t *opt, int *err_code)
-{
-	EM_DEBUG_FUNC_BEGIN("opt[%p], err_code[%p]", opt, err_code);
-	
-	int err = EMAIL_ERROR_NONE;
-	
-	if (!opt) {
-		EM_DEBUG_EXCEPTION("opt[%p]", opt);
-		
-		if (err_code != NULL)
-			*err_code = EMAIL_ERROR_INVALID_PARAM;
-		return false;
-	}
-	
-	memset(_g_display, 0, G_DISPLAY_LENGTH);
-	memcpy(&g_mail_option, opt, sizeof(g_mail_option));
-
-	if (opt->display_name_from && opt->display_name_from[0] != '\0')  {
-		strncpy(_g_display, opt->display_name_from, G_DISPLAY_LENGTH - 1);
-		g_mail_option.display_name_from = _g_display;
-	}
-	else
-		g_mail_option.display_name_from = NULL;
-	
-	if (err_code != NULL)
-		*err_code = err;
-	
-	return true;
-}
-
-	
-
-
 
 /*  in smtp case, path argument must be ENCODED_PATH_SMTP */
 int emcore_get_long_encoded_path_with_account_info(email_account_t *account, char *path, int delimiter, char **long_enc_path, int *err_code)
@@ -1038,19 +980,19 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 
 	local_preview_buffer_length = input_preview_buffer_length * 2;
 
-	if (input_html_path != NULL) {	
+	if ( input_html_path != NULL) {
 		/*	get preview text from html file */
 		if( (err = em_get_encoding_type_from_file_path(input_html_path, &encoding_type)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("em_get_encoding_type_from_file_path failed [%s]", err);
 			goto FINISH_OFF;
 		}
-		
+
 		if (stat(input_html_path, &st_buf) < 0)  {
 			EM_DEBUG_EXCEPTION("stat(\"%s\") failed...", input_html_path);
 			err = EMAIL_ERROR_INVALID_MAIL;
 			goto FINISH_OFF;
 		}
-		
+
 		if (!(fp = fopen(input_html_path, "r")))	{
 			EM_DEBUG_EXCEPTION("fopen failed [%s]", input_html_path);
 			err = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -1062,9 +1004,9 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 			err = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
 		}
-		
+
 		byte_read = fread(local_preview_text, sizeof(char), st_buf.st_size, fp);
-		
+
 		if (ferror(fp)) {
 			EM_DEBUG_EXCEPTION("fread failed [%s]", input_plain_path);
 			err = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -1079,13 +1021,13 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 		result_strlen = EM_SAFE_STRLEN(local_preview_text);
 	}
 
-	if (local_preview_text == NULL && input_plain_path != NULL) {	
+	if ( (local_preview_text == NULL || (local_preview_text && strlen(local_preview_text) == 0) ) && input_plain_path != NULL) {
 		/*  get preview text from plain text file */
 		if( (err = em_get_encoding_type_from_file_path(input_plain_path, &encoding_type)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("em_get_encoding_type_from_file_path failed [%s]", err);
 			goto FINISH_OFF;
 		}
-		
+
 		if (!(fp = fopen(input_plain_path, "r")))  {
 			EM_DEBUG_EXCEPTION("fopen failed [%s]", input_plain_path);
 			err = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -1096,24 +1038,26 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 			EM_DEBUG_EXCEPTION("em_malloc failed");
 			goto FINISH_OFF;
 		}
-		
+
 		byte_read = fread(local_preview_text, sizeof(char), local_preview_buffer_length - 1, fp);
-		
+
 		if (ferror(fp)) {
 			EM_DEBUG_EXCEPTION("fread failed [%s]", input_plain_path);
 			err = EMAIL_ERROR_SYSTEM_FAILURE;
 			goto FINISH_OFF;
 		}
 
-		reg_replace(local_preview_text, CR_STRING, "");
-		reg_replace(local_preview_text, LF_STRING, "");
-		reg_replace(local_preview_text, TAB_STRING, "");
-			
+		reg_replace(local_preview_text, CR_STRING, " ");
+		reg_replace(local_preview_text, LF_STRING, " ");
+		reg_replace(local_preview_text, TAB_STRING, " ");
+
 		result_strlen = EM_SAFE_STRLEN(local_preview_text);
-	}	
-	
+	}
+
+
 
 	if(local_preview_text) {
+		em_trim_left(local_preview_text);
 		if(encoding_type && strcasecmp(encoding_type, "UTF-8") != 0) {
 			EM_DEBUG_LOG("encoding_type [%s]", encoding_type);
 			utf8_encoded_string = (char*)g_convert (local_preview_text, -1, "UTF-8", encoding_type, &byte_read, &byte_written, &glib_error);
@@ -1341,10 +1285,10 @@ int emcore_strip_HTML(char *source_string)
 	
 	reg_replace(source_string, CR_STRING, " ");
 	reg_replace(source_string, LF_STRING, " ");
-	reg_replace(source_string, TAB_STRING, " ");
 	reg_replace(source_string, "<head[^>]*>", "<head>"); /*  "<()*head([^>])*>", "<head>" */
 	reg_replace(source_string, "<*/head>", "</head>");  /*  "(<()*(/)()*head()*>)", "</head>" */
 	reg_replace(source_string, "<head>.*</head>", ""); /*  "(<head>).*(</head>)", "" */
+	reg_replace(source_string, "<style[^>]*>.*</style>", "");
 
 	reg_replace(source_string, "<*/p>", " ");
 	reg_replace(source_string, "<br>", " ");
@@ -1389,352 +1333,6 @@ int emcore_strip_HTML(char *source_string)
 
 	return result;
 }
-
-#define MAX_NOTI_STRING_LENGTH		8096
-
-INTERNAL_FUNC int emcore_convert_structure_to_string(void *struct_var, char **encoded_string, email_convert_struct_type_e type)
-{
-	EM_DEBUG_FUNC_BEGIN("Struct type[%d]", type);
-	
-	char *buf = NULL;
-	char delimiter[] = {0x01, 0x00};
-	int error_code = EMAIL_ERROR_NONE;
-
-	buf = (char *) malloc(MAX_NOTI_STRING_LENGTH * sizeof(char));
-	if (NULL == buf) {
-		error_code = EMAIL_ERROR_OUT_OF_MEMORY;
-		goto FINISH_OFF;		
-	}
-	switch (type) {
-		case EMAIL_CONVERT_STRUCT_TYPE_MAIL_LIST_ITEM: {
-			email_mail_list_item_t *item = (email_mail_list_item_t *)struct_var;
-			SNPRINTF(buf, MAX_NOTI_STRING_LENGTH, 
-				"%d%c"	/*	int  mail_id                                    ; */
-				"%d%c"	/* 	int  account_id									; */
-				"%d%c"	/*	int  mailbox_id                                 ; */
-				"%s%c"	/* 	char from[STRING_LENGTH_FOR_DISPLAY]			; */
-				"%s%c"	/* 	char from_email_address[MAX_EMAIL_ADDRESS_LENGTH]; */
-				"%s%c"	/* 	char recipients[STRING_LENGTH_FOR_DISPLAY]      ; */
-				"%s%c"	/* 	char subject[STRING_LENGTH_FOR_DISPLAY] 		; */
-				"%d%c"	/* 	int  is_text_downloaded 						; */
-				"%d%c"	/* 	time_t date_time                                ; */
-				"%d%c"	/* 	int  flags_seen_field                           ; */
-				"%d%c"	/* 	int  priority									; */
-				"%d%c"	/* 	int  save_status                                ; */
-				"%d%c"	/* 	int  is_locked									; */
-				"%d%c"	/* 	int  is_report_mail								; */
-				"%d%c"	/* 	int  recipients_count  							; */
-				"%d%c"	/* 	int  has_attachment                             ; */
-				"%d%c"	/* 	int  has_drm_attachment							; */
-				"%s%c"	/* 	char previewBodyText[MAX_PREVIEW_TEXT_LENGTH]	; */
-				"%d%c"	/* 	int  thread_id									; */
-				"%d%c",	/* 	int  thread_item_count 							; */
-
-				item->mail_id,              delimiter[0],
-				item->account_id,           delimiter[0],
-				item->mailbox_id,           delimiter[0],
-				item->from,                 delimiter[0],
-				item->from_email_address,   delimiter[0],
-				item->recipients,           delimiter[0],
-				item->subject,              delimiter[0],
-				item->is_text_downloaded,   delimiter[0],
-				(unsigned int)item->date_time,       delimiter[0],
-				item->flags_seen_field,     delimiter[0],
-				item->priority, 			delimiter[0],
-				item->save_status,          delimiter[0],
-				item->is_locked,            delimiter[0],
-				item->is_report_mail,       delimiter[0],
-				item->recipients_count,     delimiter[0],
-				item->has_attachment,       delimiter[0],
-				item->has_drm_attachment,   delimiter[0],
-				item->previewBodyText,      delimiter[0],
-				item->thread_id,            delimiter[0],
-				item->thread_item_count,    delimiter[0]
-			);
-		}		
-			break;
-	}
-
-FINISH_OFF:
-	if (encoded_string)
-		*encoded_string = buf;
-	EM_DEBUG_FUNC_END("Struct -> String:[%s]\n", buf);
-	return error_code;
-}
-
-INTERNAL_FUNC int emcore_convert_string_to_structure(const char *encoded_string, void **struct_var, email_convert_struct_type_e type)
-{
-	EM_DEBUG_FUNC_BEGIN();
-	
-	int ret = false;
-	void *temp_struct = NULL;
-	char *buff = NULL;
-	char *current_pos = NULL;
-	char *found_pos = NULL;
-	char delimiter[] = {0x01, 0x00};
-	int error_code = EMAIL_ERROR_NONE;
-
-	EM_DEBUG_LOG("Struct Type[%d], String:[%s]", type, encoded_string);
-
-	buff = (char *)EM_SAFE_STRDUP(encoded_string);
-	if (NULL == buff) {
-		error_code = EMAIL_ERROR_OUT_OF_MEMORY;
-		goto FINISH_OFF;		
-	}
-	
-	switch (type) {
-		case EMAIL_CONVERT_STRUCT_TYPE_MAIL_LIST_ITEM: {
-			email_mail_list_item_t *item = (email_mail_list_item_t *)malloc(sizeof(email_mail_list_item_t));
-			if (NULL == item) {
-				error_code = EMAIL_ERROR_OUT_OF_MEMORY;
-				goto FINISH_OFF;		
-			}
-			temp_struct = (void *)item;
-
-			current_pos = buff;
-
-			/*  mail_id */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->mail_id = atoi(current_pos);
-			EM_DEBUG_LOG("mail_id[%d]", item->mail_id);
-			current_pos = found_pos + 1;
-
-			/*  account_id */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->account_id = atoi(current_pos);
-			EM_DEBUG_LOG("account_id[%d]", item->account_id);
-			current_pos = found_pos + 1;
-
-			/*  mailbox_id */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->mailbox_id = atoi(current_pos);
-			EM_DEBUG_LOG("mailbox_id[%s]", item->mailbox_id);
-			current_pos = found_pos + 1;
-
-			/*  from */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			strncpy(item->from, current_pos, STRING_LENGTH_FOR_DISPLAY-1);
-			EM_DEBUG_LOG("from[%s]", item->from);
-			current_pos = found_pos + 1;
-
-			/*  from_email_address */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			strncpy(item->from_email_address, current_pos, STRING_LENGTH_FOR_DISPLAY-1);
-			EM_DEBUG_LOG("from_email_address[%s]", item->from_email_address);
-			current_pos = found_pos + 1;
-
-			/*  recipients */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			strncpy(item->recipients, current_pos, STRING_LENGTH_FOR_DISPLAY-1);
-			EM_DEBUG_LOG("recipients[%s]", item->recipients);
-			current_pos = found_pos + 1;			
-
-			/*  subject */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			strncpy(item->subject, current_pos, STRING_LENGTH_FOR_DISPLAY-1);
-			EM_DEBUG_LOG("subject[%s]", item->subject);
-			current_pos = found_pos + 1;			
-
-			/*  is_text_downloaded */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->is_text_downloaded = atoi(current_pos);
-			EM_DEBUG_LOG("is_text_downloaded[%d]", item->is_text_downloaded);
-			current_pos = found_pos + 1;
-
-			/*  datatime */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->date_time = atoi(current_pos);
-			EM_DEBUG_LOG("date_time[%d]", item->date_time);
-			current_pos = found_pos + 1;
-
-			/*  flags_seen_field */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->flags_seen_field = atoi(current_pos);
-			EM_DEBUG_LOG("flags_seen_field[%d]", item->flags_seen_field);
-			current_pos = found_pos + 1;
-
-			/*  priority */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->priority = atoi(current_pos);
-			EM_DEBUG_LOG("priority[%d]", item->priority);
-			current_pos = found_pos + 1;			
-
-			/*  save_status */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->save_status = atoi(current_pos);
-			EM_DEBUG_LOG("save_status[%d]", item->save_status);
-			current_pos = found_pos + 1;	
-
-			/*  is_locked */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->is_locked = atoi(current_pos);
-			EM_DEBUG_LOG("is_locked[%d]", item->is_locked);
-			current_pos = found_pos + 1;	
-
-			/*  is_report_mail */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->is_report_mail = atoi(current_pos);
-			EM_DEBUG_LOG("is_report_mail[%d]", item->is_report_mail);
-			current_pos = found_pos + 1;	
-
-			/*  recipients_count */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->recipients_count = atoi(current_pos);
-			EM_DEBUG_LOG("is_report_mail[%d]", item->recipients_count);
-			current_pos = found_pos + 1;				
-
-			/*  has_attachment */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->has_attachment = atoi(current_pos);
-			EM_DEBUG_LOG("has_attachment[%d]", item->has_attachment);
-			current_pos = found_pos + 1;				
-
-			/*  has_drm_attachment */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->has_drm_attachment = atoi(current_pos);
-			EM_DEBUG_LOG("has_drm_attachment[%d]", item->has_drm_attachment);
-			current_pos = found_pos + 1;				
-
-			/*  previewBodyText */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			strncpy(item->previewBodyText, current_pos, MAX_PREVIEW_TEXT_LENGTH-1);
-			EM_DEBUG_LOG("previewBodyText[%s]", item->previewBodyText);
-			current_pos = found_pos + 1;	
-
-			/*  thread_id */
-			found_pos = strstr(current_pos, delimiter);
-			if (NULL == found_pos) {
-				error_code = EMAIL_ERROR_INVALID_DATA;
-				goto FINISH_OFF;		
-			}
-			*found_pos = NULL_CHAR;
-			item->thread_id = atoi(current_pos);
-			EM_DEBUG_LOG("thread_id[%d]", item->thread_id);
-			current_pos = found_pos + 1;	
-
-			/*  thread_item_count - the last item */
- 			item->thread_item_count = atoi(current_pos);
-			EM_DEBUG_LOG("thread_item_count[%d]", item->thread_item_count);
- 			
- 		}
-			break;
-			
-		default:
-			EM_DEBUG_EXCEPTION("Unknown structure type");
-			break;
-	}
-
-	ret = true;
-	
-FINISH_OFF:
-	EM_SAFE_FREE(buff);
-	if (ret == true) {
-		if (struct_var)
-			*struct_var = temp_struct;
-	}
-	else {
-		switch (type) {
-			case EMAIL_CONVERT_STRUCT_TYPE_MAIL_LIST_ITEM:
-				EM_SAFE_FREE(temp_struct);
-				break;
-			default:
-				break;
-		}
-	}
-	EM_DEBUG_FUNC_END();
-	return error_code;
-}
-
 
 /*  emcore_send_noti_for_new_mail is not used currently because DBUS could not send very long message.*/
 /*  But I think it can be used to notify incomming new mail for replacing NOTI_MAIL_ADD with some modification(uid should be replaced with mail_id).  */
@@ -1874,7 +1472,6 @@ INTERNAL_FUNC int emcore_delete_notification_for_read_mail(int mail_id)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int error_code = EMAIL_ERROR_NONE;
-
 	EM_DEBUG_FUNC_END();
 	return error_code;
 }

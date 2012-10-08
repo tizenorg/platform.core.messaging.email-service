@@ -62,7 +62,7 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 	char id_string[100] = { 0, }, password_string[100] = { 0, }, address_string[100]  = { 0, };
 	int err_code = EMAIL_ERROR_NONE, samsung3g_account_index;
 	int result_from_scanf = 0;
-	unsigned handle;
+	int handle;
 
 	switch(account_type) {
 		case 4 : 
@@ -424,7 +424,7 @@ static gboolean testapp_test_validate_account ()
 	int account_id;
 	email_account_t *account=NULL;
 	int err_code = EMAIL_ERROR_NONE;
-	unsigned account_handle = 0;
+	int handle = 0;
 	
 	testapp_print("\n>> Enter Account No: ");
 	result_from_scanf = scanf("%d",&account_id);
@@ -437,8 +437,8 @@ static gboolean testapp_test_validate_account ()
 	else
 		testapp_print ("email_get_account result account_name - %s \n", account->account_name);
 
-	if((err_code = email_validate_account(account_id, &account_handle)) == EMAIL_ERROR_NONE ) 
-		testapp_print ("email_validate_account successful  account_handle : %u\n",account_handle);
+	if((err_code = email_validate_account(account_id, &handle)) == EMAIL_ERROR_NONE )
+		testapp_print ("email_validate_account successful  handle : %u\n",handle);
 	else
 		testapp_print ("email_validate_account failed err_code: %d \n",err_code);
 		

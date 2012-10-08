@@ -166,7 +166,7 @@ EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **
 
 EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count)
 {
-	EM_DEBUG_FUNC_BEGIN("mail_id : [%s]", mail_id);
+	EM_DEBUG_FUNC_BEGIN("mail_id : [%d]", mail_id);
 	int err = EMAIL_ERROR_NONE;
 	email_mail_data_t *p_output_mail_data = NULL;
 	emstorage_account_tbl_t *p_account = NULL;
@@ -199,27 +199,18 @@ FINISH_OFF:
 	return err;
 }
 
-EXPORT_API int email_verify_signature(char *certificate_path, int mail_id, int *verify)
+EXPORT_API int email_verify_signature(int mail_id, int *verify)
 {
-	EM_DEBUG_FUNC_BEGIN("Certificate path : [%s]", certificate_path);
+	EM_DEBUG_FUNC_BEGIN("mail_id : [%d]", mail_id);
 	int result_from_ipc = 0;
 	int err = EMAIL_ERROR_NONE;
 	int p_verify = 0;
-	
-	if (!certificate_path) {
-		EM_DEBUG_EXCEPTION("Invalid parameter");
-		return EMAIL_ERROR_INVALID_PARAM;
-	}
+
+	EM_IF_NULL_RETURN_VALUE(mail_id, EMAIL_ERROR_INVALID_PARAM);	
 
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_VERIFY_SIGNATURE);
 	if (hAPI == NULL) {
 		EM_DEBUG_EXCEPTION("emipc_create_email_api failed");
-		err = EMAIL_ERROR_NULL_VALUE;
-		goto FINISH_OFF;
-	}
-
-	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, certificate_path, strlen(certificate_path)+1)) {
-		EM_DEBUG_EXCEPTION("emipc_add_parameter certificate_path[%s] failed", certificate_path);
 		err = EMAIL_ERROR_NULL_VALUE;
 		goto FINISH_OFF;
 	}

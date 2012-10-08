@@ -380,7 +380,7 @@ FINISH_OFF:
 
 }
 
-EXPORT_API int email_validate_account(int account_id, unsigned* handle)
+EXPORT_API int email_validate_account(int account_id, int *handle)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], handle[%p]", account_id, handle);
 
@@ -422,7 +422,7 @@ EXPORT_API int email_validate_account(int account_id, unsigned* handle)
 }
 
 
-EXPORT_API int email_add_account_with_validation(email_account_t* account, unsigned* handle)
+EXPORT_API int email_add_account_with_validation(email_account_t* account, int *handle)
 {
 	EM_DEBUG_FUNC_BEGIN("account[%p]", account);
 	char* local_account_stream = NULL;

@@ -1002,7 +1002,6 @@ void* thread_func_branch_command_for_sending_mails(void *arg)
 			EM_DEBUG_LOG(">>>>>>>>>>>>>>Got SEND event_data>>>>>>>>>>>>>>>>");
 			send_thread_run = 1;
 			g_client_run = 1;
-			email_option_t *option = NULL;
 
 			if (!emnetwork_check_network_status( &err))  {
 				EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
@@ -1017,104 +1016,94 @@ void* thread_func_branch_command_for_sending_mails(void *arg)
 				
 				case EMAIL_EVENT_SEND_MAIL: 
 					emdevice_set_dimming_on_off(false, NULL);
-					option = (email_option_t *)event_data.event_param_data_1;
 					
-					if (!emcore_send_mail(event_data.account_id, event_data.event_param_data_5, event_data.event_param_data_4, option, &err))
+					if (!emcore_send_mail(event_data.account_id, event_data.event_param_data_5, event_data.event_param_data_4, &err))
 						EM_DEBUG_EXCEPTION("emcore_send_mail failed [%d]", err);
 					
-					if (option)
-						EM_SAFE_FREE(option->display_name_from);
 					emdevice_set_dimming_on_off(true, NULL);
 					break;
 					
-				case EMAIL_EVENT_SEND_MAIL_SAVED:  /* send mails to been saved in offline-mode */
+				case EMAIL_EVENT_SEND_MAIL_SAVED:  /* send mails to been saved in off-line mode */
 					emdevice_set_dimming_on_off(false, NULL);
-					
-					email_option_t *option = (email_option_t *)event_data.event_param_data_1;
 						
-					if (!emcore_send_saved_mail(event_data.account_id, event_data.event_param_data_3, option, &err))
+					if (!emcore_send_saved_mail(event_data.account_id, event_data.event_param_data_3, &err))
 						EM_DEBUG_EXCEPTION("emcore_send_saved_mail failed - %d", err);
-					
-					if (option)
-						EM_SAFE_FREE(option->display_name_from);
 										
 					emdevice_set_dimming_on_off(true, NULL);
 					break;
+
 #ifdef __FEATURE_LOCAL_ACTIVITY__
 					
-					case EMAIL_EVENT_LOCAL_ACTIVITY: {
-						emdevice_set_dimming_on_off(false, NULL);
-						emstorage_activity_tbl_t *local_activity = NULL;
-						int activity_id_count = 0;
-						int activity_chunk_count = 0;
-						int *activity_id_list = NULL;
-						int i = 0;
+				case EMAIL_EVENT_LOCAL_ACTIVITY: {
+					emdevice_set_dimming_on_off(false, NULL);
+					emstorage_activity_tbl_t *local_activity = NULL;
+					int activity_id_count = 0;
+					int activity_chunk_count = 0;
+					int *activity_id_list = NULL;
+					int i = 0;
 
-						if (false == emstorage_get_activity_id_list(event_data.account_id, &activity_id_list, &activity_id_count, ACTIVITY_SAVEMAIL, ACTIVITY_DELETEMAIL_SEND, true, &err)) {
-							EM_DEBUG_EXCEPTION("emstorage_get_activity_id_list failed [%d]", err);
-						}
-						else {	
-							for (i = 0; i < activity_id_count; ++i) {
-								if ((false == emstorage_get_activity(event_data.account_id, activity_id_list[i], &local_activity, &activity_chunk_count, true,  &err)) || (NULL == local_activity) || (0 == activity_chunk_count)) {
-									EM_DEBUG_EXCEPTION(" emstorage_get_activity Failed [ %d] or local_activity is NULL [%p] or activity_chunk_count is 0[%d]", err, local_activity, activity_chunk_count);
-								}
-								else {							
-									EM_DEBUG_LOG("Found local activity type - %d", local_activity[0].activity_type);
-									switch (local_activity[0].activity_type) {									
-										case ACTIVITY_SAVEMAIL:  {
-											if (!emcore_sync_mail_from_client_to_server(event_data.account_id, local_activity[0].mail_id, &err)) {
-												EM_DEBUG_EXCEPTION("emcore_sync_mail_from_client_to_server failed - %d ", err);
-											}
+					if (false == emstorage_get_activity_id_list(event_data.account_id, &activity_id_list, &activity_id_count, ACTIVITY_SAVEMAIL, ACTIVITY_DELETEMAIL_SEND, true, &err)) {
+						EM_DEBUG_EXCEPTION("emstorage_get_activity_id_list failed [%d]", err);
+					}
+					else {
+						for (i = 0; i < activity_id_count; ++i) {
+							if ((false == emstorage_get_activity(event_data.account_id, activity_id_list[i], &local_activity, &activity_chunk_count, true,  &err)) || (NULL == local_activity) || (0 == activity_chunk_count)) {
+								EM_DEBUG_EXCEPTION(" emstorage_get_activity Failed [ %d] or local_activity is NULL [%p] or activity_chunk_count is 0[%d]", err, local_activity, activity_chunk_count);
+							}
+							else {
+								EM_DEBUG_LOG("Found local activity type - %d", local_activity[0].activity_type);
+								switch (local_activity[0].activity_type) {
+									case ACTIVITY_SAVEMAIL:  {
+										if (!emcore_sync_mail_from_client_to_server(event_data.account_id, local_activity[0].mail_id, &err)) {
+											EM_DEBUG_EXCEPTION("emcore_sync_mail_from_client_to_server failed - %d ", err);
 										}
-										break;
-										
-										case ACTIVITY_DELETEMAIL_SEND: 				/* New Activity Type Added for Race Condition and Crash Fix */ {
-											if (!emcore_delete_mail(local_activity[0].account_id, 
-																	&local_activity[0].mail_id, 
-																	EMAIL_DELETE_FOR_SEND_THREAD, 
-																	true, 
-																	EMAIL_DELETED_BY_COMMAND,
-																	false,
-																	&err))  {
-												EM_DEBUG_LOG("\t emcore_delete_mail failed - %d", err);
-											}
-										}
-										break;
-										
-										default:  {
-											EM_DEBUG_LOG(">>>> No such Local Activity Handled by this thread [ %d ] >>> ", local_activity[0].activity_type);
-										}
-										break;
 									}
-									
-									emstorage_free_local_activity(&local_activity, activity_chunk_count, NULL);
-									
-									if (g_save_local_activity_run == 1) {
-										EM_DEBUG_LOG(" Network event_data found.. Local sync Stopped..! ");
-										break;
+									break;
+
+									case ACTIVITY_DELETEMAIL_SEND: 				/* New Activity Type Added for Race Condition and Crash Fix */ {
+										if (!emcore_delete_mail(local_activity[0].account_id,
+																&local_activity[0].mail_id,
+																EMAIL_DELETE_FOR_SEND_THREAD,
+																true,
+																EMAIL_DELETED_BY_COMMAND,
+																false,
+																&err))  {
+											EM_DEBUG_LOG("\t emcore_delete_mail failed - %d", err);
+										}
 									}
+									break;
+									
+									default:  {
+										EM_DEBUG_LOG(">>>> No such Local Activity Handled by this thread [ %d ] >>> ", local_activity[0].activity_type);
+									}
+									break;
 								}
 								
-							}
-							if (false == emstorage_free_activity_id_list(activity_id_list, &err)) {
-								EM_DEBUG_LOG("emstorage_free_activity_id_list failed");
-							}
-						}
+								emstorage_free_local_activity(&local_activity, activity_chunk_count, NULL);
 
-						emdevice_set_dimming_on_off(true, NULL);
+								if (g_save_local_activity_run == 1) {
+									EM_DEBUG_LOG(" Network event_data found.. Local sync Stopped..! ");
+									break;
+								}
+							}
+
+						}
+						if (false == emstorage_free_activity_id_list(activity_id_list, &err)) {
+							EM_DEBUG_LOG("emstorage_free_activity_id_list failed");
+						}
 					}
-					break;
+
+					emdevice_set_dimming_on_off(true, NULL);
+				}
+				break;
 #endif /* __FEATURE_LOCAL_ACTIVITY__ */					
 				default:  
-					EM_DEBUG_LOG("Others not supported by Send Thread..! ");
+					EM_DEBUG_LOG("Others not supported by Send Thread..! [%d]", event_data.type);
 					break;
-
 			}
 						
 			ENTER_RECURSIVE_CRITICAL_SECTION(_send_event_queue_lock);
-			
 			memset(g_send_event_que+g_send_active_que, 0x00, sizeof(email_event_t));
-
 			LEAVE_RECURSIVE_CRITICAL_SECTION(_send_event_queue_lock);
 
 FINISH_OFF: 
@@ -1126,7 +1115,7 @@ FINISH_OFF:
 	if (!emstorage_close(&err)) 
 		EM_DEBUG_EXCEPTION("emstorage_close falied [%d]", err);
 
-	EM_DEBUG_FUNC_END();
+	EM_DEBUG_FUNC_END("err [%d]", err);
 	return NULL;
 }
 
@@ -1276,12 +1265,15 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 				}
 				
 				for (counter = 0; counter < mailbox_count; counter++) {
+
+					EM_DEBUG_LOG("maiblox_name [%s], mailbox_id [%d], mailbox_type [%d]", mailbox_tbl_list[counter].mailbox_name, mailbox_tbl_list[counter].mailbox_id, mailbox_tbl_list[counter].mailbox_type);
+
 					if ( mailbox_tbl_list[counter].mailbox_type == EMAIL_MAILBOX_TYPE_ALL_EMAILS  
 							|| mailbox_tbl_list[counter].mailbox_type == EMAIL_MAILBOX_TYPE_TRASH  
 						/*|| mailbox_tbl_list[counter].mailbox_type == EMAIL_MAILBOX_TYPE_SPAMBOX */)
 						EM_DEBUG_LOG("Skipped for all emails or trash");
 					else if (!mailbox_tbl_list[counter].local_yn) {
-						EM_DEBUG_LOG("..........syncing %s mailbox( mailbox_id = %d)......", mailbox_tbl_list[counter].mailbox_name, mailbox_tbl_list[counter].mailbox_id);
+						EM_DEBUG_LOG("[%s] Syncing...", mailbox_tbl_list[counter].mailbox_name);
 #ifdef __FEATURE_KEEP_CONNECTION__
 						if (!emcore_sync_header((mailbox_tbl_list + counter) , mailbox_tbl_spam, NULL, &uid_list, &unread, &err)) {
 #else /*  __FEATURE_KEEP_CONNECTION__ */
@@ -2082,14 +2074,21 @@ int event_handler_EMAIL_EVENT_SEARCH_ON_SERVER(int account_id, int mailbox_id, c
 					EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
 				goto FINISH_OFF;
 			}
-			
-			if (!emstorage_get_mailbox_by_mailbox_type(account_id, EMAIL_MAILBOX_TYPE_SEARCH_RESULT, &search_mailbox, false, &err))  {
-				EM_DEBUG_EXCEPTION("emstorage_get_mailbox_name_by_mailbox_type failed [%d]", err);
+		
+			search_mailbox = em_malloc(sizeof(emstorage_mailbox_tbl_t));
+			if (search_mailbox == NULL) {
+				EM_DEBUG_EXCEPTION("em_malloc failed");
+				err = EMAIL_ERROR_OUT_OF_MEMORY;
 				if (!emstorage_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
 					EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
 				goto FINISH_OFF;
 			}
 
+			search_mailbox->account_id = account_id;
+			search_mailbox->mailbox_id = mailbox_id;
+			search_mailbox->mailbox_name = EM_SAFE_STRDUP(EMAIL_SEARCH_RESULT_MAILBOX_NAME);
+			search_mailbox->mailbox_type = EMAIL_MAILBOX_TYPE_SEARCH_RESULT;
+	
 			if ((err = emcore_add_mail_to_mailbox(search_mailbox, new_mail_tbl_data, &mail_id, &thread_id)) != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("emcore_add_mail_to_mailbox failed [%d]", err);
 				if (!emstorage_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
@@ -2315,7 +2314,7 @@ void* thread_func_branch_command(void *arg)
 						break;
 
 					case EMAIL_EVENT_DELETE_MAIL:  /*  delete mails */
-						event_handler_EMAIL_EVENT_DELETE_MAIL(event_data.account_id, (int  *)event_data.event_param_data_3, event_data.event_param_data_4, &err);
+						event_handler_EMAIL_EVENT_DELETE_MAIL(event_data.account_id, (int*)event_data.event_param_data_3, event_data.event_param_data_4, &err);
 						EM_SAFE_FREE(event_data.event_param_data_3);
 						break;
 

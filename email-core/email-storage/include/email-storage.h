@@ -181,53 +181,54 @@ typedef struct
 
 typedef struct 
 {
-	int        mail_id;
-	int        account_id;
-	int        mailbox_id;
-	char      *mailbox_name;
-	int        mailbox_type;
-	char      *subject;
-	time_t     date_time;
-	int        server_mail_status;
-	char      *server_mailbox_name;
-	char      *server_mail_id;
-	char      *message_id;
-	char      *full_address_from;
-	char      *full_address_reply;
-	char      *full_address_to;
-	char      *full_address_cc;
-	char      *full_address_bcc;
-	char      *full_address_return;
-	char      *email_address_sender;
-	char      *email_address_recipient;
-	char      *alias_sender;
-	char      *alias_recipient;
-	int        body_download_status;
-	char      *file_path_plain;
-	char      *file_path_html;
-	char      *file_path_mime_entity;
-	int        mail_size;
-	char       flags_seen_field;
-	char       flags_deleted_field;
-	char       flags_flagged_field;
-	char       flags_answered_field;
-	char       flags_recent_field;
-	char       flags_draft_field;
-	char       flags_forwarded_field;
-	int        DRM_status;
-	int        priority;
-	int        save_status;
-	int        lock_status;
-	int        report_status;
-	int        attachment_count;
-	int        inline_content_count;
-	int        thread_id;
-	int        thread_item_count;
-	char      *preview_text;
-	int        meeting_request_status;
-	int        message_class;
-	int        digest_type;
-	int        smime_type;
+	int                    mail_id;
+	int                    account_id;
+	int                    mailbox_id;
+	char                  *mailbox_name;
+	int                    mailbox_type;
+	char                  *subject;
+	time_t                 date_time;
+	int                    server_mail_status;
+	char                  *server_mailbox_name;
+	char                  *server_mail_id;
+	char                  *message_id;
+	int                    reference_mail_id;
+	char                  *full_address_from;
+	char                  *full_address_reply;
+	char                  *full_address_to;
+	char                  *full_address_cc;
+	char                  *full_address_bcc;
+	char                  *full_address_return;
+	char                  *email_address_sender;
+	char                  *email_address_recipient;
+	char                  *alias_sender;
+	char                  *alias_recipient;
+	int                    body_download_status;
+	char                  *file_path_plain;
+	char                  *file_path_html;
+	char                  *file_path_mime_entity;
+	int                    mail_size;
+	char                   flags_seen_field;
+	char                   flags_deleted_field;
+	char                   flags_flagged_field;
+	char                   flags_answered_field;
+	char                   flags_recent_field;
+	char                   flags_draft_field;
+	char                   flags_forwarded_field;
+	int                    DRM_status;
+	email_mail_priority_t  priority;
+	email_mail_status_t    save_status;
+	int                    lock_status;
+	email_mail_report_t    report_status;
+	int                    attachment_count;
+	int                    inline_content_count;
+	int                    thread_id;
+	int                    thread_item_count;
+	char                  *preview_text;
+	email_mail_type_t      meeting_request_status;
+	email_message_class    message_class;
+	email_digest_type      digest_type;
+	email_smime_type       smime_type;
 } emstorage_mail_tbl_t;
 
 /* mail_attachment_tbl entity */
@@ -591,6 +592,15 @@ INTERNAL_FUNC int emstorage_update_mailbox(int account_id, int local_yn, int inp
 INTERNAL_FUNC int emstorage_update_mailbox_type(int account_id, int local_yn, char *mailbox_name, email_mailbox_type_e new_mailbox_type, int transaction, int *err_code);
 
 /*
+ * emstorage_set_local_mailbox
+ *
+ * description :  change 'local' field on mailbox table.
+ * arguments :
+ * return  :
+ */
+INTERNAL_FUNC int emstorage_set_local_mailbox(int input_mailbox_id, int input_is_local_mailbox, int transaction);
+
+/*
  * emstorage_add_mailbox
  *
  * description :  add a local mailbox to local mailbox table
@@ -892,7 +902,7 @@ INTERNAL_FUNC int emstorage_query_mail_tbl(const char *conditional_clause, int t
  * description :  query mail box table information
  */
 
-INTERNAL_FUNC int emstorage_query_mailbox_tbl(const char *input_conditional_clause, int input_get_mail_count,  int input_transaction, emstorage_mailbox_tbl_t **output_mailbox_list, int *output_mailbox_count);
+INTERNAL_FUNC int emstorage_query_mailbox_tbl(const char *input_conditional_clause, const char *input_ordering_clause, int input_get_mail_count,  int input_transaction, emstorage_mailbox_tbl_t **output_mailbox_list, int *output_mailbox_count);
 
 /*
  * emstorage_get_mail_list

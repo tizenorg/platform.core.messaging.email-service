@@ -1,6 +1,6 @@
 Name:       email-service
 Summary:    E-mail Framework Middleware package
-Version:    0.9.9
+Version:    0.10.1
 Release:    1
 Group:      System/Libraries
 License:    TBD
@@ -240,6 +240,7 @@ CREATE TABLE mail_tbl
 	server_mailbox_name              VARCHAR(129),
 	server_mail_id                   VARCHAR(129),
 	message_id                       VARCHAR(257),
+	reference_mail_id                INTEGER,
 	full_address_from                TEXT,
 	full_address_reply               TEXT,
 	full_address_to                  TEXT,

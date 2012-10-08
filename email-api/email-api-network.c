@@ -42,14 +42,16 @@
 
 
 
-EXPORT_API int email_send_mail(int mail_id, email_option_t* sending_option, unsigned* handle)
+EXPORT_API int email_send_mail(int mail_id, int *handle)
 {
-	EM_DEBUG_FUNC_BEGIN("mail_id[%d], sending_option[%p], handle[%p]", mail_id, sending_option, handle);
+	EM_DEBUG_FUNC_BEGIN("mail_id[%d], handle[%p]", mail_id, handle);
 	
 	char* pSendingOption = NULL;
-	int size = 0;
 	int err = EMAIL_ERROR_NONE;
 	emstorage_mail_tbl_t* mail_table_data = NULL;
+	email_account_server_t account_server_type;
+	HIPC_API hAPI = NULL;
+	ASNotiData as_noti_data;
 
 	if(mail_id <= 0) {
 		EM_DEBUG_EXCEPTION("mail_id is not valid");
@@ -66,9 +68,6 @@ EXPORT_API int email_send_mail(int mail_id, email_option_t* sending_option, unsi
 
 	EM_DEBUG_LOG("mail_table_data->account_id[%d], mail_table_data->mailbox_name[%s]", mail_table_data->account_id, mail_table_data->mailbox_name);
 
-	email_account_server_t account_server_type;
-	HIPC_API hAPI = NULL;
-	ASNotiData as_noti_data;
 	memset(&as_noti_data, 0x00, sizeof(ASNotiData));
 
 	/*  check account bind type and branch off  */
@@ -87,11 +86,9 @@ EXPORT_API int email_send_mail(int mail_id, email_option_t* sending_option, unsi
 		}
 		
 		/*  noti to active sync */
-		as_noti_data.send_mail.handle = as_handle;
+		as_noti_data.send_mail.handle     = as_handle;
 		as_noti_data.send_mail.account_id = mail_table_data->account_id;
-		as_noti_data.send_mail.mail_id = mail_id;
-
-		memcpy(&as_noti_data.send_mail.options, sending_option, sizeof(email_option_t));
+		as_noti_data.send_mail.mail_id    = mail_id;
 
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_SEND_MAIL, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -110,19 +107,6 @@ EXPORT_API int email_send_mail(int mail_id, email_option_t* sending_option, unsi
 		/* mail_id */
 		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)&mail_id, sizeof(int))){
 			EM_DEBUG_EXCEPTION("email_send_mail--Add Param mail_id failed");
-			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
-		}
-
-		/* sending options */
-		pSendingOption = em_convert_option_to_byte_stream(sending_option, &size);
-
-		if ( NULL == pSendingOption)	 {
-			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
-		}
-
-		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, pSendingOption, size)){
-			EM_DEBUG_EXCEPTION("email_send_mail--Add Param Sending_Option failed  ");
-			EM_SAFE_FREE(pSendingOption);
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 		}
 
@@ -148,16 +132,14 @@ FINISH_OFF:
 	return err;	
 }
 
-EXPORT_API int email_send_saved(int account_id, email_option_t* sending_option, unsigned* handle)
+EXPORT_API int email_send_saved(int account_id, int *handle)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id[%d], sending_option[%p], handle[%p]", account_id, sending_option, handle);
+	EM_DEBUG_FUNC_BEGIN("account_id[%d], handle[%p]", account_id, handle);
 	
 	char* pOptionStream = NULL;
 	int err = EMAIL_ERROR_NONE;
-	int size = 0;
 	
 	EM_IF_NULL_RETURN_VALUE(account_id, EMAIL_ERROR_INVALID_PARAM);
-	EM_IF_NULL_RETURN_VALUE(sending_option, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_ACCOUNT_ID_NULL(account_id, EMAIL_ERROR_INVALID_PARAM);
 	
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_SEND_SAVED);
@@ -167,16 +149,6 @@ EXPORT_API int email_send_saved(int account_id, email_option_t* sending_option, 
 	/* Account ID */
 	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &(account_id), sizeof(int))) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter account_id failed");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
-	}
-
-	/* Sending Option */
-	pOptionStream = em_convert_option_to_byte_stream(sending_option, &size);
-
-	EM_PROXY_IF_NULL_RETURN_VALUE(pOptionStream, hAPI, EMAIL_ERROR_NULL_VALUE);
-
-	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, pOptionStream, size)) {
-		EM_DEBUG_EXCEPTION("Add Param sending option failed");
 		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 	}
 
@@ -197,7 +169,7 @@ EXPORT_API int email_send_saved(int account_id, email_option_t* sending_option, 
 	return err;
 }
 
-EXPORT_API int email_sync_header(int input_account_id, int input_mailbox_id, unsigned* handle)
+EXPORT_API int email_sync_header(int input_account_id, int input_mailbox_id, int *handle)
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id[%d], input_mailbox_id[%d] handle[%p]", input_account_id, input_mailbox_id, handle);
 	int err = EMAIL_ERROR_NONE;	
@@ -281,7 +253,7 @@ FINISH_OFF:
 }
 
 
-EXPORT_API int email_sync_header_for_all_account(unsigned* handle)
+EXPORT_API int email_sync_header_for_all_account(int *handle)
 {
 	EM_DEBUG_FUNC_BEGIN("handle[%p]", handle);
 	char* mailbox_stream = NULL;
@@ -375,7 +347,7 @@ FINISH_OFF:
 	return err;
 }
 
-EXPORT_API int email_download_body(int mail_id, int with_attachment, unsigned* handle)
+EXPORT_API int email_download_body(int mail_id, int with_attachment, int *handle)
 {
 	EM_DEBUG_FUNC_BEGIN("mail_id[%d],with_attachment[%d]", mail_id, with_attachment);
 	int err = EMAIL_ERROR_NONE;
@@ -482,7 +454,7 @@ FINISH_OFF:
 
 /* API - Downloads the Email Attachment Information [ INTERNAL ] */
 
-EXPORT_API int email_download_attachment(int mail_id, int nth, unsigned* handle)
+EXPORT_API int email_download_attachment(int mail_id, int nth, int *handle)
 {
 	EM_DEBUG_FUNC_BEGIN("mail_id[%d], nth[%d], handle[%p]", mail_id, nth, handle);
 	char* mailbox_stream = NULL;
@@ -786,7 +758,7 @@ EXPORT_API int email_get_network_status(int* on_sending, int* on_receiving)
 	return err;
 }
 
-EXPORT_API int email_sync_imap_mailbox_list(int account_id, unsigned* handle)
+EXPORT_API int email_sync_imap_mailbox_list(int account_id, int *handle)
 {
 	EM_DEBUG_FUNC_BEGIN();
 
@@ -821,7 +793,7 @@ EXPORT_API int email_sync_imap_mailbox_list(int account_id, unsigned* handle)
 	return err;
 }
 
-EXPORT_API int email_search_mail_on_server(int input_account_id, int input_mailbox_id, email_search_filter_t *input_search_filter_list, int input_search_filter_count, unsigned *output_handle)
+EXPORT_API int email_search_mail_on_server(int input_account_id, int input_mailbox_id, email_search_filter_t *input_search_filter_list, int input_search_filter_count, int *output_handle)
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_mailbox_id [%d], input_search_filter_list [%p], input_search_filter_count [%d], output_handle [%p]", input_account_id, input_mailbox_id, input_search_filter_list, input_search_filter_count, output_handle);
 

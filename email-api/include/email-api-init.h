@@ -100,7 +100,7 @@ extern "C" {
 
  * @open
  * @fn email_init_storage(void)
- * @brief	Create all table for email. Exposed to External Application- core team.Creates all Email DB tables [ EXTERNAL]
+ * @brief	Create all tables for email.
  *
  * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure
  * @exception none

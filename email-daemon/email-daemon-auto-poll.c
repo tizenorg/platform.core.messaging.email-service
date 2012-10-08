@@ -165,12 +165,16 @@ INTERNAL_FUNC int emdaemon_check_auto_polling_started(int account_id)
 	}
 	return true;
 }
+
 INTERNAL_FUNC int emdaemon_alarm_polling_cb(alarm_id_t  alarm_id, void* user_param)
 {
 	EM_DEBUG_FUNC_BEGIN();
 
-/* 	tzset(); */
-	 time_t ct = time(&ct);
+	email_mailbox_t mailbox = {0};
+	int account_id = 0, err = EMAIL_ERROR_NONE, timer_interval =0, alarmID =0,ret = false;
+	char* mailbox_name = NULL;
+
+	time_t ct = time(&ct);
 	struct tm* lt = localtime(&ct);
 	
 	if (lt) {
@@ -178,11 +182,6 @@ INTERNAL_FUNC int emdaemon_alarm_polling_cb(alarm_id_t  alarm_id, void* user_par
 			lt->tm_year + 1900, lt->tm_mon + 1, lt->tm_mday,
 			lt->tm_hour, lt->tm_min, lt->tm_sec);				
 	}
-	
-
-	email_mailbox_t mailbox = {0};
-	int account_id = 0, err = EMAIL_ERROR_NONE, timer_interval =0, alarmID =0,ret = false;
-	char* mailbox_name = NULL;
 
 	if(!_emdaemon_get_polling_account_and_timeinterval(alarm_id,&account_id,&timer_interval)) {
 		EM_DEBUG_EXCEPTION("email_get_polling_account failed");
@@ -206,13 +205,11 @@ INTERNAL_FUNC int emdaemon_alarm_polling_cb(alarm_id_t  alarm_id, void* user_par
 	memset(&mailbox, 0x00, sizeof(email_mailbox_t));
 	mailbox.account_id = account_id;
 
-		if (!emstorage_get_mailbox_name_by_mailbox_type(mailbox.account_id,EMAIL_MAILBOX_TYPE_INBOX,&mailbox_name, false, &err))  {
-			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_name_by_mailbox_type failed [%d]", err);
-						
-	
-			goto FINISH_OFF;
-		}
-		mailbox.mailbox_name = mailbox_name;
+	if (!emstorage_get_mailbox_name_by_mailbox_type(mailbox.account_id,EMAIL_MAILBOX_TYPE_INBOX,&mailbox_name, false, &err))  {
+		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_name_by_mailbox_type failed [%d]", err);
+		goto FINISH_OFF;
+	}
+	mailbox.mailbox_name = mailbox_name;
 
 	if (!emdaemon_sync_header(account_id, mailbox.mailbox_id, NULL, &err))  {
 		EM_DEBUG_EXCEPTION("emdaemon_sync_header falied [%d]", err);		
@@ -221,6 +218,7 @@ INTERNAL_FUNC int emdaemon_alarm_polling_cb(alarm_id_t  alarm_id, void* user_par
 
 	ret = true;
 FINISH_OFF :
+
 	EM_SAFE_FREE(mailbox_name);
 
 	return ret;

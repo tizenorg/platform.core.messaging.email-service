@@ -140,27 +140,31 @@ INTERNAL_FUNC int emnetwork_check_network_status(int *err_code)
 	}
 
 	if(network_status == 0) {
-		if ( (err = _get_sim_status(&sim_status)) != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("_get_sim_status failed [%d]", err);
+		EM_DEBUG_LOG("VCONFKEY_NETWORK_STATUS is 0");
+
+		if ( (err = _get_wifi_status(&wifi_status)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("_get_wifi_status failed [%d]", err);
 			goto FINISH_OFF;
 		}
 
-		if (sim_status != VCONFKEY_TELEPHONY_SIM_INSERTED) {
-			EM_DEBUG_LOG("EMAIL_ERROR_NO_SIM_INSERTED");
-			if ( (err = _get_wifi_status(&wifi_status)) != EMAIL_ERROR_NONE) {
-				EM_DEBUG_EXCEPTION("_get_wifi_status failed [%d]", err);
+		if (wifi_status == 0) {
+			EM_DEBUG_LOG("Furthermore, WIFI is off");
+
+			if ( (err = _get_sim_status(&sim_status)) != EMAIL_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("_get_sim_status failed [%d]", err);
 				goto FINISH_OFF;
 			}
 
-			if (wifi_status == 0) {
-				EM_DEBUG_EXCEPTION("Furthermore, WIFI is off");
+			if (sim_status != VCONFKEY_TELEPHONY_SIM_INSERTED) {
+				EM_DEBUG_EXCEPTION("EMAIL_ERROR_NO_SIM_INSERTED");
 				err = EMAIL_ERROR_NO_SIM_INSERTED;
 				goto FINISH_OFF;
 			}
+
+			EM_DEBUG_EXCEPTION("EMAIL_ERROR_NETWORK_NOT_AVAILABLE");
+			err = EMAIL_ERROR_NETWORK_NOT_AVAILABLE;
+			goto FINISH_OFF;
 		}
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_NETWORK_NOT_AVAILABLE");
-		err = EMAIL_ERROR_NETWORK_NOT_AVAILABLE;
-		goto FINISH_OFF;
 	}
 
 	EM_DEBUG_LOG("Data Network Mode is ON");

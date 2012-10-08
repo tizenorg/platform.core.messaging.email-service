@@ -189,7 +189,7 @@ email_account_t - refer to doxygen (SLP-SDK: http:/* slp-sdk.sec.samsung.net) */
 <tr><td>int email_free_account(email_account_t** account_list, int count) </td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
   
-<tr><td>int email_validate_account(int account_id, unsigned* handle)</td>
+<tr><td>int email_validate_account(int account_id, int *handle)</td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
 </table> 
 
@@ -377,10 +377,10 @@ email_mailbox_t - refer to doxygen (SLP-SDK: http:/* slp-sdk.sec.samsung.net) */
 <table>
 <tr><td>API</td><td>Return Value / Exceptions</td></tr>
  
-<tr><td>int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, unsigned* handle) </td>
+<tr><td>int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, int *handle) </td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: -  Memory for param email_mailbox_t* new_mailbox should be allocated and deallocated by Application </td></tr>
  
-<tr><td>int email_delete_mailbox(email_mailbox_t* mailbox, int on_server,  unsigned* handle) </td>
+<tr><td>int email_delete_mailbox(email_mailbox_t* mailbox, int on_server,  int *handle) </td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param email_mailbox_t* mailbox should be allocated and deallocated by Application</td></tr>
 
 <tr><td>int email_update_mailbox(email_mailbox_t*old_mailbox, email_mailbox_t* new_mailbox)</td>
@@ -404,7 +404,7 @@ email_mailbox_t - refer to doxygen (SLP-SDK: http:/* slp-sdk.sec.samsung.net) */
 @li Create new mailbox
 @code
 email_mailbox_t *mailbox = NULL, *new_mailbox = NULL;
-unsigned handle = 0;
+int handle = 0;
 int on_server = 0;
  
 mailbox = malloc(sizeof(email_mailbox_t));
@@ -429,7 +429,7 @@ else
 @code
 email_mailbox_t *mailbox = NULL, *new_mailbox = NULL;
 int on_server = 0;
-unsigned handle = 0;
+int handle = 0;
 
 new_mailbox = malloc(sizeof(email_mailbox_t));
 memset(new_mailbox, 0x00, sizeof(email_mailbox_t));
@@ -518,14 +518,8 @@ email_mail_data_t
 <tr><td>int email_free_attachment_info(email_attachment_data_t** atch_info)  </td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure.</td></tr>
  
-<tr><td>int email_modify_mail_flag(int mail_id, email_mail_flag_t new_flag, int onserver)  </td>
-<td>Returns EMAIL_ERROR_NONE on success or negative value on failure.</td></tr>
- 
 <tr><td>int email_modify_seen_flag(int *mail_ids, int num, int seen_flag, int onserver)  </td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for param int *mail_ids should be allocated and deallocated by Application</td></tr>
-
-<tr><td>int email_modify_extra_mail_flag(int mail_id, email_extra_flag_t new_flag)  </td>
-<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
 <tr><td>int email_move_mail_to_mailbox(int *mail_ids, int num, email_mailbox_t* new_mailbox)  </td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory for params int *mail_ids and email_mailbox_t* new_mailbox should be allocated and deallocated by Application</td></tr>
@@ -543,9 +537,6 @@ email_mail_data_t
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: - Memory allocation for param email_mailbox_t** mailbox_list will happen in email_get_mailbox_list (). To free this memory, application should call email_free_mailbox ()</td></tr>
  
 <tr><td>int email_free_mailbox(email_mailbox_t** mailbox_list, int count)  </td>
-<td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
-   
-<tr><td>int email_get_mail_flag(int account_id, int mail_id, email_mail_flag_t* mail_flag)  </td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
 <tr><td>int email_retry_sending_mail( int mail_id, int timeout_in_sec)  </td>
@@ -688,37 +679,6 @@ if(EMAIL_ERROR_NONE !=  email_clear_mail_data())
       /* failure */
 else
       /* success   */
-@endcode
-
-@li Modify flag
-@code
-email_mail_flag_t newflag = {0};
-int mail_id = 0;
-int on_server = 0;
- 
-/* Modify mail flag*/
-if(EMAIL_ERROR_NONE != email_modify_mail_flag(mail_id,newflag,on_server))
-       /* failure */
-else
-       /* success   */
-
-int mail_ids[] = {1, 2}; 
-int num = 2;
-int seen_flag = 0; 
-int on_server = 0;
- 
-/* Modify seen flag*/
-if(EMAIL_ERROR_NONE != email_modify_seen_flag(mail_ids, num, seen_flag,on_server))
-       /* failure */
-else
-       /* success   */
- 
-/* Modify extra flag*/
-int mail_id = 1;
-if(EMAIL_ERROR_NONE != email_modify_extra_mail_flag(mail_id, newflag))
-       /* failure */
-else
-       /* success   */
 @endcode
 
 
@@ -890,19 +850,19 @@ email_option_t - refer to doxygen (SLP-SDK: http:/* slp-sdk.sec.samsung.net) */
 <tr><td>API</td>
 <td>Return Value / Exceptions</td></tr>
  
-<tr><td>int email_send_mail( email_mailbox_t* mailbox, int mail_id, email_option_t* sending_option, unsigned* handle)</td>
+<tr><td>int email_send_mail( email_mailbox_t* mailbox, int mail_id, int *handle)</td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks: 
 -# Memory allocation and de-allocation for input param is to be done by application.</td></tr>
  
-<tr><td>int email_sync_header(email_mailbox_t* mailbox, unsigned* handle)</td>
+<tr><td>int email_sync_header(email_mailbox_t* mailbox, int *handle)</td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks:
 -# Memory allocation and de-allocation for input param is to be done by application.</td></tr>
  
-<tr><td>int email_download_body(email_mailbox_t* mailbox, int mail_id, int with_attachment, unsigned* handle) </td>
+<tr><td>int email_download_body(email_mailbox_t* mailbox, int mail_id, int with_attachment, int *handle) </td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks:
 -# Memory allocation and de-allocation for input param is to be done by application.</td></tr>
  
-<tr><td>int email_download_attachment(email_mailbox_t* mailbox, int mail_id, const char* nth,  unsigned* handle)</td>
+<tr><td>int email_download_attachment(email_mailbox_t* mailbox, int mail_id, const char* nth,  int *handle)</td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure.</td></tr>
 
 <tr><td>int email_cancel_job(int account_id, int handle)</td>
@@ -914,11 +874,11 @@ email_option_t - refer to doxygen (SLP-SDK: http:/* slp-sdk.sec.samsung.net) */
 <tr><td>void email_get_network_status(int* on_sending, int* on_receiving) </td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure</td></tr>
  
-<tr><td>int email_send_saved(int account_id, email_option_t* sending_option, unsigned* handle)</td>
+<tr><td>int email_send_saved(int account_id, email_option_t* sending_option, int *handle)</td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure@n Remarks:
 -# Memory allocation and de-allocation for input param is to be done by application.</td></tr>
  
-<tr><td>int email_sync_imap_mailbox_list(int account_id, const char* mailbox, unsigned* handle)</td>
+<tr><td>int email_sync_imap_mailbox_list(int account_id, const char* mailbox, int *handle)</td>
 <td>Returns EMAIL_ERROR_NONE on success or negative value on failure.</td></tr>
  
 <tr><td>int email_sync_local_activity(int account_id)</td>
@@ -937,7 +897,7 @@ email_option_t - refer to doxygen (SLP-SDK: http:/* slp-sdk.sec.samsung.net) */
 email_mailbox_t mailbox;
 int account_id = 1;
 int err = EMAIL_ERROR_NONE;
-unsigned handle = 0;
+int handle = 0;
  
 memset(&mailbox, 0x00, sizeof(email_mailbox_t));
  
@@ -969,7 +929,7 @@ email_mailbox_t mailbox;
 int mail_id = 1;
 int account_id = 1;     
 char arg[50]; /* Input attachment number need to be download */
-unsigned handle = 0;
+int handle = 0;
 int err = EMAIL_ERROR_NONE;
  
 memset(&mailbox, 0x00, sizeof(email_mailbox_t));

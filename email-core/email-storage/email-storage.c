@@ -611,6 +611,7 @@ enum
 	SERVER_MAILBOX_NAME_IDX_IN_MAIL_TBL,
 	SERVER_MAIL_ID_IDX_IN_MAIL_TBL,
 	MESSAGE_ID_IDX_IN_MAIL_TBL,
+	REFERENCE_ID_IDX_IN_MAIL_TBL,
 	FULL_ADDRESS_FROM_IDX_IN_MAIL_TBL,
 	FULL_ADDRESS_REPLY_IDX_IN_MAIL_TBL,
 	FULL_ADDRESS_TO_IDX_IN_MAIL_TBL,
@@ -798,29 +799,30 @@ static char *g_test_query[] = {
 		"	server_mail_status, "
 		"	server_mailbox_name, "
 		"	server_mail_id, "
-		" message_id, "
+		"   message_id, "
+		"	reference_mail_id, "
 		"   full_address_from, "
 		"   full_address_reply, "
 		"   full_address_to, "
 		"   full_address_cc, "
 		"   full_address_bcc, "
 		"   full_address_return, "
-		" email_address_sender, "
-		" email_address_recipient, "
-		" alias_sender, "
-		" alias_recipient, "
+		"   email_address_sender, "
+		"   email_address_recipient, "
+		"   alias_sender, "
+		"   alias_recipient, "
 		"	body_download_status, "
 		"	file_path_plain, "
 		"	file_path_html, "
 		"   file_path_mime_entity, "
 		"	mail_size, "
-		" flags_seen_field     ,"
-		" flags_deleted_field  ,"
-		" flags_flagged_field  ,"
-		" flags_answered_field ,"
-		" flags_recent_field   ,"
-		" flags_draft_field    ,"
-		" flags_forwarded_field,"
+		"   flags_seen_field     ,"
+		"   flags_deleted_field  ,"
+		"   flags_flagged_field  ,"
+		"   flags_answered_field ,"
+		"   flags_recent_field   ,"
+		"   flags_draft_field    ,"
+		"   flags_forwarded_field,"
 		"	DRM_status, "
 		"	priority, "
 		"	save_status, "
@@ -1846,6 +1848,7 @@ INTERNAL_FUNC int emstorage_create_table(emstorage_create_db_type_t type, int *e
 	", server_mailbox_name          VARCHAR(129) \n"
 	", server_mail_id               VARCHAR(129) \n"
 	", message_id                   VARCHAR(257) \n"
+	", reference_mail_id            INTEGER \n"
 	", full_address_from            TEXT \n"
 	", full_address_reply           TEXT \n"
 	", full_address_to              TEXT \n"
@@ -2559,11 +2562,11 @@ INTERNAL_FUNC int emstorage_query_mail_list(const char *conditional_clause, int 
 			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].mail_id), col_index++);
 			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].account_id), col_index++);
 			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].mailbox_id), col_index++);
-			_get_table_field_data_string_without_allocation(result, mail_list_item_from_tbl[i].from, STRING_LENGTH_FOR_DISPLAY, 1, col_index++);
-			_get_table_field_data_string_without_allocation(result, mail_list_item_from_tbl[i].from_email_address, MAX_EMAIL_ADDRESS_LENGTH, 1, col_index++);
-			_get_table_field_data_string_without_allocation(result, mail_list_item_from_tbl[i].recipients, STRING_LENGTH_FOR_DISPLAY,  1, col_index++);
+			_get_table_field_data_string_without_allocation(result, mail_list_item_from_tbl[i].full_address_from, STRING_LENGTH_FOR_DISPLAY, 1, col_index++);
+			_get_table_field_data_string_without_allocation(result, mail_list_item_from_tbl[i].email_address_sender, MAX_EMAIL_ADDRESS_LENGTH, 1, col_index++);
+			_get_table_field_data_string_without_allocation(result, mail_list_item_from_tbl[i].email_address_recipient, STRING_LENGTH_FOR_DISPLAY,  1, col_index++);
 			_get_table_field_data_string_without_allocation(result, mail_list_item_from_tbl[i].subject, STRING_LENGTH_FOR_DISPLAY, 1, col_index++);
-			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].is_text_downloaded), col_index++);
+			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].body_download_status), col_index++);
 			_get_table_field_data_char(result, &(mail_list_item_from_tbl[i].flags_seen_field), col_index++);
 			_get_table_field_data_char(result, &(mail_list_item_from_tbl[i].flags_deleted_field), col_index++);
 			_get_table_field_data_char(result, &(mail_list_item_from_tbl[i].flags_flagged_field), col_index++);
@@ -2571,21 +2574,21 @@ INTERNAL_FUNC int emstorage_query_mail_list(const char *conditional_clause, int 
 			_get_table_field_data_char(result, &(mail_list_item_from_tbl[i].flags_recent_field), col_index++);
 			_get_table_field_data_char(result, &(mail_list_item_from_tbl[i].flags_draft_field), col_index++);
 			_get_table_field_data_char(result, &(mail_list_item_from_tbl[i].flags_forwarded_field), col_index++);
-			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].has_drm_attachment), col_index++);
-			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].priority), col_index++);
-			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].save_status), col_index++);
-			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].is_locked), col_index++);
+			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].DRM_status), col_index++);
+			_get_table_field_data_int(result, (int*)&(mail_list_item_from_tbl[i].priority), col_index++);
+			_get_table_field_data_int(result, (int*)&(mail_list_item_from_tbl[i].save_status), col_index++);
+			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].lock_status), col_index++);
 			_get_table_field_data_int(result, &local_attachment_count, col_index++);
 			_get_table_field_data_int(result, &local_inline_content_count, col_index++);
 			_get_table_field_data_time_t(result, &(mail_list_item_from_tbl[i].date_time), col_index++);
-			_get_table_field_data_string_without_allocation(result, mail_list_item_from_tbl[i].previewBodyText, MAX_PREVIEW_TEXT_LENGTH, 1, col_index++);
+			_get_table_field_data_string_without_allocation(result, mail_list_item_from_tbl[i].preview_text, MAX_PREVIEW_TEXT_LENGTH, 1, col_index++);
 			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].thread_id), col_index++);
 			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].thread_item_count), col_index++);
-			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].is_meeting_request), col_index++);
-			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].message_class), col_index++);
-			_get_table_field_data_int(result, &(mail_list_item_from_tbl[i].smime_type), col_index++);
+			_get_table_field_data_int(result, (int*)&(mail_list_item_from_tbl[i].meeting_request_status), col_index++);
+			_get_table_field_data_int(result, (int*)&(mail_list_item_from_tbl[i].message_class), col_index++);
+			_get_table_field_data_int(result, (int*)&(mail_list_item_from_tbl[i].smime_type), col_index++);
 
-			mail_list_item_from_tbl[i].has_attachment = ((local_attachment_count - local_inline_content_count)>0)?1:0;
+			mail_list_item_from_tbl[i].attachment_count = ((local_attachment_count - local_inline_content_count)>0)?1:0;
 		}
 		EM_DEBUG_LOG(">>>> DATA ASSIGN END [count : %d] >> ", count);
 		EM_PROFILE_END(emstorage_query_mail_list_loop);
@@ -2611,6 +2614,9 @@ FINISH_OFF:
 	}
 
 	EMSTORAGE_FINISH_READ_TRANSACTION(transaction);
+
+	sqlite3_release_memory(-1);
+
 	_DISCONNECT_DB;
 	
 	EM_SAFE_FREE(date_time_string);
@@ -2679,6 +2685,7 @@ INTERNAL_FUNC int emstorage_query_mail_tbl(const char *conditional_clause, int t
 		_get_table_field_data_string(result, &(p_data_tbl[i].server_mailbox_name), 0, col_index++);
 		_get_table_field_data_string(result, &(p_data_tbl[i].server_mail_id), 0, col_index++);
 		_get_table_field_data_string(result, &(p_data_tbl[i].message_id), 0, col_index++);
+		_get_table_field_data_int   (result, &(p_data_tbl[i].reference_mail_id), col_index++);
 		_get_table_field_data_string(result, &(p_data_tbl[i].full_address_from), 1, col_index++);
 		_get_table_field_data_string(result, &(p_data_tbl[i].full_address_reply), 1, col_index++);
 		_get_table_field_data_string(result, &(p_data_tbl[i].full_address_to), 1, col_index++);
@@ -2702,19 +2709,19 @@ INTERNAL_FUNC int emstorage_query_mail_tbl(const char *conditional_clause, int t
 		_get_table_field_data_char  (result, &(p_data_tbl[i].flags_draft_field), col_index++);
 		_get_table_field_data_char  (result, &(p_data_tbl[i].flags_forwarded_field), col_index++);
 		_get_table_field_data_int   (result, &(p_data_tbl[i].DRM_status), col_index++);
-		_get_table_field_data_int   (result, &(p_data_tbl[i].priority), col_index++);
-		_get_table_field_data_int   (result, &(p_data_tbl[i].save_status), col_index++);
+		_get_table_field_data_int   (result, (int*)&(p_data_tbl[i].priority), col_index++);
+		_get_table_field_data_int   (result, (int*)&(p_data_tbl[i].save_status), col_index++);
 		_get_table_field_data_int   (result, &(p_data_tbl[i].lock_status), col_index++);
-		_get_table_field_data_int   (result, &(p_data_tbl[i].report_status), col_index++);
+		_get_table_field_data_int   (result, (int*)&(p_data_tbl[i].report_status), col_index++);
 		_get_table_field_data_int   (result, &(p_data_tbl[i].attachment_count), col_index++);
 		_get_table_field_data_int   (result, &(p_data_tbl[i].inline_content_count), col_index++);
 		_get_table_field_data_int   (result, &(p_data_tbl[i].thread_id), col_index++);
 		_get_table_field_data_int   (result, &(p_data_tbl[i].thread_item_count), col_index++);
 		_get_table_field_data_string(result, &(p_data_tbl[i].preview_text), 1, col_index++);
-		_get_table_field_data_int   (result, &(p_data_tbl[i].meeting_request_status), col_index++);
-		_get_table_field_data_int   (result, &(p_data_tbl[i].message_class), col_index++);
-		_get_table_field_data_int   (result, &(p_data_tbl[i].digest_type), col_index++);
-		_get_table_field_data_int   (result, &(p_data_tbl[i].smime_type), col_index++);
+		_get_table_field_data_int   (result, (int*)&(p_data_tbl[i].meeting_request_status), col_index++);
+		_get_table_field_data_int   (result, (int*)&(p_data_tbl[i].message_class), col_index++);
+		_get_table_field_data_int   (result, (int*)&(p_data_tbl[i].digest_type), col_index++);
+		_get_table_field_data_int   (result, (int*)&(p_data_tbl[i].smime_type), col_index++);
 		/*  check real body file... */
 		if (p_data_tbl[i].body_download_status) {
 			struct stat buf;
@@ -2751,6 +2758,9 @@ FINISH_OFF:
 		EM_SAFE_FREE(p_data_tbl);
 	
 	EMSTORAGE_FINISH_READ_TRANSACTION(transaction);
+
+	sqlite3_release_memory(-1);
+
 	_DISCONNECT_DB;
 	
 	if (err_code != NULL)
@@ -2760,9 +2770,9 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emstorage_query_mailbox_tbl(const char *input_conditional_clause, int input_get_mail_count,  int input_transaction, emstorage_mailbox_tbl_t **output_mailbox_list, int *output_mailbox_count)
+INTERNAL_FUNC int emstorage_query_mailbox_tbl(const char *input_conditional_clause, const char *input_ordering_clause, int input_get_mail_count,  int input_transaction, emstorage_mailbox_tbl_t **output_mailbox_list, int *output_mailbox_count)
 {
-	EM_DEBUG_FUNC_BEGIN("input_conditional_clause[%p], input_get_mail_count[%d], input_transaction[%d], output_mailbox_list[%p], output_mailbox_count[%d]", input_conditional_clause, input_get_mail_count, input_transaction, output_mailbox_list, output_mailbox_count);
+	EM_DEBUG_FUNC_BEGIN("input_conditional_clause[%p], input_ordering_clause [%p], input_get_mail_count[%d], input_transaction[%d], output_mailbox_list[%p], output_mailbox_count[%d]", input_conditional_clause, input_ordering_clause, input_get_mail_count, input_transaction, output_mailbox_list, output_mailbox_count);
 
 	int i = 0;
 	int rc;
@@ -2786,7 +2796,7 @@ INTERNAL_FUNC int emstorage_query_mailbox_tbl(const char *input_conditional_clau
 	}
 	else {	/*  with read count and total count */
 		col_index = 14;
-		SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT %s, total, read  FROM mail_box_tbl AS MBT LEFT OUTER JOIN (SELECT mailbox_name, count(mail_id) AS total, SUM(flags_seen_field) AS read FROM mail_tbl GROUP BY mailbox_name) AS MT ON MBT.mailbox_name = MT.mailbox_name %s", fields, input_conditional_clause);
+		SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT %s, total, read  FROM mail_box_tbl AS MBT LEFT OUTER JOIN (SELECT mailbox_name, count(mail_id) AS total, SUM(flags_seen_field) AS read FROM mail_tbl %s GROUP BY mailbox_name) AS MT ON MBT.mailbox_name = MT.mailbox_name %s %s", fields, input_conditional_clause, input_conditional_clause, input_ordering_clause);
 	}
 
 	EM_DEBUG_LOG("query[%s]", sql_query_string);
@@ -4607,6 +4617,7 @@ INTERNAL_FUNC int emstorage_get_mailbox_list(int account_id, int local_yn, email
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
 	char conditional_clause_string[QUERY_SIZE] = {0, };
+	char ordering_clause_string[QUERY_SIZE] = {0, };
 		
 	if (account_id == ALL_ACCOUNT) {
 		if (local_yn == EMAIL_MAILBOX_FROM_SERVER || local_yn == EMAIL_MAILBOX_FROM_LOCAL)
@@ -4618,27 +4629,29 @@ INTERNAL_FUNC int emstorage_get_mailbox_list(int account_id, int local_yn, email
 			SNPRINTF(conditional_clause_string + strlen(conditional_clause_string), sizeof(conditional_clause_string)-(strlen(conditional_clause_string)+1), " AND local_yn = %d ", local_yn);
 	}
 
+	EM_DEBUG_LOG("conditional_clause_string[%s]", conditional_clause_string);
+
 	switch (sort_type) {
 		case EMAIL_MAILBOX_SORT_BY_NAME_ASC :
-			SNPRINTF(conditional_clause_string + strlen(conditional_clause_string), sizeof(conditional_clause_string)-(strlen(conditional_clause_string)+1), " ORDER BY mailbox_name ASC");
+			SNPRINTF(ordering_clause_string, QUERY_SIZE, " ORDER BY mailbox_name ASC");
 			break;
 
 		case EMAIL_MAILBOX_SORT_BY_NAME_DSC :
-			SNPRINTF(conditional_clause_string + strlen(conditional_clause_string), sizeof(conditional_clause_string)-(strlen(conditional_clause_string)+1), " ORDER BY mailbox_name DESC");
+			SNPRINTF(ordering_clause_string, QUERY_SIZE, " ORDER BY mailbox_name DESC");
 			break;
 
 		case EMAIL_MAILBOX_SORT_BY_TYPE_ASC :
-			SNPRINTF(conditional_clause_string + strlen(conditional_clause_string), sizeof(conditional_clause_string)-(strlen(conditional_clause_string)+1), " ORDER BY mailbox_type ASC");
+			SNPRINTF(ordering_clause_string, QUERY_SIZE, " ORDER BY mailbox_type ASC");
 			break;
 
 		case EMAIL_MAILBOX_SORT_BY_TYPE_DSC :
-			SNPRINTF(conditional_clause_string + strlen(conditional_clause_string), sizeof(conditional_clause_string)-(strlen(conditional_clause_string)+1), " ORDER BY mailbox_type DEC");
+			SNPRINTF(ordering_clause_string, QUERY_SIZE, " ORDER BY mailbox_type DEC");
 			break;
 	}
 
-	EM_DEBUG_LOG("conditional_clause_string[%s]", conditional_clause_string);
+	EM_DEBUG_LOG("ordering_clause_string[%s]", ordering_clause_string);
 
-	if( (error = emstorage_query_mailbox_tbl(conditional_clause_string, 0, transaction, mailbox_list, select_num)) != EMAIL_ERROR_NONE) {
+	if( (error = emstorage_query_mailbox_tbl(conditional_clause_string, ordering_clause_string, 0, transaction, mailbox_list, select_num)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_query_mailbox_tbl failed [%d]", error);
 		goto FINISH_OFF;
 	}
@@ -4662,6 +4675,7 @@ INTERNAL_FUNC int emstorage_get_mailbox_list_ex(int account_id, int local_yn, in
 	int error = EMAIL_ERROR_NONE;
 	int where_clause_count = 0;
 	char conditional_clause_string[QUERY_SIZE] = {0, };
+	char ordering_clause_string[QUERY_SIZE] = {0, };
 
 	if (!select_num || !mailbox_list) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
@@ -4683,10 +4697,11 @@ INTERNAL_FUNC int emstorage_get_mailbox_list_ex(int account_id, int local_yn, in
 			SNPRINTF(conditional_clause_string + strlen(conditional_clause_string), sizeof(conditional_clause_string)-(strlen(conditional_clause_string)+1), " AND account_id = %d ", account_id);
 	}
 
-	SNPRINTF(conditional_clause_string + strlen(conditional_clause_string), sizeof(conditional_clause_string)-(strlen(conditional_clause_string)+1), " ORDER BY MBT.mailbox_name ");
+	SNPRINTF(ordering_clause_string, QUERY_SIZE, " ORDER BY MBT.mailbox_name ");
 	EM_DEBUG_LOG("conditional_clause_string[%s]", conditional_clause_string);
+	EM_DEBUG_LOG("ordering_clause_string[%s]", ordering_clause_string);
 
-	if( (error = emstorage_query_mailbox_tbl(conditional_clause_string, 1, 1, mailbox_list, select_num)) != EMAIL_ERROR_NONE) {
+	if( (error = emstorage_query_mailbox_tbl(conditional_clause_string, ordering_clause_string, 1, 1, mailbox_list, select_num)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_query_mailbox_tbl failed [%d]", error);
 		goto FINISH_OFF;
 	}
@@ -4718,13 +4733,13 @@ INTERNAL_FUNC int emstorage_get_child_mailbox_list(int account_id, char *parent_
 	char conditional_clause_string[QUERY_SIZE] = {0, };
 
 	if (parent_mailbox_name)
-		SNPRINTF(conditional_clause_string, sizeof(conditional_clause_string), "WHERE account_id = %d  AND UPPER(mailbox_name) LIKE UPPER('%s/%%') ORDER BY mailbox_name", account_id, parent_mailbox_name);
+		SNPRINTF(conditional_clause_string, sizeof(conditional_clause_string), "WHERE account_id = %d  AND UPPER(mailbox_name) LIKE UPPER('%s/%%')", account_id, parent_mailbox_name);
 	else
-		SNPRINTF(conditional_clause_string, sizeof(conditional_clause_string), "WHERE account_id = %d  AND (mailbox_name NOT LIKE '%%/%%') ORDER BY mailbox_name", account_id);
+		SNPRINTF(conditional_clause_string, sizeof(conditional_clause_string), "WHERE account_id = %d  AND (mailbox_name NOT LIKE '%%/%%')", account_id);
 
 	EM_DEBUG_LOG("conditional_clause_string", conditional_clause_string);
 
-	if( (error = emstorage_query_mailbox_tbl(conditional_clause_string, 0, transaction, mailbox_list, select_num)) != EMAIL_ERROR_NONE) {
+	if( (error = emstorage_query_mailbox_tbl(conditional_clause_string, " ORDER BY mailbox_name", 0, transaction, mailbox_list, select_num)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_query_mailbox_tbl failed [%d]", error);
 		goto FINISH_OFF;
 	}
@@ -4756,10 +4771,10 @@ INTERNAL_FUNC int emstorage_get_mailbox_by_modifiable_yn(int account_id, int loc
 	int error = EMAIL_ERROR_NONE;
 	char conditional_clause_string[QUERY_SIZE] = {0, };
 	
-	SNPRINTF(conditional_clause_string, sizeof(conditional_clause_string), "WHERE account_id = %d AND modifiable_yn = 0 ORDER BY mailbox_name", account_id);
+	SNPRINTF(conditional_clause_string, sizeof(conditional_clause_string), "WHERE account_id = %d AND modifiable_yn = 0", account_id);
 	EM_DEBUG_LOG("conditional_clause_string [%s]", conditional_clause_string);
 	
-	if( (error = emstorage_query_mailbox_tbl(conditional_clause_string, 0, transaction, mailbox_list, select_num)) != EMAIL_ERROR_NONE) {
+	if( (error = emstorage_query_mailbox_tbl(conditional_clause_string, " ORDER BY mailbox_name", 0, transaction, mailbox_list, select_num)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_query_mailbox_tbl failed [%d]", error);
 		goto FINISH_OFF;
 	}
@@ -4868,7 +4883,7 @@ INTERNAL_FUNC int emstorage_get_mailbox_by_name(int account_id, int local_yn, ch
 	
 		EM_DEBUG_LOG("conditional_clause_string = [%s]", conditional_clause_string);
 
-		if( (error = emstorage_query_mailbox_tbl(conditional_clause_string, 0, transaction, result_mailbox, &result_count)) != EMAIL_ERROR_NONE) {
+		if( (error = emstorage_query_mailbox_tbl(conditional_clause_string, "", 0, transaction, result_mailbox, &result_count)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emstorage_query_mailbox_tbl failed [%d]", error);
 			goto FINISH_OFF;
 		}
@@ -4890,7 +4905,7 @@ INTERNAL_FUNC int emstorage_get_mailbox_by_mailbox_type(int account_id, email_ma
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], mailbox_type[%d], mailbox_name[%p], transaction[%d], err_code[%p]", account_id, mailbox_type, mailbox_name, transaction, err_code);
 
-	if (account_id < FIRST_ACCOUNT_ID || (mailbox_type < EMAIL_MAILBOX_TYPE_INBOX || mailbox_type > EMAIL_MAILBOX_TYPE_ALL_EMAILS) || !mailbox_name) {
+	if (account_id < FIRST_ACCOUNT_ID || (mailbox_type < EMAIL_MAILBOX_TYPE_INBOX || mailbox_type > EMAIL_MAILBOX_TYPE_USER_DEFINED) || !mailbox_name) {
 
 		EM_DEBUG_EXCEPTION(" account_id[%d], mailbox_type[%d], mailbox_name[%p]", account_id, mailbox_type, mailbox_name);
 		
@@ -5004,7 +5019,7 @@ INTERNAL_FUNC int emstorage_get_mailbox_by_id(int input_mailbox_id, emstorage_ma
 
 	EM_DEBUG_LOG("conditional_clause_string = [%s]", conditional_clause_string);
 
-	if( (ret = emstorage_query_mailbox_tbl(conditional_clause_string, false, false, output_mailbox, &result_count)) != EMAIL_ERROR_NONE) {
+	if( (ret = emstorage_query_mailbox_tbl(conditional_clause_string, "", false, false, output_mailbox, &result_count)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_query_mailbox_tbl failed [%d]", ret);
 		goto FINISH_OFF;
 	}
@@ -5459,6 +5474,76 @@ FINISH_OFF:
 
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
 	return ret;
+}
+
+INTERNAL_FUNC int emstorage_set_local_mailbox(int input_mailbox_id, int input_is_local_mailbox, int transaction)
+{
+	EM_DEBUG_FUNC_BEGIN("input_mailbox_id[%d], new_mailbox_type[%d], transaction[%d], err_code[%p]", input_mailbox_id, input_is_local_mailbox, transaction);
+
+	int rc, ret = false;
+	int error = EMAIL_ERROR_NONE;
+	char sql_query_string[QUERY_SIZE] = {0, };
+
+	if (input_mailbox_id < 0)  {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		return EMAIL_ERROR_INVALID_PARAM;
+	}
+
+	sqlite3 *local_db_handle = emstorage_get_db_connection();
+
+	EMSTORAGE_START_WRITE_TRANSACTION(transaction, error);
+
+	EM_DEBUG_LOG("emstorage_update_mailbox_type");
+
+	DB_STMT hStmt = NULL;
+	int i = 0;
+
+	/*  Update mail_box_tbl */
+	SNPRINTF(sql_query_string, sizeof(sql_query_string),
+		"UPDATE mail_box_tbl SET"
+		" local_yn = ?"
+		" WHERE mailbox_id = %d"
+		, input_mailbox_id);
+
+	EM_DEBUG_LOG("SQL(%s)", sql_query_string);
+
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
+		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
+
+	_bind_stmt_field_data_int(hStmt, i++, input_is_local_mailbox);
+
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_step(hStmt), rc);
+	EM_DEBUG_DB_EXEC((rc == SQLITE_FULL), {error = EMAIL_ERROR_MAIL_MEMORY_FULL;goto FINISH_OFF; },
+		("sqlite3_step fail:%d", rc));
+	EM_DEBUG_DB_EXEC((rc != SQLITE_ROW && rc != SQLITE_DONE), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
+		("sqlite3_step fail:%d", rc));
+
+	if (hStmt != NULL)  {
+		rc = sqlite3_finalize(hStmt);
+		if (rc != SQLITE_OK)  {
+			EM_DEBUG_EXCEPTION(" sqlite3_finalize failed - %d", rc);
+			error = EMAIL_ERROR_DB_FAILURE;
+		}
+		hStmt = NULL;
+	}
+
+	ret = true;
+
+FINISH_OFF:
+	EMSTORAGE_FINISH_WRITE_TRANSACTION(transaction, ret, error);
+	_DISCONNECT_DB;
+
+	if (hStmt != NULL)  {
+		rc = sqlite3_finalize(hStmt);
+		if (rc != SQLITE_OK)  {
+			EM_DEBUG_EXCEPTION(" sqlite3_finalize failed - %d", rc);
+			error = EMAIL_ERROR_DB_FAILURE;
+		}
+	}
+
+	EM_DEBUG_FUNC_END("error [%d]", error);
+	return error;
 }
 
 
@@ -7086,7 +7171,7 @@ INTERNAL_FUNC int emstorage_get_mail_field_by_id(int mail_id, int type, emstorag
 			_get_stmt_field_data_string(hStmt, &(p_data_tbl->file_path_plain), 0, 7);
 			_get_stmt_field_data_string(hStmt, &(p_data_tbl->file_path_html), 0, 8);
 			_get_stmt_field_data_char(hStmt, &(p_data_tbl->flags_seen_field), 9);
-			_get_stmt_field_data_int(hStmt, &(p_data_tbl->save_status), 10);
+			_get_stmt_field_data_int(hStmt, (int*)&(p_data_tbl->save_status), 10);
 			_get_stmt_field_data_int(hStmt, &(p_data_tbl->lock_status), 11);
 			_get_stmt_field_data_int(hStmt, &(p_data_tbl->thread_id), 12);
 			_get_stmt_field_data_int(hStmt, &(p_data_tbl->thread_item_count), 13);
@@ -7241,7 +7326,7 @@ INTERNAL_FUNC int emstorage_get_mail_field_by_multiple_mail_id(int mail_ids[], i
 				_get_table_field_data_string(result, &(p_data_tbl[i].file_path_plain), 0, col_index++);
 				_get_table_field_data_string(result, &(p_data_tbl[i].file_path_html), 0, col_index++);
 				_get_table_field_data_char(result, &(p_data_tbl[i].flags_seen_field), col_index++);
-				_get_table_field_data_int(result, &(p_data_tbl[i].save_status), col_index++);
+				_get_table_field_data_int(result, (int*)&(p_data_tbl[i].save_status), col_index++);
 				_get_table_field_data_int(result, &(p_data_tbl[i].lock_status), col_index++);
 				_get_table_field_data_int(result, &(p_data_tbl[i].thread_id), col_index++);
 				_get_table_field_data_int(result, &(p_data_tbl[i].thread_item_count), col_index++);
@@ -7490,15 +7575,15 @@ INTERNAL_FUNC int emstorage_mail_search_result(int search_handle, emstorage_mail
 			_get_stmt_field_data_time_t(hStmt, &(p_data_tbl->date_time), DATETIME_IDX_IN_MAIL_TBL);
 			_get_stmt_field_data_char  (hStmt, &(p_data_tbl->flags_seen_field), FLAGS_SEEN_FIELD_IDX_IN_MAIL_TBL);
 			_get_stmt_field_data_int   (hStmt, &(p_data_tbl->DRM_status), DRM_STATUS_IDX_IN_MAIL_TBL);
-			_get_stmt_field_data_int   (hStmt, &(p_data_tbl->priority), PRIORITY_IDX_IN_MAIL_TBL);
-			_get_stmt_field_data_int   (hStmt, &(p_data_tbl->save_status), SAVE_STATUS_IDX_IN_MAIL_TBL);
+			_get_stmt_field_data_int   (hStmt, (int*)&(p_data_tbl->priority), PRIORITY_IDX_IN_MAIL_TBL);
+			_get_stmt_field_data_int   (hStmt, (int*)&(p_data_tbl->save_status), SAVE_STATUS_IDX_IN_MAIL_TBL);
 			_get_stmt_field_data_int   (hStmt, &(p_data_tbl->lock_status), LOCK_STATUS_IDX_IN_MAIL_TBL);
-			_get_stmt_field_data_int   (hStmt, &(p_data_tbl->report_status), REPORT_STATUS_IDX_IN_MAIL_TBL);
+			_get_stmt_field_data_int   (hStmt, (int*)&(p_data_tbl->report_status), REPORT_STATUS_IDX_IN_MAIL_TBL);
 			_get_stmt_field_data_string(hStmt, &(p_data_tbl->preview_text), 1, PREVIEW_TEXT_IDX_IN_MAIL_TBL);
-			_get_stmt_field_data_int   (hStmt, &(p_data_tbl->meeting_request_status), MEETING_REQUEST_STATUS_IDX_IN_MAIL_TBL);
-			_get_stmt_field_data_int   (hStmt, &(p_data_tbl->message_class), MESSAGE_CLASS_IDX_IN_MAIL_TBL);
-			_get_stmt_field_data_int   (hStmt, &(p_data_tbl->digest_type), DIGEST_TYPE_IDX_IN_MAIL_TBL);
-			_get_stmt_field_data_int   (hStmt, &(p_data_tbl->smime_type), SMIME_TYPE_IDX_IN_MAIL_TBL);
+			_get_stmt_field_data_int   (hStmt, (int*)&(p_data_tbl->meeting_request_status), MEETING_REQUEST_STATUS_IDX_IN_MAIL_TBL);
+			_get_stmt_field_data_int   (hStmt, (int*)&(p_data_tbl->message_class), MESSAGE_CLASS_IDX_IN_MAIL_TBL);
+			_get_stmt_field_data_int   (hStmt, (int*)&(p_data_tbl->digest_type), DIGEST_TYPE_IDX_IN_MAIL_TBL);
+			_get_stmt_field_data_int   (hStmt, (int*)&(p_data_tbl->smime_type), SMIME_TYPE_IDX_IN_MAIL_TBL);
 				
 			if (type == RETRIEVE_ALL)  {
 				_get_stmt_field_data_int   (hStmt, &(p_data_tbl->server_mail_status), SERVER_MAIL_STATUS_IDX_IN_MAIL_TBL);
@@ -7656,6 +7741,7 @@ INTERNAL_FUNC int emstorage_change_mail(int mail_id, emstorage_mail_tbl_t* mail,
 		", server_mail_status = ?"
 		", server_mailbox_name = ?"
 		", server_mail_id = ?"
+		", reference_mail_id = ?"
 		", full_address_from = ?"
 		", full_address_reply = ?"  /* 10 */
 		", full_address_to = ?"
@@ -7698,6 +7784,7 @@ INTERNAL_FUNC int emstorage_change_mail(int mail_id, emstorage_mail_tbl_t* mail,
 	_bind_stmt_field_data_int   (hStmt, i++, mail->server_mail_status);
 	_bind_stmt_field_data_string(hStmt, i++, (char *)mail->server_mailbox_name, 0, SERVER_MAILBOX_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, i++, (char *)mail->server_mail_id, 0, SERVER_MAIL_ID_LEN_IN_MAIL_TBL);
+	_bind_stmt_field_data_int   (hStmt, i++, mail->reference_mail_id);
 	_bind_stmt_field_data_string(hStmt, i++, (char *)mail->full_address_from, 1, FROM_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, i++, (char *)mail->full_address_reply, 1, REPLY_TO_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, i++, (char *)mail->full_address_to, 1, TO_LEN_IN_MAIL_TBL);
@@ -8158,6 +8245,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 				", report_status = ?"
 				", DRM_status = ?"
 				", file_path_html = ?"
+				", file_path_mime_entity = ?"
 				", mail_size = ?"
 				", preview_text = ?"
 				", body_download_status = ?"
@@ -8198,6 +8286,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 			_bind_stmt_field_data_int   (hStmt, i++, mail->report_status);
 			_bind_stmt_field_data_int   (hStmt, i++, mail->DRM_status);
 			_bind_stmt_field_data_string(hStmt, i++, (char*)mail->file_path_html, 0, TEXT_2_LEN_IN_MAIL_TBL);
+			_bind_stmt_field_data_string(hStmt, i++, (char*)mail->file_path_mime_entity, 0, MIME_ENTITY_LEN_IN_MAIL_TBL);
 			_bind_stmt_field_data_int   (hStmt, i++, mail->mail_size);
 			_bind_stmt_field_data_string(hStmt, i++, (char*)mail->preview_text, 1, PREVIEWBODY_LEN_IN_MAIL_TBL);
 			_bind_stmt_field_data_int   (hStmt, i++, mail->body_download_status);
@@ -8502,6 +8591,7 @@ INTERNAL_FUNC int emstorage_add_mail(emstorage_mail_tbl_t *mail_tbl_data, int ge
 		", ?" /*  server_mailbox_name */
 		", ?" /*  server_mail_id */
 		", ?" /*  message_id */
+		", ?" /*  reference_mail_id */
 		", ?" /*  full_address_from */
 		", ?" /*  full_address_reply */
 		", ?" /*  full_address_to */
@@ -8555,6 +8645,7 @@ INTERNAL_FUNC int emstorage_add_mail(emstorage_mail_tbl_t *mail_tbl_data, int ge
 	_bind_stmt_field_data_string(hStmt, SERVER_MAILBOX_NAME_IDX_IN_MAIL_TBL, (char*)mail_tbl_data->server_mailbox_name, 0, SERVER_MAILBOX_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, SERVER_MAIL_ID_IDX_IN_MAIL_TBL, (char*)mail_tbl_data->server_mail_id, 0, SERVER_MAIL_ID_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, MESSAGE_ID_IDX_IN_MAIL_TBL, (char*)mail_tbl_data->message_id, 0, MESSAGE_ID_LEN_IN_MAIL_TBL);
+	_bind_stmt_field_data_int   (hStmt, REFERENCE_ID_IDX_IN_MAIL_TBL, mail_tbl_data->reference_mail_id);
 	_bind_stmt_field_data_string(hStmt, FULL_ADDRESS_FROM_IDX_IN_MAIL_TBL, (char*)mail_tbl_data->full_address_from, 1, FROM_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, FULL_ADDRESS_REPLY_IDX_IN_MAIL_TBL, (char*)mail_tbl_data->full_address_reply, 1, REPLY_TO_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, FULL_ADDRESS_TO_IDX_IN_MAIL_TBL, (char*)mail_tbl_data->full_address_to, 1, TO_LEN_IN_MAIL_TBL);
@@ -10327,7 +10418,7 @@ INTERNAL_FUNC int emstorage_copy_file(char *src_file, char *dst_file, int sync_s
 			if (nread > 0 && nread <= buf_size)  {		
 				EM_DEBUG_LOG("Nread Value [%d]", nread);
 				if ((nwritten = write(fp_dst, buf, nread)) != nread) {
-					EM_DEBUG_EXCEPTION("fwrite failed... : [%d], Error:[%s]", nwritten, strerror(errno));
+					EM_DEBUG_EXCEPTION("fwrite failed...[%d] : [%s]", errno, strerror(errno));
 					error = EMAIL_ERROR_UNKNOWN;
 					goto FINISH_OFF;
 				}
@@ -11072,6 +11163,7 @@ INTERNAL_FUNC int emstorage_test(int mail_id, int account_id, char *full_address
 		", ?" /*  server_mail_status */
 		", ?" /*  server_mailbox_name */
 		", ?" /*  server_mail_id */
+		", ?" /*  reference_mail_id */
 		", ?" /*  full_address_from */
 		", ?" /*  full_address_reply */
 		", ?" /*  full_address_to */
@@ -11132,6 +11224,7 @@ INTERNAL_FUNC int emstorage_test(int mail_id, int account_id, char *full_address
 	_bind_stmt_field_data_string(hStmt, SERVER_MAILBOX_NAME_IDX_IN_MAIL_TBL, "", 0, SERVER_MAILBOX_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, SERVER_MAIL_ID_IDX_IN_MAIL_TBL, "", 0, SERVER_MAIL_ID_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, MESSAGE_ID_IDX_IN_MAIL_TBL, "", 0, MESSAGE_ID_LEN_IN_MAIL_TBL);
+	_bind_stmt_field_data_int(hStmt, REFERENCE_ID_IDX_IN_MAIL_TBL, 0);
 	_bind_stmt_field_data_string(hStmt, FULL_ADDRESS_FROM_IDX_IN_MAIL_TBL, "<test08@streaming.s3glab.net>", 1, FROM_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, FULL_ADDRESS_REPLY_IDX_IN_MAIL_TBL, "", 1, REPLY_TO_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, FULL_ADDRESS_TO_IDX_IN_MAIL_TBL, full_address_to, 1, TO_LEN_IN_MAIL_TBL);
@@ -11213,7 +11306,7 @@ INTERNAL_FUNC int emstorage_get_thread_id_of_thread_mails(emstorage_mail_tbl_t *
 	time_t   date_time = 0;
 	char    *mailbox_name = NULL, *subject = NULL;
 	char    *sql_query_string = NULL, *sql_account = NULL;
-	char    *sql_format = "SELECT thread_id, date_time, mail_id FROM mail_tbl WHERE subject like \'%%%q\' AND mailbox_type NOT IN (3, 5, 7, 8)";
+	char    *sql_format = "SELECT thread_id, date_time, mail_id FROM mail_tbl WHERE subject like \'%%%q\' AND mailbox_id = %d";
 	char    *sql_format_account = " AND account_id = %d ";
 	char    *sql_format_order_by = " ORDER BY date_time DESC ";
 	char   **result = NULL;
@@ -11224,13 +11317,6 @@ INTERNAL_FUNC int emstorage_get_thread_id_of_thread_mails(emstorage_mail_tbl_t *
 	EM_IF_NULL_RETURN_VALUE(thread_id, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(result_latest_mail_id_in_thread, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(thread_item_count, EMAIL_ERROR_INVALID_PARAM);
-
-	if (mail_tbl->mailbox_type == EMAIL_MAILBOX_TYPE_TRASH ||
-	    mail_tbl->mailbox_type == EMAIL_MAILBOX_TYPE_SPAMBOX ||
-	    mail_tbl->mailbox_type == EMAIL_MAILBOX_TYPE_ALL_EMAILS) {
-		EM_DEBUG_LOG("the mail in trash, spambox, all email could not be thread mail.");
-		goto FINISH_OFF;
-	}
 
 	account_id   = mail_tbl->account_id;
 	mailbox_name = mail_tbl->mailbox_name;
@@ -11274,7 +11360,7 @@ INTERNAL_FUNC int emstorage_get_thread_id_of_thread_mails(emstorage_mail_tbl_t *
 		goto FINISH_OFF;
 	}
 
-	sqlite3_snprintf(query_size, sql_query_string, sql_format, stripped_subject);
+	sqlite3_snprintf(query_size, sql_query_string, sql_format, stripped_subject, mail_tbl->mailbox_id);
 
 	if (account_id > 0)
 		strcat(sql_query_string, sql_account);
@@ -13910,6 +13996,7 @@ static char *_mail_field_name_list[] = {
 		"server_mailbox_name",
 		"server_mail_id",
 		"message_id",
+		"reference_mail_id",
 		"full_address_from",
 		"full_address_to",
 		"full_address_cc",
@@ -13997,6 +14084,7 @@ static int _get_key_value_string_for_list_filter_rule(email_list_filter_rule_t *
 	case EMAIL_MAIL_ATTRIBUTE_MAILBOX_ID              :
 	case EMAIL_MAIL_ATTRIBUTE_MAILBOX_TYPE            :
 	case EMAIL_MAIL_ATTRIBUTE_SERVER_MAIL_STATUS      :
+	case EMAIL_MAIL_ATTRIBUTE_REFERENCE_MAIL_ID       :
 	case EMAIL_MAIL_ATTRIBUTE_BODY_DOWNLOAD_STATUS    :
 	case EMAIL_MAIL_ATTRIBUTE_FILE_PATH_PLAIN         :
 	case EMAIL_MAIL_ATTRIBUTE_FILE_PATH_HTML          :

@@ -36,7 +36,7 @@ EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **
 
 EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count);
 
-EXPORT_API int email_verify_signature(char *certificate_path, int mail_id, int *verify);
+EXPORT_API int email_verify_signature(int mail_id, int *verify);
 
 EXPORT_API int email_verify_certificate(char *certificate_path, int *verify);
 

@@ -59,7 +59,6 @@
  *
  *		// Send a mail
  *		email_attachment_data_t attachment;
- *		email_option_t option;
  *		int account_id = 1;
  *		int mailbox_id = 0;
  *		int attachment_id = 0;
@@ -69,15 +68,14 @@
  *
  *		printf("Enter mail id\n");
  *		scanf("%d",&mail_id);
- *		option.keep_local_copy = 1;
  *
- *	 	if(EMAIL_ERROR_NONE == email_send_mail(mail_id, &option, &handle))
+ *	 	if(EMAIL_ERROR_NONE == email_send_mail(mail_id, &handle))
  *			//success
  *		else
  *			//failure
  *
  *		// Download header of new emails from mail server
- *		unsigned handle = 0;
+ *		int handle = 0;
  *
  *		mailbox.account_id = account_id;
  *		printf("Enter mailbox id\n");
@@ -168,23 +166,22 @@ extern "C" {
 
 /**
  * @open
- * @fn email_send_mail(int mail_id,	email_option_t* sending_option, unsigned* handle)
+ * @fn email_send_mail(int mail_id,	int *handle)
  * @brief	Send a mail.This function is invoked when user wants to send a composed mail.
  *
  * @return 	This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
  * @param[in] mail_id	     		Specifies the mail ID.
- * @param[in] sending_option 		Specifies the sending option.
  * @param[out] handle 		Specifies the sending handle.
  * @exception 	none
  * @see 	email_mailbox_t and email_option_t
  * @remarks N/A
  */
-EXPORT_API int email_send_mail(int mail_id,	email_option_t* sending_option, unsigned* handle);
+EXPORT_API int email_send_mail(int mail_id,	int *handle);
 
 
 /**
  * @open
- * @fn email_sync_header(int input_account_id, int input_mailbox_id, unsigned* handle)
+ * @fn email_sync_header(int input_account_id, int input_mailbox_id, int *handle)
  * @brief	Download header of new emails from mail server.This function is invoked when user wants to download only header of new mails.
  *
  * @return 	This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
@@ -195,12 +192,12 @@ EXPORT_API int email_send_mail(int mail_id,	email_option_t* sending_option, unsi
  * @see 	email_mailbox_t
  * @remarks N/A
  */
-EXPORT_API int email_sync_header(int input_account_id, int input_mailbox_id, unsigned* handle);
+EXPORT_API int email_sync_header(int input_account_id, int input_mailbox_id, int *handle);
 
 
 /**
  * @open
- * @fn email_sync_header_for_all_account(unsigned* handle)
+ * @fn email_sync_header_for_all_account(int *handle)
  * @brief	Download header of new emails from mail server for all emails.This function is invoked when user wants to download header of new mails for all accounts.
  *
  * @return 	This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
@@ -209,12 +206,12 @@ EXPORT_API int email_sync_header(int input_account_id, int input_mailbox_id, uns
  * @see 	none
  * @remarks N/A
  */
-EXPORT_API int email_sync_header_for_all_account(unsigned* handle);
+EXPORT_API int email_sync_header_for_all_account(int *handle);
 
 
 /**
  * @open
- * @fn email_download_body(int mail_id, int with_attachment, unsigned* handle)
+ * @fn email_download_body(int mail_id, int with_attachment, int *handle)
  * @brief	Download email body from server.This function is invoked when user wants to download email body with/without attachment based on the option with_attachment
  * 		from the server.
  *
@@ -226,7 +223,7 @@ EXPORT_API int email_sync_header_for_all_account(unsigned* handle);
  * @see email_mailbox_t
  * @remarks N/A
  */
-EXPORT_API int email_download_body(int mail_id, int with_attachment, unsigned* handle);
+EXPORT_API int email_download_body(int mail_id, int with_attachment, int *handle);
 
 
 
@@ -235,7 +232,7 @@ EXPORT_API int email_download_body(int mail_id, int with_attachment, unsigned* h
 
 /**
  * @open
- * @fn email_download_attachment(int mail_id, const char* nth, unsigned* handle);
+ * @fn email_download_attachment(int mail_id, const char* nth, int *handle);
  * @brief	Download a email nth-attachment from server.This function is invoked if user wants to download only specific attachment of a mail whose body is already downloaded.
  *
  * @return 	This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
@@ -246,7 +243,7 @@ EXPORT_API int email_download_body(int mail_id, int with_attachment, unsigned* h
  * @see 	email_mailbox_t
  * @remarks N/A
  */
-EXPORT_API int email_download_attachment(int mail_id, int nth, unsigned* handle);
+EXPORT_API int email_download_attachment(int mail_id, int nth, int *handle);
 
 
 /**
@@ -300,23 +297,22 @@ EXPORT_API int email_get_network_status(int* on_sending, int* on_receiving);
 
 /**
  * @open
- * @fn email_send_saved(int account_id, email_option_t* sending_option, unsigned* handle)
+ * @fn email_send_saved(int account_id, int *handle)
  * @brief	Send all mails to been saved in Offline-mode.This function is invoked when user wants to send an email and after saving it.
  * 		This will save the email in draft mailbox and then sends.
  *
  * @return 	This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
  * @param[in] account_id			Specifies the account ID.
- * @param[in] sending_option 		Specifies the sending option.
  * @param[out] handle				Specifies the handle for stopping sending.
  * @exception none
  * @see email_option_t
  * @remarks N/A
  */
-EXPORT_API int email_send_saved(int account_id, email_option_t* sending_option, unsigned* handle);
+EXPORT_API int email_send_saved(int account_id, int *handle);
 
 /**
  * @open
- * @fn email_sync_imap_mailbox_list(int account_id, unsigned* handle)
+ * @fn email_sync_imap_mailbox_list(int account_id, int *handle)
  *  @brief	fetch all the mailbox names from server and store the non-existing mailboxes in DB.This function is invoked when user wants to download all server mailboxes from IMAP server
  *
  * @return 	This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
@@ -326,11 +322,11 @@ EXPORT_API int email_send_saved(int account_id, email_option_t* sending_option, 
  * @see 	none
  * @remarks N/A
  */
-EXPORT_API int email_sync_imap_mailbox_list(int account_id, unsigned* handle);
+EXPORT_API int email_sync_imap_mailbox_list(int account_id, int *handle);
 
 /**
  * @open
- * @fn email_search_mail_on_server(int input_account_id, int input_mailbox_id, email_search_filter_t *input_search_filter_list, int input_search_filter_count, unsigned *output_handle)
+ * @fn email_search_mail_on_server(int input_account_id, int input_mailbox_id, email_search_filter_t *input_search_filter_list, int input_search_filter_count, int *output_handle)
  * @brief	Search the mails on server.
  *
  * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
@@ -344,7 +340,7 @@ EXPORT_API int email_sync_imap_mailbox_list(int account_id, unsigned* handle);
  * @endcode
  * @remarks N/A
  */
-EXPORT_API int email_search_mail_on_server(int input_account_id, int input_mailbox_id, email_search_filter_t *input_search_filter_list, int input_search_filter_count, unsigned *output_handle);
+EXPORT_API int email_search_mail_on_server(int input_account_id, int input_mailbox_id, email_search_filter_t *input_search_filter_list, int input_search_filter_count, int *output_handle);
 
 EXPORT_API int email_clear_result_of_search_mail_on_server(int input_account_id);
 

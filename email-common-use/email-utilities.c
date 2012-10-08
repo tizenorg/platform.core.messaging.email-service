@@ -477,7 +477,7 @@ INTERNAL_FUNC int em_get_content_type_from_extension_string(const char *extensio
 {
 	EM_DEBUG_FUNC_BEGIN("extension_string[%s]", extension_string);
 	int i = 0, err = EMAIL_ERROR_NONE, result_content_type = TYPEAPPLICATION;
-	char *image_extension[] = { "jpeg", "jpg", "png", "gif", "bmp", "pic", "agif", "tif", "wbmp" , NULL};
+	char *image_extension[] = { "jpeg", "jpg", "png", "gif", "bmp", "pic", "agif", "tif", "wbmp" , "p7s", "p7m", NULL};
 
 	if (!extension_string) {
 		EM_DEBUG_EXCEPTION("Invalid Parameter");
@@ -488,10 +488,31 @@ INTERNAL_FUNC int em_get_content_type_from_extension_string(const char *extensio
 	while(image_extension[i]) {
 		EM_DEBUG_LOG("image_extension[%d] [%s]", i, image_extension[i]);
 		if(strcasecmp(image_extension[i], extension_string) == 0) {
-			result_content_type = TYPEIMAGE;
 			break;
 		}
 		i++;
+	}
+	
+	switch (i) {
+	case EXTENSION_JPEG:
+	case EXTENSION_JPG:
+	case EXTENSION_PNG:
+	case EXTENSION_GIF:
+	case EXTENSION_BMP:
+	case EXTENSION_PIC:
+	case EXTENSION_AGIF:
+	case EXTENSION_TIF:
+	case EXTENSION_WBMP:
+		result_content_type = TYPEIMAGE;
+		break;
+	case EXTENSION_P7S:
+		result_content_type = TYPEPKCS7_SIGN;
+		break;
+	case EXTENSION_P7M:
+		result_content_type = TYPEPKCS7_MIME;
+		break;
+	default:
+		break;
 	}
 
 FINISH_OFF:
@@ -861,7 +882,6 @@ INTERNAL_FUNC int em_send_notification_to_active_sync_engine(int subType, ASNoti
 	DBusConnection     *connection;
 	DBusMessage        *signal = NULL;
 	DBusError           error;
-	const char         *nullString = "";
 	int                 i = 0;
 
 	dbus_error_init (&error);
@@ -878,42 +898,10 @@ INTERNAL_FUNC int em_send_notification_to_active_sync_engine(int subType, ASNoti
 			EM_DEBUG_LOG("handle:[%d]", data->send_mail.handle);
 			EM_DEBUG_LOG("account_id:[%d]", data->send_mail.account_id);
 			EM_DEBUG_LOG("mail_id:[%d]", data->send_mail.mail_id);
-			EM_DEBUG_LOG("options.priority:[%d]", data->send_mail.options.priority);
-			EM_DEBUG_LOG("options.keep_local_copy:[%d]", data->send_mail.options.keep_local_copy);
-			EM_DEBUG_LOG("options.req_delivery_receipt:[%d]", data->send_mail.options.req_delivery_receipt);
-			EM_DEBUG_LOG("options.req_read_receipt:[%d]", data->send_mail.options.req_read_receipt);
-			/* download_limit, block_address, block_subject might not be needed */
-			EM_DEBUG_LOG("options.download_limit:[%d]", data->send_mail.options.download_limit);
-			EM_DEBUG_LOG("options.block_address:[%d]", data->send_mail.options.block_address);
-			EM_DEBUG_LOG("options.block_subject:[%d]", data->send_mail.options.block_subject);
-			EM_DEBUG_LOG("options.display_name_from:[%s]", data->send_mail.options.display_name_from);
-			EM_DEBUG_LOG("options.reply_with_body:[%d]", data->send_mail.options.reply_with_body);
-			EM_DEBUG_LOG("options.forward_with_files:[%d]", data->send_mail.options.forward_with_files);
-			EM_DEBUG_LOG("options.add_myname_card:[%d]", data->send_mail.options.add_myname_card);
-			EM_DEBUG_LOG("options.add_signature:[%d]", data->send_mail.options.add_signature);
-			EM_DEBUG_LOG("options.signature:[%s]", data->send_mail.options.signature);
 
 			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.handle), DBUS_TYPE_INVALID);
 			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.account_id), DBUS_TYPE_INVALID);
 			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.mail_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.priority), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.keep_local_copy), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.req_delivery_receipt), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.req_read_receipt), DBUS_TYPE_INVALID);
-			if ( data->send_mail.options.display_name_from == NULL )
-				dbus_message_append_args(signal, DBUS_TYPE_STRING, &(nullString), DBUS_TYPE_INVALID);
-			else
-				dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->send_mail.options.display_name_from), DBUS_TYPE_INVALID);
-
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.reply_with_body), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.forward_with_files), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.add_myname_card), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.options.add_signature), DBUS_TYPE_INVALID);
-			if ( data->send_mail.options.signature == NULL )
-				dbus_message_append_args(signal, DBUS_TYPE_STRING, &(nullString), DBUS_TYPE_INVALID);
-			else
-				dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->send_mail.options.signature), DBUS_TYPE_INVALID);
-
 			break;
 		case ACTIVE_SYNC_NOTI_SEND_SAVED:				/*  publish a send notification to ASE (active sync engine) */
 			EM_DEBUG_EXCEPTION("Not support yet : subType[ACTIVE_SYNC_NOTI_SEND_SAVED]", subType);

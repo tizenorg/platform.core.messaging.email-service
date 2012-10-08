@@ -86,7 +86,7 @@ EXPORT_API bool emipc_add_parameter(HIPC_API api, EPARAMETER_DIRECTION direction
 	if (!parameters) {
 		EM_DEBUG_EXCEPTION("emipc_get_api_parameters failed");
 		return false;
-}
+	}
 
 	return emipc_add_param_to_param_list(parameters, data, data_length);
 }

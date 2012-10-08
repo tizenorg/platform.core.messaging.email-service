@@ -79,7 +79,7 @@ EXPORT_API int email_add_mail(email_mail_data_t *input_mail_data, email_attachme
 		}
 
 		/* email_mail_data_t */
-		mail_data_stream = em_convert_mail_data_to_byte_stream(input_mail_data, 1, &size);
+		mail_data_stream = em_convert_mail_data_to_byte_stream(input_mail_data, &size);
 
 		if(!mail_data_stream) {
 			EM_DEBUG_EXCEPTION("em_convert_mail_data_to_byte_stream failed");
@@ -270,7 +270,7 @@ EXPORT_API int email_update_mail(email_mail_data_t *input_mail_data, email_attac
 		}
 
 		/* email_mail_data_t */
-		mail_data_stream = em_convert_mail_data_to_byte_stream(input_mail_data, 1, &size);
+		mail_data_stream = em_convert_mail_data_to_byte_stream(input_mail_data, &size);
 
 		if(!mail_data_stream) {
 			EM_DEBUG_EXCEPTION("em_convert_mail_data_to_byte_stream failed");
@@ -964,26 +964,26 @@ EXPORT_API int email_get_thread_information_ex(int thread_id, email_mail_list_it
 		goto FINISH_OFF;
 	}
 
-	EM_SAFE_STRNCPY(temp_thread_info->from               , mail_table_data->full_address_from, STRING_LENGTH_FOR_DISPLAY);
-	EM_SAFE_STRNCPY(temp_thread_info->from_email_address , mail_table_data->email_address_sender, MAX_EMAIL_ADDRESS_LENGTH);
-	EM_SAFE_STRNCPY(temp_thread_info->recipients         , mail_table_data->email_address_recipient, STRING_LENGTH_FOR_DISPLAY);
-	EM_SAFE_STRNCPY(temp_thread_info->subject            , mail_table_data->subject, STRING_LENGTH_FOR_DISPLAY);
-	EM_SAFE_STRNCPY(temp_thread_info->previewBodyText    , mail_table_data->preview_text, MAX_PREVIEW_TEXT_LENGTH);
-	temp_thread_info->mail_id                            = mail_table_data->mail_id;
-	temp_thread_info->mailbox_id                         = mail_table_data->mailbox_id;
-	temp_thread_info->account_id                         = mail_table_data->account_id;
-	temp_thread_info->date_time                          = mail_table_data->date_time;
-	temp_thread_info->is_text_downloaded                 = mail_table_data->body_download_status;
-	temp_thread_info->flags_seen_field                   = mail_table_data->flags_seen_field;
-	temp_thread_info->priority                           = mail_table_data->priority;
-	temp_thread_info->save_status                        = mail_table_data->save_status;
-	temp_thread_info->is_locked                          = mail_table_data->lock_status;
-	temp_thread_info->is_report_mail                     = mail_table_data->report_status;
-	temp_thread_info->has_attachment                     = mail_table_data->attachment_count;
-	temp_thread_info->has_drm_attachment                 = mail_table_data->DRM_status;
-	temp_thread_info->thread_id                          = mail_table_data->thread_id;
-	temp_thread_info->thread_item_count                  = mail_table_data->thread_item_count;
-	temp_thread_info->is_meeting_request                 = mail_table_data->meeting_request_status;
+	EM_SAFE_STRNCPY(temp_thread_info->full_address_from       , mail_table_data->full_address_from, STRING_LENGTH_FOR_DISPLAY);
+	EM_SAFE_STRNCPY(temp_thread_info->email_address_sender    , mail_table_data->email_address_sender, MAX_EMAIL_ADDRESS_LENGTH);
+	EM_SAFE_STRNCPY(temp_thread_info->email_address_recipient , mail_table_data->email_address_recipient, STRING_LENGTH_FOR_DISPLAY);
+	EM_SAFE_STRNCPY(temp_thread_info->subject                 , mail_table_data->subject, STRING_LENGTH_FOR_DISPLAY);
+	EM_SAFE_STRNCPY(temp_thread_info->preview_text            , mail_table_data->preview_text, MAX_PREVIEW_TEXT_LENGTH);
+	temp_thread_info->mail_id                                 = mail_table_data->mail_id;
+	temp_thread_info->mailbox_id                              = mail_table_data->mailbox_id;
+	temp_thread_info->account_id                              = mail_table_data->account_id;
+	temp_thread_info->date_time                               = mail_table_data->date_time;
+	temp_thread_info->body_download_status                    = mail_table_data->body_download_status;
+	temp_thread_info->flags_seen_field                        = mail_table_data->flags_seen_field;
+	temp_thread_info->priority                                = mail_table_data->priority;
+	temp_thread_info->save_status                             = mail_table_data->save_status;
+	temp_thread_info->lock_status                             = mail_table_data->lock_status;
+	temp_thread_info->report_status                           = mail_table_data->report_status;
+	temp_thread_info->attachment_count                        = mail_table_data->attachment_count;
+	temp_thread_info->DRM_status                              = mail_table_data->DRM_status;
+	temp_thread_info->thread_id                               = mail_table_data->thread_id;
+	temp_thread_info->thread_item_count                       = mail_table_data->thread_item_count;
+	temp_thread_info->meeting_request_status                  = mail_table_data->meeting_request_status;
 
 	*thread_info = temp_thread_info;
 
@@ -1436,24 +1436,8 @@ EXPORT_API int email_free_address_info_list(email_address_info_list_t **address_
 EXPORT_API int email_get_structure(const char*encoded_string, void **struct_var, email_convert_struct_type_e type)
 {
 	EM_DEBUG_FUNC_BEGIN("encoded_string[%s], struct_var[%p], type[%d]", encoded_string, struct_var, type);
-
-	int err = EMAIL_ERROR_NONE;
-	void * temp_struct = NULL;
-
-	EM_IF_NULL_RETURN_VALUE(encoded_string, EMAIL_ERROR_INVALID_PARAM);
-	EM_IF_NULL_RETURN_VALUE(struct_var, EMAIL_ERROR_INVALID_PARAM);
-
-	if ( (err = emcore_convert_string_to_structure((char*)encoded_string, &temp_struct, type)) != EMAIL_ERROR_NONE )  {
-		EM_DEBUG_EXCEPTION("emcore_convert_string_to_structure failed[%d]", err);
-		goto FINISH_OFF;
-	}
-
-	if ( struct_var )
-		*struct_var = temp_struct;
-
-FINISH_OFF:
-	EM_DEBUG_FUNC_END("err [%d]", err);
-	return err;
+	EM_DEBUG_FUNC_END("err [%d]", EMAIL_ERROR_NOT_IMPLEMENTED);
+	return EMAIL_ERROR_NOT_IMPLEMENTED;
 }
 
 EXPORT_API int email_get_meeting_request(int mail_id, email_meeting_request_t **meeting_req)
@@ -1651,7 +1635,7 @@ FINISH_OFF:
 	return err;
 }
 
-EXPORT_API int email_expunge_mails_deleted_flagged(int input_mailbox_id, int input_on_server, unsigned *output_handle)
+EXPORT_API int email_expunge_mails_deleted_flagged(int input_mailbox_id, int input_on_server, int *output_handle)
 {
 	EM_DEBUG_FUNC_BEGIN("input_mailbox_id[%d], input_on_server[%d], output_handle[%p]", input_mailbox_id, input_on_server, output_handle);
 	int err = EMAIL_ERROR_NONE;

@@ -40,6 +40,7 @@ extern "C"
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <dlog.h>
 #include <errno.h>
 

@@ -40,6 +40,7 @@
 #include "testapp-utility.h"
 #include "testapp-others.h"
 #include "email-ipc.h"
+#include "email-core-utils.h"
 
 static gboolean testapp_test_get_network_status()
 {
@@ -102,6 +103,22 @@ static gboolean testapp_test_set_dnet_proper_profile_type()
 static gboolean testapp_test_get_dnet_proper_profile_type()
 {
 	testapp_print("NOT Support\n");
+
+	return TRUE;
+}
+
+static gboolean testapp_test_get_preview_text_from_file()
+{
+	int   result_from_scanf;
+	char *preview_buffer = NULL;
+	char  html_file_path[1024] = { 0, };
+
+	testapp_print("\n > Enter file path : ");
+	result_from_scanf = scanf("%s", html_file_path);
+
+	emcore_get_preview_text_from_file(NULL, html_file_path, 1024, &preview_buffer);
+
+	testapp_print("\n result :\n %s ", preview_buffer);
 
 	return TRUE;
 }
@@ -412,6 +429,9 @@ static gboolean testapp_test_interpret_command (int menu_number)
 			break;
 		case 6:
 			testapp_test_get_dnet_proper_profile_type();
+			break;
+		case 7:
+			testapp_test_get_preview_text_from_file();
 			break;
 		case 11:
 			testapp_test_print_receving_queue_via_debug_msg();

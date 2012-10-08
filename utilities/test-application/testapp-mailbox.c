@@ -77,7 +77,7 @@ static gboolean testapp_test_add_mailbox()
 	int local_yn = 0;
 	char arg[500];
 	int ret;
-    unsigned handle;
+    int handle;
     int result_from_scanf = 0;
 
 	memset(arg, 0x00, 500);
@@ -120,7 +120,7 @@ static gboolean testapp_test_delete_mailbox()
 	int mailbox_id = 0;
 	int on_server = 0;
 	int ret;
-	unsigned handle;
+	int handle;
 	int result_from_scanf = 0;
 
 	testapp_print("\n> Enter mailbox id:");
@@ -150,7 +150,7 @@ static gboolean testapp_test_rename_mailbox()
 	char mailbox_alias[500] = { 0, };
 	int err;
 	int result_from_scanf = 0;
-	unsigned handle = 0;
+	int handle = 0;
 	
 	testapp_print("> Enter mailbox id: ");
 	result_from_scanf = scanf("%d", &mailbox_id);
@@ -175,7 +175,7 @@ static gboolean testapp_test_rename_mailbox()
 static gboolean testapp_test_get_imap_mailbox_list()
 {
 	int account_id = 0;
-	unsigned handle = 0;
+	int handle = 0;
 	int result_from_scanf = 0;
 	
 	testapp_print("> Enter account id: ");
@@ -186,6 +186,24 @@ static gboolean testapp_test_get_imap_mailbox_list()
 
 	return FALSE;
 
+}
+
+static gboolean testapp_test_set_local_mailbox()
+{
+	int mailbox_id = 0;
+	int is_local_mailbox = 0;
+	int result_from_scanf = 0;
+
+	testapp_print("> Enter mailbox id: ");
+	result_from_scanf = scanf("%d", &mailbox_id);
+
+	testapp_print("> Enter local: ");
+	result_from_scanf = scanf("%d", &is_local_mailbox);
+
+	if( email_set_local_mailbox(mailbox_id, is_local_mailbox) < 0)
+		testapp_print("email_set_local_mailbox failed");
+
+	return FALSE;
 }
 
 static gboolean testapp_test_get_mailbox_by_type ()
@@ -296,7 +314,7 @@ static gboolean testapp_test_sync_mailbox()
 {
 	int result_from_scanf = 0;
 	int account_id = 0;
-	unsigned handle = 0;
+	int handle = 0;
 	int mailbox_id = 0;
 
 	testapp_print("\n > Enter Account id (0: for all account) : ");
@@ -353,7 +371,11 @@ static gboolean testapp_test_interpret_command (int menu_number)
 
 		case 4:
 			testapp_test_get_imap_mailbox_list();
-			break;			
+			break;
+
+		case 5:
+			testapp_test_set_local_mailbox();
+			break;
 
 		case 7:
 			testapp_test_get_mailbox_by_type();

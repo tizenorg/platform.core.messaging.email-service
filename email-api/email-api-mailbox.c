@@ -41,7 +41,7 @@
 
 /* API - Create a mailbox */
 
-EXPORT_API int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, unsigned* handle)
+EXPORT_API int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, int *handle)
 {
 	EM_DEBUG_FUNC_BEGIN();
 
@@ -128,11 +128,13 @@ EXPORT_API int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, un
 	}
 
 FINISH_OFF:
+	EM_SAFE_FREE(local_mailbox_stream);
+
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
 
-EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_name, char *input_mailbox_alias, int input_on_server, unsigned *output_handle)
+EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_name, char *input_mailbox_alias, int input_on_server, int *output_handle)
 {
 	EM_DEBUG_FUNC_BEGIN("input_mailbox_id [%d], input_mailbox_name [%p], input_mailbox_alias [%p], input_on_server [%d], output_handle [%p]", input_mailbox_id, input_mailbox_name, input_mailbox_alias, input_on_server, output_handle);
 
@@ -227,7 +229,7 @@ FINISH_OFF:
 
 /* API - Delete a mailbox */
 
-EXPORT_API int email_delete_mailbox(int input_mailbox_id, int input_on_server, unsigned* output_handle)
+EXPORT_API int email_delete_mailbox(int input_mailbox_id, int input_on_server, int *output_handle)
 {
 	EM_DEBUG_FUNC_BEGIN("input_mailbox_id[%d] input_on_server[%d] output_handle[%p]", input_mailbox_id, input_on_server, output_handle);
 	
@@ -348,9 +350,42 @@ EXPORT_API int email_set_mailbox_type(int input_mailbox_id, email_mailbox_type_e
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
+}
 
+EXPORT_API int email_set_local_mailbox(int input_mailbox_id, int input_is_local_mailbox)
+{
+	EM_DEBUG_FUNC_BEGIN("input_mailbox_id [%d], input_is_local_mailbox [%d]", input_mailbox_id, input_is_local_mailbox);
+	int err = EMAIL_ERROR_NONE;
 
+	EM_IF_NULL_RETURN_VALUE(input_mailbox_id, EMAIL_ERROR_INVALID_PARAM);
 
+	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_SET_LOCAL_MAILBOX);
+
+	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
+
+	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &input_mailbox_id, sizeof(int))) {
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
+	}
+
+	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &input_is_local_mailbox, sizeof(int))) {
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
+	}
+
+	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
+	}
+
+	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+
+	EM_DEBUG_LOG("error VALUE [%d]", err);
+	emipc_destroy_email_api(hAPI);
+	hAPI = NULL;
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
 }
 
 EXPORT_API int email_get_sync_mailbox_list(int account_id, email_mailbox_t** mailbox_list, int* count)
@@ -497,7 +532,7 @@ EXPORT_API int email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_t
 	EM_IF_NULL_RETURN_VALUE(account_id, EMAIL_ERROR_INVALID_PARAM)	;
 
 
-	if(mailbox_type < EMAIL_MAILBOX_TYPE_INBOX || mailbox_type > EMAIL_MAILBOX_TYPE_ALL_EMAILS)
+	if(mailbox_type < EMAIL_MAILBOX_TYPE_INBOX || mailbox_type > EMAIL_MAILBOX_TYPE_USER_DEFINED)
 		return EMAIL_ERROR_INVALID_PARAM;
 	if (!emstorage_get_mailbox_by_mailbox_type(account_id, mailbox_type, &local_mailbox, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);

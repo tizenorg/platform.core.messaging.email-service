@@ -4,7 +4,7 @@
 * Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -30,8 +30,7 @@
 #include "email-api.h"
 #include "email-types.h"
 #include "email-internal-types.h"
-
-pthread_mutex_t proxy_mutex = PTHREAD_MUTEX_INITIALIZER;
+#include <glib.h>
 
 EXPORT_API int emipc_initialize_proxy()
 {
@@ -57,16 +56,15 @@ EXPORT_API int emipc_execute_proxy_api(HIPC_API api)
 	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
 
 	EM_DEBUG_LOG("API [%p]", api_info);
-		
+
 	if(api_info == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
-		
+
 	EM_DEBUG_LOG("APIID [%s], ResponseID [%d], APPID[%d]",
 				EM_APIID_TO_STR(api_info->api_id), api_info->response_id, api_info->app_id);
 
-	ENTER_CRITICAL_SECTION(proxy_mutex);
 	ret = emipc_execute_api_of_proxy_main(api_info);
 
 	/* connection retry */
@@ -88,9 +86,9 @@ EXPORT_API int emipc_execute_proxy_api(HIPC_API api)
 			goto FINISH_OFF;
 		}
 	}
-	
+
 FINISH_OFF:
-	LEAVE_CRITICAL_SECTION(proxy_mutex);
 	EM_DEBUG_FUNC_END("err [%d]", err);
-	return err;	
+	return err;
 }
+

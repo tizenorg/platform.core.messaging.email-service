@@ -69,14 +69,14 @@ EXPORT_API bool emipc_free_api_info(emipc_email_api_info *api_info);
 			case _EMAIL_API_DELETE_MAILBOX:\
 					s = "_EMAIL_API_DELETE_MAILBOX";\
 					break;\
-			case _EMAIL_API_UPDATE_MAILBOX:\
-					s = "_EMAIL_API_UPDATE_MAILBOX";\
-					break;\
 			case _EMAIL_API_RENAME_MAILBOX:\
 					s = "_EMAIL_API_RENAME_MAILBOX";\
 					break;\
 			case _EMAIL_API_SET_MAILBOX_TYPE:\
 					s = "_EMAIL_API_SET_MAILBOX_TYPE";\
+					break;\
+			case _EMAIL_API_SET_LOCAL_MAILBOX:\
+					s = "_EMAIL_API_SET_LOCAL_MAILBOX";\
 					break;\
 			case _EMAIL_API_SET_MAIL_SLOT_SIZE:\
 					s = "_EMAIL_API_SET_MAIL_SLOT_SIZE";\
@@ -110,9 +110,6 @@ EXPORT_API bool emipc_free_api_info(emipc_email_api_info *api_info);
 					break;\
 			case _EMAIL_API_MODIFY_MAIL_FLAG:\
 					s = "_EMAIL_API_MODIFY_MAIL_FLAG";\
-					break;\
-			case _EMAIL_API_MODIFY_MAIL_EXTRA_FLAG:\
-					s = "_EMAIL_API_MODIFY_MAIL_EXTRA_FLAG";\
 					break;\
 	 		case _EMAIL_API_ADD_RULE:\
 					s = "_EMAIL_API_ADD_RULE";\
@@ -221,6 +218,9 @@ EXPORT_API bool emipc_free_api_info(emipc_email_api_info *api_info);
 					break;\
 			case _EMAIL_API_SHOW_USER_MESSAGE:\
 					s = "_EMAIL_API_SHOW_USER_MESSAGE";\
+					break;\
+			case _EMAIL_API_WRITE_MIME_FILE:\
+					s = "_EMAIL_API_WRITE_MIME_FILE";\
 					break;\
 			default : \
 					s = "UNKNOWN_APIID";\

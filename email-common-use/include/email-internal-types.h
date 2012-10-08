@@ -45,6 +45,7 @@ extern "C"
 
 /* ----------------------------------------------------------------------------- */
 /*  Feature definitions */
+#define __FEATURE_USING_ACCOUNT_SVC__
 #define __FEATURE_BACKUP_ACCOUNT__
 #define __FEATURE_MOVE_TO_OUTBOX_FIRST__
 /*  #define __FEATURE_PARTIAL_BODY_FOR_POP3__ */
@@ -60,8 +61,11 @@ extern "C"
 #define __FEATURE_DEBUG_LOG__
 #define __FEATURE_USE_SHARED_MUTEX_FOR_GENERATING_MAIL_ID__
 #define __FEATURE_XLIST_SUPPORT__
+#define __FEATURE_SUPPORT_REPORT_MAIL__
 /*  #define __FEATURE_USE_SHARED_MUTEX_FOR_PROTECTED_FUNC_CALL__ */
 /*  #define __FEATURE_IMAP_IDLE__ */
+
+#define _TIZEN_PUBLIC_ /* __FEATURE_WDS_SUPPORT__ and __FEATURE_NOTIFICATION_FOR_NEW_MAIL__ and MDM_PHASE_2*/
 
 /* ----------------------------------------------------------------------------- */
 /*  Macro */
@@ -179,6 +183,18 @@ typedef pthread_t thread_t;
 #define VCONF_KEY_LATEST_MAIL_ID        "db/private/email-service/latest_mail_id"
 #define VCONF_KEY_DEFAULT_ACCOUNT_ID    "db/private/email-service/default_account_id"
 
+#define OUTMODE "wb"
+#define INMODE "rb"
+#define READMODE "r"
+
+#define TYPEPKCS7_SIGN 10	
+#define TYPEPKCS7_MIME 11
+
+/* __FEATURE_LOCAL_ACTIVITY__ supported
+#define BULK_OPERATION_COUNT              50
+#define ALL_ACTIVITIES                    0
+*/
+
 /* ----------------------------------------------------------------------------- */
 /*  Type */
 typedef enum
@@ -221,6 +237,21 @@ enum
 	EMAIL_STREAM_STATUS_CONNECTED = 1
 } ;
 #endif /* __FEATURE_KEEP_CONNECTION__ */
+
+enum 
+{
+	EXTENSION_JPEG   = 0,
+	EXTENSION_JPG    = 1,
+	EXTENSION_PNG    = 2,
+	EXTENSION_GIF    = 3,
+	EXTENSION_BMP    = 4,
+	EXTENSION_PIC    = 5,
+	EXTENSION_AGIF   = 6,
+	EXTENSION_TIF    = 7,
+	EXTENSION_WBMP   = 8,
+	EXTENSION_P7S    = 9,
+	EXTENSION_P7M    = 10
+};
 
 /*  event information */
 typedef struct 

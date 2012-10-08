@@ -50,6 +50,10 @@
 #include "email-core-mailbox.h"
 #include "email-core-imap-mailbox.h"
 
+#ifdef __FEATURE_USING_ACCOUNT_SVC__
+#include "account.h"
+#endif /*  __FEATURE_USING_ACCOUNT_SVC__ */
+
 char *g_default_mbox_alias[MAILBOX_COUNT] =
 {
 	EMAIL_INBOX_DISPLAY_NAME,
@@ -320,6 +324,23 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 
 #endif
 
+#ifdef __FEATURE_USING_ACCOUNT_SVC__
+	{
+		int error_code;
+		email_account_t *account_to_be_deleted;
+
+		account_to_be_deleted = emcore_get_account_reference(account_id);
+		if (account_to_be_deleted && account_to_be_deleted->incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
+			EM_DEBUG_LOG("Calling account_svc_delete with account_svc_id[%d]", account_to_be_deleted->account_svc_id);
+			error_code = account_connect();
+			EM_DEBUG_LOG("account_connect returns [%d]", error_code);
+			error_code = account_delete_from_db_by_id(account_to_be_deleted->account_svc_id);
+			EM_DEBUG_LOG("account_delete_from_db_by_id returns [%d]", error_code);
+			error_code = account_disconnect();
+			EM_DEBUG_LOG("account_disconnect returns [%d]", error_code);
+		}
+	}
+#endif
 	if (emcore_cancel_all_threads_of_an_account(account_id) < EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("There are some remaining jobs. I couldn't stop them.");
 		err = EMAIL_ERROR_CANNOT_STOP_THREAD;
@@ -985,7 +1006,6 @@ FINISH_OFF:
 
 #endif /*  __FEATURE_BACKUP_ACCOUNT_ */
 
-
 INTERNAL_FUNC int emcore_query_server_info(const char* domain_name, email_server_info_t **result_server_info)
 {
 	EM_DEBUG_FUNC_BEGIN("domain_name [%s], result_server_info [%p]", domain_name, result_server_info);
@@ -1142,9 +1162,13 @@ INTERNAL_FUNC int emcore_update_sync_status_of_account(int input_account_id, ema
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_set_operator [%d], input_sync_status [%d]", input_account_id, input_set_operator, input_sync_status);
 	int err = EMAIL_ERROR_NONE;
+	emstorage_account_tbl_t *account_tbl_data = NULL;
 
 	if (!emstorage_update_sync_status_of_account(input_account_id, input_set_operator, input_sync_status, true, &err))
 		EM_DEBUG_EXCEPTION("emstorage_update_sync_status_of_account failed [%d]", err);
+
+	if (account_tbl_data)
+		emstorage_free_account(&account_tbl_data, 1, NULL);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;

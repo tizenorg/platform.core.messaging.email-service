@@ -33,7 +33,10 @@
 #include "email-ipc.h"
 #include "email-debug-log.h"
 #include "email-core-utils.h"
+#include "email-core-smtp.h"
 #include "email-core-mime.h"
+#include "email-convert.h"
+#include "email-utilities.h"
 
 EXPORT_API int email_show_user_message(int id, email_action_t action, int error_code)
 {
@@ -79,29 +82,113 @@ EXPORT_API int email_show_user_message(int id, email_action_t action, int error_
 	return err;
 }
 
-EXPORT_API int email_open_eml_file(char *eml_file_path, email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count)
+EXPORT_API int email_parse_mime_file(char *eml_file_path, email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count)
 {
 	EM_DEBUG_FUNC_BEGIN("eml_file_path : [%s], output_mail_data : [%p], output_attachment_data : [%p]", eml_file_path, output_mail_data, output_attachment_data);
 	int err = EMAIL_ERROR_NONE;
 
 	EM_IF_NULL_RETURN_VALUE(eml_file_path, EMAIL_ERROR_INVALID_PARAM);
 
-	if (!emcore_load_eml_file_to_mail(eml_file_path, output_mail_data, output_attachment_data, output_attachment_count, &err) || !*output_mail_data)
-		EM_DEBUG_EXCEPTION("emcore_load_eml_file_to_mail_data failed [%d]", err);
+	if (!emcore_parse_mime_file_to_mail(eml_file_path, output_mail_data, output_attachment_data, output_attachment_count, &err) || !*output_mail_data)
+		EM_DEBUG_EXCEPTION("emcore_parse_mime_file_to_mail failed [%d]", err);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
 
-EXPORT_API int email_delete_eml_data(email_mail_data_t *input_mail_data)
+EXPORT_API int email_write_mime_file(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data, int input_attachment_count, char **output_file_path)
+{
+	EM_DEBUG_FUNC_BEGIN("input_mail_data : [%p], input_attachment_data : [%p], input_attachment_count : [%d]", input_mail_data, input_attachment_data, input_attachment_count);
+
+	int err = EMAIL_ERROR_NONE;
+	int size = 0;
+	char *p_output_file_path = NULL;
+	char *mail_data_stream = NULL;
+	char *attachment_data_list_stream = NULL;
+	HIPC_API hAPI = NULL;
+
+	EM_IF_NULL_RETURN_VALUE(input_mail_data, EMAIL_ERROR_INVALID_PARAM);
+
+	hAPI = emipc_create_email_api(_EMAIL_API_WRITE_MIME_FILE);
+	if (!hAPI) {
+		EM_DEBUG_EXCEPTION("emipc_create_email_api failed");
+		err = EMAIL_ERROR_NULL_VALUE;
+		goto FINISH_OFF;
+	}
+
+	mail_data_stream = em_convert_mail_data_to_byte_stream(input_mail_data, &size);
+	if (!mail_data_stream) {
+		EM_DEBUG_EXCEPTION("em_convert_mail_data_to_byte_stream failed");
+		err = EMAIL_ERROR_NULL_VALUE;
+		goto FINISH_OFF;
+	}
+
+	if (!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, mail_data_stream, size)) {
+		EM_DEBUG_EXCEPTION("emipc_add_dynamic_parameter failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	attachment_data_list_stream = em_convert_attachment_data_to_byte_stream(input_attachment_data, input_attachment_count, &size);
+	if (!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, attachment_data_list_stream, size)) {
+		EM_DEBUG_EXCEPTION("emipc_add_dynamic_parameter failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	if (*output_file_path && (size = strlen(*output_file_path)) > 0) {
+		EM_DEBUG_LOG("output_file_path : [%s] size : [%d]", *output_file_path, size);
+		size = size + 1;
+	} else {
+		size = 0;
+	}
+
+	if (!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, *output_file_path, size)) {
+		EM_DEBUG_EXCEPTION("emipc_add_dynamic_parameter failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}	
+
+	if (emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
+		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	size = emipc_get_parameter_length(hAPI, ePARAMETER_OUT, 0);
+	if (size > 0) {
+		p_output_file_path = (char *)em_malloc(size);
+		if (p_output_file_path == NULL) {
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
+		if ((err = emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, size, p_output_file_path)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emipc_get_parameter failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+	}
+	
+	*output_file_path = p_output_file_path;	
+
+FINISH_OFF:
+
+	if (err != EMAIL_ERROR_NONE)
+		EM_SAFE_FREE(p_output_file_path);
+
+	EM_DEBUG_FUNC_END("err : [%d]", err);
+	return err;
+}
+
+EXPORT_API int email_delete_parsed_data(email_mail_data_t *input_mail_data)
 {
 	EM_DEBUG_FUNC_BEGIN("mail_data : [%p]", input_mail_data);
 	int err = EMAIL_ERROR_NONE;
 
 	EM_IF_NULL_RETURN_VALUE(input_mail_data, EMAIL_ERROR_INVALID_PARAM);
 
-	if (!emcore_delete_eml_data(input_mail_data, &err))
-		EM_DEBUG_EXCEPTION("emcore_load_eml_file_to_mail_data failed [%d]", err);
+	if (!emcore_delete_parsed_data(input_mail_data, &err))
+		EM_DEBUG_EXCEPTION("emcore_delete_parsed_data failed [%d]", err);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;

@@ -126,6 +126,8 @@
 #define EMAIL_ERROR_NETWORK_NOT_AVAILABLE               -1800    /*  WIFI not availble*/
 #define EMAIL_ERROR_CANNOT_STOP_THREAD                  -2000
 #define EMAIL_ERROR_SECURED_STORAGE_FAILURE             -2100    /*  Error from secured storage */
+#define EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE            -3000    /*  Cannot load the certificate */
+#define EMAIL_ERROR_INVALID_CERTIFICATE                 -3001    /*  invalid certificate */
 #define EMAIL_ERROR_UNKNOWN                             -8000    /*  unknown error */
 
 #endif /* __EMAIL_ERRORS_H__ */

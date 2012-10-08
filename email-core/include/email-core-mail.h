@@ -149,7 +149,6 @@ INTERNAL_FUNC int emcore_get_mail_data(int input_mail_id, email_mail_data_t **ou
 
 INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t* input_meeting_request, int sync_server);
 
-INTERNAL_FUNC int emcore_fetch_flags(int account_id, int mail_id, email_mail_flag_t *mail_flag, int *err_code);
 INTERNAL_FUNC int emcore_delete_mails_from_local_storage(int account_id, int *mail_ids, int num, int noti_param_1, int noti_param_2, int *err_code);
 INTERNAL_FUNC int emcore_get_mail_msgno_by_uid(email_account_t *account, email_internal_mailbox_t *mailbox, char *uid, int *msgno, int *err_code);
 INTERNAL_FUNC int emcore_expunge_mails_deleted_flagged_from_local_storage(int input_mailbox_id);
@@ -191,8 +190,6 @@ INTERNAL_FUNC int   emcore_move_mail_on_server(int account_id, int src_mailbox_i
 INTERNAL_FUNC int   emcore_sync_flag_with_server(int mail_id, int *err_code);
 INTERNAL_FUNC int   emcore_sync_seen_flag_with_server(int mail_ids[], int num, int *err_code);
 
-INTERNAL_FUNC int   emcore_modify_extra_flag(int mail_id, email_extra_flag_t new_flag, int *err_code);
-INTERNAL_FUNC int   emcore_modify_flag(int mail_id, email_mail_flag_t new_flag, int sticky_flag, int *err_code);
 INTERNAL_FUNC int   emcore_set_flags_field(int account_id, int mail_ids[], int num, email_flags_field_type field_type, int value, int *err_code);
 INTERNAL_FUNC char* emcore_convert_mutf7_to_utf8(char *mailbox_name); 
 INTERNAL_FUNC int   emcore_convert_string_to_structure(const char *encoded_string, void **struct_var, email_convert_struct_type_e type);

@@ -66,7 +66,7 @@ int   emcore_get_long_encoded_path_with_account_info(email_account_t *account, c
 void  emcore_fill_address_information_of_mail_tbl(emstorage_mail_tbl_t *mail_data);
 
 
-int   emcore_get_preview_text_from_file(const char *input_plain_path, const char *input_html_path, int input_preview_buffer_length, char **output_preview_buffer);
+INTERNAL_FUNC int   emcore_get_preview_text_from_file(const char *input_plain_path, const char *input_html_path, int input_preview_buffer_length, char **output_preview_buffer);
 int   reg_replace (char *input_source_text, char *input_old_pattern_string, char *input_new_string);
 int   emcore_strip_HTML(char *source_string);
 int   emcore_send_noti_for_new_mail(int account_id, char *mailbox_name, char *subject, char *from, char *uid, char *datetime);
@@ -76,9 +76,6 @@ int   emcore_make_attachment_file_name_with_extension(char *source_file_name, ch
 int   emcore_get_empty_session(email_session_t **session);
 int   emcore_clear_session(email_session_t *session);
 int   emcore_get_current_session(email_session_t **session);
-
-INTERNAL_FUNC email_option_t *emcore_get_option(int *err_code);
-INTERNAL_FUNC int emcore_set_option(email_option_t *opt, int *err_code);
 
 INTERNAL_FUNC int emcore_check_unread_mail();
 INTERNAL_FUNC int emcore_set_network_error(int err_code);

@@ -1447,7 +1447,7 @@ int emcore_make_mail_tbl_data_from_envelope(MAILSTREAM *mail_stream, ENVELOPE *i
 	temp_mail_tbl_data->flags_draft_field     = mail_cache_element->draft;
 	temp_mail_tbl_data->flags_forwarded_field = input_uid_elem->flag.forwarded;
 	temp_mail_tbl_data->priority              = priority;
-	temp_mail_tbl_data->report_status         = (req_read_receipt ? 3  :  0);
+	temp_mail_tbl_data->report_status         = (req_read_receipt ? EMAIL_MAIL_REQUEST_MDN :  0);
 	temp_mail_tbl_data->attachment_count      = 0;
 
 	emcore_fill_address_information_of_mail_tbl(temp_mail_tbl_data);
@@ -2323,7 +2323,6 @@ int emcore_free_uids(emcore_uid_list *uid_list, int *err_code)
 	
 	if (!uid_list) {
 		EM_DEBUG_EXCEPTION(" uid_list[%p]\n", uid_list);
-		
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
@@ -2910,7 +2909,7 @@ static int emcore_parse_plain_part_for_partial_body(char *header_start_string, c
 
 /*  Content-Type:  IMAGE/octet-stream; name = Default.png */
 /*  Content-Transfer-Encoding:  BASE64 */
-/*  Content-ID:  <4b0d6810b17291f9438783a8eb9d5228@org.tizen.email> */
+/*  Content-ID:  <4b0d6810b17291f9438783a8eb9d5228@com.tizen.email> */
 /*  Content-Disposition:  inline; filename = Default.png */
 
 static int emcore_parse_image_part_for_partial_body(char *header_start_string, char *start_header, char *boundary_string, char *bufsendforparse, email_image_data *image_data, int body_size)
@@ -3166,7 +3165,7 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 	int j = 0;
 	int i32_index = 0, temp_string_index = 0;
 	int no_alternative_part_flag = 0;
-	int dec_len = 0, response_buffer_length = 0, mailparselen = 0, image_length = 0, tempmailparselen = 0;
+	int dec_len = 0, response_buffer_length = 0, image_length = 0, tempmailparselen = 0;
 	int temp_count = 0, total_mail_size = 0, attachment_num, body_size = 0, total_mail_size_except_attach = 0;
 	int total_parsed_len_per_uid = 0, total_parsed_len = 0;
 	unsigned long uidno = 0;
@@ -3338,10 +3337,10 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 			int no_html = 0;
 			char *temp_alternative_plain_header = NULL;
 			
-			p = (char *)strstr(response_buffer, " {");
+			p = (char *)strstr(response_buffer, "> {");
 			if (p  != NULL){
 				EM_DEBUG_LOG("Getting the body size");
-				p += strlen(" {");
+				p += strlen("> {");
 				s = p;
 
 				temp_string_index = 0;
@@ -3365,11 +3364,9 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 				/* goto FINISH_OFF; */
 			}
 					
-			/*  Find next line */
-			tempmailparselen = 0;
-			while (tempmailparselen < response_buffer_length && response_buffer[tempmailparselen] != LF)
-				tempmailparselen++;
-			tempmailparselen++;
+			/*  Find data line : 2 is CRLF, 1 is } */
+			EM_DEBUG_LOG("temp_string_index : [%d]", temp_string_index);
+			tempmailparselen = (p - response_buffer) + temp_string_index + 2 + 1;
 
 			if (imap_response->buflen < (total_parsed_len + body_size)){
 				err = EMAIL_ERROR_CONNECTION_BROKEN;
@@ -3477,17 +3474,9 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 
 				}
 		
-				/*  Find next line. */
-				mailparselen = 0;
-				
-				while (mailparselen < response_buffer_length && response_buffer[mailparselen] != LF)
-					mailparselen++;
-				
-				mailparselen++;
-	
 				/*  Removed the response header and send the buffer for parsing */
-				response_buffer        = response_buffer + mailparselen;
-				response_buffer_length = response_buffer_length - mailparselen;
+				response_buffer        = response_buffer + tempmailparselen;
+				response_buffer_length = response_buffer_length - tempmailparselen;
 
 				bufsendforparse = em_malloc(body_size + 1); /*  old */
 				/*  bufsendforparse = em_malloc(response_buffer_length + 1); */ /* new */
@@ -3548,8 +3537,8 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 				}
 				else{   /*  Partial body has headers with Content-Type: text/html or Content-Type: text/plain */
 					no_alternative_part_flag = 0;
-					if (((temp_alternative_plain_header = (char *)strcasestr(p, "Content-type: multipart/alternative"))  != NULL)){	/*  Found 'alternative' */
-						if (((temp_content_type1 = (char *)strcasestr(p, "Content-type: text/plain"))  != NULL)){   
+					if (((temp_alternative_plain_header = (char *)strcasestr(p, "Content-type: multipart/alternative")) != NULL)) {	/*  Found 'alternative' */
+						if (((temp_content_type1 = (char *)strcasestr(p, "Content-type: text/plain")) != NULL)) {   
 							if (temp_content_type1 < temp_alternative_plain_header) /*  This part is text/plain not alternative. */
 								no_html = 1;
 							no_alternative_part_flag = 1;
@@ -3760,8 +3749,7 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 				if (!emstorage_change_mail_field(mail->mail_id, UPDATE_PARTIAL_BODY_DOWNLOAD, mail, true, &err))
 					EM_DEBUG_EXCEPTION("emstorage_change_mail_field failed - %d", err);
 				
-NEXTUIDPARSING: 
-
+NEXTUIDPARSING:
 				response_buffer = response_buffer + body_size; /*  Set pointer for next mail body.  */
 	
 				/*  Find end of body */
@@ -3774,9 +3762,10 @@ NEXTUIDPARSING:
 					response_buffer = response_buffer + 3;
 					total_parsed_len_per_uid = body_size+tempmailparselen + 3;
 				}
-				else
+				else {				
 					EM_DEBUG_EXCEPTION("Mail response end could not found, - %c : %c : %c", response_buffer[0], response_buffer[1], response_buffer[2]);
-			
+				}
+
 				EM_SAFE_FREE(bufsendforparse);
 				
 				memset(text_html, 0, input_download_size+1);
@@ -3940,6 +3929,7 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 	int bytes_copied = 0;
 	int temp_body_buffer_size = 0;
 	int flags = 0;
+	int count = 0;
 	int allocated_buffer_size = (BULK_PARTIAL_BODY_DOWNLOAD_COUNT + 2) * input_download_size ;
 
 	retPartialBuffer = (email_partial_buffer *)em_malloc(sizeof(email_partial_buffer));
@@ -3957,7 +3947,7 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 		return NIL;
 	}
 
-	while (nstream){	
+	while (nstream){
 		if (!(pline = net_getline(nstream))) {
 			EM_DEBUG_EXCEPTION("net_getline failed...");
 			EM_SAFE_FREE(retPartialBuffer->buffer);
@@ -3965,10 +3955,13 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 
 			return NIL;
 		}
-	
 		linelen = strlen(pline);
 		
 		if (strcasestr(pline, "BODYSTRUCTURE") != NULL) {
+			temp_body_buffer_size = 0;
+			flags = 0;
+			count++;
+		} else if (strstr(pline, "> {") != NULL) {
 			temp_body_buffer_size = 0;
 			flags = 0;
 		} else {
@@ -3982,6 +3975,15 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 		}	
 
 		if (temp_body_buffer_size <= input_download_size) {
+			if (allocated_buffer_size < (bytes_copied + linelen)) {
+				allocated_buffer_size = allocated_buffer_size + (BULK_PARTIAL_BODY_DOWNLOAD_COUNT - count) * input_download_size;
+				retPartialBuffer->buffer = (char *)realloc(retPartialBuffer->buffer, allocated_buffer_size);
+				if (NULL == retPartialBuffer->buffer) {
+					EM_DEBUG_EXCEPTION("realloc failed");
+					EM_SAFE_FREE(retPartialBuffer);
+					return NIL;
+				}			
+			}
 			memcpy(retPartialBuffer->buffer + bytes_copied, pline, linelen);
 			bytes_copied  += linelen;
 			memcpy(retPartialBuffer->buffer + bytes_copied, CRLF_STRING, 2);

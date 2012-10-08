@@ -205,7 +205,7 @@ EXPORT_API int email_add_mail(email_mail_data_t *input_mail_data, email_attachme
 
  /**
   * @open
-  * @fn email_add_read_receipt(int input_read_mail_id,  unsigned *output_handle)
+  * @fn email_add_read_receipt(int input_read_mail_id,  int *output_handle)
   * @brief	Add a read receipt mail. This function is invoked when user receives a mail with read report enable and wants to send a read report for the same.
   *
   * @return 	This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
@@ -1413,7 +1413,7 @@ EXPORT_API int email_delete_thread(int thread_id, int delete_always_flag);
 
 EXPORT_API int email_modify_seen_flag_of_thread(int thread_id, int seen_flag, int on_server);
 
-EXPORT_API int email_expunge_mails_deleted_flagged(int input_mailbox_id, int input_on_server, unsigned *output_handle);
+EXPORT_API int email_expunge_mails_deleted_flagged(int input_mailbox_id, int input_on_server, int *output_handle);
 
 #ifdef __cplusplus
 }

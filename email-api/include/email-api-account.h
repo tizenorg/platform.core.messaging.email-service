@@ -262,7 +262,7 @@ EXPORT_API int email_free_account(email_account_t** account_list, int count);
 
 /**
  * @open
- * @fn email_validate_account(int account_id, unsigned* handle)
+ * @fn email_validate_account(int account_id, int *handle)
  * @brief	Validate account.This function is getting invoked  after adding one account to validate it.If account is not validated then user should retry once again to add the account .
  *
  * @param[in] account_id	       Specifies the account Id to validate.
@@ -273,11 +273,11 @@ EXPORT_API int email_free_account(email_account_t** account_list, int count);
  * @see		none
  * @remarks N/A
  */
-EXPORT_API int email_validate_account(int account_id, unsigned* handle);
+EXPORT_API int email_validate_account(int account_id, int *handle);
 
 /**
  * @open
- * @fn email_add_account_with_validation(email_account_t* account, unsigned* handle)
+ * @fn email_add_account_with_validation(email_account_t* account, int *handle)
  * @brief	Add an account when the account is validated. This function is getting invoked when user want to validate an account. If account is not validated then user should retry once again to add the account.<br>
  *              Validation is executed without saving an account to DB
  *
@@ -286,7 +286,7 @@ EXPORT_API int email_validate_account(int account_id, unsigned* handle);
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-EXPORT_API int email_add_account_with_validation(email_account_t* account, unsigned* handle);
+EXPORT_API int email_add_account_with_validation(email_account_t* account, int *handle);
 
 
 /**

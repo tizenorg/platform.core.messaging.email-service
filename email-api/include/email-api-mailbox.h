@@ -59,7 +59,7 @@
  *		email_mailbox_t *mailbox_list = NULL;
  *		int count = 0;
  *		int mailbox_type;
- *		unsigned handle = 0;
+ *		int handle = 0;
  *		char *pMaiboxName;
  *		char *pParentMailbox;
  *
@@ -133,7 +133,7 @@ extern "C"
 
 /**
  * @open
- * @fn int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, unsigned* handle)
+ * @fn int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, int *handle)
  * @brief	Create a new mailbox or mailbox.This function is invoked when user wants to create a new mailbox for the specified account.
  * 		If On_server is true then it will create the mailbox on server as well as in local also.
  *
@@ -145,7 +145,7 @@ extern "C"
  * @see 	email_mailbox_t
   * @remarks N/A
  */
-EXPORT_API int email_add_mailbox(email_mailbox_t *new_mailbox, int on_server, unsigned* handle);
+EXPORT_API int email_add_mailbox(email_mailbox_t *new_mailbox, int on_server, int *handle);
 
 /**
  * @fn int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_name, char *input_mailbox_alias)
@@ -162,11 +162,11 @@ EXPORT_API int email_add_mailbox(email_mailbox_t *new_mailbox, int on_server, un
  * @see 	email_mailbox_t, email_mailbox_type_e
  * @remarks N/A
  */
-EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_name, char *input_mailbox_alias, int input_on_server, unsigned *output_handle);
+EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_name, char *input_mailbox_alias, int input_on_server, int *output_handle);
 
 /**
  * @open
- * @fn int email_delete_mailbox(int input_mailbox_id, int input_on_server, unsigned* output_handle)
+ * @fn int email_delete_mailbox(int input_mailbox_id, int input_on_server, int *output_handle)
  * @brief	Delete a mailbox or mailbox.This function deletes the existing mailbox for specified account based on the option on_server.
  * 		If the on_server is true then it deletes mailbox from server as well as locally.
  *
@@ -178,7 +178,7 @@ EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_na
  * @see 	email_mailbox_t
  * @remarks N/A
  */
-EXPORT_API int email_delete_mailbox(int input_mailbox_id, int input_on_server, unsigned* output_handle);
+EXPORT_API int email_delete_mailbox(int input_mailbox_id, int input_on_server, int *output_handle);
 
 /**
  * @fn int email_set_mailbox_type(int input_mailbox_id, email_mailbox_type_e input_mailbox_type)
@@ -192,6 +192,19 @@ EXPORT_API int email_delete_mailbox(int input_mailbox_id, int input_on_server, u
  * @remarks N/A
  */
 EXPORT_API int email_set_mailbox_type(int input_mailbox_id, email_mailbox_type_e input_mailbox_type);
+
+/**
+ * @fn int email_set_local_mailbox(int input_mailbox_id, int input_is_local_mailbox)
+ * @brief	Change the attribute 'local' of email_mailbox_t. This function is invoked when user wants to change the attribute 'local'.
+ *
+ * @return This function returns EMAIL_ERROR_NONE on success or error code(refer to EMAIL_ERROR_XXX) on failure.
+ * @param[in] input_mailbox_id			Specifies the id of the mailbox.
+ * @param[in] input_is_local_mailbox	Specifies the value of the attribute 'local' of email_mailbox_t.
+ * @exception see email-errors.h
+ * @see		none
+ * @remarks N/A
+ */
+EXPORT_API int email_set_local_mailbox(int input_mailbox_id, int input_is_local_mailbox);
 
 /**
 

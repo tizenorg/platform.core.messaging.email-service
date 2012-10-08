@@ -120,10 +120,11 @@ static void hibernation_leave_callback()
 static void callback_for_SYNC_ALL_STATUS_from_account_svc(keynode_t *input_node, void *input_user_data)
 {
 	EM_DEBUG_FUNC_BEGIN("input_node [%p], input_user_data [%p]", input_node, input_user_data);
-	unsigned handle = 0;
+	int handle = 0;
 	int i = 0;
 	int err = EMAIL_ERROR_NONE;
 	int account_count = 0;
+	int sync_start_toggle = 0;
 	email_account_t         *account_list = NULL;
 	emstorage_mailbox_tbl_t *mailbox_tbl_data = NULL;
 
@@ -132,18 +133,26 @@ static void callback_for_SYNC_ALL_STATUS_from_account_svc(keynode_t *input_node,
 		goto FINISH_OFF;
 	}
 
-	for(i = 0; i < account_count; i++) {
-		if(!emstorage_get_mailbox_by_mailbox_type(account_list[i].account_id, EMAIL_MAILBOX_TYPE_INBOX, &mailbox_tbl_data, true, &err)) {
-			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type for [%d] failed [%d]", account_list[i].account_id, err);
-			continue;
-		}
+	if(input_node)
+		sync_start_toggle = vconf_keynode_get_int(input_node);
 
-		if(!emdaemon_sync_header(account_list[i].account_id, mailbox_tbl_data->mailbox_id, &handle, &err)) {
-			EM_DEBUG_EXCEPTION("emdaemon_sync_header for [%d] failed [%d]", account_list[i].account_id, err);
+	for(i = 0; i < account_count; i++) {
+		if(sync_start_toggle == 1) {
+			if(!emstorage_get_mailbox_by_mailbox_type(account_list[i].account_id, EMAIL_MAILBOX_TYPE_INBOX, &mailbox_tbl_data, true, &err)) {
+				EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type for [%d] failed [%d]", account_list[i].account_id, err);
+				continue;
+			}
+
+			if(!emdaemon_sync_header(account_list[i].account_id, mailbox_tbl_data->mailbox_id, &handle, &err)) {
+				EM_DEBUG_EXCEPTION("emdaemon_sync_header for [%d] failed [%d]", account_list[i].account_id, err);
+			}
+			if(mailbox_tbl_data)
+				emstorage_free_mailbox(&mailbox_tbl_data, 1, NULL);
+			mailbox_tbl_data = NULL;
 		}
-		if(mailbox_tbl_data)
-			emstorage_free_mailbox(&mailbox_tbl_data, 1, NULL);
-		mailbox_tbl_data = NULL;
+		else {
+			emcore_cancel_all_threads_of_an_account(account_list[i].account_id);
+		}
 	}
 
 FINISH_OFF:

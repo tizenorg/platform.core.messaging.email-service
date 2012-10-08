@@ -35,19 +35,21 @@
 #include <openssl/err.h>
 #include <cert-service.h>
 #include <glib.h>
+#include <cert-svc/ccert.h>
+#include <cert-svc/cstring.h>
+#include <cert-svc/cpkcs12.h>
+#include <cert-svc/cinstance.h>
+#include <cert-svc/cprimitives.h>
 
 #include "email-core-cert.h"
 #include "email-core-mail.h"
+#include "email-core-utils.h"
 #include "email-utilities.h"
 #include "email-storage.h"
 #include "email-debug-log.h"
 
 #define READ_MODE "r"
 #define WRITE_MODE "w"
-
-#define EMAIL_ERROR_CERTIFICATE_LOAD_FAIL 2300
-#define EMAIL_ERROR_FILE_NOT_OPEN 2301
-#define EMAIL_ERROR_INVALID_CERTIFICATE 2302
 
 #define TRUSTED_USER "trusteduser/email/"
 
@@ -131,119 +133,7 @@ static GList *emcore_make_glist_from_string(char *email_address_list)
 
 	return email_list;	
 }
-*/
-static int emcore_load_public_of_p7s(CERT_CONTEXT *context, char *public_cert_path, STACK_OF(X509) **certificates, int *err_code)
-{
-	EM_DEBUG_FUNC_BEGIN();
-	
-	int ret = false;
-	int err = EMAIL_ERROR_NONE;
-	int cert_size = 0;
-	unsigned char *cert_string = NULL;
-	PKCS7 *pkcs7 = NULL;
-	BIO *infile = NULL;
-	X509 *cert = NULL;
-	STACK_OF(X509) *certs = NULL;
-	
-	if (public_cert_path == NULL) {
-		EM_DEBUG_EXCEPTION("Invalid parameter");
-		err = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF;
-	}
 
-	OpenSSL_add_all_algorithms();
-	
-	/* Open p7s file */
-	infile = BIO_new_file(public_cert_path, READ_MODE);
-	if (infile == NULL) {
-		EM_DEBUG_EXCEPTION("File open failed [%s]", public_cert_path);
-		err = EMAIL_ERROR_FILE_NOT_FOUND;
-		goto FINISH_OFF;
-	}
-
-	/* Load the p7s file */
-	pkcs7 = d2i_PKCS7_bio(infile, NULL);
-	if (pkcs7 == NULL) {
-		EM_DEBUG_EXCEPTION("smime.p7s load failed");
-		err = EMAIL_ERROR_CERTIFICATE_LOAD_FAIL;
-		goto FINISH_OFF;
-	}
-
-	/* Extract the signature in pkcs7 */
-	certs = PKCS7_get0_signers(pkcs7, NULL, 0);
-	if (certs == NULL) {
-		EM_DEBUG_EXCEPTION("smime.p7s extract failed");
-		err = EMAIL_ERROR_CERTIFICATE_LOAD_FAIL;
-		goto FINISH_OFF;
-	}
-	
-	/* Change from the p7s to the pem file */
-	if (sk_X509_num(certs) > 1) {
-		EM_DEBUG_EXCEPTION("Has one or more signature.\nIt is not support");
-		err = EMAIL_ERROR_UNKNOWN;
-		goto FINISH_OFF;
-	}
-
-	cert = sk_X509_value(certs, 0);
-	cert_size = i2d_X509(cert, &cert_string);
-	if (cert_size < 0) {
-		EM_DEBUG_EXCEPTION("Fail to convert certificate");
-		err = EMAIL_ERROR_UNKNOWN;
-		goto FINISH_OFF;
-	}
-
-	/* Initilize the certificate and CERT_CONTEXT buffer */
-	cert_string = (unsigned char *)em_malloc(sizeof(unsigned char *) * cert_size);
-	if (cert_string == NULL) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
-		err = EMAIL_ERROR_OUT_OF_MEMORY;
-		goto FINISH_OFF;
-	}
-
-	context->certBuf = (cert_svc_mem_buff *)em_malloc(sizeof(cert_svc_mem_buff));
-	if (context->certBuf == NULL) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
-		err = EMAIL_ERROR_OUT_OF_MEMORY;
-		goto FINISH_OFF;
-	}
-
-	/* Set CERT_CONTEXT structure */
-	context->certBuf->data = cert_string;
-	context->certBuf->size = cert_size;
-	
-	ret = true;
-
-FINISH_OFF:
-
-	if (infile) 
-		BIO_free(infile);
-	
-	if (pkcs7)
-		PKCS7_free(pkcs7);
-	
-	if (cert)
-		X509_free(cert);
-
-	if (ret) {
-		if (certificates != NULL)
-			*certificates = certs;
-
-		if (err_code != NULL)
-			*err_code = err;
-	} else {
-		if (certs)
-			sk_X509_free(certs);
-
-		EM_SAFE_FREE(cert_string);
-	}
-
-	EVP_cleanup();
-
-	EM_DEBUG_FUNC_END();
-
-	return ret;
-}
-/*
 static char *emcore_store_public_certificate(STACK_OF(X509) *certificates, char *email_address, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -263,7 +153,7 @@ static char *emcore_store_public_certificate(STACK_OF(X509) *certificates, char 
 	outfile = BIO_new_file(file_path, WRITE_MODE);
 	if (outfile == NULL) {
 		EM_DEBUG_EXCEPTION("File open failed[write mode]");
-		err = EMAIL_ERROR_FILE_NOT_OPEN;
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 
@@ -327,7 +217,122 @@ FINISH_OFF:
 
 	return ret;	
 }
+#if 0
+INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X509 **cert, STACK_OF(X509) **ca, int *err_code)
+{
+	EM_DEBUG_FUNC_BEGIN("certificate : [%s]", certificate);
+	int err = EMAIL_ERROR_NONE;
+	int ret = false;
+	int key_size = 0;
+	char *private_key = NULL;
 
+	/* Variable for certificate */
+	X509 *t_cert = NULL;
+//	STACK_OF(X509) *t_ca = NULL;
+	
+	/* Variable for private key */
+	EVP_PKEY *t_pri_key = NULL;
+	PKCS8_PRIV_KEY_INFO *p8inf = NULL;
+	const unsigned char *cu_private_key = NULL;
+	
+	CertSvcString csstring;
+	CertSvcInstance cert_instance;
+	CertSvcCertificate csc_cert;
+	CertSvcCertificateList certificate_list;
+
+	if (certificate == NULL) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	/* Create instance */
+	err = certsvc_instance_new(&cert_instance);
+	if (err != CERTSVC_SUCCESS) {
+		EM_DEBUG_EXCEPTION("certsvc_instance_new failed : [%d]", err);
+		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	/* Make the pfxID string */
+	err = certsvc_string_new(cert_instance, certificate, strlen(certificate), &csstring);
+	if (err != CERTSVC_SUCCESS) {
+		EM_DEBUG_EXCEPTION("certsvc_string_new failed : [%d]", err);
+		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	/* Load the certificate list of pkcs12 type */
+	err = certsvc_pkcs12_load_certificate_list(cert_instance, csstring, &certificate_list);
+	if (err != CERTSVC_SUCCESS) {
+		EM_DEBUG_EXCEPTION("certsvc_pkcs12_load_certificate_list failed : [%d]", err);
+		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	/* Get a certificate */
+	err = certsvc_certificate_list_get_one(certificate_list, 0, &csc_cert);
+	if (err != CERTSVC_SUCCESS) {
+		EM_DEBUG_EXCEPTION("certsvc_certificate_list_get_one failed : [%d]", err);
+		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	/* Convert from char to X509 */
+	err = certsvc_certificate_dup_x509(csc_cert, &t_cert);
+	if (t_cert == NULL || err != CERTSVC_SUCCESS) {
+		EM_DEBUG_EXCEPTION("certsvc_certificate_dup_x509 failed");
+		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	/* Get the private key */
+	err = certsvc_pkcs12_private_key_dup(cert_instance, csstring, &private_key, &key_size);
+	if (err != CERTSVC_SUCCESS) {
+		EM_DEBUG_EXCEPTION("certsvc_pkcs12_private_key_dup failed : [%d]", err);
+		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	EM_DEBUG_LOG("private_key : [%s], key_size : [%d]", private_key, key_size);
+
+	/* Convert char to pkey */
+	cu_private_key = (const unsigned char *)private_key;
+	p8inf = d2i_PKCS8_PRIV_KEY_INFO(NULL, &cu_private_key, key_size);
+	if (p8inf == NULL) {
+		EM_DEBUG_EXCEPTION("d2i_PKCS8_PRIV_KEY_INFO failed");
+		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
+		goto FINISH_OFF;
+	}
+	t_pri_key = EVP_PKCS82PKEY(p8inf);
+
+	ret = true;
+	
+FINISH_OFF:
+
+	if (true) {
+		if (cert)
+			*cert = t_cert;
+
+		if (pri_key)
+			*pri_key = t_pri_key;
+	} else {
+		X509_free(t_cert);
+		EVP_PKEY_free(t_pri_key);
+	}
+
+	if (p8inf)
+		PKCS8_PRIV_KEY_INFO_free(p8inf);
+
+	if (private_key)
+		EM_SAFE_FREE(private_key);
+
+	if (err_code)
+		*err_code = err;
+
+	return ret;
+}
+#endif
 INTERNAL_FUNC int emcore_add_public_certificate(char *public_cert_path, char *save_name, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("Path [%s], filename [%s]", public_cert_path, save_name);
@@ -507,102 +512,72 @@ FINISH_OFF:
 
 INTERNAL_FUNC int emcore_verify_signature(char *p7s_file_path, char *mime_entity, int *validity, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("path[%s], mime_entiy[%s]", p7s_file_path, mime_entity);
+	EM_DEBUG_FUNC_BEGIN("path : [%s], mime_entity : [%s]", p7s_file_path, mime_entity);
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	int i = 0, j = 0;
+	int t_validity = 0;
+	int flags = PKCS7_NOVERIFY;
 
-	int p_validity = 0;
-	int msg_len = 0;
-	unsigned char *msg = NULL;
-	int sig_len = 0;
-	unsigned char *sig = NULL;
-	unsigned char *tmp_sig = NULL;
-	FILE *fp_msg = NULL;
-	FILE *fp_sig = NULL;
-	size_t f_size = 0;
+	BIO *bio_p7s = NULL;
 
-	CERT_CONTEXT *context = NULL;
+	BIO *bio_indata = NULL;
 
-	context = cert_svc_cert_context_init();
+	PKCS7 *pkcs7_p7s = NULL;
 
-	if (!emcore_load_public_of_p7s(context, p7s_file_path, NULL, &err)) {
-		EM_DEBUG_EXCEPTION("emcore_load_public_of_p7s failed");
+	/* Initialize */
+	OpenSSL_add_all_algorithms();
+
+	/* Open p7s file */
+	bio_p7s = BIO_new_file(p7s_file_path, INMODE);
+	if (!bio_p7s) {
+		EM_DEBUG_EXCEPTION("File open failed");
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	fp_msg = fopen(mime_entity, "rb");
-	fseek(fp_msg, 0L, SEEK_END);
-	msg_len = ftell(fp_msg);
-	fseek(fp_msg, 0L, SEEK_SET);
-	msg = (unsigned char *)em_malloc(sizeof(unsigned char) * (msg_len + 1));
-	if (msg == NULL) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
-		err = EMAIL_ERROR_OUT_OF_MEMORY;
+	/* Open input data file */
+	bio_indata = BIO_new_file(mime_entity, INMODE);
+	if (!bio_p7s) {
+		EM_DEBUG_EXCEPTION("File open failed");
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	if ((f_size = fread(msg, sizeof(unsigned char), msg_len, fp_msg)) < 0) {
-		EM_DEBUG_EXCEPTION("File read failed");
-		goto FINISH_OFF;		
-	}
-
-	fp_sig = fopen(p7s_file_path, "rb");
-	fseek(fp_sig, 0L, SEEK_END);
-	sig_len = ftell(fp_sig);
-	fseek(fp_sig, 0L, SEEK_SET);
-	sig = (unsigned char *)em_malloc(sizeof(unsigned char) * (sig_len + 1));
-	if (sig == NULL) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
-		err = EMAIL_ERROR_OUT_OF_MEMORY;
-		goto FINISH_OFF;
-	}
-	tmp_sig = (unsigned char *)em_malloc(sizeof(unsigned char) * (sig_len + 1));
-	if (tmp_sig == NULL) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
-		err = EMAIL_ERROR_OUT_OF_MEMORY;
+	/* Load the p7s file */
+	pkcs7_p7s = d2i_PKCS7_bio(bio_p7s, NULL);
+	if (!pkcs7_p7s) {
+		EM_DEBUG_EXCEPTION("d2i_PKCS7_bio failed");
+		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	if ((f_size = fread(sig, sizeof(unsigned char), sig_len, fp_sig)) < 0) {
-		EM_DEBUG_EXCEPTION("File read failed");
+	if (!PKCS7_verify(pkcs7_p7s, NULL, NULL, bio_indata, NULL, flags)) {
+		EM_DEBUG_EXCEPTION("PKCS7_verify failed");
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	for(i = 0; i < sig_len; i++) {
-		if(sig[i] != '\n') {
-			tmp_sig[j] = sig[i];
-			j++;
-		}
-	}
-	
-	err = cert_svc_verify_signature(context, msg, msg_len, tmp_sig, NULL, &p_validity);
-	if (err != CERT_SVC_ERR_NO_ERROR) {
-		EM_DEBUG_EXCEPTION("Verify signature failed");
-		goto FINISH_OFF;
-	}
+	t_validity = 1;
 
 	ret = true;
 
 FINISH_OFF:
 
-	EM_SAFE_FREE(tmp_sig);
+	EVP_cleanup();
 
-	EM_SAFE_FREE(sig);
+	if (pkcs7_p7s)
+		PKCS7_free(pkcs7_p7s);
 
-	EM_SAFE_FREE(msg);
+	if (bio_p7s)
+		BIO_free(bio_p7s);
 
-	if (fp_sig != NULL)
-		fclose(fp_sig);
-	
-	if (fp_msg != NULL)
-		fclose(fp_msg);
+	if (bio_indata)
+		BIO_free(bio_indata);
 
-	cert_svc_cert_context_final(context);
+	if (validity)
+		*validity = t_validity;
 
-	
-
-	if (err_code != NULL)
+	if (err_code)
 		*err_code = err;
 
 	EM_DEBUG_FUNC_END();

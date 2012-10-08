@@ -64,9 +64,11 @@ extern "C" {
  */
 EXPORT_API int email_show_user_message(int id, email_action_t action, int error_code);
 
-EXPORT_API int email_open_eml_file(char *eml_file_path, email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count);
+EXPORT_API int email_parse_mime_file(char *eml_file_path, email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count);
 
-EXPORT_API int email_delete_eml_data(email_mail_data_t *input_mail_data);
+EXPORT_API int email_write_mime_file(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data, int input_attachment_count, char **output_file_path);
+
+EXPORT_API int email_delete_parsed_data(email_mail_data_t *input_mail_data);
 
 EXPORT_API int email_get_mime_entity(char *mime_path, char **mime_entity);
 #ifdef __cplusplus

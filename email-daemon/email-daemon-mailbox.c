@@ -46,7 +46,7 @@
 extern int g_local_activity_run;
 #endif
 
-INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(int account_id, char* mailbox, unsigned* handle, int* err_code)
+INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(int account_id, char* mailbox, int *handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d] mailbox[%p] err_code[%p]", account_id, mailbox, err_code);
 
@@ -164,7 +164,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_add_mailbox(email_mailbox_t* new_mailbox, int on_server, unsigned* handle, int* err_code)
+INTERNAL_FUNC int emdaemon_add_mailbox(email_mailbox_t* new_mailbox, int on_server, int *handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("new_mailbox[%p], err_code[%p]", new_mailbox, err_code);
 
@@ -223,7 +223,7 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC int emdaemon_update_mailbox(email_mailbox_t* old_mailbox, email_mailbox_t* new_mailbox, int on_server, unsigned* handle, int* err_code)
+INTERNAL_FUNC int emdaemon_update_mailbox(email_mailbox_t* old_mailbox, email_mailbox_t* new_mailbox, int on_server, int *handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("old_mailbox[%p], new_mailbox[%p], on_server[%d], handle[%p], err_code[%p]", old_mailbox, new_mailbox, on_server, handle, err_code);
 
@@ -254,32 +254,6 @@ INTERNAL_FUNC int emdaemon_update_mailbox(email_mailbox_t* old_mailbox, email_ma
 	email_event_t event_data;
 	memset(&event_data, 0x00, sizeof(email_event_t));
 
-
-	/* Unsupport sync with server */
-	/*  on_server is allowed to be only 0 when server_type is EMAIL_SERVER_TYPE_ACTIVE_SYNC */
-	/*
-	if ( ref_account->receiving_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC ) {
-		on_server = 0;
-	}
-	if ( on_server ) {
-		event_data.type = EMAIL_EVENT_UPDATE_MAILBOX;
-		event_data.account_id = new_mailbox->account_id;
-		event_data.event_param_data_1 = ;
-		event_data.event_param_data_2 = ;
-		event_data.event_param_data_4 = on_server;
-		event_data.event_param_data_3 = GINT_TO_POINTER(new_mailbox->mailbox_type);
-		if(!emcore_insert_event(&event_data, handle, &err))  {
-			EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", err);
-			goto FINISH_OFF;
-		}
-	}
-	else {
-		if (!emcore_modify(old_mailbox, new_mailbox, on_server, &err))  {
-			EM_DEBUG_EXCEPTION("emcore_create failed [%d]", err);
-			goto FINISH_OFF;
-		}
-	}
-	*/
 	/*  Update mailbox information only on local db */
 	if (!emcore_update_mailbox(old_mailbox, new_mailbox, &err))  {
 		EM_DEBUG_EXCEPTION("emcore_modify failed [%d]", err);
@@ -328,9 +302,32 @@ FINISH_OFF:
 	return err;
 }
 
+INTERNAL_FUNC int emdaemon_set_local_mailbox(int input_mailbox_id, int input_is_local_mailbox)
+{
+	EM_DEBUG_FUNC_BEGIN("input_mailbox_id [%d], input_mailbox_type [%d]", input_mailbox_id, input_is_local_mailbox);
+
+	/*  default variable */
+	int err = EMAIL_ERROR_NONE;
+
+	if (input_mailbox_id <= 0)  {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	if ( (err = emstorage_set_local_mailbox(input_mailbox_id, input_is_local_mailbox, true)) != EMAIL_ERROR_NONE)  {
+		EM_DEBUG_EXCEPTION("emstorage_set_local_mailbox failed [%d]", err);
+		goto FINISH_OFF;
+	}
 
 
-INTERNAL_FUNC int emdaemon_delete_mailbox(int input_mailbox_id, int on_server, unsigned* handle, int* err_code)
+FINISH_OFF:
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
+
+INTERNAL_FUNC int emdaemon_delete_mailbox(int input_mailbox_id, int on_server, int *handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("input_mailbox_id[%d], err_code[%p]", input_mailbox_id, err_code);
 	
@@ -432,7 +429,7 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC int emdaemon_sync_header(int input_account_id, int input_mailbox_id, unsigned* handle, int* err_code)
+INTERNAL_FUNC int emdaemon_sync_header(int input_account_id, int input_mailbox_id, int *handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id[%d], input_mailbox_id[%d], handle[%p], err_code[%p]", input_account_id, input_mailbox_id, handle, err_code);
 	
@@ -502,7 +499,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_set_mail_slot_size_of_mailbox(int account_id, int mailbox_id, int new_slot_size, unsigned* handle, int *err_code)
+INTERNAL_FUNC int emdaemon_set_mail_slot_size_of_mailbox(int account_id, int mailbox_id, int new_slot_size, int *handle, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id [%d], mailbox_id[%d], handle[%p], err_code[%p]", account_id, mailbox_id, handle, err_code);
 
@@ -537,7 +534,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_rename_mailbox(int input_mailbox_id, char *input_mailbox_path, char *input_mailbox_alias, int input_on_server, unsigned *output_handle)
+INTERNAL_FUNC int emdaemon_rename_mailbox(int input_mailbox_id, char *input_mailbox_path, char *input_mailbox_alias, int input_on_server, int *output_handle)
 {
 	EM_DEBUG_FUNC_BEGIN("input_mailbox_id [%d], input_mailbox_path [%p], input_mailbox_alias[%p], input_on_server [%d], output_handle[%p]", input_mailbox_id, input_mailbox_path, input_mailbox_alias, input_on_server, output_handle);
 

@@ -39,6 +39,7 @@ INCLUDE_DIRECTORIES(
 
 INCLUDE(FindPkgConfig)
 pkg_check_modules(main_pkgs REQUIRED glib-2.0 dlog dbus-1 gthread-2.0  db-util openssl uw-imap-toolkit vconf contacts-service alarm-service mm-player devman_haptic heynoti)
+# _TIZEN_PUBLIC_
 
 
 FOREACH(flag ${main_pkgs_CFLAGS})
