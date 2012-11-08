@@ -355,6 +355,7 @@ chmod 644 /opt/dbspace/.email-service.db-journal
 %postun -p /sbin/ldconfig
 
 %files
+%manifest email-service.manifest
 %exclude /usr/bin/email-test-app
 %{_libdir}/lib*.so.*
 %{_bindir}/email-service
