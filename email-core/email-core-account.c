@@ -175,7 +175,7 @@ INTERNAL_FUNC int emcore_validate_account_with_account_info(email_account_t *acc
 				goto FINISH_OFF;
 			}
 
-		    if (!emcore_connect_to_remote_mailbox_with_account_info(account, (char *)ENCODED_PATH_SMTP, (void **)&stream, &err) || !stream)  {
+			if (!emcore_connect_to_remote_mailbox_with_account_info(account, (char *)ENCODED_PATH_SMTP, (void **)&stream, &err) || !stream)  {
 				EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed 2 - %d", err);
 				if (EMAIL_ERROR_AUTHENTICATE == err || EMAIL_ERROR_LOGIN_FAILURE == err) {	/*  wrong password or etc */
 					EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed  :  Login or Authentication fail 2 - %d", err);
@@ -185,7 +185,7 @@ INTERNAL_FUNC int emcore_validate_account_with_account_info(email_account_t *acc
 				}
 				account->outgoing_server_secure_connection = 0x01;	/*  restore to the previous value */
 				goto FINISH_OFF;
-		    }
+			}
 
 			if (!emcore_check_thread_status())  {
 				err = EMAIL_ERROR_CANCELLED;

@@ -136,9 +136,9 @@ static email_account_t* duplicate_account(email_account_t *src)
 	dst->account_name              = EM_SAFE_STRDUP(src->account_name);
 	dst->incoming_server_address   = EM_SAFE_STRDUP(src->incoming_server_address);
 	dst->user_email_address        = EM_SAFE_STRDUP(src->user_email_address);
-	dst->incoming_server_user_name = EM_SAFE_STRDUP(src->user_email_address);
+	dst->incoming_server_user_name = EM_SAFE_STRDUP(src->incoming_server_user_name);
 	dst->incoming_server_password  = EM_SAFE_STRDUP(src->incoming_server_password);
-	dst->outgoing_server_address   = EM_SAFE_STRDUP(src->incoming_server_password);
+	dst->outgoing_server_address   = EM_SAFE_STRDUP(src->outgoing_server_address);
 	dst->outgoing_server_user_name = EM_SAFE_STRDUP(src->outgoing_server_user_name);
 	dst->outgoing_server_password  = EM_SAFE_STRDUP(src->outgoing_server_password);
 	dst->user_display_name         = EM_SAFE_STRDUP(src->user_display_name);
