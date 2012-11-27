@@ -6,13 +6,11 @@
                 </provide>
                 <request>
                         <smack request="email-service::db" type="rw"/>
-                        <smack request="connman" type="w"/>
                         <smack request="system::use_internet" type="w"/>
                 </request>
                 <permit>
                         <smack permit="system::use_internet" type="rwx"/>
                         <smack permit="webkit2-efl" type="rx"/>
-                        <smack permit="connman" type="w"/>
                 </permit>
         </define>
         <assign>
