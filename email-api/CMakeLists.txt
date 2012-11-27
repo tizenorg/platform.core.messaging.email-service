@@ -42,7 +42,7 @@ INCLUDE_DIRECTORIES(
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(api_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf heynoti db-util contacts-service uw-imap-toolkit) 
+pkg_check_modules(api_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf heynoti db-util contacts-service2 uw-imap-toolkit) 
 
 FOREACH(flag ${api_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")

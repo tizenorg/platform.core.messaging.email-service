@@ -72,7 +72,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(storage_pkgs REQUIRED drm-client glib-2.0 dlog db-util openssl vconf secure-storage dbus-1 contacts-service)
+pkg_check_modules(storage_pkgs REQUIRED drm-client glib-2.0 dlog db-util openssl vconf secure-storage dbus-1 contacts-service2)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${storage_pkgs_CFLAGS})
@@ -167,7 +167,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf contacts-service secure-storage openssl accounts-svc mm-player mm-session devman_haptic alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore)
+pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf contacts-service2 secure-storage openssl accounts-svc mm-player mm-session devman_haptic alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${core_pkgs_CFLAGS})

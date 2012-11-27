@@ -44,7 +44,7 @@
 #include <unistd.h>
 
 #include <vconf.h> 
-#include <contacts-svc.h>
+#include <contacts.h>
 
 #include "email-internal-types.h"
 #include "c-client.h"
@@ -203,6 +203,39 @@ static void _print_body(BODY *body, int recursive)
 }
 #endif /*  FEATURE_CORE_DEBUG */
 
+static int convert_contact_err_to_email_err(int contact_err)
+{
+	int err = EMAIL_ERROR_NONE;
+
+	switch (contact_err) {
+	case CONTACTS_ERROR_NONE :
+		err = EMAIL_ERROR_NONE;
+		break;
+	case CONTACTS_ERROR_OUT_OF_MEMORY :
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		break;
+	case CONTACTS_ERROR_INVALID_PARAMETER :
+		err = EMAIL_ERROR_INVALID_PARAM;
+		break;
+	case CONTACTS_ERROR_NO_DATA :
+		err = EMAIL_ERROR_DATA_NOT_FOUND;
+		break;
+	case CONTACTS_ERROR_DB :
+		err = EMAIL_ERROR_DB_FAILURE;
+		break;
+	case CONTACTS_ERROR_IPC :
+		err = EMAIL_ERROR_IPC_CONNECTION_FAILURE;
+		break;
+	case CONTACTS_ERROR_SYSTEM:
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
+		break;
+	case CONTACTS_ERROR_INTERNAL:
+	default:
+		err = EMAIL_ERROR_UNKNOWN;
+		break;
+	}
+	return err;
+}
 
 static int pop3_mail_delete(MAILSTREAM *stream, int msgno, int *err_code)
 {
@@ -977,35 +1010,317 @@ int emcore_get_mail_contact_info(email_mail_contact_info_t *contact_info, char *
 	return ret;
 }
 
-INTERNAL_FUNC int emcore_get_mail_display_name(CTSvalue *contact_name_value, char **contact_display_name)
+int emcore_search_contact_info_by_address(const char *contact_uri, int property_id, char *address, int limit, contacts_record_h *contacts_record)
 {
-	EM_DEBUG_FUNC_BEGIN("contact_name_value[%p], contact_display_name[%p]", contact_name_value, contact_display_name);
-	char *display = NULL;
-	const char *first = contacts_svc_value_get_str(contact_name_value, CTS_NAME_VAL_FIRST_STR);
-	const char *last = contacts_svc_value_get_str(contact_name_value, CTS_NAME_VAL_LAST_STR);
+	EM_DEBUG_FUNC_BEGIN();
+	int contact_err = CONTACTS_ERROR_NONE;
+	
+	contacts_query_h query = NULL;
+	contacts_filter_h filter = NULL;
+	contacts_list_h list = NULL;
 
-	EM_DEBUG_LOG(">>>>>> first[%s] last[%s]", first, last);
-	if (first != NULL && last != NULL) {
-		/* if (CTS_ORDER_NAME_FIRSTLAST  == contacts_svc_get_name_order()) */
-		if (CTS_ORDER_NAME_FIRSTLAST == contacts_svc_get_order(CTS_ORDER_OF_DISPLAY))
-			display = g_strconcat(first, " ", last, NULL);
-		else
-			display = g_strconcat(last, " ", first, NULL);
-
+	if ((contact_err = contacts_query_create(contact_uri, &query)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_query_create failed");
+		goto FINISH_OFF;
 	}
-	else if (first != NULL || last != NULL) {
-		if (first != NULL)
-			display = (char *)EM_SAFE_STRDUP(first);
-		else
-			display = (char *)EM_SAFE_STRDUP(last);
+	
+	if ((contact_err = contacts_filter_create(contact_uri, &filter)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_filter_create failed");
+		goto FINISH_OFF;
 	}
-	else
-		display = g_strdup(contacts_svc_value_get_str(contact_name_value, CTS_NAME_VAL_FIRST_STR));
 
-	if (contact_display_name != NULL)
-		*contact_display_name = display;
+	if ((contact_err = contacts_filter_add_str(filter, property_id, CONTACTS_MATCH_EXACTLY, address)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_filter_add_str failed");
+		goto FINISH_OFF;
+	}
+	
+	if ((contact_err = contacts_query_set_filter(query, filter)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_query_set_filter failed");
+		goto FINISH_OFF;
+	}
 
+	if ((contact_err = contacts_db_get_records_with_query(query, 0, limit, &list)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_db_get_record_with_query failed");
+		goto FINISH_OFF;
+	}
+
+	if ((contact_err = contacts_list_get_current_record_p(list, contacts_record)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_list_get_current_record_p failed");
+		goto FINISH_OFF;
+	}
+
+FINISH_OFF:
+
+	if (query != NULL)
+		contacts_query_destroy(query);
+
+	if (filter != NULL)
+		contacts_filter_destroy(filter);
+
+	if (list != NULL)
+		contacts_list_destroy(list, false);
+
+	return contact_err;
+}
+
+int emcore_set_contacts_log(int account_id, char *email_address, char *subject, time_t date_time, email_action_t action, int *err_code)
+{
+	EM_DEBUG_FUNC_BEGIN("account_id : [%d], address : [%p], subject : [%s], action : [%d], date_time : [%d]", account_id, email_address, subject, action, (int)date_time);
+	
+	int ret = true;
+	int contacts_error = CONTACTS_ERROR_NONE;
+
+	int person_id = 0;
+	int action_type = 0;
+	
+	contacts_record_h phone_record = NULL;
+	contacts_record_h person_record = NULL;	
+
+	if ((contacts_error = contacts_connect2()) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("Open connect service failed");
+		goto FINISH_OFF;
+	}
+
+	if ((contacts_error = contacts_record_create(_contacts_phone_log._uri, &phone_record)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_query_create failed");
+		goto FINISH_OFF;
+	}
+
+	/* Set email address */
+	if ((contacts_error = contacts_record_set_str(phone_record, _contacts_phone_log.address, email_address)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_record_set_str [address] failed");
+		goto FINISH_OFF;
+	}
+
+	/* Search contact person info */
+	if ((contacts_error = emcore_search_contact_info_by_address(_contacts_person_email._uri, _contacts_person_email.email, email_address, 1, &person_record)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_LOG("emcore_search_contact_info_by_address failed");
+		EM_DEBUG_LOG("Not match person");
+	} else {
+		/* Get person_id in contacts_person_email record  */
+		if (person_record  && (contacts_error = contacts_record_get_int(person_record, _contacts_person_email.person_id, &person_id)) != CONTACTS_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("contacts_record_get_str failed");
+			goto FINISH_OFF;
+		}
+
+		/* Set the person id */
+		if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.person_id, person_id)) != CONTACTS_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("contacts_record_set_int [person id] failed");
+			goto FINISH_OFF;
+		}
+	}
+
+	switch (action) {
+	case EMAIL_ACTION_SEND_MAIL :
+		action_type = CONTACTS_PLOG_TYPE_EMAIL_SENT;
+		break;
+	case EMAIL_ACTION_SYNC_HEADER :
+		action_type = CONTACTS_PLOG_TYPE_EMAIL_RECEIVED;
+		break;
+	default :
+		EM_DEBUG_EXCEPTION("Unknow action type");
+		goto FINISH_OFF;
+	}
+
+	/* Set log type */
+	if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.log_type, action_type)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_record_set_int [log_type] failed");
+		goto FINISH_OFF;
+	}
+
+	/* Set log time */
+	if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.log_time, (int)date_time)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_record_set_str [address] failed");
+		goto FINISH_OFF;
+	}
+
+	/* Set subject */
+	if ((contacts_error = contacts_record_set_str(phone_record, _contacts_phone_log.extra_data2, subject)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_record_set_str [subject] failed");
+		goto FINISH_OFF;
+	}
+
+	/* Set Mail id */
+	if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.extra_data1, account_id)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_record_set_int [mail id] failed");
+		goto FINISH_OFF;
+	}
+
+	/* Insert the record in DB */
+	if ((contacts_error = contacts_db_insert_record(phone_record, NULL)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_db_insert_record failed");
+		goto FINISH_OFF;
+	}
+
+
+FINISH_OFF:
+
+	if (phone_record != NULL)
+		contacts_record_destroy(phone_record, false);
+
+	if (person_record != NULL)
+		contacts_record_destroy(person_record, false);
+
+	if ((contacts_error = contacts_disconnect2()) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("Open connect service failed");
+		goto FINISH_OFF;
+	}
+
+	if (contacts_error != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts error : [%d]", contacts_error);
+		ret = false;
+	}
+
+	if (err_code != NULL)
+		*err_code = convert_contact_err_to_email_err(contacts_error);
+
+	return ret;
+}
+
+INTERNAL_FUNC int emcore_set_sent_contacts_log(emstorage_mail_tbl_t *input_mail_data, int *err_code)
+{
+	EM_DEBUG_FUNC_BEGIN("input_mail_data : [%p]", input_mail_data);
+	
+	int i = 0, ret = false;
+	int err = EMAIL_ERROR_NONE;
+	char email_address[MAX_EMAIL_ADDRESS_LENGTH];
+	char *address_array[3] = {input_mail_data->full_address_to, input_mail_data->full_address_cc, input_mail_data->full_address_bcc};
+	ADDRESS *addr = NULL;
+	ADDRESS *p_addr = NULL;
+
+	for (i = 0; i < 3; i++) {
+		if (address_array[i] && address_array[i][0] != 0) {
+			rfc822_parse_adrlist(&addr, address_array[i], NULL);
+			for (p_addr = addr ; p_addr ;p_addr = p_addr->next) {
+				SNPRINTF(email_address, MAX_EMAIL_ADDRESS_LENGTH, "%s@%s", addr->mailbox, addr->host);
+				if (!emcore_set_contacts_log(input_mail_data->account_id, email_address, input_mail_data->subject, input_mail_data->date_time, EMAIL_ACTION_SEND_MAIL, &err)) {
+					EM_DEBUG_EXCEPTION("emcore_set_contacts_log failed : [%d]", err);
+					goto FINISH_OFF;
+				}
+			}
+		
+			if (addr) {	
+				mail_free_address(&addr);
+				addr = NULL;
+			}
+		}
+	}
+
+	ret = true;
+
+FINISH_OFF:
+
+	if (addr) 
+		mail_free_address(&addr);
+
+	if (err_code)
+		*err_code = err;
+
+	EM_DEBUG_FUNC_END();
+	return ret;
+}
+
+INTERNAL_FUNC int emcore_set_received_contacts_log(emstorage_mail_tbl_t *input_mail_data, int *err_code)
+{
+	EM_DEBUG_FUNC_BEGIN("input_mail_data : [%p]", input_mail_data);
+
+	if (!emcore_set_contacts_log(input_mail_data->account_id, input_mail_data->email_address_sender, input_mail_data->subject, input_mail_data->date_time, EMAIL_ACTION_SYNC_HEADER, err_code)) {
+		EM_DEBUG_EXCEPTION("emcore_set_contacts_log failed");	
+		return false;
+	}
+
+	EM_DEBUG_FUNC_END();
 	return true;
+}
+
+INTERNAL_FUNC int emcore_delete_contacts_log(int account_id, int *err_code)
+{
+	EM_DEBUG_FUNC_BEGIN("account_id : [%d]", account_id);
+
+	int ret = false;
+	int contacts_error = CONTACTS_ERROR_NONE;
+
+	if ((contacts_error = contacts_connect2()) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("Open connect service failed");
+		goto FINISH_OFF;
+	}
+	
+	/* Delete record of the account id */
+	if ((contacts_error = contacts_phone_log_delete(CONTACTS_PHONE_LOG_DELETE_BY_EMAIL_EXTRA_DATA1, account_id)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_phone_log_delete failed");
+		goto FINISH_OFF;
+	}
+	
+	if ((contacts_error = contacts_disconnect2()) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("Open connect service failed");
+		goto FINISH_OFF;
+	}
+
+	ret = true;
+
+FINISH_OFF:
+
+	if (err_code != NULL)
+		*err_code = convert_contact_err_to_email_err(contacts_error);
+
+	EM_DEBUG_FUNC_END();
+	return ret;
+}
+
+INTERNAL_FUNC int emcore_get_mail_display_name(char *email_address, char **contact_display_name, int *err_code)
+{
+	EM_DEBUG_FUNC_BEGIN("contact_name_value[%s], contact_display_name[%p]", email_address, contact_display_name);
+
+	int contact_err = 0;
+	int ret = false;
+	char *display = NULL;
+	/* Contact variable */
+	contacts_record_h record = NULL;
+
+	if ((contact_err = emcore_search_contact_info_by_address(_contacts_contact_email._uri, _contacts_contact_email.email, email_address, 1, &record)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_search_contact_info_by_address failed");
+		goto FINISH_OFF;
+	}
+/*
+	if ((contact_err = contacts_list_get_count(list, &list_count)) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_list_get_count failed");
+		goto FINISH_OFF;
+	}
+
+	if (list_count > 1) {
+		EM_DEBUG_EXCEPTION("Duplicated contacts info");
+		contact_err = CONTACTS_ERROR_INTERNAL;
+		goto FINISH_OFF;
+	} else if (list_count == 0) {
+		EM_DEBUG_EXCEPTION("Not found contact info");
+		contact_err = CONTACTS_ERROR_NO_DATA;
+		goto FINISH_OFF;
+	}
+*/
+
+	if (contacts_record_get_str(record, _contacts_contact_email.display_name, &display) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("contacts_record_get_str failed");
+		goto FINISH_OFF;
+	}
+
+	ret = true;
+
+FINISH_OFF:
+
+	if (record != NULL)
+		contacts_record_destroy(record, false);
+
+	if (ret) {
+		*contact_display_name = display;
+	} else {
+		*contact_display_name = NULL;
+		EM_SAFE_FREE(display);
+	}
+
+	if (err_code != NULL)
+		*err_code = convert_contact_err_to_email_err(contact_err);
+
+	return ret;
 }
 
 int emcore_get_mail_contact_info_with_update(email_mail_contact_info_t *contact_info, char *full_address, int mail_id, int *err_code)
@@ -1026,9 +1341,6 @@ int emcore_get_mail_contact_info_with_update(email_mail_contact_info_t *contact_
 	int contact_name_len = 0;
 	char temp_string[1024] = { 0 , };
 	int is_saved = 0;
-	CTSstruct *contact =  NULL;
-	CTSvalue *contact_name_value = NULL;
-	int contact_index = -1;
 	char *contact_display_name = NULL;
 	char *contact_display_name_from_contact_info = NULL;
 	int contact_display_name_len = 0;
@@ -1114,79 +1426,58 @@ int emcore_get_mail_contact_info_with_update(email_mail_contact_info_t *contact_
 	
 		is_searched = false;
 		EM_DEBUG_LOG(" >>>>> emcore_get_mail_contact_info - 10");
-			
-		err = contacts_svc_find_contact_by(CTS_FIND_BY_EMAIL, email_address);
-		if (err > CTS_SUCCESS) {
-			contact_index = err;
-			if ((err = contacts_svc_get_contact(contact_index, &contact)) == CTS_SUCCESS) {
-				/*  get  contact name */
-				if (contacts_svc_struct_get_value(contact, CTS_CF_NAME_VALUE, &contact_name_value) == CTS_SUCCESS) {	/*  set contact display name name */
-					contact_info->contact_id = contact_index;		/*  NOTE :  This is valid only if there is only one address. */
-					emcore_get_mail_display_name(contact_name_value, &contact_display_name_from_contact_info);
+	
+		if (emcore_get_mail_display_name(email_address, &contact_display_name_from_contact_info, &err) && err == EMAIL_ERROR_NONE) {
+			contact_display_name = contact_display_name_from_contact_info;
 
-					contact_display_name = contact_display_name_from_contact_info;
+			EM_DEBUG_LOG(">>> contact_name[%s]", contact_display_name);
+			/*  Make display name string */
+			is_searched = true;
 
-					
-					EM_DEBUG_LOG(">>> contact_index[%d]", contact_index);
-					EM_DEBUG_LOG(">>> contact_name[%s]", contact_display_name);
-
-					/*  Make display name string */
-					if (contact_display_name != NULL) {
-						is_searched = true;
-
-						if (mail_id == 0 || (contact_name_len == 0))		 {	/*  save only the first address information - 09-SEP-2010 */
-							contact_display_name_len = strlen(contact_display_name);
-							if (contact_name_len + contact_display_name_len >= contact_name_buffer_size) {	/*  re-alloc memory */
-								char *temp = contact_name;
-								contact_name_buffer_size += contact_name_buffer_size;
-								contact_name = (char  *)calloc(1, contact_name_buffer_size); 
-								if (contact_name == NULL) {
-									EM_DEBUG_EXCEPTION("Memory allocation failed.");
-									EM_SAFE_FREE(temp);
-									goto FINISH_OFF;
-								}
-								snprintf(contact_name, contact_name_buffer_size, "%s", temp);
-								EM_SAFE_FREE(temp);
-							}
-
-							/* snprintf(temp_string, sizeof(temp_string), "%c%d%c%s <%s>%c", start_text_ascii, contact_index, start_text_ascii, contact_display_name, email_address, end_text_ascii); */
-							if (addr->next == NULL) {
-								snprintf(temp_string, sizeof(temp_string), "\"%s\" <%s>", contact_display_name, email_address);
-							}
-							else {
-								snprintf(temp_string, sizeof(temp_string), "\"%s\" <%s>, ", contact_display_name, email_address);
-							}					
-
-							contact_display_name_len = strlen(temp_string);
-							if (contact_name_len + contact_display_name_len >= contact_name_buffer_size) {	/*  re-alloc memory */
-								char *temp = contact_name;
-								contact_name_buffer_size += contact_name_buffer_size;
-								contact_name = (char  *)calloc(1, contact_name_buffer_size); 
-								if (contact_name == NULL) {
-									EM_DEBUG_EXCEPTION("Memory allocation failed.");
-									EM_SAFE_FREE(temp);
-									err = EMAIL_ERROR_OUT_OF_MEMORY;
-									goto FINISH_OFF;
-								}
-								snprintf(contact_name, contact_name_buffer_size, "%s", temp);
-								EM_SAFE_FREE(temp);
-							}
-							snprintf(contact_name + contact_name_len, contact_name_buffer_size - contact_name_len, "%s", temp_string);
-							contact_name_len += contact_display_name_len;
-							EM_DEBUG_LOG("new contact_name >>>>> %s ", contact_name);
-						}
+			if (mail_id == 0 || (contact_name_len == 0)) {	/*  save only the first address information - 09-SEP-2010 */
+				contact_display_name_len = strlen(contact_display_name);
+				if (contact_name_len + contact_display_name_len >= contact_name_buffer_size) {	/*  re-alloc memory */
+					char *temp = contact_name;
+					contact_name_buffer_size += contact_name_buffer_size;
+					contact_name = (char  *)calloc(1, contact_name_buffer_size); 
+					if (contact_name == NULL) {
+						EM_DEBUG_EXCEPTION("Memory allocation failed.");
+						EM_SAFE_FREE(temp);
+						goto FINISH_OFF;
 					}
+					snprintf(contact_name, contact_name_buffer_size, "%s", temp);
+					EM_SAFE_FREE(temp);
 				}
-				else  {
-						EM_DEBUG_LOG("contacts_svc_struct_get_value error[%d]", err);
+
+				/* snprintf(temp_string, sizeof(temp_string), "%c%d%c%s <%s>%c", start_text_ascii, contact_index, start_text_ascii, contact_display_name, email_address, end_text_ascii); */
+				if (addr->next == NULL) {
+					snprintf(temp_string, sizeof(temp_string), "\"%s\" <%s>", contact_display_name, email_address);
 				}
-			}
-			else {
-				EM_DEBUG_LOG("contacts_svc_get_contact error [%d]", err);
+				else {
+					snprintf(temp_string, sizeof(temp_string), "\"%s\" <%s>, ", contact_display_name, email_address);
+				}					
+
+				contact_display_name_len = strlen(temp_string);
+				if (contact_name_len + contact_display_name_len >= contact_name_buffer_size) {	/*  re-alloc memory */
+					char *temp = contact_name;
+					contact_name_buffer_size += contact_name_buffer_size;
+					contact_name = (char  *)calloc(1, contact_name_buffer_size); 
+					if (contact_name == NULL) {
+						EM_DEBUG_EXCEPTION("Memory allocation failed.");
+						EM_SAFE_FREE(temp);
+						err = EMAIL_ERROR_OUT_OF_MEMORY;
+						goto FINISH_OFF;
+					}
+					snprintf(contact_name, contact_name_buffer_size, "%s", temp);
+					EM_SAFE_FREE(temp);
+				}
+				snprintf(contact_name + contact_name_len, contact_name_buffer_size - contact_name_len, "%s", temp_string);
+				contact_name_len += contact_display_name_len;
+				EM_DEBUG_LOG("new contact_name >>>>> %s ", contact_name);
 			}
 		}
 		else {
-			EM_DEBUG_LOG("contacts_svc_find_contact_by - Not found contact record(if err is 203) or error [%d]", err);
+			EM_DEBUG_LOG("emcore_get_mail_display_name - Not found contact record(if err is 203) or error [%d]", err);
 		}
 
 		/*  if contact doesn't exist, use alias or email address as display name */
@@ -1271,10 +1562,6 @@ int emcore_get_mail_contact_info_with_update(email_mail_contact_info_t *contact_
 			}
 		}
 
-		if (contact != NULL) {
-			contacts_svc_struct_free(contact);
-			contact = NULL;
-		}
 		EM_SAFE_FREE(contact_display_name_from_contact_info);
 		/*  next address */
 		addr = addr->next;
@@ -1298,8 +1585,6 @@ int emcore_get_mail_contact_info_with_update(email_mail_contact_info_t *contact_
 	
 FINISH_OFF: 
 
-	if (contact != NULL)
-		contacts_svc_struct_free(contact);
 	EM_SAFE_FREE(email_address);
 	EM_SAFE_FREE(address);
 	EM_SAFE_FREE(temp_emailaddr);
@@ -1456,8 +1741,6 @@ static int emcore_sync_address_info(email_address_type_t address_type, char *ful
 	char email_address[MAX_EMAIL_ADDRESS_LENGTH];
 	email_address_info_t *p_address_info = NULL;
 	ADDRESS *addr = NULL;
-	CTSstruct *contact =  NULL;
-	CTSvalue *contact_name_value = NULL;
 	
 	if (address_info_list == NULL) {
 		EM_DEBUG_EXCEPTION("Invalid param : address_info_list is NULL");
@@ -1495,8 +1778,7 @@ static int emcore_sync_address_info(email_address_type_t address_type, char *ful
 	/*  Get a contact name */
  	while (addr != NULL)  {
 		if (addr->mailbox && addr->host) {	
-			if (!strcmp(addr->mailbox , "UNEXPECTED_DATA_AFTER_ADDRESS") || !strcmp(addr->mailbox , "INVALID_ADDRESS") || !strcmp(addr->host , ".SYNTAX-ERROR."))
-	       	{
+			if (!strcmp(addr->mailbox , "UNEXPECTED_DATA_AFTER_ADDRESS") || !strcmp(addr->mailbox , "INVALID_ADDRESS") || !strcmp(addr->host , ".SYNTAX-ERROR.")) {
 				EM_DEBUG_LOG("Invalid address ");
 				addr = addr->next;
 				continue;
@@ -1526,26 +1808,13 @@ static int emcore_sync_address_info(email_address_type_t address_type, char *ful
 
 		is_search = false;
 
-		error = contacts_svc_find_contact_by(CTS_FIND_BY_EMAIL, email_address);
-		if (error > CTS_SUCCESS) {
-			contact_index = error;
-			if ((error = contacts_svc_get_contact(contact_index, &contact)) == CTS_SUCCESS) {
-				/*  get  contact name */
-				if (contacts_svc_struct_get_value(contact, CTS_CF_NAME_VALUE, &contact_name_value) == CTS_SUCCESS) {	/*  set contact display name name */
-					emcore_get_mail_display_name(contact_name_value, &contact_display_name_from_contact_info);
-					EM_DEBUG_LOG(">>> contact index[%d]", contact_index);
-					EM_DEBUG_LOG(">>> contact display name[%s]", contact_display_name_from_contact_info);
+		if (emcore_get_mail_display_name(email_address, &contact_display_name_from_contact_info, &error) && error == EMAIL_ERROR_NONE) {
+			EM_DEBUG_LOG(">>> contact display name[%s]", contact_display_name_from_contact_info);
 
-					is_search = true;
-				}
-				else
-					EM_DEBUG_EXCEPTION("contacts_svc_struct_get_value error[%d]", error);
-			}
-			else
-				EM_DEBUG_EXCEPTION("contacts_svc_get_contact error [%d]", error);
+			is_search = true;
 		}
 		else
-			EM_DEBUG_EXCEPTION("contacts_svc_find_contact_by - Not found contact record(if err is -203) or error [%d]", error);
+			EM_DEBUG_EXCEPTION("emcore_get_mail_display_name - Not found contact record(if err is -203) or error [%d]", error);
 
 		if (is_search == true) {
 			p_address_info->contact_id = contact_index;		
@@ -1591,10 +1860,6 @@ static int emcore_sync_address_info(email_address_type_t address_type, char *ful
 		EM_DEBUG_LOG("after append");
 
  		alias = NULL;
-		if (contact != NULL) {
-			contacts_svc_struct_free(contact);
-			contact = NULL;
-		}
 
 		EM_DEBUG_LOG("next address[%p]", addr->next);
 
@@ -1605,8 +1870,6 @@ static int emcore_sync_address_info(email_address_type_t address_type, char *ful
 	ret = true;
 	
 FINISH_OFF: 
-	if (contact != NULL)
-		contacts_svc_struct_free(contact);
 
  	EM_SAFE_FREE(address);
 	
@@ -1631,15 +1894,12 @@ INTERNAL_FUNC GList *emcore_get_recipients_list(GList *old_recipients_list, char
 	EM_DEBUG_FUNC_BEGIN();
 
 	int i = 0, err = EMAIL_ERROR_NONE;
-	int contact_index = -1;
 	int is_search = false;
 	char *address = NULL;
 	char email_address[MAX_EMAIL_ADDRESS_LENGTH];
 	char *display_name = NULL;
 	char *alias = NULL;
 	ADDRESS *addr = NULL;
-	CTSstruct *contact = NULL;
-	CTSvalue *contact_name_value = NULL;
 	GList *new_recipients_list = old_recipients_list;
 	GList *recipients_list;
 
@@ -1688,30 +1948,22 @@ INTERNAL_FUNC GList *emcore_get_recipients_list(GList *old_recipients_list, char
 			continue;
 		}			
 	
-		temp_recipients_list = g_new0(email_sender_list_t, 1);
+		if ((temp_recipients_list = g_new0(email_sender_list_t, 1)) == NULL) {
+			EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
 		
 		SNPRINTF(email_address, MAX_EMAIL_ADDRESS_LENGTH, "%s@%s", addr->mailbox ? addr->mailbox : "", addr->host ? addr->host : "");
 
 		EM_DEBUG_LOG("Search a contact : address[%s]", email_address);
 
-		err = contacts_svc_find_contact_by(CTS_FIND_BY_EMAIL, email_address);
-		if (err > CTS_SUCCESS) {
-			contact_index = err;
-			if ((err = contacts_svc_get_contact(contact_index, &contact)) == CTS_SUCCESS) {
-				if (contacts_svc_struct_get_value(contact, CTS_CF_NAME_VALUE, &contact_name_value) == CTS_SUCCESS) {
-					emcore_get_mail_display_name(contact_name_value, &display_name);
-					EM_DEBUG_LOG(">>> contact index[%d]", contact_index);
-					EM_DEBUG_LOG(">>> contact display name[%s]", display_name);
-
-					is_search = true;
-				} else {
-						EM_DEBUG_LOG("contacts_svc_struct_get_value error[%d]", err);
-				}
-			} else {
-				EM_DEBUG_LOG("contacts_svc_get_contact error [%d]", err);
-			}
+		if (emcore_get_mail_display_name(email_address, &display_name, &err) && err == EMAIL_ERROR_NONE) {
+			EM_DEBUG_LOG(">>> contact display name[%s]", display_name);
+			is_search = true;
 		} else {
-			EM_DEBUG_LOG("contacts_svc_find_contact_by - Not found contact record(if err is -203) or error [%d]", err);
+			EM_DEBUG_LOG("emcore_get_mail_display_name - Not found contact record(if err is -203) or error [%d]", err);
  		}
 
 		if (is_search) {
@@ -1740,10 +1992,6 @@ INTERNAL_FUNC GList *emcore_get_recipients_list(GList *old_recipients_list, char
 		EM_DEBUG_LOG("email address[%s]", temp_recipients_list->address);
 
 		EM_SAFE_FREE(display_name);
-		if (contact != NULL) {
-			contacts_svc_struct_free(contact);
-			contact = NULL;
-		}
 		EM_DEBUG_LOG("next address[%p]", addr->next);
 
 		recipients_list = g_list_first(new_recipients_list);
@@ -1751,9 +1999,7 @@ INTERNAL_FUNC GList *emcore_get_recipients_list(GList *old_recipients_list, char
 			old_recipients_list_t = (email_sender_list_t *)recipients_list->data;
 			if (!strcmp(old_recipients_list_t->address, temp_recipients_list->address)) {
 				old_recipients_list_t->total_count = old_recipients_list_t->total_count + 1;
-				if (temp_recipients_list != NULL)
-					g_free(temp_recipients_list);
-				
+				g_free(temp_recipients_list);
 				goto FINISH_OFF;
 			}
 			recipients_list = g_list_next(recipients_list);
@@ -1761,20 +2007,14 @@ INTERNAL_FUNC GList *emcore_get_recipients_list(GList *old_recipients_list, char
 
 		new_recipients_list = g_list_insert_sorted(new_recipients_list, temp_recipients_list, address_compare);
 
+		g_free(temp_recipients_list);
 		temp_recipients_list = NULL;
 
 		alias = NULL;
-		if (contact != NULL) {
-			contacts_svc_struct_free(contact);
-			contact = NULL;
-		}
 		addr = addr->next;
 	}
 
 FINISH_OFF:
-
-	if (contact != NULL)
-		contacts_svc_struct_free(contact);
 
 	EM_SAFE_FREE(address);
 
@@ -1817,7 +2057,7 @@ INTERNAL_FUNC int emcore_get_mail_address_info_list(int mail_id, email_address_i
 	}	
 	memset(p_address_info_list, 0x00, sizeof(email_address_info_list_t)); 	
 
-	if ((contact_error = contacts_svc_connect()) == CTS_SUCCESS)	 {		
+	if ((contact_error = contacts_connect2()) == CONTACTS_ERROR_NONE)	 {		
 		EM_DEBUG_LOG("Open Contact Service Success");	
 	}	
 	else	 {		
@@ -1835,7 +2075,7 @@ INTERNAL_FUNC int emcore_get_mail_address_info_list(int mail_id, email_address_i
 	if (mail->full_address_bcc && emcore_sync_address_info(EMAIL_ADDRESS_TYPE_BCC, mail->full_address_bcc, &p_address_info_list->bcc, &err))
 		failed = false;
 
-	if ((contact_error = contacts_svc_disconnect()) == CTS_SUCCESS)
+	if ((contact_error = contacts_disconnect2()) == CONTACTS_ERROR_NONE)
 		EM_DEBUG_LOG("Close Contact Service Success");
 	else
 		EM_DEBUG_EXCEPTION("Close Contact Service Fail [%d]", contact_error);

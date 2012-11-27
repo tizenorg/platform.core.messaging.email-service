@@ -1,6 +1,6 @@
 Name:       email-service
 Summary:    E-mail Framework Middleware package
-Version:    0.10.7
+Version:    0.10.8
 Release:    1
 Group:      System/Libraries
 License:    TBD
@@ -20,7 +20,7 @@ BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(db-util)
 BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(dbus-glib-1)
-BuildRequires:  pkgconfig(contacts-service)
+BuildRequires:  pkgconfig(contacts-service2)
 BuildRequires:  pkgconfig(uw-imap-toolkit)
 BuildRequires:  pkgconfig(drm-client)
 BuildRequires:  pkgconfig(openssl)

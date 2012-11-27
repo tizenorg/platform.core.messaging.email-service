@@ -46,7 +46,6 @@
 #include <regex.h>
 #include <pthread.h>
 
-#include <contacts-svc.h>
 #include <notification.h>
 
 #include "email-types.h"

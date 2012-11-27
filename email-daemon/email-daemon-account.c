@@ -40,7 +40,7 @@
 #include "email-debug-log.h"
 #include "email-daemon-account.h"
 #include "email-daemon-auto-poll.h"
-#include <contacts-svc.h>
+#include <contacts.h>
 #include "email-types.h"
 #include "email-core-account.h"
 #include "email-core-event.h"
