@@ -1750,7 +1750,25 @@ INTERNAL_FUNC int emcore_sync_header(emstorage_mailbox_tbl_t *input_mailbox_tbl,
 					if (!emstorage_notify_storage_event(NOTI_MAIL_ADD, account_id, mail_id, mailbox_id_param_string, thread_id))
 						EM_DEBUG_EXCEPTION("emstorage_notify_storage_event [NOTI_MAIL_ADD] failed");
 				}
-				
+			
+				/* Set contact log */
+				switch (input_mailbox_tbl->mailbox_type) {
+				case EMAIL_MAILBOX_TYPE_INBOX :
+					if (!emcore_set_received_contacts_log(new_mail_tbl_data, &err)) {
+						EM_DEBUG_EXCEPTION("emcore_set_received_contacts_log failed : [%d]", err);
+					}
+					break;
+				case EMAIL_MAILBOX_TYPE_SENTBOX:
+				case EMAIL_MAILBOX_TYPE_OUTBOX:
+					if (!emcore_set_sent_contacts_log(new_mail_tbl_data, &err)) {
+						EM_DEBUG_EXCEPTION("emcore_set_sent_contacts_log failed : [%d]", err);
+					}
+					break;
+				default:
+					EM_DEBUG_LOG("Mailbox type : [%d]", input_mailbox_tbl->mailbox_type);
+					break;
+				}
+
 				/*  Release for envelope is not required and it may cause crash. Don't free the memory for envelope here. */
 				/*  Envelope data will be freed by garbage collector in mail_close_full */
 				if (new_mail_tbl_data){

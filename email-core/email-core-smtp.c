@@ -1358,6 +1358,11 @@ INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mai
 			EM_DEBUG_EXCEPTION(" emcore_delete_mail failed [%d]", err);
 	}
 
+	/* Set the phone log */
+	if (!emcore_set_sent_contacts_log(mail_tbl_data, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_set_sent_contacts_log failed : [%d]", err);
+	}
+
 	/*Update status save_status to DB*/
 	mail_tbl_data->save_status = EMAIL_MAIL_STATUS_SENT;
 	if (!emstorage_set_field_of_mails_with_integer_value(account_id, &mail_id, 1, "save_status", mail_tbl_data->save_status, false, &err))
@@ -1617,7 +1622,12 @@ INTERNAL_FUNC int emcore_send_saved_mail(int account_id, char *input_mailbox_nam
 			if (!emcore_delete_mail(account_id, &mail_id, 1, EMAIL_DELETE_LOCALLY, EMAIL_DELETED_AFTER_SENDING, false, &err))
 				EM_DEBUG_EXCEPTION("emcore_delete_mail falied [%d]", err);
 		}
-		
+
+		/* Set the phone log */
+		if (!emcore_set_sent_contacts_log(searched_mail_tbl_data, &err)) {
+			EM_DEBUG_EXCEPTION("emcore_set_sent_contacts_log failed : [%d]", err);
+		}
+	
 		if(searched_mail_tbl_data) {
 			emstorage_free_mail(&searched_mail_tbl_data, 1, NULL);
 			searched_mail_tbl_data = NULL;
