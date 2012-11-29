@@ -1,11 +1,12 @@
 Name:       email-service
 Summary:    E-mail Framework Middleware package
-Version:    0.10.9
+Version:    0.10.10
 Release:    1
 Group:      System/Libraries
 License:    TBD
 Source0:    %{name}-%{version}.tar.gz
 Requires: connman
+Requires: webkit2-efl
 Requires(post):    /sbin/ldconfig
 Requires(post):    /usr/bin/sqlite3
 Requires(post):    /usr/bin/vconftool
