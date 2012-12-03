@@ -5,12 +5,16 @@ Release:    1
 Group:      System/Libraries
 License:    TBD
 Source0:    %{name}-%{version}.tar.gz
+Source1:    email.service
 Requires: connman
 Requires: webkit2-efl
 Requires(post):    /sbin/ldconfig
+Requires(post):    systemd
 Requires(post):    /usr/bin/sqlite3
 Requires(post):    /usr/bin/vconftool
+Requires(preun):   systemd
 Requires(postun):  /sbin/ldconfig
+Requires(postun):  systemd
 BuildRequires:  cmake
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(gthread-2.0)
@@ -72,6 +76,22 @@ make
 %install
 %make_install
 
+mkdir -p %{buildroot}%{_libdir}/systemd/user/tizen-middleware.target.wants
+install -m 0644 %SOURCE1 %{buildroot}%{_libdir}/systemd/user/
+ln -sf ../email.service %{buildroot}%{_libdir}/systemd/user/tizen-middleware.target.wants/
+
+# FIXME: remove initscripts after systemd is ready
+mkdir -p %{buildroot}%{_sysconfdir}/rc.d/init.d
+cat << EOF > %{buildroot}%{_sysconfdir}/rc.d/init.d/email-service
+#!/bin/sh
+/usr/bin/email-service &
+EOF
+
+mkdir -p %{buildroot}%{_sysconfdir}/rc.d/rc3.d
+mkdir -p %{buildroot}%{_sysconfdir}/rc.d/rc5.d
+ln -sf ../init.d/email-service %{buildroot}%{_sysconfdir}/rc.d/rc3.d/S70email-service
+ln -sf ../init.d/email-service %{buildroot}%{_sysconfdir}/rc.d/rc5.d/S70email-service
+
 %clean
 rm -rf %{buildroot}
 
@@ -95,22 +115,8 @@ vconftool set -t int    db/private/email-service/latest_mail_id "0"     -g 6514
 # for default account id
 vconftool set -t int    db/private/email-service/default_account_id "0" -g 6514
 
+vconftool set -t int    db/email_handle/active_sync_handle "-1" 	-g 6514
 
-#################################################################
-# Set executin script
-#################################################################
-echo "[EMAIL-SERVICE] Set executing script ..."
-EMAIL_SERVICE_EXEC_SCRIPT=/etc/rc.d/init.d/email-service
-EMAIL_SERVICE_BOOT_SCRIPT=/etc/rc.d/rc3.d/S70email-service
-EMAIL_SERVICE_FASTBOOT_SCRIPT=/etc/rc.d/rc5.d/S70email-service
-echo '#!/bin/sh' > ${EMAIL_SERVICE_EXEC_SCRIPT}
-echo '/usr/bin/email-service &' >> ${EMAIL_SERVICE_EXEC_SCRIPT} 
-chmod 755 ${EMAIL_SERVICE_EXEC_SCRIPT}
-rm -rf ${EMAIL_SERVICE_BOOT_SCRIPT}
-rm -rf ${EMAIL_SERVICE_FASTBOOT_SCRIPT}
-ln -s ${EMAIL_SERVICE_EXEC_SCRIPT} ${EMAIL_SERVICE_BOOT_SCRIPT} 
-ln -s ${EMAIL_SERVICE_EXEC_SCRIPT} ${EMAIL_SERVICE_FASTBOOT_SCRIPT}
-echo "[EMAIL-SERVICE] Finish executing script ..."
 
 #################################################################
 # Create DB file and tables.
@@ -342,27 +348,26 @@ CREATE INDEX mail_idx_thread_item_count ON mail_tbl (thread_item_count);
 echo "[EMAIL-SERVICE] Finish Creating Email Tables."
 
 
-#################################################################
-# Change file permission
-#################################################################
-#echo "[EMAIL-SERVICE] Start setting permission ..."
-# 1. libraries
+chgrp db_email_service /opt/dbspace/.email-service.db*
+chmod 664 /opt/dbspace/.email-service.db
+chmod 664 /opt/dbspace/.email-service.db-journal
 
-# 2. executables
-
-# 3. DB files
-chmod 644 /opt/dbspace/.email-service.db                                   
-chmod 644 /opt/dbspace/.email-service.db-journal       
+mkdir -m775 -p /opt/data/email/.emfdata
+chgrp db_email_service /opt/data/email/.emfdata
 
 %postun -p /sbin/ldconfig
 
 %files
 %manifest email-service.manifest
 %exclude /usr/bin/email-test-app
-%{_libdir}/lib*.so.*
+%attr(0755,root,root) %{_sysconfdir}/rc.d/init.d/email-service
+%{_sysconfdir}/rc.d/rc3.d/S70email-service
+%{_sysconfdir}/rc.d/rc5.d/S70email-service
 %{_bindir}/email-service
 /opt/data/email/res/*
-
+%{_libdir}/lib*.so.*
+%{_libdir}/systemd/user/email.service
+%{_libdir}/systemd/user/tizen-middleware.target.wants/email.service
 
 %files devel
 %{_includedir}/email-service/*.h
