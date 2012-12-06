@@ -1359,7 +1359,7 @@ INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mai
 	}
 
 	/* Set the phone log */
-	if (!emcore_set_sent_contacts_log(mail_tbl_data, &err)) {
+	if ((err = emcore_set_sent_contacts_log(mail_tbl_data)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_set_sent_contacts_log failed : [%d]", err);
 	}
 
@@ -1624,7 +1624,7 @@ INTERNAL_FUNC int emcore_send_saved_mail(int account_id, char *input_mailbox_nam
 		}
 
 		/* Set the phone log */
-		if (!emcore_set_sent_contacts_log(searched_mail_tbl_data, &err)) {
+		if ((err = emcore_set_sent_contacts_log(searched_mail_tbl_data)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_set_sent_contacts_log failed : [%d]", err);
 		}
 	

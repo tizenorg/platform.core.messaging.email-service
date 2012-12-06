@@ -145,9 +145,9 @@ INTERNAL_FUNC int emcore_sync_contact_info(int mail_id, int *err_code);
 INTERNAL_FUNC GList *emcore_get_recipients_list(GList *old_recipients_list, char *full_address, int *err_code);
 INTERNAL_FUNC int emcore_get_mail_address_info_list(int mail_id, email_address_info_list_t **address_info_list, int *err_code);
 
-INTERNAL_FUNC int emcore_set_sent_contacts_log(emstorage_mail_tbl_t *input_mail_data, int *err_code);
-INTERNAL_FUNC int emcore_set_received_contacts_log(emstorage_mail_tbl_t *input_mail_data, int *err_code);
-INTERNAL_FUNC int emcore_delete_contacts_log(int account_id, int *err_code);
+INTERNAL_FUNC int emcore_set_sent_contacts_log(emstorage_mail_tbl_t *input_mail_data);
+INTERNAL_FUNC int emcore_set_received_contacts_log(emstorage_mail_tbl_t *input_mail_data);
+INTERNAL_FUNC int emcore_delete_contacts_log(int account_id);
 
 INTERNAL_FUNC int emcore_get_mail_display_name(char *email_address, char **contact_display_name, int *err_code);
 INTERNAL_FUNC int emcore_get_mail_data(int input_mail_id, email_mail_data_t **output_mail_data);

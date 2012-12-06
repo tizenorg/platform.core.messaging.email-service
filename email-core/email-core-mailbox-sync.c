@@ -1754,13 +1754,13 @@ INTERNAL_FUNC int emcore_sync_header(emstorage_mailbox_tbl_t *input_mailbox_tbl,
 				/* Set contact log */
 				switch (input_mailbox_tbl->mailbox_type) {
 				case EMAIL_MAILBOX_TYPE_INBOX :
-					if (!emcore_set_received_contacts_log(new_mail_tbl_data, &err)) {
+					if ((err = emcore_set_received_contacts_log(new_mail_tbl_data)) != EMAIL_ERROR_NONE) {
 						EM_DEBUG_EXCEPTION("emcore_set_received_contacts_log failed : [%d]", err);
 					}
 					break;
 				case EMAIL_MAILBOX_TYPE_SENTBOX:
 				case EMAIL_MAILBOX_TYPE_OUTBOX:
-					if (!emcore_set_sent_contacts_log(new_mail_tbl_data, &err)) {
+					if ((err = emcore_set_sent_contacts_log(new_mail_tbl_data)) != EMAIL_ERROR_NONE) {
 						EM_DEBUG_EXCEPTION("emcore_set_sent_contacts_log failed : [%d]", err);
 					}
 					break;

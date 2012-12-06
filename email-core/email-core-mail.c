@@ -1063,13 +1063,12 @@ FINISH_OFF:
 	return contact_err;
 }
 
-int emcore_set_contacts_log(int account_id, char *email_address, char *subject, time_t date_time, email_action_t action, int *err_code)
+int emcore_set_contacts_log(int account_id, char *email_address, char *subject, time_t date_time, email_action_t action)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id : [%d], address : [%p], subject : [%s], action : [%d], date_time : [%d]", account_id, email_address, subject, action, (int)date_time);
 	
-	int ret = true;
+	int err = EMAIL_ERROR_NONE;
 	int contacts_error = CONTACTS_ERROR_NONE;
-
 	int person_id = 0;
 	int action_type = 0;
 	
@@ -1077,35 +1076,35 @@ int emcore_set_contacts_log(int account_id, char *email_address, char *subject, 
 	contacts_record_h person_record = NULL;	
 
 	if ((contacts_error = contacts_connect2()) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("Open connect service failed");
+		EM_DEBUG_EXCEPTION("Open connect service failed [%d]", contacts_error);
 		goto FINISH_OFF;
 	}
 
 	if ((contacts_error = contacts_record_create(_contacts_phone_log._uri, &phone_record)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_query_create failed");
+		EM_DEBUG_EXCEPTION("contacts_query_create failed [%d]", contacts_error);
 		goto FINISH_OFF;
 	}
 
 	/* Set email address */
 	if ((contacts_error = contacts_record_set_str(phone_record, _contacts_phone_log.address, email_address)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_record_set_str [address] failed");
+		EM_DEBUG_EXCEPTION("contacts_record_set_str [address] failed [%d]", contacts_error);
 		goto FINISH_OFF;
 	}
 
 	/* Search contact person info */
 	if ((contacts_error = emcore_search_contact_info_by_address(_contacts_person_email._uri, _contacts_person_email.email, email_address, 1, &person_record)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_LOG("emcore_search_contact_info_by_address failed");
+		EM_DEBUG_EXCEPTION("emcore_search_contact_info_by_address failed [%d]", contacts_error);
 		EM_DEBUG_LOG("Not match person");
 	} else {
 		/* Get person_id in contacts_person_email record  */
 		if (person_record  && (contacts_error = contacts_record_get_int(person_record, _contacts_person_email.person_id, &person_id)) != CONTACTS_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("contacts_record_get_str failed");
+			EM_DEBUG_EXCEPTION("contacts_record_get_str failed [%d]", contacts_error);
 			goto FINISH_OFF;
 		}
 
 		/* Set the person id */
 		if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.person_id, person_id)) != CONTACTS_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("contacts_record_set_int [person id] failed");
+			EM_DEBUG_EXCEPTION("contacts_record_set_int [person id] failed [%d]", contacts_error);
 			goto FINISH_OFF;
 		}
 	}
@@ -1118,40 +1117,39 @@ int emcore_set_contacts_log(int account_id, char *email_address, char *subject, 
 		action_type = CONTACTS_PLOG_TYPE_EMAIL_RECEIVED;
 		break;
 	default :
-		EM_DEBUG_EXCEPTION("Unknow action type");
+		EM_DEBUG_EXCEPTION("Unknown action type");
 		goto FINISH_OFF;
 	}
 
 	/* Set log type */
 	if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.log_type, action_type)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_record_set_int [log_type] failed");
+		EM_DEBUG_EXCEPTION("contacts_record_set_int [log_type] failed [%d]", contacts_error);
 		goto FINISH_OFF;
 	}
 
 	/* Set log time */
 	if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.log_time, (int)date_time)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_record_set_str [address] failed");
+		EM_DEBUG_EXCEPTION("contacts_record_set_str [address] failed [%d]", contacts_error);
 		goto FINISH_OFF;
 	}
 
 	/* Set subject */
 	if ((contacts_error = contacts_record_set_str(phone_record, _contacts_phone_log.extra_data2, subject)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_record_set_str [subject] failed");
+		EM_DEBUG_EXCEPTION("contacts_record_set_str [subject] failed [%d]", contacts_error);
 		goto FINISH_OFF;
 	}
 
 	/* Set Mail id */
 	if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.extra_data1, account_id)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_record_set_int [mail id] failed");
+		EM_DEBUG_EXCEPTION("contacts_record_set_int [mail id] failed [%d]", contacts_error);
 		goto FINISH_OFF;
 	}
 
 	/* Insert the record in DB */
 	if ((contacts_error = contacts_db_insert_record(phone_record, NULL)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_db_insert_record failed");
+		EM_DEBUG_EXCEPTION("contacts_db_insert_record failed [%d]",contacts_error );
 		goto FINISH_OFF;
 	}
-
 
 FINISH_OFF:
 
@@ -1161,27 +1159,22 @@ FINISH_OFF:
 	if (person_record != NULL)
 		contacts_record_destroy(person_record, false);
 
+	err = convert_contact_err_to_email_err(contacts_error);
+
 	if ((contacts_error = contacts_disconnect2()) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("Open connect service failed");
-		goto FINISH_OFF;
+		EM_DEBUG_EXCEPTION("Open connect service failed [%d]", contacts_error);
+		err = convert_contact_err_to_email_err(contacts_error);
 	}
 
-	if (contacts_error != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts error : [%d]", contacts_error);
-		ret = false;
-	}
-
-	if (err_code != NULL)
-		*err_code = convert_contact_err_to_email_err(contacts_error);
-
-	return ret;
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
 }
 
-INTERNAL_FUNC int emcore_set_sent_contacts_log(emstorage_mail_tbl_t *input_mail_data, int *err_code)
+INTERNAL_FUNC int emcore_set_sent_contacts_log(emstorage_mail_tbl_t *input_mail_data)
 {
 	EM_DEBUG_FUNC_BEGIN("input_mail_data : [%p]", input_mail_data);
 	
-	int i = 0, ret = false;
+	int i = 0;
 	int err = EMAIL_ERROR_NONE;
 	char email_address[MAX_EMAIL_ADDRESS_LENGTH];
 	char *address_array[3] = {input_mail_data->full_address_to, input_mail_data->full_address_cc, input_mail_data->full_address_bcc};
@@ -1193,7 +1186,7 @@ INTERNAL_FUNC int emcore_set_sent_contacts_log(emstorage_mail_tbl_t *input_mail_
 			rfc822_parse_adrlist(&addr, address_array[i], NULL);
 			for (p_addr = addr ; p_addr ;p_addr = p_addr->next) {
 				SNPRINTF(email_address, MAX_EMAIL_ADDRESS_LENGTH, "%s@%s", addr->mailbox, addr->host);
-				if (!emcore_set_contacts_log(input_mail_data->account_id, email_address, input_mail_data->subject, input_mail_data->date_time, EMAIL_ACTION_SEND_MAIL, &err)) {
+				if ((err = emcore_set_contacts_log(input_mail_data->account_id, email_address, input_mail_data->subject, input_mail_data->date_time, EMAIL_ACTION_SEND_MAIL)) != EMAIL_ERROR_NONE) {
 					EM_DEBUG_EXCEPTION("emcore_set_contacts_log failed : [%d]", err);
 					goto FINISH_OFF;
 				}
@@ -1206,65 +1199,56 @@ INTERNAL_FUNC int emcore_set_sent_contacts_log(emstorage_mail_tbl_t *input_mail_
 		}
 	}
 
-	ret = true;
-
 FINISH_OFF:
 
 	if (addr) 
 		mail_free_address(&addr);
 
-	if (err_code)
-		*err_code = err;
-
-	EM_DEBUG_FUNC_END();
-	return ret;
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
 }
 
-INTERNAL_FUNC int emcore_set_received_contacts_log(emstorage_mail_tbl_t *input_mail_data, int *err_code)
+INTERNAL_FUNC int emcore_set_received_contacts_log(emstorage_mail_tbl_t *input_mail_data)
 {
 	EM_DEBUG_FUNC_BEGIN("input_mail_data : [%p]", input_mail_data);
+	int err = EMAIL_ERROR_NONE;
 
-	if (!emcore_set_contacts_log(input_mail_data->account_id, input_mail_data->email_address_sender, input_mail_data->subject, input_mail_data->date_time, EMAIL_ACTION_SYNC_HEADER, err_code)) {
-		EM_DEBUG_EXCEPTION("emcore_set_contacts_log failed");	
-		return false;
+	if ((err = emcore_set_contacts_log(input_mail_data->account_id, input_mail_data->email_address_sender, input_mail_data->subject, input_mail_data->date_time, EMAIL_ACTION_SYNC_HEADER)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_set_contacts_log failed [%d]", err);
 	}
 
-	EM_DEBUG_FUNC_END();
-	return true;
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
 }
 
-INTERNAL_FUNC int emcore_delete_contacts_log(int account_id, int *err_code)
+INTERNAL_FUNC int emcore_delete_contacts_log(int account_id)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id : [%d]", account_id);
+	EM_DEBUG_FUNC_BEGIN("account_id [%d]", account_id);
 
-	int ret = false;
+	int err = EMAIL_ERROR_NONE;
 	int contacts_error = CONTACTS_ERROR_NONE;
 
 	if ((contacts_error = contacts_connect2()) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("Open connect service failed");
+		EM_DEBUG_EXCEPTION("Open connect service failed [%d]", contacts_error);
 		goto FINISH_OFF;
 	}
 	
 	/* Delete record of the account id */
 	if ((contacts_error = contacts_phone_log_delete(CONTACTS_PHONE_LOG_DELETE_BY_EMAIL_EXTRA_DATA1, account_id)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_phone_log_delete failed");
-		goto FINISH_OFF;
+		EM_DEBUG_EXCEPTION("contacts_phone_log_delete failed [%d]", contacts_error);
 	}
 	
-	if ((contacts_error = contacts_disconnect2()) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("Open connect service failed");
-		goto FINISH_OFF;
-	}
-
-	ret = true;
 
 FINISH_OFF:
+	err = convert_contact_err_to_email_err(contacts_error);
 
-	if (err_code != NULL)
-		*err_code = convert_contact_err_to_email_err(contacts_error);
+	if ((contacts_error = contacts_disconnect2()) != CONTACTS_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("Open connect service failed [%d]", contacts_error);
+		err = convert_contact_err_to_email_err(contacts_error);
+	}
 
-	EM_DEBUG_FUNC_END();
-	return ret;
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
 }
 
 INTERNAL_FUNC int emcore_get_mail_display_name(char *email_address, char **contact_display_name, int *err_code)

@@ -382,9 +382,8 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 	emcore_refresh_account_reference();
 
 	/* Delete contact log */
-	if (!emcore_delete_contacts_log(account_id, &err)) {
+	if ((err = emcore_delete_contacts_log(account_id)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_delete_contacts_log failed : [%d]", err);
-		goto FINISH_OFF;
 	}
 
 	ret = true;
