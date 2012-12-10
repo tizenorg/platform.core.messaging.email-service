@@ -432,6 +432,7 @@ chgrp db_email_service /opt/usr/data/email/.email_data
 %{_libdir}/systemd/user/email.service
 %{_libdir}/systemd/user/tizen-middleware.target.wants/email.service
 /usr/share/dbus-1/services/email-service.service
+/usr/share/license/email-service/LICENSE
 
 %files devel
 %{_includedir}/email-service/*.h
