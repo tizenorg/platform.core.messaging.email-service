@@ -38,8 +38,6 @@
 #include <errno.h>
 #include <unistd.h>
 
-#include <systemd/sd-daemon.h>
-
 EXPORT_API bool emipc_init_email_socket(int *fd)
 {
 	bool ret = true;
@@ -203,15 +201,6 @@ EXPORT_API int emipc_accept_email_socket(int fd)
 EXPORT_API int emipc_open_email_socket(int fd, const char *path)
 {
 	EM_DEBUG_FUNC_BEGIN("path [%s]", path);
-	int sock_fd = 0;
-
-	if (strcmp(path, EM_SOCKET_PATH) == 0 &&
-		sd_listen_fds(1) == 1 &&
-		sd_is_socket_unix(SD_LISTEN_FDS_START, SOCK_STREAM, -1, EM_SOCKET_PATH, 0) > 0) {
-		close(fd);
-		sock_fd = SD_LISTEN_FDS_START + 0;
-		return sock_fd;
-	}
 
 	if (!path || strlen(path) > 108) {
 		EM_DEBUG_LOG("Path is null");
