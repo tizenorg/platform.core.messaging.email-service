@@ -478,46 +478,6 @@ INTERNAL_FUNC int emcore_create_account(email_account_t *account, int *err_code)
 		}
 	}
 
-#ifdef __FEATURE_USING_ACCOUNT_SVC__
-	if (account->incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
-		int account_svc_id = 0;
-		int error_code;
-		account_h account_handle = NULL;
-
-		error_code = account_connect();
-		error_code = account_create(&account_handle);
-		
-		if(error_code != ACCOUNT_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("account_create failed [%d]", error_code);
-			err = error_code;
-			goto FINISH_OFF;
-		}
-
-		account_set_user_name(account_handle, account->incoming_server_user_name);
-		account_set_domain_name(account_handle, account->account_name); 
-		account_set_email_address(account_handle,  account->user_email_address);
-		account_set_source(account_handle, "SLP EMAIL");
-		account_set_package_name(account_handle, "email-setting-efl");
-		account_set_capability(account_handle , ACCOUNT_CAPABILITY_EMAIL, ACCOUNT_CAPABILITY_ENABLED);
-		account_set_sync_support(account_handle, ACCOUNT_SYNC_STATUS_IDLE); /* This means "The account is supporting 'sync' and initialized as idle status" */
-		if (account->logo_icon_path)
-			account_set_icon_path(account_handle, account->logo_icon_path);
-		error_code = account_insert_to_db(account_handle, &account_svc_id); 
-
-		if (error_code != ACCOUNT_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("account_insert_to_db failed [%d]", error_code);
-			err = error_code;
-			goto FINISH_OFF;
-		}
-
-		account->account_svc_id = account_svc_id;
-			
-		EM_DEBUG_LOG("account_insert_to_db succeed");
-		
-		account_disconnect();
-	}
-#endif  /*  __FEATURE_USING_ACCOUNT_SVC__ */
-
 	temp_account_tbl = em_malloc(sizeof(emstorage_account_tbl_t));
 	if (!temp_account_tbl) {
 		EM_DEBUG_EXCEPTION("allocation failed [%d]", err);
@@ -1233,30 +1193,6 @@ INTERNAL_FUNC int emcore_update_sync_status_of_account(int input_account_id, ema
 	int err = EMAIL_ERROR_NONE;
 	int err_from_account_svc = 0;
 	emstorage_account_tbl_t *account_tbl_data = NULL;
-
-#ifdef __FEATURE_USING_ACCOUNT_SVC__
-	if (input_account_id != ALL_ACCOUNT && (input_sync_status == SYNC_STATUS_SYNCING)) {
-		if (!emstorage_get_account_by_id(input_account_id, EMAIL_ACC_GET_OPT_DEFAULT | EMAIL_ACC_GET_OPT_OPTIONS, &account_tbl_data, true, &err)) {
-			EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed [%d]", err);
-			goto FINISH_OFF;
-		}
-
-		err_from_account_svc = account_connect();
-		EM_DEBUG_LOG("account_connect returns [%d]", err_from_account_svc);
-
-		EM_DEBUG_LOG("account_tbl_data->account_svc_id [%d]", account_tbl_data->account_svc_id);
-
-		if (input_set_operator == SET_TYPE_SET)
-			err_from_account_svc = account_update_sync_status_by_id(account_tbl_data->account_svc_id, ACCOUNT_SYNC_STATUS_RUNNING);
-		else if(input_set_operator == SET_TYPE_MINUS)
-			err_from_account_svc = account_update_sync_status_by_id(account_tbl_data->account_svc_id, ACCOUNT_SYNC_STATUS_IDLE);
-
-		EM_DEBUG_LOG("account_update_sync_status_by_id returns [%d]", err_from_account_svc);
-
-		err_from_account_svc = account_disconnect();
-		EM_DEBUG_LOG("account_disconnect returns [%d]", err_from_account_svc);
-	}
-#endif /* __FEATURE_USING_ACCOUNT_SVC__ */
 
 	if (!emstorage_update_sync_status_of_account(input_account_id, input_set_operator, input_sync_status, true, &err))
 		EM_DEBUG_EXCEPTION("emstorage_update_sync_status_of_account failed [%d]", err);
