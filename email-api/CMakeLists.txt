@@ -42,7 +42,7 @@ INCLUDE_DIRECTORIES(
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(api_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf heynoti db-util contacts-service2 uw-imap-toolkit) 
+pkg_check_modules(api_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf db-util contacts-service2 uw-imap-toolkit) 
 
 FOREACH(flag ${api_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
@@ -60,7 +60,6 @@ TARGET_LINK_LIBRARIES(${API-LIB} ${api_pkgs_LDFLAGS} email-ipc email-storage ema
 SET_TARGET_PROPERTIES(${API-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${API-LIB} PROPERTIES VERSION ${VERSION})
 
-#INSTALL(TARGETS ${API-LIB} LIBRARY DESTINATION lib)
 INSTALL(TARGETS ${API-LIB} DESTINATION lib COMPONENT RuntimeLibraries)
 
 SET(EMAIL-API-HEADERS

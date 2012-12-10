@@ -145,6 +145,9 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_TRASH;
 #endif /* __FEATURE_XLIST_SUPPORT__ */
 
+	if(attributes & LATT_NOSELECT)
+		p[count].no_select    = true;
+
 	if(p[count].mailbox_type == EMAIL_MAILBOX_TYPE_INBOX) /* For exception handling of Gmail inbox*/
 		p[count].mailbox_name  = cpystr("INBOX");
 	else
@@ -251,14 +254,6 @@ INTERNAL_FUNC void mm_dlog(char *string)
 {
 #ifdef FEATURE_CORE_DEBUG
 	EM_DEBUG_LOG("IMAP_TOOLKIT_DLOG [%s]", string);
-	/* Write into debug file
-	FILE *fp_dlog = NULL; 
-	fp_dlog = fopen("/opt/data/email/.emfdata/core_debug", "a");
-    if(fp_dlog) {
-		fprintf(fp_dlog, "%s\n", string); 
-		fclose(fp_dlog);
-	}
-	*/
 #endif
 }
 
@@ -388,7 +383,7 @@ INTERNAL_FUNC void mm_get_error(char *string, int *err_code)
 	if (strstr(string, "login failure") || strstr(string, "Login aborted") || strstr(string, "Can't login"))
 		*err_code = EMAIL_ERROR_LOGIN_FAILURE;
 	else if (strstr(string, "Scan not valid"))
-		*err_code = EMAIL_ERROR_MAILBOX_FAILURE;
+		*err_code = EMAIL_ERROR_SCAN_NOT_SUPPORTED;
 	else if (strstr(string, "Authentication cancelled"))
 		*err_code = EMAIL_ERROR_AUTHENTICATE;
 	else if (strstr(string, "authuser"))
@@ -402,7 +397,7 @@ INTERNAL_FUNC void mm_get_error(char *string, int *err_code)
 	else if (strstr(string, "TLS unavailable"))
 		*err_code = EMAIL_ERROR_TLS_NOT_SUPPORTED;
 	else if (strstr(string, "Can't access"))
-		*err_code = EMAIL_ERROR_APPEND_FAILURE;
+		*err_code = EMAIL_ERROR_IMAP4_APPEND_FAILURE;
 	else if (strstr(string, "Can not authenticate"))
 		*err_code = EMAIL_ERROR_AUTHENTICATE;
 	else if (strstr(string, "Unexpected IMAP response") || strstr(string, "hello"))
@@ -434,4 +429,40 @@ INTERNAL_FUNC void mm_get_error(char *string, int *err_code)
 	else
 		*err_code = EMAIL_ERROR_UNKNOWN;
 }
+
+#ifdef __FEATURE_SUPPORT_IMAP_ID__
+INTERNAL_FUNC void mm_imap_id (char **id_string)
+{
+	EM_DEBUG_FUNC_BEGIN("id_string [%p]", id_string);
+
+	char *result_string = NULL;
+	char *tag_string = "ID (\"os\" \"" IMAP_ID_OS "\" \"os-version\" \"" IMAP_ID_OS_VERSION "\" \"vendor\" \"" IMAP_ID_VENDOR "\" \"device\" \"" IMAP_ID_DEVICE_NAME "\" \"AGUID\" \"" IMAP_ID_AGUID "\" \"ACLID\" \"" IMAP_ID_ACLID "\"";
+	int   tag_length = 0;
+	int   err = EMAIL_ERROR_NONE;
+
+	if (id_string == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	*id_string = NULL;
+
+	/*
+	tag_length = strlen(tag_string);
+	result_string = EM_SAFE_STRDUP(tag_string);
+
+	if(result_string == NULL) {
+		EM_DEBUG_EXCEPTION("malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	*id_string = result_string;
+	*/
+
+FINISH_OFF:
+	EM_DEBUG_FUNC_END("err [%d]", err);
+}
+#endif /* __FEATURE_SUPPORT_IMAP_ID__ */
 /* EOF */

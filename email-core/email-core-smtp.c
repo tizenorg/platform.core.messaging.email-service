@@ -41,6 +41,7 @@
 #include "email-core-account.h" 
 #include "email-core-imap-mailbox.h"
 #include "email-core-mailbox-sync.h"
+#include "email-core-signal.h"
 #include "email-utilities.h"
 #include "email-convert.h"
 
@@ -294,6 +295,8 @@ static int emcore_write_body(BODY *body, BODY *html_body, FILE *fp, int *err_cod
 		body->sparep = NULL;
 	}
 	
+	close(fd);
+
 	EM_DEBUG_FUNC_END();
 	return true;
 }
@@ -537,7 +540,8 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 	int i = 0, rule_len, rule_matched = -1, local_attachment_count = 0, local_inline_content_count = 0;
 	int mailbox_id_spam = 0, mailbox_id_target = 0;
 	char *ext = NULL;
-	char name_buf[MAX_PATH] = {0x00, }, html_body[MAX_PATH] = {0x00, };
+	char name_buf[MAX_PATH] = {0x00, };
+	char *body_text_file_name = NULL;
 	
 	int attachment_count = 0;
 	email_mail_data_t *mail_data = NULL;
@@ -693,7 +697,22 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 
 		if (mail_data->file_path_plain) {
 			EM_DEBUG_LOG("mail_data->file_path_plain [%s]", mail_data->file_path_plain);
-			if (!emstorage_get_save_name(mail_data->account_id, mail_data->mail_id, 0, "UTF-8", name_buf, &err))  {
+			/* EM_SAFE_STRNCPY(body_text_file_name, "UTF-8", MAX_PATH); */
+
+			if ( (err = em_get_file_name_from_file_path(mail_data->file_path_plain, &body_text_file_name)) != EMAIL_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("em_get_file_name_from_file_path failed [%d]", err);
+				err = EMAIL_ERROR_INVALID_FILE_PATH;
+				goto FINISH_OFF;
+			}
+
+			/*
+			if (input_from_eas)
+				EM_SAFE_STRNCPY(body_text_file_name, UNKNOWN_CHARSET_PLAIN_TEXT_FILE, MAX_PATH);
+			else
+				EM_SAFE_STRNCPY(body_text_file_name, "UTF-8", MAX_PATH);
+			*/
+
+			if (!emstorage_get_save_name(mail_data->account_id, mail_data->mail_id, 0, body_text_file_name, name_buf, &err))  {
 				EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 				goto FINISH_OFF;
 			}
@@ -711,9 +730,23 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 
 		if (mail_data->file_path_html) {
 			EM_DEBUG_LOG("mail_data->file_path_html [%s]", mail_data->file_path_html);
-			memcpy(html_body, "UTF-8.htm", strlen("UTF-8.htm"));
+			/* EM_SAFE_STRNCPY(body_text_file_name, "UTF-8.htm", MAX_PATH); */
+
+			EM_SAFE_FREE(body_text_file_name);
+
+			if ( (err = em_get_file_name_from_file_path(mail_data->file_path_html, &body_text_file_name)) != EMAIL_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("em_get_file_name_from_file_path failed [%d]", err);
+				err = EMAIL_ERROR_INVALID_FILE_PATH;
+				goto FINISH_OFF;
+			}
+			/*
+			if (input_from_eas)
+				EM_SAFE_STRNCPY(body_text_file_name, UNKNOWN_CHARSET_HTML_TEXT_FILE, MAX_PATH);
+			else
+				EM_SAFE_STRNCPY(body_text_file_name, "UTF-8.htm", MAX_PATH);
+			*/
 				
-			if (!emstorage_get_save_name(mail_data->account_id, mail_data->mail_id, 0, html_body, name_buf, &err))  {
+			if (!emstorage_get_save_name(mail_data->account_id, mail_data->mail_id, 0, body_text_file_name, name_buf, &err))  {
 				EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 				goto FINISH_OFF;
 			}
@@ -916,8 +949,8 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 	emstorage_commit_transaction(NULL, NULL, NULL);
 
 	SNPRINTF(mailbox_id_param_string, 10, "%d", mailbox_tbl->mailbox_id);
-	if (!emstorage_notify_storage_event(NOTI_MAIL_ADD, converted_mail_tbl->account_id, converted_mail_tbl->mail_id, mailbox_id_param_string, converted_mail_tbl->thread_id))
-		EM_DEBUG_LOG("emstorage_notify_storage_event [NOTI_MAIL_ADD] failed.");
+	if (!emcore_notify_storage_event(NOTI_MAIL_ADD, converted_mail_tbl->account_id, converted_mail_tbl->mail_id, mailbox_id_param_string, converted_mail_tbl->thread_id))
+		EM_DEBUG_LOG("emcore_notify_storage_event [NOTI_MAIL_ADD] failed.");
 
 	if (account_tbl_item->incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
 		if (!emcore_remove_overflowed_mails(mailbox_tbl, &err)) {
@@ -933,11 +966,14 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 				&& mail_data->mailbox_type != EMAIL_MAILBOX_TYPE_SPAMBOX) { 
 		if ((err = emcore_update_sync_status_of_account(mail_data->account_id, SET_TYPE_SET, SYNC_STATUS_SYNCING | SYNC_STATUS_HAVE_NEW_MAILS)) != EMAIL_ERROR_NONE)
 				EM_DEBUG_LOG("emcore_update_sync_status_of_account failed [%d]", err);
-		emcore_add_notification_for_unread_mail(converted_mail_tbl);
-		emcore_check_unread_mail();
+//		emcore_add_notification_for_unread_mail(converted_mail_tbl);
+		emcore_display_unread_in_badge();
 	}
 	
 FINISH_OFF: 
+
+	EM_SAFE_FREE(body_text_file_name);
+
 	if (account_tbl_item)
 		emstorage_free_account(&account_tbl_item, 1, NULL);
 
@@ -1123,6 +1159,7 @@ INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mai
 	int err = EMAIL_ERROR_NONE, err2 = EMAIL_ERROR_NONE;
 	int status = EMAIL_SEND_FAIL;
 	int attachment_tbl_count = 0;
+	int i = 0;
 	SENDSTREAM *stream = NULL;
 	ENVELOPE *envelope = NULL;
 	sslstart_t stls = NULL;
@@ -1185,7 +1222,15 @@ INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mai
 	}
 	
 	opt = &(ref_account->options);
-	
+
+#ifdef __FEATURE_SUPPORT_VALIDATION_SYSTEM__
+	EM_VALIDATION_SYSTEM_LOG("INFO", mail_id, "Email Send Start, %s -> %s, success", mail_tbl_data->full_address_from, mail_tbl_data->full_address_to);
+	for (i = 0; i < attachment_tbl_count; i++) {
+		if(attachment_tbl_data)
+			EM_VALIDATION_SYSTEM_LOG("FILE", mail_id, "[%s], %d", attachment_tbl_data[i].attachment_path, attachment_tbl_data[i].attachment_size);
+	}
+#endif /* __FEATURE_SUPPORT_VALIDATION_SYSTEM__ */
+
 	/*Update status flag to DB*/
 	
 	/*  get rfc822 data */
@@ -1398,9 +1443,6 @@ FINISH_OFF:
 	if (stls) 
 		mail_parameters(NULL, SET_SSLSTART, (void  *)stls);
 
-	if (mail_tbl_data)
-		emstorage_free_mail(&mail_tbl_data, 1, NULL);
-
 	if (attachment_tbl_data)
 		emstorage_free_attachment(&attachment_tbl_data, attachment_tbl_count, NULL);
 
@@ -1417,15 +1459,26 @@ FINISH_OFF:
 		emstorage_free_mailbox(&local_mailbox, 1, NULL);
 
 	if (ret == true) {
-		if (!emstorage_notify_network_event(NOTI_SEND_FINISH, account_id, NULL, mail_id, 0))
-			EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_SEND_FINISH] Failed");
+		if (!emcore_notify_network_event(NOTI_SEND_FINISH, account_id, NULL, mail_id, 0))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEND_FINISH] Failed");
+#ifdef __FEATURE_SUPPORT_VALIDATION_SYSTEM__
+		if(mail_tbl_data)
+			EM_VALIDATION_SYSTEM_LOG("INFO", mail_id, "Email Send End, %s -> %s, success", mail_tbl_data->full_address_from, mail_tbl_data->full_address_to);
+#endif
 	}
 	else {
-		if (!emstorage_notify_network_event(NOTI_SEND_FAIL, account_id, NULL, mail_id, err))
-			EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_SEND_FAIL] Failed");
+		if (!emcore_notify_network_event(NOTI_SEND_FAIL, account_id, NULL, mail_id, err))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEND_FAIL] Failed");
+#ifdef __FEATURE_SUPPORT_VALIDATION_SYSTEM__
+		if(mail_tbl_data)
+		EM_VALIDATION_SYSTEM_LOG("INFO", mail_id, "Email Send End, %s -> %s, failed", mail_tbl_data->full_address_from, mail_tbl_data->full_address_to);
+#endif
 		emcore_show_user_message(mail_id, EMAIL_ACTION_SEND_MAIL, err);
 	}
 	
+	if (mail_tbl_data)
+		emstorage_free_mail(&mail_tbl_data, 1, NULL);
+
 	if (err_code != NULL)
 		*err_code = err;
 	EM_PROFILE_END(profile_emcore_send_mail);
@@ -1512,13 +1565,14 @@ INTERNAL_FUNC int emcore_send_saved_mail(int account_id, char *input_mailbox_nam
 		}
 
 		/*  check that this mail was saved in offline-mode. */
+/*
 		if (searched_mail_tbl_data->save_status != EMAIL_MAIL_STATUS_SAVED_OFFLINE)  {
 			EM_DEBUG_EXCEPTION(" mail was not saved in offline mode...");
 			emstorage_free_mail(&searched_mail_tbl_data, 1, &err);
 			searched_mail_tbl_data = NULL;
 			continue;
 		}
-		
+*/		
 		searched_mail_tbl_data->save_status = EMAIL_MAIL_STATUS_SENDING;
 		
 		if (!emcore_make_rfc822_file_from_mail(searched_mail_tbl_data, attachment_tbl_data, attachment_tbl_count, &envelope, &fpath, opt, &err))  {
@@ -1535,7 +1589,7 @@ INTERNAL_FUNC int emcore_send_saved_mail(int account_id, char *input_mailbox_nam
 				stls = (sslstart_t)mail_parameters(NULL, GET_SSLSTART, NULL);
 				mail_parameters(NULL, SET_SSLSTART, NULL);
 			}
-			
+
 			stream = NULL;
 			if (!emcore_connect_to_remote_mailbox(account_id, EMAIL_CONNECT_FOR_SENDING, &tmp_stream, &err) || !tmp_stream)  {
 				EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
@@ -1764,13 +1818,13 @@ static int emcore_send_mail_smtp(SENDSTREAM *stream, ENVELOPE *env, char *data_f
 		
 		case SMTP_RESPONSE_WANT_AUTH  :
 		case SMTP_RESPONSE_WANT_AUTH2:
-			EM_DEBUG_EXCEPTION("SMTP error :  authentication required...");
-			err = EMAIL_ERROR_AUTHENTICATE;
+			EM_DEBUG_EXCEPTION("SMTP error : authentication required...");
+			err = EMAIL_ERROR_AUTH_REQUIRED;
 			goto FINISH_OFF;
 		
 		case SMTP_RESPONSE_UNAVAIL:
-			EM_DEBUG_EXCEPTION("SMTP error :  mailbox unavailable...");
-			err = EMAIL_ERROR_MAILBOX_FAILURE;
+			EM_DEBUG_EXCEPTION("SMTP error : sending unavailable...");
+			err = EMAIL_ERROR_SMTP_SEND_FAILURE;
 			goto FINISH_OFF;
 		
 		default: 
@@ -1910,8 +1964,8 @@ static int emcore_send_mail_smtp(SENDSTREAM *stream, ENVELOPE *env, char *data_f
 			else {
 				sent_percent = (int) ((double)sent / (double)total * 100.0);
 				if (last_sent_percent + 5 <= sent_percent) {
-					if (!emstorage_notify_network_event(NOTI_SEND_START, account_id, NULL, mail_id, sent_percent))
-						EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_SEND_START] Failed >>>>");
+					if (!emcore_notify_network_event(NOTI_SEND_START, account_id, NULL, mail_id, sent_percent))
+						EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEND_START] Failed >>>>");
 					last_sent_percent = sent_percent;
 				}
 				EM_DEBUG_LOG("Sent data Successfully. sent[%d] total[%d]", sent, total);
@@ -1938,8 +1992,8 @@ static int emcore_send_mail_smtp(SENDSTREAM *stream, ENVELOPE *env, char *data_f
 			sent_percent = (int) ((double)sent / (double)total * 100.0);
 			if (last_sent_percent + 5 <= sent_percent) {
 				/* Disabled Temporary
-				if (!emstorage_notify_network_event(NOTI_SEND_START, account_id, NULL, mail_id, sent_percent))
-					EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [NOTI_SEND_START] Failed >>>>");
+				if (!emcore_notify_network_event(NOTI_SEND_START, account_id, NULL, mail_id, sent_percent))
+					EM_DEBUG_EXCEPTION(" emcore_notify_network_event [NOTI_SEND_START] Failed >>>>");
 				*/
 				last_sent_percent = sent_percent;
 			}
@@ -2135,6 +2189,7 @@ static int attach_part(BODY *body, const unsigned char *data, int data_len, char
 			}
 			snprintf(encoded_file_name, strlen(result_file_name) + 15, "=?UTF-8?B?%s?=", result_file_name);
 			EM_DEBUG_LOG("encoded_file_name [%s]", encoded_file_name);
+			EM_SAFE_FREE(result_file_name);
 		}
 
 		extension = em_get_extension_from_file_path(filename, NULL);
@@ -2180,7 +2235,7 @@ static int attach_part(BODY *body, const unsigned char *data, int data_len, char
 
 		if (is_inline) {	
 			/*  CONTENT-ID */
-			part->body.id = emcore_generate_content_id_string("org.tizen.email", &error);
+			part->body.id = emcore_generate_content_id_string("com.samsung.slp.email", &error);
 			part->body.type = TYPEIMAGE;
 			/*  EM_SAFE_FREE(part->body.subtype); */
 			/*  part->body.subtype = EM_SAFE_STRDUP(content_sub_type); */
@@ -2488,6 +2543,7 @@ static int emcore_make_envelope_from_mail(emstorage_mail_tbl_t *input_mail_tbl_d
 {
 	EM_DEBUG_FUNC_BEGIN("input_mail_tbl_data[%p], output_envelope[%p]", input_mail_tbl_data, output_envelope);
 
+	int 	ret = false;
 	int       error                   = EMAIL_ERROR_NONE;
 	int       is_incomplete           = 0;
 	char     *pAdd                    = NULL;
@@ -2507,17 +2563,20 @@ static int emcore_make_envelope_from_mail(emstorage_mail_tbl_t *input_mail_tbl_d
 		goto FINISH_OFF;
 	}
 
-	if (input_mail_tbl_data->account_id) {
-		ref_account = emcore_get_account_reference(input_mail_tbl_data->account_id);
-
-		if (!ref_account)  {
-			EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", input_mail_tbl_data->account_id);
-			error = EMAIL_ERROR_INVALID_ACCOUNT;
-			goto FINISH_OFF;
-		}
-
-		outgoing_server_address = EM_SAFE_STRDUP(ref_account->outgoing_server_address);
+	if (input_mail_tbl_data->account_id <= 0) {
+		error = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
 	}
+
+	ref_account = emcore_get_account_reference(input_mail_tbl_data->account_id);
+
+	if (!ref_account)  {
+		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", input_mail_tbl_data->account_id);
+		error = EMAIL_ERROR_INVALID_ACCOUNT;
+		goto FINISH_OFF;
+	}
+
+	outgoing_server_address = EM_SAFE_STRDUP(ref_account->outgoing_server_address);
 
 	if (!(envelope = mail_newenvelope()))  {
 		EM_DEBUG_EXCEPTION("mail_newenvelope failed...");
@@ -2687,9 +2746,17 @@ static int emcore_make_envelope_from_mail(emstorage_mail_tbl_t *input_mail_tbl_d
 		envelope->date = (unsigned char *)cpystr((const char *)rfc822_date_string);
 	}
 
-	*output_envelope = envelope;
+	ret = true;
 
 FINISH_OFF:
+
+	if (ret)
+		*output_envelope = envelope;
+	else {
+		mail_free_envelope(&envelope);
+		*output_envelope = NULL;
+	}
+
 	if (outgoing_server_address)
 		EM_SAFE_FREE(outgoing_server_address);
 
@@ -2743,7 +2810,6 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_
 		EM_DEBUG_LOG("attachment_num [%d]", input_mail_tbl_data->attachment_count);
 
 		root_body = mail_newbody();
-		param = mail_newbody_parameter();
 
 		if (root_body == NULL)  {
 			EM_DEBUG_EXCEPTION("mail_newbody failed...");
@@ -2751,11 +2817,20 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_
 			goto FINISH_OFF;
 		}
 		
+		param = mail_newbody_parameter();
+
+		if (param == NULL) {
+			EM_DEBUG_EXCEPTION("mail_newbody_parameter failed...");
+			error = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
 		if (input_mail_tbl_data->smime_type == EMAIL_SMIME_NONE) {
 
 			root_body->type               = TYPEMULTIPART;
 			root_body->subtype            = EM_SAFE_STRDUP("MIXED");
 
+			mail_free_body_parameter(&param);
 			param = NULL;
 
 		} else if (input_mail_tbl_data->smime_type == EMAIL_SMIME_SIGNED) {
@@ -3170,7 +3245,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file(email_mail_data_t *input_mail_tbl_data
 
 	if (input_mail_tbl_data->file_path_plain) {
 		memset(temp_file_path_plain, 0x00, sizeof(temp_file_path_plain));
-		SNPRINTF(temp_file_path_plain, sizeof(temp_file_path_plain), "%s%s%s%s%s", MAILHOME, DIR_SEPERATOR, MAILTEMP, DIR_SEPERATOR, "UTF-8");
+		SNPRINTF(temp_file_path_plain, sizeof(temp_file_path_plain), "%s%s%s", MAILTEMP, DIR_SEPERATOR, "UTF-8");
 
 		if (!emstorage_copy_file(input_mail_tbl_data->file_path_plain, temp_file_path_plain, 0, &error)) {
 			EM_DEBUG_EXCEPTION("emstorage_copy_file failed : [%d]", error);
@@ -3180,7 +3255,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file(email_mail_data_t *input_mail_tbl_data
 
 	if (input_mail_tbl_data->file_path_html) {
 		memset(temp_file_path_html, 0x00, sizeof(temp_file_path_html));
-		SNPRINTF(temp_file_path_html, sizeof(temp_file_path_html), "%s%s%s%s%s", MAILHOME, DIR_SEPERATOR, MAILTEMP, DIR_SEPERATOR, "UTF-8.htm");
+		SNPRINTF(temp_file_path_html, sizeof(temp_file_path_html), "%s%s%s", MAILTEMP, DIR_SEPERATOR, "UTF-8.htm");
 
 		if (!emstorage_copy_file(input_mail_tbl_data->file_path_html, temp_file_path_html, 0, &error)) {
 			EM_DEBUG_EXCEPTION("emstorage_copy_file failed : [%d]", error);
@@ -3324,7 +3399,10 @@ INTERNAL_FUNC int emcore_make_rfc822_file(email_mail_data_t *input_mail_tbl_data
 	
 	ret = true;
 	
-FINISH_OFF: 
+FINISH_OFF:
+
+	emstorage_free_account(&ref_account, 1, NULL);
+
 	if (envelope != NULL)
 		mail_free_envelope(&envelope);
 	

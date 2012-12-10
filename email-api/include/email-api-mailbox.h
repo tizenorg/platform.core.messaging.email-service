@@ -132,7 +132,7 @@ extern "C"
 
 
 /**
- * @open
+
  * @fn int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, int *handle)
  * @brief	Create a new mailbox or mailbox.This function is invoked when user wants to create a new mailbox for the specified account.
  * 		If On_server is true then it will create the mailbox on server as well as in local also.
@@ -165,7 +165,7 @@ EXPORT_API int email_add_mailbox(email_mailbox_t *new_mailbox, int on_server, in
 EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_name, char *input_mailbox_alias, int input_on_server, int *output_handle);
 
 /**
- * @open
+
  * @fn int email_delete_mailbox(int input_mailbox_id, int input_on_server, int *output_handle)
  * @brief	Delete a mailbox or mailbox.This function deletes the existing mailbox for specified account based on the option on_server.
  * 		If the on_server is true then it deletes mailbox from server as well as locally.
@@ -208,7 +208,7 @@ EXPORT_API int email_set_local_mailbox(int input_mailbox_id, int input_is_local_
 
 /**
 
- * @open
+
  * @fn email_get_mailbox_list(int account_id, int mailbox_sync_type, email_mailbox_t** mailbox_list, int* count)
  * @brief	Get all mailboxes from account.
  *
@@ -253,7 +253,7 @@ EXPORT_API int email_get_mailbox_list(int account_id, int mailbox_sync_type, ema
 EXPORT_API int email_get_mailbox_list_ex(int account_id, int mailbox_sync_type, int with_count, email_mailbox_t** mailbox_list, int* count);
 
 /**
- * @open
+
  * @fn email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_type_e mailbox_type,  email_mailbox_t** mailbox)
  * @brief	Get mailbox by mailbox_type.This function is invoked when user wants to know the mailbox information by mailbox_type for the given account.
  *
@@ -268,7 +268,7 @@ EXPORT_API int email_get_mailbox_list_ex(int account_id, int mailbox_sync_type, 
 EXPORT_API int email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_type_e mailbox_type,  email_mailbox_t** mailbox);
 
 /**
- * @open
+
  * @fn email_get_mailbox_by_mailbox_id(int input_mailbox_id, email_mailbox_t** output_mailbox)
  * @brief	Get mailbox by mailbox_id. This function is invoked when user wants to know the mailbox information by mailbox id.
  *
@@ -282,7 +282,7 @@ EXPORT_API int email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_t
 EXPORT_API int email_get_mailbox_by_mailbox_id(int input_mailbox_id, email_mailbox_t** output_mailbox);
 
 /**
- * @open
+
  * @fn email_set_mail_slot_size(int input_account_id, int input_mailbox_id, int input_new_slot_size)
  * @brief	Set mail slot size.This function is invoked when user wants to set the size of mail slot.
  *
@@ -297,7 +297,7 @@ EXPORT_API int email_get_mailbox_by_mailbox_id(int input_mailbox_id, email_mailb
 EXPORT_API int email_set_mail_slot_size(int input_account_id, int input_mailbox_id, int input_new_slot_size);
 
 /**
- * @open
+
  * @fn email_stamp_sync_time_of_mailbox(int input_mailbox_id)
  * @brief	Stamp sync time of mailbox. This function is invoked when user wants to set the sync time of the mailbox.
  *
@@ -311,7 +311,7 @@ EXPORT_API int email_stamp_sync_time_of_mailbox(int input_mailbox_id);
 
 
 /**
- * @open
+
  * @fn email_free_mailbox(email_mailbox_t** mailbox_list, int count)
  * @brief	Free allocated memory for mailbox information.
  *

@@ -19,6 +19,7 @@ BuildRequires:  cmake
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(gthread-2.0)
 BuildRequires:  pkgconfig(aul)
+BuildRequires:  pkgconfig(vconf-internal-keys)
 BuildRequires:  pkgconfig(vconf)
 BuildRequires:  pkgconfig(heynoti)
 BuildRequires:  pkgconfig(dlog)
@@ -41,6 +42,7 @@ BuildRequires:  pkgconfig(libcurl)
 BuildRequires:  pkgconfig(libxml-2.0)
 BuildRequires:  pkgconfig(gconf-2.0)
 BuildRequires:  pkgconfig(cert-svc)
+BuildRequires:  pkgconfig(badge)
 
 
 BuildRoot:  %{_tmppath}/%{name}-%{version}-build
@@ -117,6 +119,42 @@ vconftool set -t int    db/private/email-service/default_account_id "0" -g 6514
 
 vconftool set -t int    db/email_handle/active_sync_handle "-1" 	-g 6514
 
+# for default account id
+vconftool set -t int    memory/sync/email "0" -i -g 6514
+
+# for priority send 
+vconftool set -t string db/private/email-service/noti_ringthone_path "Whistle.mp3" -g 6514
+vconftool set -t int    db/private/email-service/noti_rep_type "0" -g 6514
+vconftool set -t int    db/private/email-service/noti_notification_ticker "0" -g 6514
+vconftool set -t int    db/private/email-service/noti_display_content_ticker "0" -g 6514
+vconftool set -t int    db/private/email-service/noti_badge_ticker "0" -i -g 6514
+vconftool set -t int    db/private/email-service/noti_private_id "0" -i -g 6514
+
+
+#################################################################
+# Set executin script
+#################################################################
+echo "[EMAIL-SERVICE] Set executing script ..."
+EMAIL_SERVICE_EXEC_SCRIPT=/etc/rc.d/init.d/email-service
+EMAIL_SERVICE_BOOT_SCRIPT=/etc/rc.d/rc3.d/S70email-service
+EMAIL_SERVICE_FASTBOOT_SCRIPT=/etc/rc.d/rc5.d/S70email-service
+echo '#!/bin/sh' > ${EMAIL_SERVICE_EXEC_SCRIPT}
+echo 'account_count=$(sqlite3 /opt/usr/dbspace/.email-service.db "select COUNT(*) from mail_account_tbl")' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
+echo 'if [ "$(echo "$account_count" | cut -c0-1)" == "0" ]' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
+echo 'then' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
+echo '	echo 'There is no account'' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
+echo 'elif [ "$(echo "$account_count" | cut -c0-1)" == "" ]' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
+echo 'then' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
+echo '	echo 'DB failure'' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
+echo 'else' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
+echo '	/usr/bin/email-service & ' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
+echo 'fi' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
+chmod 755 ${EMAIL_SERVICE_EXEC_SCRIPT}
+rm -rf ${EMAIL_SERVICE_BOOT_SCRIPT}
+rm -rf ${EMAIL_SERVICE_FASTBOOT_SCRIPT}
+ln -s ${EMAIL_SERVICE_EXEC_SCRIPT} ${EMAIL_SERVICE_BOOT_SCRIPT} 
+ln -s ${EMAIL_SERVICE_EXEC_SCRIPT} ${EMAIL_SERVICE_FASTBOOT_SCRIPT}
+echo "[EMAIL-SERVICE] Finish executing script ..."
 
 #################################################################
 # Create DB file and tables.
@@ -207,6 +245,7 @@ CREATE TABLE mail_box_tbl
 	total_mail_count_on_server       INTEGER,
 	has_archived_mails               INTEGER,    
 	mail_slot_size                   INTEGER,
+	no_select                        INTEGER,
 	last_sync_time                   DATETIME
 );
 
@@ -320,18 +359,29 @@ CREATE TABLE mail_local_activity_tbl
 
 CREATE TABLE mail_certificate_tbl 
 ( 
-	certificate_id              INTEGER,
-	issue_year                  INTEGER,
-	issue_month                 INTEGER,
-	issue_day                   INTEGER,
-	expiration_year             INTEGER,
-	expiration_month            INTEGER,
-	expiration_day              INTEGER,
-	issue_organization_name     VARCHAR(256),
-	email_address               VARCHAR(129),
-	subject_str                 VARCHAR(256),
-	filepath                    VARCHAR(256),
-	password                    VARCHAR(51)
+	certificate_id                   INTEGER,
+	issue_year                       INTEGER,
+	issue_month                      INTEGER,
+	issue_day                        INTEGER,
+	expiration_year                  INTEGER,
+	expiration_month                 INTEGER,
+	expiration_day                   INTEGER,
+	issue_organization_name          VARCHAR(256),
+	email_address                    VARCHAR(129),
+	subject_str                      VARCHAR(256),
+	filepath                         VARCHAR(256),
+	password                         VARCHAR(51)
+);
+
+CREATE TABLE mail_task_tbl  
+(  
+	task_id                          INTEGER PRIMARY KEY,
+	task_type                        INTEGER,
+	task_status                      INTEGER,
+	task_priority                    INTEGER,
+	task_parameter_length            INTEGER, 
+	task_parameter                   BLOB,
+	date_time                        DATETIME
 );
 
 
@@ -341,6 +391,7 @@ CREATE UNIQUE INDEX mail_box_idx1 ON mail_box_tbl (mailbox_id);
 CREATE UNIQUE INDEX mail_idx1 ON mail_tbl (mail_id, account_id);
 CREATE UNIQUE INDEX mail_read_mail_uid_idx1 ON mail_read_mail_uid_tbl (account_id, mailbox_id, local_uid, mailbox_name, s_uid);
 CREATE UNIQUE INDEX mail_meeting_idx1 ON mail_meeting_tbl (mail_id);
+CREATE UNIQUE INDEX task_idx1 ON mail_task_tbl (task_id);
 CREATE INDEX mail_idx_date_time ON mail_tbl (date_time);
 CREATE INDEX mail_idx_thread_item_count ON mail_tbl (thread_item_count);
 '

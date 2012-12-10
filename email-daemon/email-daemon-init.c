@@ -39,7 +39,6 @@
 #include <vconf-internal-account-keys.h>
 #include <dbus/dbus.h>
 #include <dlfcn.h>           /* added for Disabling the Pthread flag log */
-#include <heynoti/heynoti.h>
 
 #include "email-daemon.h"
 #include "email-storage.h"
@@ -51,14 +50,14 @@
 #include "email-core-event.h" 
 #include "email-core-account.h"    
 #include "email-core-mailbox.h"    
-#include "email-core-api.h"    
+#include "email-core-api.h"
+#include "email-core-smtp.h"    
 #include "email-core-global.h"
 #include "email-storage.h"   
 #include "email-core-sound.h" 
+#include "email-core-task-manager.h"
 
 extern int g_client_count ;
-
-int fd_HibernationNoti;
 
 /*  static functions */
 static int _emdaemon_load_email_core()
@@ -76,6 +75,11 @@ static int _emdaemon_load_email_core()
 
 	if (emcore_start_event_loop_for_sending_mails(&err) < 0)
 		goto FINISH_OFF;
+
+	if ((err = emcore_start_task_manager_loop()) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_start_task_manager_loop failed [%d]",err);
+		goto FINISH_OFF;
+	}
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
 	if (emcore_start_thread_for_downloading_partial_body(&err) < 0) {
@@ -98,23 +102,10 @@ static int _emdaemon_unload_email_core()
 
 	/* finish event loop */
 	emcore_stop_event_loop(&err);
+	emcore_stop_task_manager_loop();
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
-}
-
-static void hibernation_enter_callback()
-{
-	EM_DEBUG_FUNC_BEGIN();
-	emstorage_db_close(NULL);
-	EM_DEBUG_FUNC_END();
-}
-
-static void hibernation_leave_callback()
-{
-	EM_DEBUG_FUNC_BEGIN();
-	emstorage_db_open(NULL);
-	EM_DEBUG_FUNC_END();
 }
 
 static void callback_for_SYNC_ALL_STATUS_from_account_svc(keynode_t *input_node, void *input_user_data)
@@ -209,6 +200,70 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END();
 }
 
+static void callback_for_NETWORK_STATUS(keynode_t *input_node, void *input_user_data)
+{
+	EM_DEBUG_FUNC_BEGIN("input_node [%p], input_user_data [%p]", input_node, input_user_data);
+	int err = EMAIL_ERROR_NONE;
+	int i = 0;
+	int total = 0;
+	int unseen = 0;
+	int network_status = 0;
+	int account_count = 0;
+	email_account_t *account_list = NULL;
+	email_account_t *account_info = NULL;
+	emstorage_mailbox_tbl_t *local_mailbox = NULL;
+
+	if (input_node)
+		network_status = vconf_keynode_get_int(input_node);
+
+	if (network_status == VCONFKEY_NETWORK_OFF) {
+		EM_DEBUG_EXCEPTION("Network is OFF");
+		goto FINISH_OFF;
+	}
+
+	if (!emdaemon_get_account_list(&account_list, &account_count, &err))  {
+		EM_DEBUG_EXCEPTION("emdaemon_get_account_list failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	for (i = 0; i < account_count ; i++) {
+		account_info = account_list + i;
+
+		if (!emstorage_get_mailbox_by_mailbox_type(account_info->account_id, EMAIL_MAILBOX_TYPE_OUTBOX, &local_mailbox, false, &err)) {
+			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		if (!emstorage_get_mail_count(account_info->account_id, local_mailbox->mailbox_name, &total, &unseen, false, &err)) {
+			EM_DEBUG_EXCEPTION("emstorage_get_mail_count failed [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		if (total <= 0)
+			continue;
+
+		if (!emcore_send_saved_mail(account_info->account_id, local_mailbox->mailbox_name, &err)) {
+			EM_DEBUG_EXCEPTION("emcore_send_saved_mail failed [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		if (!emstorage_free_mailbox(&local_mailbox, 1, &err)) {
+			EM_DEBUG_EXCEPTION("emstorage_free_mailbox failed [%d]", err);
+			goto FINISH_OFF;
+		}
+	}
+
+FINISH_OFF:
+
+	if (local_mailbox)
+		emstorage_free_mailbox(&local_mailbox, 1, NULL);
+
+	if (account_list)
+		emdaemon_free_account(&account_list, account_count, NULL);
+
+	EM_DEBUG_FUNC_END("Error : [%d]", err);
+}
+
 INTERNAL_FUNC int emdaemon_initialize(int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -259,24 +314,11 @@ INTERNAL_FUNC int emdaemon_initialize(int* err_code)
 	}
 
 	/* Subscribe Events */
-	fd_HibernationNoti = heynoti_init();
-
-	if(fd_HibernationNoti == -1)
-		EM_DEBUG_EXCEPTION("heynoti_init failed");
-	else {
-		EM_DEBUG_LOG("heynoti_init Success");
-		ret = heynoti_subscribe(fd_HibernationNoti, "HIBERNATION_ENTER", hibernation_enter_callback, (void *)fd_HibernationNoti);
-		EM_DEBUG_LOG("heynoti_subscribe returns %d", ret);
-		ret = heynoti_subscribe(fd_HibernationNoti, "HIBERNATION_LEAVE", hibernation_leave_callback, (void *)fd_HibernationNoti);
-		EM_DEBUG_LOG("heynoti_subscribe returns %d", ret);
-		ret = heynoti_attach_handler(fd_HibernationNoti);
-		EM_DEBUG_LOG("heynoti_attach_handler returns %d", ret);
-	}
-
 	vconf_notify_key_changed(VCONFKEY_ACCOUNT_SYNC_ALL_STATUS_INT,  callback_for_SYNC_ALL_STATUS_from_account_svc,  NULL);
 	vconf_notify_key_changed(VCONFKEY_ACCOUNT_AUTO_SYNC_STATUS_INT, callback_for_AUTO_SYNC_STATUS_from_account_svc, NULL);
+	vconf_notify_key_changed(VCONFKEY_NETWORK_STATUS, callback_for_NETWORK_STATUS, NULL);
 
-	emcore_check_unread_mail();
+	emcore_display_unread_in_badge();
 	
 	ret = true;
 	
@@ -320,14 +362,6 @@ INTERNAL_FUNC int emdaemon_finalize(int* err_code)
 		goto FINISH_OFF;
 	}
 	
-	/* Unsubscribe Events */
-
-	if(fd_HibernationNoti != -1) {
-		heynoti_unsubscribe(fd_HibernationNoti, "HIBERNATION_ENTER", hibernation_enter_callback);
-		heynoti_unsubscribe(fd_HibernationNoti, "HIBERNATION_LEAVE", hibernation_leave_callback);
-		heynoti_close(fd_HibernationNoti);
-	}
-
 	g_client_count = 0;
 	
 #ifdef __FEATURE_AUTO_POLLING__

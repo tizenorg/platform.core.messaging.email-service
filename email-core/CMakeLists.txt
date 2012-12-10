@@ -51,7 +51,6 @@ TARGET_LINK_LIBRARIES(${DEVICE-LIB} ${device_LDFLAGS} ${BASE-LIB})
 SET_TARGET_PROPERTIES(${DEVICE-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${DEVICE-LIB} PROPERTIES VERSION ${VERSION})
 
-#INSTALL(TARGETS ${DEVICE-LIB} LIBRARY DESTINATION lib)
 INSTALL(TARGETS ${DEVICE-LIB} DESTINATION lib COMPONENT RuntimeLibraries)
 
 
@@ -67,6 +66,7 @@ SET(STORAGE-SRCS
 INCLUDE_DIRECTORIES(
 	${CMAKE_SOURCE_DIR}/email-common-use/include
 	${CMAKE_SOURCE_DIR}/email-daemon/include
+	${CMAKE_SOURCE_DIR}/email-core/include
 	${CMAKE_SOURCE_DIR}/email-core/email-storage/include
 )
 
@@ -154,6 +154,9 @@ SET(CORE-SRCS
 	${CMAKE_SOURCE_DIR}/email-core/email-core-smime.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-cert.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-sound.c
+	${CMAKE_SOURCE_DIR}/email-core/email-core-task-manager.c
+	${CMAKE_SOURCE_DIR}/email-core/email-core-tasks.c
+	${CMAKE_SOURCE_DIR}/email-core/email-core-signal.c
 )
 
 INCLUDE_DIRECTORIES(
@@ -167,7 +170,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf contacts-service2 secure-storage openssl accounts-svc mm-player mm-session devman_haptic alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore)
+pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage openssl accounts-svc mm-player mm-session devman_haptic alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${core_pkgs_CFLAGS})

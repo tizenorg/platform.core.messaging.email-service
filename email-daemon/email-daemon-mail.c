@@ -53,6 +53,7 @@
 #include "email-core-utils.h" 
 #include "email-core-smtp.h" 
 #include "email-core-timer.h" 
+#include "email-core-signal.h"
 
 #ifdef __FEATURE_LOCAL_ACTIVITY__
 extern int g_local_activity_run;
@@ -86,7 +87,9 @@ INTERNAL_FUNC int emdaemon_send_mail(int mail_id, int *handle, int* err_code)
 		if (mail_table_data != NULL)
 			EM_DEBUG_EXCEPTION(" mail_table_data->mailbox_id[%d], mail_table_data->account_id[%d]", mail_table_data->mailbox_id, mail_table_data->account_id);
 		if (err_code)
-			*err_code = EMAIL_ERROR_INVALID_MAILBOX;		
+			*err_code = EMAIL_ERROR_INVALID_MAILBOX;
+		if(mail_table_data)
+			emstorage_free_mail(&mail_table_data, 1, &err);
 		return false;
 	}
 	
@@ -115,8 +118,8 @@ INTERNAL_FUNC int emdaemon_send_mail(int mail_id, int *handle, int* err_code)
 	}
 #endif /* __FEATURE_MOVE_TO_OUTBOX_FIRST__ */
 
-	if(!emstorage_notify_network_event(NOTI_SEND_START, account_id, NULL, mail_id, 0))
-		EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_SEND_START] Failed >>>> ");
+	if(!emcore_notify_network_event(NOTI_SEND_START, account_id, NULL, mail_id, 0))
+		EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_SEND_START] Failed >>>> ");
 	
 	/* set EMAIL_MAIL_STATUS_SEND_WAIT status */
 
@@ -165,10 +168,9 @@ FINISH_OFF:
 	if (err_code != NULL)
 		*err_code = err;
 
-	if(mail_table_data) {
+	if(mail_table_data)
 		emstorage_free_mail(&mail_table_data, 1, &err);
 
-	}
 	EM_DEBUG_FUNC_END();
 	return ret;
 }
@@ -236,7 +238,6 @@ INTERNAL_FUNC int emdaemon_add_mail(email_mail_data_t *input_mail_data, email_at
 	
 	if (!input_mail_data || input_mail_data->account_id <= 0 ||
 		( ((input_mail_data->report_status & EMAIL_MAIL_REPORT_MDN) != 0) && !input_mail_data->full_address_to))  {
-		EM_DEBUG_LOG("input_mail_data->report_status [%d]", input_mail_data->report_status);
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM"); 
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -1238,8 +1239,8 @@ INTERNAL_FUNC int emdaemon_move_mail_thread_to_mailbox(int thread_id, int target
 	account_id = mail_list[0].account_id;
 
 
-	if (!emcore_get_list(account_id, &target_mailbox_list, &mailbox_count, &err)) {
-		EM_DEBUG_EXCEPTION("emcore_get_list failed [%d]", err);
+	if (!emcore_get_mailbox_list(account_id, &target_mailbox_list, &mailbox_count, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_get_mailbox_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
@@ -1262,8 +1263,8 @@ INTERNAL_FUNC int emdaemon_move_mail_thread_to_mailbox(int thread_id, int target
 	}
 	
 	SNPRINTF(mailbox_id_param_string, 10, "%d", target_mailbox->mailbox_id);
-	if (!emstorage_notify_storage_event(NOTI_THREAD_MOVE, account_id, thread_id, mailbox_id_param_string, move_always_flag)) 
-		EM_DEBUG_EXCEPTION(" emstorage_notify_storage_event Failed [NOTI_MAIL_MOVE] >>>> ");
+	if (!emcore_notify_storage_event(NOTI_THREAD_MOVE, account_id, thread_id, mailbox_id_param_string, move_always_flag)) 
+		EM_DEBUG_EXCEPTION(" emcore_notify_storage_event Failed [NOTI_MAIL_MOVE] >>>> ");
 
 	ret = true;
 	
@@ -1315,8 +1316,8 @@ INTERNAL_FUNC int emdaemon_delete_mail_thread(int thread_id, int delete_always_f
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_notify_storage_event(NOTI_THREAD_DELETE, account_id, thread_id, NULL, delete_always_flag)) 
-		EM_DEBUG_EXCEPTION(" emstorage_notify_storage_event Failed [NOTI_THREAD_DELETE] >>>> ");
+	if (!emcore_notify_storage_event(NOTI_THREAD_DELETE, account_id, thread_id, NULL, delete_always_flag)) 
+		EM_DEBUG_EXCEPTION(" emcore_notify_storage_event Failed [NOTI_THREAD_DELETE] >>>> ");
 
 	ret = true;
 	
@@ -1363,8 +1364,8 @@ INTERNAL_FUNC int emdaemon_modify_seen_flag_of_thread(int thread_id, int seen_fl
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_notify_storage_event(NOTI_THREAD_MODIFY_SEEN_FLAG, account_id, thread_id, NULL, seen_flag)) 
-		EM_DEBUG_EXCEPTION(" emstorage_notify_storage_event Failed [NOTI_MAIL_MOVE] >>>> ");
+	if (!emcore_notify_storage_event(NOTI_THREAD_MODIFY_SEEN_FLAG, account_id, thread_id, NULL, seen_flag)) 
+		EM_DEBUG_EXCEPTION(" emcore_notify_storage_event Failed [NOTI_MAIL_MOVE] >>>> ");
 
 	ret = true;
 	

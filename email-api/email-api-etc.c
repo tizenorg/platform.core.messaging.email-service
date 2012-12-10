@@ -173,6 +173,9 @@ EXPORT_API int email_write_mime_file(email_mail_data_t *input_mail_data, email_a
 
 FINISH_OFF:
 
+	if (hAPI)
+		emipc_destroy_email_api(hAPI);
+
 	if (err != EMAIL_ERROR_NONE)
 		EM_SAFE_FREE(p_output_file_path);
 

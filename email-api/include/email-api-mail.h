@@ -62,7 +62,6 @@ extern "C" {
 #endif /* __cplusplus */
 
 /**
- * @open
  * @fn email_add_mail(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t* input_meeting_request, int input_from_eas)
  * @brief	Save a mail. This function is invoked when user wants to add a mail.
  * 		If the option from_eas is 1 then this will save the message on server as well as on locally.
@@ -89,7 +88,7 @@ extern "C" {
  * 	int                    attachment_count = 0;
  * 	int                    err = EMAIL_ERROR_NONE;
  * 	char                   arg[50] = { 0 , };
- * 	char                  *body_file_path = "/opt/data/email/.emfdata/tmp/mail.txt";
+ * 	char                  *body_file_path = MAILHOME"/tmp/mail.txt";
  * 	email_mailbox_t         *mailbox_data = NULL;
  * 	email_mail_data_t       *test_mail_data = NULL;
  * 	email_attachment_data_t *attachment_data = NULL;
@@ -204,7 +203,7 @@ extern "C" {
 EXPORT_API int email_add_mail(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t* input_meeting_request, int input_from_eas);
 
  /**
-  * @open
+
   * @fn email_add_read_receipt(int input_read_mail_id,  int *output_handle)
   * @brief	Add a read receipt mail. This function is invoked when user receives a mail with read report enable and wants to send a read report for the same.
   *
@@ -218,7 +217,6 @@ EXPORT_API int email_add_mail(email_mail_data_t *input_mail_data, email_attachme
 EXPORT_API int email_add_read_receipt(int input_read_mail_id, int *output_receipt_mail_id);
 
 /**
- * @open
  * @fn email_update_mail(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t* input_meeting_request, int input_from_composer)
  * @brief	Update a existing email information. This function is invoked when user wants to change some existing email information with new email information.
  *
@@ -298,7 +296,6 @@ EXPORT_API int email_add_read_receipt(int input_read_mail_id, int *output_receip
 EXPORT_API int email_update_mail(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t* input_meeting_request, int input_from_eas);
 
 /**
- * @open
  * @fn email_count_mail(email_mailbox_t* mailbox, int* total, int* unseen)
  * @brief	Get mail count from mailbox.This function is invoked when user wants to know how many toatl mails and out of that
  * 		how many unseen mails are there in a given mailbox.
@@ -347,7 +344,6 @@ EXPORT_API int email_update_mail(email_mail_data_t *input_mail_data, email_attac
 EXPORT_API int email_count_mail(email_list_filter_t *input_filter_list, int input_filter_count, int *output_total_mail_count, int *output_unseen_mail_count);
 
 /**
- * @open
  * @fn email_get_max_mail_count(int *Count)
  * @brief	Gets the max count of mails which can be supported by email-service
  *
@@ -370,19 +366,17 @@ EXPORT_API int email_count_mail(email_list_filter_t *input_filter_list, int inpu
 EXPORT_API int email_get_max_mail_count(int *count);
 
 /**
- * @open
  * @fn 	email_delete_mail(email_mailbox_t* mailbox, int *mail_ids, int num, int from_server)
  * @brief	Delete a mail or multiple mails.Based on from_server value this function will delte a mail or multiple mails from server or loaclly.
  * @param[in] mailbox			Reserved.
  * 		If the incoming_server_type is EMAIL_SERVER_TYPE_POP3 then from_server value will be 0
  * 		If the incoming_server_type is EMAIL_SERVER_TYPE_IMAP4 then from_server value will be 1/0
  *
- * @param[in] mail_ids[]				Specifies the arrary of mail id.
- * @param[in] num					Specifies the number of mail id.
+ * @param[in] mail_ids[]	Specifies the array of mail id.
+ * @param[in] num			Specifies the number of mail id.
  * @param[in] from_server	Specifies whether mails are deleted from server.
  * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
- * @exception 		none
- * @see 		email_mailbox_t
+ * @exception none
  * @code
  * 	#include "email-api-account.h"
  *	bool
@@ -406,7 +400,6 @@ EXPORT_API int email_delete_mail(int input_mailbox_id, int *input_mail_ids, int 
 
 
 /**
- * @open
  * @fn email_delete_all_mails_in_mailbox(int input_mailbox_id, int input_from_server)
  * @brief	Delete all mail from a mailbox.
  * 		If the incoming_server_type is EMAIL_SERVER_TYPE_POP3 then from_server value will be 0
@@ -439,7 +432,7 @@ EXPORT_API int email_delete_mail(int input_mailbox_id, int *input_mail_ids, int 
 EXPORT_API int email_delete_all_mails_in_mailbox(int input_mailbox_id, int input_from_server);
 
 /**
- * @open
+
  *  @fn email_clear_mail_data()
  * @brief	delete email data from storage. This API will be used by the Settings Application
  *
@@ -465,7 +458,7 @@ EXPORT_API int  email_clear_mail_data();
 
 
 /**
- * @open
+
  * @fn email_add_attachment(int mail_id, email_attachment_data_t* attachment)
  * @brief	Append a attachment to email.This function is invoked when user wants to add attachment to existing mail.
  *
@@ -503,7 +496,7 @@ EXPORT_API int email_add_attachment(int mail_id, email_attachment_data_t* attach
 
 
 /**
- * @open
+
  * @fn email_delete_attachment(int mail_id, const char * attachment_id)
  * @brief	delete a attachment from email.This function is invoked when user wants to delete a attachment from existing mailbased on mail Id and attachment Id
  *
@@ -529,7 +522,7 @@ EXPORT_API int email_add_attachment(int mail_id, email_attachment_data_t* attach
 EXPORT_API int email_delete_attachment(int attachment_id);
 
 /**
- * @open
+
  * @fn	email_get_attachment_data(int mail_id, const char* attachment_id, email_attachment_data_t** attachment)
  * @brief	Get a mail attachment.This function is invoked when user wants to get the attachment information based on attachment id for the specified mail Id.
  *
@@ -572,7 +565,7 @@ EXPORT_API int email_get_attachment_data(int attachment_id, email_attachment_dat
 EXPORT_API int email_get_attachment_data_list(int input_mail_id, email_attachment_data_t **output_attachment_data, int *output_attachment_count);
 
 /**
- * @open
+
  * @fn email_free_attachment_data(email_attachment_data_t **attachment_data_list, int attachment_data_count)
  * @brief	Free allocated memroy for email attachment.
  *
@@ -621,7 +614,7 @@ EXPORT_API int email_free_attachment_data(email_attachment_data_t **attachment_d
 
 
 /**
- * @open
+
  * @fn email_query_mails(char *conditional_clause_string, email_mail_data_t** mail_list,  int *result_count)
  * @brief                          Query the mail list information from DB based on the mailbox name.
  *
@@ -661,7 +654,7 @@ EXPORT_API int email_free_attachment_data(email_attachment_data_t **attachment_d
 EXPORT_API int email_query_mails(char *conditional_clause_string, email_mail_data_t** mail_list,  int *result_count);
 
 /**
- * @open
+
  * @fn email_query_mail_list(char *input_conditional_clause_string, email_mail_list_item_t** output_mail_list,  int *output_result_count)
  * @brief Query the mail list information from DB.
  *
@@ -701,7 +694,7 @@ EXPORT_API int email_query_mails(char *conditional_clause_string, email_mail_dat
 EXPORT_API int email_query_mail_list(char *input_conditional_clause_string, email_mail_list_item_t** output_mail_list,  int *output_result_count);
 
 /**
- * @open
+
  * @fn email_get_mail_data(int input_mail_id, email_mail_data_t **output_mail_data)
  * @brief	Get a mail by its mail id. This function is invoked when user wants to get a mail based on mail id existing in DB.
  *
@@ -740,7 +733,7 @@ EXPORT_API int email_get_mail_data(int input_mail_id, email_mail_data_t **output
 
 
 /**
- * @open
+
  * @fn email_free_mail_data(email_mail_data_t** mail_list, int count)
  * @brief	Free allocated memroy for emails.
  *
@@ -775,7 +768,7 @@ EXPORT_API int email_free_mail_data(email_mail_data_t** mail_list, int count);
     -----------------------------------------------------------*/
 
 /**
- * @open
+
  * @fn email_set_flags_field(int *mail_ids, int num, email_flags_field_type field_type, int value, int onserver)
  * @brief	Change email flags field.
  *      	If the incoming_server_type is EMAIL_SERVER_TYPE_POP3 then from_server value will be 0
@@ -823,7 +816,7 @@ EXPORT_API int email_set_flags_field(int account_id, int *mail_ids, int num, ema
     -----------------------------------------------------------*/
 
 /**
- * @open
+
  * @fn email_move_mail_to_mailbox(int *mail_ids, int num, int input_target_mailbox_id)
  * @brief	Move a email to another mailbox.
  *
@@ -860,7 +853,6 @@ EXPORT_API int email_move_mail_to_mailbox(int *mail_ids, int num, int input_targ
 
 
 /**
- * @open
  * @fn email_move_all_mails_to_mailbox(int input_source_mailbox_id, int input_target_mailbox_id)
  * @brief	Move all email to another mailbox.
  *
@@ -902,9 +894,24 @@ EXPORT_API int email_move_mail_to_mailbox(int *mail_ids, int num, int input_targ
  */
 EXPORT_API int email_move_all_mails_to_mailbox(int input_source_mailbox_id, int input_target_mailbox_id);
 
+/**
+ * @fn email_move_mails_to_mailbox_of_another_account(int input_source_mailbox_id, int *mail_id_array, int mail_id_count, int input_target_mailbox_id, int *output_task_id)
+ * @brief	Move mails to a mailbox of another account.
+ *
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
+ * @param[in] input_source_mailbox_id	Specifies the source mailbox ID for moving email.
+ * @param[in] mail_id_array	Specifies the source mail id array for moving email.
+ * @param[in] mail_id_count	Specifies the count of source mail for moving email.
+ * @param[in] input_target_mailbox_id	Specifies the destination mailbox ID for moving email.
+ * @param[out] output_task_id	Specifies the task id for handling the task.
+ * @exception 		none
+ * @remarks N/A
+ */
+EXPORT_API int email_move_mails_to_mailbox_of_another_account(int input_source_mailbox_id, int *mail_id_array, int mail_id_count, int input_target_mailbox_id, int *output_task_id);
+
 
 /**
- * @open
+
  * @fn email_get_mail_list_ex(email_list_filter_t *input_filter_list, int input_filter_count, email_list_sorting_rule_t *input_sorting_rule_list, int input_sorting_rule_count, int input_start_index, int input_limit_count, email_mail_list_item_t** output_mail_list, int *output_result_count)
  * @brief	Get the Mail List information from DB.
  *
@@ -1004,7 +1011,7 @@ EXPORT_API int email_get_mail_list_ex(email_list_filter_t *input_filter_list, in
 EXPORT_API int email_free_list_filter(email_list_filter_t **input_filter_list, int input_filter_count);
 
 /**
- * @open
+
  * @fn email_get_mails(int account_id , int mailbox_id, int thread_id, int start_index, int limit_count, email_sort_type_t sorting, email_mail_data_t** mail_list,  int* result_count)
  * @brief	Get the Mail List information from DB based on the mailbox name.
  *
@@ -1054,7 +1061,7 @@ EXPORT_API int email_free_list_filter(email_list_filter_t **input_filter_list, i
 EXPORT_API int email_get_mails(int account_id , int mailbox_id, int thread_id, int start_index, int limit_count, email_sort_type_t sorting, email_mail_data_t** mail_list,  int* result_count);
 
 /**
- * @open
+
  * @fn email_get_mail_list(int account_id, int mailbox_id, int thread_id, int start_index, int limit_count, email_sort_type_t sorting, email_mail_list_item_t** mail_list,  int* result_count)
  * @brief	Get the Mail List information from DB based on the mailbox name.
  *
@@ -1105,7 +1112,7 @@ EXPORT_API int email_get_mails(int account_id , int mailbox_id, int thread_id, i
 EXPORT_API int email_get_mail_list(int account_id, int mailbox_id, int thread_id, int start_index, int limit_count, email_sort_type_t sorting, email_mail_list_item_t** mail_list,  int* result_count);
 
 /**
- * @open
+
  * @fn 	email_get_mail_by_address(int account_id, int mailbox_id, email_email_address_list_t* addr_list,
 									int start_index, int limit_count, email_sort_type_t sorting, email_mail_list_item_t** mail_list,  int* result_count)
  * @brief	Get the Mail List information from the DB based on the mailbox name account_id and sender address.
@@ -1131,7 +1138,7 @@ EXPORT_API int email_get_mail_by_address(int account_id , int mailbox_id, email_
 									int start_index, int limit_count, int search_type, const char *search_value, email_sort_type_t sorting, email_mail_list_item_t** mail_list,  int* result_count);
 
 /**
- * @open
+
  * @fn email_get_thread_information_by_thread_id(int thread_id, email_mail_data_t** thread_info)
  * @brief	Get the thread information for specific thread from DB based on the mailbox name.
  *
@@ -1171,7 +1178,7 @@ EXPORT_API int email_get_mail_by_address(int account_id , int mailbox_id, email_
 EXPORT_API int email_get_thread_information_by_thread_id(int thread_id, email_mail_data_t** thread_info);
 
 /**
- * @open
+
  * @fn email_get_thread_information_ex(int thread_id, email_mail_list_item_t** thread_info)
  * @brief	Get the Mail List information for specific thread from DB based on the mailbox name.
  *
@@ -1211,7 +1218,7 @@ EXPORT_API int email_get_thread_information_ex(int thread_id, email_mail_list_it
 
 
 /**
- * @open
+
  * @fn email_retry_sending_mail( int mail_id, int timeout_in_sec)
  * @brief	Retry mail send
  *
@@ -1243,7 +1250,7 @@ EXPORT_API int email_retry_sending_mail(int mail_id, int timeout_in_sec);
 EXPORT_API int email_create_db_full();
 
 /**
- * @open
+
  * @fn email_cancel_sending_mail( int mail_id)
  * @brief	Callback function for cm popup. We set the status as EMAIL_MAIL_STATUS_SEND_CANCELED
  *
@@ -1271,7 +1278,7 @@ EXPORT_API int email_create_db_full();
 EXPORT_API int email_cancel_sending_mail(int mail_id) ;
 
  /**
- * @open
+
  * @fn email_get_disk_space_usage(unsigned long *total_size)
  * @brief	Gets the total disk usage of emails in KB.
  *
@@ -1296,7 +1303,7 @@ EXPORT_API int email_cancel_sending_mail(int mail_id) ;
 EXPORT_API int email_get_disk_space_usage(unsigned long *total_size);
 
 /**
- * @open
+
  * @fn 	email_get_address_info_list(int mail_id, email_address_info_list_t** address_info_list)
  * @brief	Get the address info list. The address info list contains from, to, cc, bcc addresses and their display name, contact id and etc. (see email_address_info_list_t)
  *			Each GList (from, to, cc, bcc) is the list of email_address_info_t data.
@@ -1352,7 +1359,7 @@ EXPORT_API int email_get_disk_space_usage(unsigned long *total_size);
 EXPORT_API int email_get_address_info_list(int mail_id, email_address_info_list_t** address_info_list);
 
 /**
- * @open
+
  * @fn	email_free_address_info_list(email_address_info_list_t **address_info_list)
  * @brief	Free the address info list allocated by email_get_address_info_list(). This function will free the memory which is allocated to address_info_list itself.
  *
@@ -1364,7 +1371,7 @@ EXPORT_API int email_get_address_info_list(int mail_id, email_address_info_list_
 EXPORT_API int email_free_address_info_list(email_address_info_list_t **address_info_list);
 
 /**
- * @open
+
  * @fn	email_get_structure(const char*encoded_string, void **struct_var, email_convert_struct_type_e type)
  * @brief	This function returns the structure of the type which is indicated by 'type' variable. This function will allocate new memory to 'struct_var' for structure.<br>
  *			Some notifications such as NOTI_DOWNLOAD_NEW_MAIL are published with string parameter. The string contains various values that might be divided by delimiter.<br>
@@ -1379,7 +1386,7 @@ EXPORT_API int email_free_address_info_list(email_address_info_list_t **address_
 EXPORT_API int email_get_structure(const char*encoded_string, void **struct_var, email_convert_struct_type_e type);
 
 /**
- * @open
+
  * @fn email_get_meeting_request(int mail_id, email_meeting_request_t **meeting_req)
  * @brief	Get the information of meeting request.  The information of meeting request is based on Mail Id. <br>
  *			The information of meeting request is corresponding to only one mail.
@@ -1395,7 +1402,7 @@ EXPORT_API int email_get_meeting_request(int mail_id, email_meeting_request_t **
 
 
 /**
- * @open
+
  * @fn	email_free_meeting_request(email_meeting_request_t** meeting_req, int count)
  * @brief	Free the meeting request allocated by email_get_meeting_request() or alloacted to add. This function will free the memory which is allocated to meeting_req (= *meeting_req) itself.
  *

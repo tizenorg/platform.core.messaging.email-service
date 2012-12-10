@@ -114,19 +114,19 @@ EXPORT_API unsigned char *emipc_serialize_param_list(emipc_param_list *param_lis
 		return NULL;
 	}
 
-		param_list->byte_stream = (unsigned char*)calloc(1, stream_len);
-		int pos = sizeof(long)*eSTREAM_COUNT;
+	param_list->byte_stream = (unsigned char*)calloc(1, stream_len);
+	int pos = sizeof(long)*eSTREAM_COUNT;
 
-		if (pos + (int)sizeof(param_list->param_count) > stream_len ) {
-			EM_DEBUG_EXCEPTION("%d > stream_len", pos + sizeof(param_list->param_count));
-			EM_SAFE_FREE(param_list->byte_stream);
-			return NULL;
-		}
+	if (pos + (int)sizeof(param_list->param_count) > stream_len ) {
+		EM_DEBUG_EXCEPTION("%d > stream_len", pos + sizeof(param_list->param_count));
+		EM_SAFE_FREE(param_list->byte_stream);
+		return NULL;
+	}
 
-		memcpy((param_list->byte_stream + pos), &param_list->param_count, sizeof(param_list->param_count));
+	memcpy((param_list->byte_stream + pos), &param_list->param_count, sizeof(param_list->param_count));
 
-		pos += sizeof(long);
-		int index = 0, length = 0;
+	pos += sizeof(long);
+	int index = 0, length = 0;
 
 	/* stream format */
 	/* | param1 length | (param1 data) | param2 length | (param2 data) | ... |*/

@@ -35,6 +35,7 @@
 #include "email-convert.h"
 #include "email-storage.h"
 #include "email-ipc.h"
+#include "email-core-task-manager.h"
 #include <sqlite3.h>
 
 
@@ -73,6 +74,8 @@ EXPORT_API int email_service_begin(void)
 	signal(SIGPIPE, SIG_IGN); /* to ignore signal 13(SIGPIPE) */
 	
 	ret = emipc_initialize_proxy();
+
+	emcore_init_task_handler_array();
 
 	EM_DEBUG_FUNC_END("err[%d]", ret);
 	return ret;

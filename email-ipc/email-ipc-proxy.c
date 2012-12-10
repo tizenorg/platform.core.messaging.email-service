@@ -30,15 +30,21 @@
 #include "email-api.h"
 #include "email-types.h"
 #include "email-internal-types.h"
-#include <glib.h>
+#include "email-dbus-activation.h"
 
 EXPORT_API int emipc_initialize_proxy()
 {
 	EM_DEBUG_FUNC_BEGIN();
 
-	int err = emipc_initialize_proxy_main();
+	int err = EMAIL_ERROR_NONE;
 
-	EM_DEBUG_FUNC_END();
+	err = emipc_launch_email_service();
+	EM_DEBUG_LOG("emipc_launch_email_service returns [%d]", err);
+
+	err = emipc_initialize_proxy_main();
+	EM_DEBUG_LOG("emipc_initialize_proxy_main returns [%d]", err);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
 

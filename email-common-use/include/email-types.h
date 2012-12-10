@@ -118,6 +118,8 @@ extern "C"
 #define SYNC_STATUS_SYNCING               1                                      /* BIN 00000001 */
 #define SYNC_STATUS_HAVE_NEW_MAILS        2                                      /* BIN 00000010 */
 
+#define UNKNOWN_CHARSET_PLAIN_TEXT_FILE   "unknown"
+#define UNKNOWN_CHARSET_HTML_TEXT_FILE    "unknown.htm"
 
 #define FAILURE                           -1
 #define SUCCESS                           0
@@ -132,94 +134,101 @@ extern "C"
 #define DEPRECATED                        __attribute__((deprecated))
 #endif
 
+#define VCONF_VIP_NOTI_RINGTONE_PATH          "db/private/email-service/noti_ringtone_path"            
+#define VCONF_VIP_NOTI_REP_TYPE               "db/private/email-service/noti_rep_type"                 
+#define VCONF_VIP_NOTI_NOTIFICATION_TICKER    "db/private/email-service/noti_notification_ticker"      
+#define VCONF_VIP_NOTI_DISPLAY_CONTENT_TICKER "db/private/email-service/noti_display_content_ticker"   
+#define VCONF_VIP_NOTI_BADGE_TICKER           "db/private/email-service/noti_badge_ticker"             
+
 /*****************************************************************************/
 /*  Enumerations                                                             */
 /*****************************************************************************/
+
 enum {
 	/* Account */
-	_EMAIL_API_ADD_ACCOUNT                             = 0x01000000,
-	_EMAIL_API_DELETE_ACCOUNT                          = 0x01000001,
-	_EMAIL_API_UPDATE_ACCOUNT                          = 0x01000002,
-	_EMAIL_API_GET_ACCOUNT                             = 0x01000003,
-	_EMAIL_API_GET_ACCOUNT_LIST                        = 0x01000005,
-	_EMAIL_API_GET_MAILBOX_COUNT                       = 0x01000007,
-	_EMAIL_API_VALIDATE_ACCOUNT                        = 0x01000008,
-	_EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION             = 0x01000009,
-	_EMAIL_API_BACKUP_ACCOUNTS                         = 0x0100000A,
-	_EMAIL_API_RESTORE_ACCOUNTS                        = 0x0100000B,
-	_EMAIL_API_GET_PASSWORD_LENGTH_OF_ACCOUNT          = 0x0100000C,
+	_EMAIL_API_ADD_ACCOUNT                               = 0x01000000,
+	_EMAIL_API_DELETE_ACCOUNT                            = 0x01000001,
+	_EMAIL_API_UPDATE_ACCOUNT                            = 0x01000002,
+	_EMAIL_API_GET_ACCOUNT                               = 0x01000003,
+	_EMAIL_API_GET_ACCOUNT_LIST                          = 0x01000005,
+	_EMAIL_API_GET_MAILBOX_COUNT                         = 0x01000007,
+	_EMAIL_API_VALIDATE_ACCOUNT                          = 0x01000008,
+	_EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION               = 0x01000009,
+	_EMAIL_API_BACKUP_ACCOUNTS                           = 0x0100000A,
+	_EMAIL_API_RESTORE_ACCOUNTS                          = 0x0100000B,
+	_EMAIL_API_GET_PASSWORD_LENGTH_OF_ACCOUNT            = 0x0100000C,
 
 	/* Mail */
-	_EMAIL_API_DELETE_MAIL                             = 0x01100002,
-	_EMAIL_API_DELETE_ALL_MAIL                         = 0x01100004,
-	_EMAIL_API_GET_MAILBOX_LIST                        = 0x01100006,
-	_EMAIL_API_GET_SUBMAILBOX_LIST                     = 0x01100007,
-	_EMAIL_API_CLEAR_DATA                              = 0x01100009,
-	_EMAIL_API_MOVE_MAIL                               = 0x0110000A,
-	_EMAIL_API_MOVE_ALL_MAIL                           = 0x0110000B,
-	_EMAIL_API_ADD_ATTACHMENT                          = 0x0110000C,
-	_EMAIL_API_GET_ATTACHMENT                          = 0x0110000D,
-	_EMAIL_API_DELETE_ATTACHMENT                       = 0x0110000E,
-	_EMAIL_API_MODIFY_MAIL_FLAG                        = 0x0110000F,
-	_EMAIL_API_MODIFY_MAIL_EXTRA_FLAG                  = 0x01100011,
-	_EMAIL_API_SET_FLAGS_FIELD                         = 0x01100016,
-	_EMAIL_API_ADD_MAIL                                = 0x01100017,
-	_EMAIL_API_UPDATE_MAIL                             = 0x01100018,
-	_EMAIL_API_ADD_READ_RECEIPT                        = 0x01100019,
-	_EMAIL_API_EXPUNGE_MAILS_DELETED_FLAGGED           = 0x0110001A,
+	_EMAIL_API_DELETE_MAIL                               = 0x01100002,
+	_EMAIL_API_DELETE_ALL_MAIL                           = 0x01100004,
+	_EMAIL_API_GET_MAILBOX_LIST                          = 0x01100006,
+	_EMAIL_API_GET_SUBMAILBOX_LIST                       = 0x01100007,
+	_EMAIL_API_CLEAR_DATA                                = 0x01100009,
+	_EMAIL_API_MOVE_MAIL                                 = 0x0110000A,
+	_EMAIL_API_MOVE_ALL_MAIL                             = 0x0110000B,
+	_EMAIL_API_ADD_ATTACHMENT                            = 0x0110000C,
+	_EMAIL_API_GET_ATTACHMENT                            = 0x0110000D,
+	_EMAIL_API_DELETE_ATTACHMENT                         = 0x0110000E,
+	_EMAIL_API_MODIFY_MAIL_FLAG                          = 0x0110000F,
+	_EMAIL_API_MODIFY_MAIL_EXTRA_FLAG                    = 0x01100011,
+	_EMAIL_API_SET_FLAGS_FIELD                           = 0x01100016,
+	_EMAIL_API_ADD_MAIL                                  = 0x01100017,
+	_EMAIL_API_UPDATE_MAIL                               = 0x01100018,
+	_EMAIL_API_ADD_READ_RECEIPT                          = 0x01100019,
+	_EMAIL_API_EXPUNGE_MAILS_DELETED_FLAGGED             = 0x0110001A,
 
 	/* Thread */
-	_EMAIL_API_MOVE_THREAD_TO_MAILBOX                  = 0x01110000,
-	_EMAIL_API_DELETE_THREAD                           = 0x01110001,
-	_EMAIL_API_MODIFY_SEEN_FLAG_OF_THREAD              = 0x01110002,
+	_EMAIL_API_MOVE_THREAD_TO_MAILBOX                    = 0x01110000,
+	_EMAIL_API_DELETE_THREAD                             = 0x01110001,
+	_EMAIL_API_MODIFY_SEEN_FLAG_OF_THREAD                = 0x01110002,
 
 	/* Mailbox */
-	_EMAIL_API_ADD_MAILBOX                             = 0x01200000,
-	_EMAIL_API_DELETE_MAILBOX                          = 0x01200001,
-	_EMAIL_API_SET_MAIL_SLOT_SIZE                      = 0x01200007,
-	_EMAIL_API_RENAME_MAILBOX                          = 0x01200008,
-	_EMAIL_API_SET_MAILBOX_TYPE                        = 0x01200009,
-	_EMAIL_API_SET_LOCAL_MAILBOX                       = 0x0120000A,
+	_EMAIL_API_ADD_MAILBOX                               = 0x01200000,
+	_EMAIL_API_DELETE_MAILBOX                            = 0x01200001,
+	_EMAIL_API_SET_MAIL_SLOT_SIZE                        = 0x01200007,
+	_EMAIL_API_RENAME_MAILBOX                            = 0x01200008,
+	_EMAIL_API_SET_MAILBOX_TYPE                          = 0x01200009,
+	_EMAIL_API_SET_LOCAL_MAILBOX                         = 0x0120000A,
 
 	/* Network */
-	_EMAIL_API_SEND_MAIL                               = 0x01300000,
-	_EMAIL_API_SYNC_HEADER                             = 0x01300001,
-	_EMAIL_API_DOWNLOAD_BODY                           = 0x01300002,
-	_EMAIL_API_DOWNLOAD_ATTACHMENT                     = 0x01300003,
-	_EMAIL_API_NETWORK_GET_STATUS                      = 0x01300004,
-	_EMAIL_API_SEND_SAVED                              = 0x01300005,
-	_EMAIL_API_DELETE_EMAIL                            = 0x01300007,
-	_EMAIL_API_DELETE_EMAIL_ALL                        = 0x01300008,
-	_EMAIL_API_GET_IMAP_MAILBOX_LIST                   = 0x01300015,
-	_EMAIL_API_SEND_MAIL_CANCEL_JOB                    = 0x01300017,
-	_EMAIL_API_SEARCH_MAIL_ON_SERVER                   = 0x01300019,
-	_EMAIL_API_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER   = 0x0130001A,
+	_EMAIL_API_SEND_MAIL                                 = 0x01300000,
+	_EMAIL_API_SYNC_HEADER                               = 0x01300001,
+	_EMAIL_API_DOWNLOAD_BODY                             = 0x01300002,
+	_EMAIL_API_DOWNLOAD_ATTACHMENT                       = 0x01300003,
+	_EMAIL_API_NETWORK_GET_STATUS                        = 0x01300004,
+	_EMAIL_API_SEND_SAVED                                = 0x01300005,
+	_EMAIL_API_DELETE_EMAIL                              = 0x01300007,
+	_EMAIL_API_DELETE_EMAIL_ALL                          = 0x01300008,
+	_EMAIL_API_GET_IMAP_MAILBOX_LIST                     = 0x01300015,
+	_EMAIL_API_SEND_MAIL_CANCEL_JOB                       = 0x01300017,
+	_EMAIL_API_SEARCH_MAIL_ON_SERVER                     = 0x01300019,
+	_EMAIL_API_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER     = 0x0130001A,
 
 	/* Rule */
-	_EMAIL_API_ADD_RULE                                = 0x01400000,
-	_EMAIL_API_GET_RULE                                = 0x01400001,
-	_EMAIL_API_GET_RULE_LIST                           = 0x01400002,
-	_EMAIL_API_FIND_RULE                               = 0x01400003,
-	_EMAIL_API_DELETE_RULE                             = 0x01400004,
-	_EMAIL_API_UPDATE_RULE                             = 0x01400005,
-	_EMAIL_API_CANCEL_JOB                              = 0x01400006,
-	_EMAIL_API_GET_PENDING_JOB                         = 0x01400007,
-	_EMAIL_API_SEND_RETRY                              = 0x01400008,
-	_EMAIL_API_UPDATE_ACTIVITY                         = 0x01400009,
-	_EMAIL_API_SYNC_LOCAL_ACTIVITY                     = 0x0140000A,
-	_EMAIL_API_PRINT_RECEIVING_EVENT_QUEUE             = 0x0140000B,
+	_EMAIL_API_ADD_RULE                                  = 0x01400000,
+	_EMAIL_API_GET_RULE                                  = 0x01400001,
+	_EMAIL_API_GET_RULE_LIST                             = 0x01400002,
+	_EMAIL_API_FIND_RULE                                 = 0x01400003,
+	_EMAIL_API_DELETE_RULE                               = 0x01400004,
+	_EMAIL_API_UPDATE_RULE                               = 0x01400005,
+	_EMAIL_API_CANCEL_JOB                                = 0x01400006,
+	_EMAIL_API_GET_PENDING_JOB                           = 0x01400007,
+	_EMAIL_API_SEND_RETRY                                = 0x01400008,
+	_EMAIL_API_UPDATE_ACTIVITY                           = 0x01400009,
+	_EMAIL_API_SYNC_LOCAL_ACTIVITY                       = 0x0140000A,
+	_EMAIL_API_PRINT_RECEIVING_EVENT_QUEUE               = 0x0140000B,
 
 	/* Etc */
-	_EMAIL_API_PING_SERVICE                            = 0x01500000,
-	_EMAIL_API_UPDATE_NOTIFICATION_BAR_FOR_UNREAD_MAIL = 0x01500001,
-	_EMAIL_API_SHOW_USER_MESSAGE                       = 0x01500002,
-	_EMAIL_API_WRITE_MIME_FILE                         = 0x01500003,
+	_EMAIL_API_PING_SERVICE                              = 0x01500000,
+	_EMAIL_API_UPDATE_NOTIFICATION_BAR_FOR_UNREAD_MAIL   = 0x01500001,
+	_EMAIL_API_SHOW_USER_MESSAGE                         = 0x01500002,
+	_EMAIL_API_WRITE_MIME_FILE                           = 0x01500003,
 
 	/* Smime */
-	_EMAIL_API_ADD_CERTIFICATE                         = 0x01600000,
-	_EMAIL_API_DELETE_CERTIFICATE                      = 0x01600001,
-	_EMAIL_API_VERIFY_SIGNATURE                        = 0x01600002,
-	_EMAIL_API_VERIFY_CERTIFICATE                      = 0x01600003,
+	_EMAIL_API_ADD_CERTIFICATE                           = 0x01600000,
+	_EMAIL_API_DELETE_CERTIFICATE                        = 0x01600001,
+	_EMAIL_API_VERIFY_SIGNATURE                          = 0x01600002,
+	_EMAIL_API_VERIFY_CERTIFICATE                        = 0x01600003,
 };
 
 typedef enum
@@ -338,6 +347,11 @@ typedef enum
 	NOTI_DELETE_MAILBOX_FAIL,
 	NOTI_DELETE_MAILBOX_CANCEL,
 
+	NOTI_SYNC_IMAP_MAILBOX_LIST_START        = 12300,
+	NOTI_SYNC_IMAP_MAILBOX_LIST_FINISH,
+	NOTI_SYNC_IMAP_MAILBOX_LIST_FAIL,
+	NOTI_SYNC_IMAP_MAILBOX_LIST_CANCEL,
+
 	/* To be added more */
 } email_noti_on_network_event;
 
@@ -386,7 +400,8 @@ typedef enum
 {
 	EMAIL_FILTER_FROM                = 1,          /**< Specifies the filtering of sender.*/
 	EMAIL_FILTER_SUBJECT,                          /**< Specifies the filtering of email subject.*/
-	EMAIL_FILTER_BODY,                             /** < Specifies the filterinf of email body.*/
+	EMAIL_FILTER_BODY,                             /**< Specifies the filterinf of email body.*/
+	EMAIL_PRIORITY_SENDER,                         /**< Specifies the priority sender of email. */
 } email_rule_type_t;
 
 
@@ -419,10 +434,10 @@ typedef enum
 	EMAIL_MAIL_STATUS_RECEIVED,                    /**< The mail is a received mail.*/
 	EMAIL_MAIL_STATUS_SENT,                        /**< The mail is a sent mail.*/
 	EMAIL_MAIL_STATUS_SAVED,                       /**< The mail is a saved mail.*/
-	EMAIL_MAIL_STATUS_SAVED_OFFLINE,               /**< The mail is a saved mail in offline-mode.*/
+	EMAIL_MAIL_STATUS_SAVED_OFFLINE,               /**< The mail is a saved mail in off-line mode.*/
 	EMAIL_MAIL_STATUS_SENDING,                     /**< The mail is being sent.*/
 	EMAIL_MAIL_STATUS_SEND_FAILURE,                /**< The mail is a mail to been failed to send.*/
-	EMAIL_MAIL_STATUS_SEND_CANCELED,               /**< The mail is a cancelled mail.*/
+	EMAIL_MAIL_STATUS_SEND_CANCELED,               /**< The mail is a canceled mail.*/
 	EMAIL_MAIL_STATUS_SEND_WAIT,                   /**< The mail is a mail to be send .*/
 } email_mail_status_t;
 
@@ -728,7 +743,7 @@ typedef enum
 	EMAIL_EVENT_GET_PASSWORD_LENGTH             = 20004,       /*  get password length of an account */
 } email_event_type_t;
 
-/*  event statu */
+/*  event status */
 typedef enum
 {
 	EMAIL_EVENT_STATUS_UNUSED        = 0,
@@ -864,7 +879,8 @@ typedef enum
 	UPDATE_PARTIAL_BODY_DOWNLOAD,
 	UPDATE_MEETING,
 	UPDATE_SEEN_FLAG_OF_THREAD,
-} email_mail_change_type_t;
+	UPDATE_FILE_PATH,
+} email_mail_change_type_t; // Should be moved intenal types */
 
 
 /**
@@ -873,11 +889,11 @@ typedef enum
 typedef enum
 {
 	EMAIL_ADDRESS_TYPE_FROM          = 1,          /**< Specifies the from address.*/
-	EMAIL_ADDRESS_TYPE_TO,                         /**< Specifies the to receipient address.*/
-	EMAIL_ADDRESS_TYPE_CC,                         /**< Specifies the cc receipient address.*/
-	EMAIL_ADDRESS_TYPE_BCC,                        /**< Specifies the bcc receipient address.*/
-	EMAIL_ADDRESS_TYPE_REPLY,                      /**< Specifies the reply receipient address.*/
-	EMAIL_ADDRESS_TYPE_RETURN,                     /**< Specifies the return receipient address.*/
+	EMAIL_ADDRESS_TYPE_TO,                         /**< Specifies the to recipient address.*/
+	EMAIL_ADDRESS_TYPE_CC,                         /**< Specifies the cc recipient address.*/
+	EMAIL_ADDRESS_TYPE_BCC,                        /**< Specifies the bcc recipient address.*/
+	EMAIL_ADDRESS_TYPE_REPLY,                      /**< Specifies the reply recipient address.*/
+	EMAIL_ADDRESS_TYPE_RETURN,                     /**< Specifies the return recipient address.*/
 } email_address_type_t;
 
 /**
@@ -1064,6 +1080,7 @@ typedef enum {
 	EMAIL_MESSAGE_CLASS_NOTE_EXCHANGE_ACTIVE_SYNC_REMOTE_WIPE_CONFIRMATION,
 	EMAIL_MESSAGE_CLASS_VOICE_MAIL,
 	EMAIL_MESSAGE_CLASS_SMS,
+	EMAIL_MESSAGE_CLASS_IRM_MESSAGE                                         = 0x00100000,
 	EMAIL_MESSAGE_CLASS_SMART_REPLY                                         = 0x01000000,
 	EMAIL_MESSAGE_CLASS_SMART_FORWARD                                       = 0x02000000,
 	EMAIL_MESSAGE_CLASS_REPORT_NOT_READ_REPORT                              = 0x10000000,
@@ -1301,9 +1318,9 @@ typedef struct
 	int                   mail_id;                                            /**< Specifies the mail id.*/
 	int                   account_id;                                         /**< Specifies the account id.*/
 	int                   mailbox_id;                                         /**< Specifies the mailbox id.*/
-	char                  full_address_from[STRING_LENGTH_FOR_DISPLAY];       /**< Specifies the from display name.*/
+	char                  full_address_from[STRING_LENGTH_FOR_DISPLAY];       /**< Specifies the full from email address.*/
 	char                  email_address_sender[MAX_EMAIL_ADDRESS_LENGTH];     /**< Specifies the sender email address.*/
-	char                  email_address_recipient[STRING_LENGTH_FOR_DISPLAY]; /**< Specifies the recipients display name.*/
+	char                  email_address_recipient[STRING_LENGTH_FOR_DISPLAY]; /**< Specifies the recipients email address.*/
 	char                  subject[STRING_LENGTH_FOR_DISPLAY];                 /**< Specifies the subject.*/
 	int                   body_download_status;                               /**< Specifies the text donwloaded or not.*/
 	time_t                date_time;                                          /**< Specifies the date time.*/
@@ -1694,12 +1711,112 @@ typedef union
 
 } ASNotiData;
 
-
 /*  types for noti string */
 typedef enum
 {
 	EMAIL_CONVERT_STRUCT_TYPE_MAIL_LIST_ITEM,      /** specifies email_mail_list_t */
 } email_convert_struct_type_e;
+
+/* Tasks */
+typedef enum {
+	/* Sync tasks */
+	/* Sync tasks for account - from 11000 */
+	EMAIL_SYNC_TASK_ADD_ACCOUNT                                      = 11010,
+	EMAIL_SYNC_TASK_DELETE_ACCOUNT                                   = 11020,
+	EMAIL_SYNC_TASK_UPDATE_ACCOUNT                                   = 11030,
+	EMAIL_SYNC_TASK_GET_ACCOUNT                                      = 11040,
+	EMAIL_SYNC_TASK_GET_ACCOUNT_LIST                                 = 11050,
+	EMAIL_SYNC_TASK_BACKUP_ACCOUNTS                                  = 11060,
+	EMAIL_SYNC_TASK_RESTORE_ACCOUNTS                                 = 11070,
+	EMAIL_SYNC_TASK_GET_PASSWORD_LENGTH_OF_ACCOUNT                   = 11090,
+
+	/* Sync tasks for mailbox - from 12000 */
+	EMAIL_SYNC_TASK_GET_MAILBOX_COUNT                                = 12010,
+	EMAIL_SYNC_TASK_GET_MAILBOX_LIST                                 = 12020,
+	EMAIL_SYNC_TASK_GET_SUB_MAILBOX_LIST                             = 12030,
+	EMAIL_SYNC_TASK_SET_MAIL_SLOT_SIZE                               = 12040,
+	EMAIL_SYNC_TASK_SET_MAILBOX_TYPE                                 = 12050,
+	EMAIL_SYNC_TASK_SET_LOCAL_MAILBOX                                = 12060,
+
+	/* Sync tasks for mail - from 13000 */
+	EMAIL_SYNC_GET_ATTACHMENT                                        = 13010,
+	EMAIL_SYNC_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER                 = 13020,
+
+	/* Sync tasks for mail thread - from 14000 */
+
+	/* Sync tasks for rule - from 15000 */
+
+	/* Sync tasks for etc - from 16000 */
+
+	/* Async tasks */
+	EMAIL_ASYNC_TASK_BOUNDARY                                        = 60000,
+	/* Async tasks for account - from 61000 */
+	EMAIL_ASYNC_TASK_VALIDATE_ACCOUNT                                = 61010,
+	EMAIL_ASYNC_TASK_ADD_ACCOUNT_WITH_VALIDATION                     = 61020,
+
+	/* Async tasks for mailbox - from 62000 */
+	EMAIL_ASYNC_TASK_ADD_MAILBOX                                     = 62010,
+	EMAIL_ASYNC_TASK_DELETE_MAILBOX                                  = 62020,
+	EMAIL_ASYNC_TASK_RENAME_MAILBOX                                  = 62030,
+	EMAIL_ASYNC_TASK_DOWNLOAD_IMAP_MAILBOX_LIST                      = 62040,
+
+	/* Async tasks for mail - from 63000 */
+	EMAIL_ASYNC_TASK_ADD_MAIL                                        = 63010,
+	EMAIL_ASYNC_TASK_ADD_READ_RECEIPT                                = 63020,
+
+	EMAIL_ASYNC_TASK_UPDATE_MAIL                                     = 63030,
+
+	EMAIL_ASYNC_TASK_DELETE_MAIL                                     = 63040,
+	EMAIL_ASYNC_TASK_DELETE_ALL_MAIL                                 = 63050,
+	EMAIL_ASYNC_TASK_EXPUNGE_MAILS_DELETED_FLAGGED                   = 63060,
+
+	EMAIL_ASYNC_TASK_MOVE_MAIL                                       = 63070,
+	EMAIL_ASYNC_TASK_MOVE_ALL_MAIL                                   = 63080,
+	EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT        = 63090,
+
+	EMAIL_ASYNC_TASK_SET_FLAGS_FIELD                                 = 63100,
+
+	EMAIL_ASYNC_TASK_DOWNLOAD_MAIL_LIST                              = 63110,
+	EMAIL_ASYNC_TASK_DOWNLOAD_BODY                                   = 63120,
+	EMAIL_ASYNC_TASK_DOWNLOAD_ATTACHMENT                             = 63130,
+
+	EMAIL_ASYNC_TASK_SEND_MAIL                                       = 63140,
+	EMAIL_ASYNC_TASK_SEND_SAVED                                      = 63150,
+
+	EMAIL_ASYNC_TASK_SEARCH_MAIL_ON_SERVER                           = 63160,
+
+	/* Async tasks for mail thread - from 64000 */
+	EMAIL_ASYNC_TASK_MOVE_THREAD_TO_MAILBOX                          = 64010,
+	EMAIL_ASYNC_TASK_DELETE_THREAD                                   = 64020,
+	EMAIL_ASYNC_TASK_MODIFY_SEEN_FLAG_OF_THREAD                      = 64030,
+
+	/* Async tasks for rule - from 65000 */
+
+	/* Async tasks for etc - from 66000 */
+
+} email_task_type_t;
+
+typedef enum
+{
+	EMAIL_TASK_STATUS_UNUSED                   = 0,
+	EMAIL_TASK_STATUS_WAIT                     = 1,
+	EMAIL_TASK_STATUS_STARTED                  = 2,
+	EMAIL_TASK_STATUS_IN_PROGRESS              = 3,
+	EMAIL_TASK_STATUS_FINISHED                 = 4,
+	EMAIL_TASK_STATUS_FAILED                   = 5,
+	EMAIL_TASK_STATUS_CANCELED                 = 6,
+} email_task_status_type_t;
+
+typedef enum
+{
+	EMAIL_TASK_PRIORITY_UNUSED                 = 0,
+	EMAIL_TASK_PRIORITY_SCHEDULED              = 1,
+	EMAIL_TASK_PRIORITY_LOW                    = 3,
+	EMAIL_TASK_PRIORITY_MID                    = 5,
+	EMAIL_TASK_PRIORITY_HIGH                   = 7,
+	EMAIL_TASK_PRIORITY_BACK_GROUND_TASK       = 9,
+} email_task_priority_t;
+/* Tasks */
 
 #ifdef __cplusplus
 }

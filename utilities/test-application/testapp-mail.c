@@ -1032,6 +1032,41 @@ static gboolean testapp_test_count ()
 	return 0;
 }
 
+static gboolean testapp_test_move_mails_to_mailbox_of_another_account()
+{
+	int  err = EMAIL_ERROR_NONE;
+	int  mail_id_count = 0 ;
+	int *mail_id_array = NULL;
+	int  source_mailbox_id = 0;
+	int  target_mailbox_id = 0;
+	int  task_id = 0;
+	int  i = 0;
+	int  result_from_scanf = 0;
+
+	testapp_print("\n > Enter source mailbox id: ");
+	result_from_scanf = scanf("%d", &source_mailbox_id);
+
+	testapp_print("\n > Enter target mailbox id: ");
+	result_from_scanf = scanf("%d", &target_mailbox_id);
+
+	testapp_print("\n > Enter mail count: ");
+	result_from_scanf = scanf("%d", &mail_id_count);
+
+	if(mail_id_count > 0) {
+		mail_id_array = malloc(sizeof(int) * mail_id_count);
+	}
+
+	for(i = 0; i < mail_id_count; i++) {
+		testapp_print("\n > Enter mail id: ");
+		result_from_scanf = scanf("%d", (mail_id_array + i));
+	}
+
+	err = email_move_mails_to_mailbox_of_another_account(source_mailbox_id, mail_id_array, mail_id_count, target_mailbox_id, &task_id);
+
+	testapp_print("\nemail_move_mails_to_mailbox_of_another_account returns [%d], tast_id [%d] \n", err, task_id);
+	return 0;
+}
+
 static gboolean	testapp_test_set_flags_field ()
 {
 	int account_id = 0;
@@ -1446,6 +1481,7 @@ static gboolean testapp_test_search_mail_on_server()
 	email_search_filter_type search_filter_type = 0;
 	email_search_filter_t search_filter;
 	int handle = 0;
+	time_t current_time = 0;
 	char search_key_value_string[MAX_EMAIL_ADDRESS_LENGTH];
 
 	testapp_print("input account id : ");
@@ -1511,10 +1547,10 @@ static gboolean testapp_test_search_mail_on_server()
 		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :
 		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON     :
 		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE  :
-			testapp_print("input search filter key value (format = YYYYMMDDHHMMSS) : ");
-			result_from_scanf = scanf("%s", search_key_value_string);
+			time(&current_time);
 			/* TODO : write codes for converting string to time */
 			/* search_filter.search_filter_key_value.time_type_key_value = search_key_value_string; */
+			search_filter.search_filter_key_value.time_type_key_value = current_time;
 			break;
 		default :
 			testapp_print("Invalid filter type [%d]", search_filter_type);
@@ -1822,6 +1858,9 @@ static gboolean testapp_test_interpret_command (int menu_number)
 			break;
 		case 9:
 			testapp_test_count();
+			break;
+		case 10:
+			testapp_test_move_mails_to_mailbox_of_another_account();
 			break;
 		case 14:
 			testapp_test_delete();

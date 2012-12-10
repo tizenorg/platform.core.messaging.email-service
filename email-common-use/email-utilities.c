@@ -335,6 +335,48 @@ INTERNAL_FUNC void em_flush_memory()
 	EM_DEBUG_FUNC_END();
 }
 
+INTERNAL_FUNC int em_get_file_name_from_file_path(char *input_source_file_path, char **output_file_name)
+{
+	EM_DEBUG_FUNC_BEGIN("input_source_file_path[%s], output_file_name [%p]", input_source_file_path, output_file_name);
+	int   err = EMAIL_ERROR_NONE;
+	int   pos_on_string = 0;
+	int   file_name_length = 0;
+	char *start_pos_of_file_name = NULL;
+	char *end_pos_of_file_name = NULL;
+	char *end_pos_of_file_path = NULL;
+	char  file_name_string[MAX_PATH] = { 0, };
+
+	if (!input_source_file_path || !output_file_name) {
+		EM_DEBUG_EXCEPTION("Invalid Parameter");
+		err  = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	pos_on_string        = strlen(input_source_file_path) - 1;
+	end_pos_of_file_path = input_source_file_path + pos_on_string;
+	end_pos_of_file_name = end_pos_of_file_path;
+
+	while(pos_on_string >= 0 && input_source_file_path[pos_on_string] != '/') {
+		pos_on_string--;
+	}
+
+	pos_on_string++;
+
+	if(pos_on_string >= 0) {
+		start_pos_of_file_name = input_source_file_path + pos_on_string;
+		file_name_length       = end_pos_of_file_name - start_pos_of_file_name + 1;
+		memcpy(file_name_string, start_pos_of_file_name, file_name_length);
+	}
+
+	EM_DEBUG_LOG("file_name_string [%s] pos_on_string [%d] file_name_length [%d]", file_name_string, pos_on_string, file_name_length);
+
+	*output_file_name = EM_SAFE_STRDUP(file_name_string);
+
+FINISH_OFF:
+	EM_DEBUG_FUNC_END("err = [%d]", err);
+	return err;
+}
+
 INTERNAL_FUNC int em_get_file_name_and_extension_from_file_path(char *input_source_file_path, char **output_file_name, char **output_extension)
 {
 	EM_DEBUG_FUNC_BEGIN("input_source_file_path[%s], output_file_name [%p], output_extension [%p]", input_source_file_path, output_file_name, output_extension);
@@ -666,9 +708,9 @@ FINISH_OFF:
 	return error_code;
 }
 
-INTERNAL_FUNC int em_find_pos_stripped_subject_for_thread_view(char *subject, char *stripped_subject)
+INTERNAL_FUNC int em_find_pos_stripped_subject_for_thread_view(char *subject, char *stripped_subject, int stripped_subject_buffer_size)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_FUNC_BEGIN("subject [%p] stripped_subject [%p] stripped_subject_buffer_size[%d]", subject, stripped_subject, stripped_subject_buffer_size);
 	int error_code = EMAIL_ERROR_NONE;
 	int gap;
 	char *copy_of_subject = NULL, *curpos = NULL, *result;
@@ -709,7 +751,7 @@ INTERNAL_FUNC int em_find_pos_stripped_subject_for_thread_view(char *subject, ch
 
 	gap = curpos - copy_of_subject;
 
-	strcpy(stripped_subject, subject + gap);
+	EM_SAFE_STRNCPY(stripped_subject, subject + gap, stripped_subject_buffer_size);
 
 FINISH_OFF:
 	EM_SAFE_FREE(copy_of_subject);

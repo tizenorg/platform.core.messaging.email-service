@@ -85,7 +85,7 @@ EXPORT_API void *emipc_do_task_thread()
 	while (!stop_flag) {
 		ENTER_CRITICAL_SECTION(ipc_task_mutex);
 		while (g_queue_is_empty(task_queue)) {
-			EM_DEBUG_LOG("Blocked until new task arrivers %p.", &ipc_task_cond);
+			EM_DEBUG_LOG("Blocked until new task arrives %p.", &ipc_task_cond);
 			SLEEP_CONDITION_VARIABLE(ipc_task_cond, ipc_task_mutex);
 		}
 		
@@ -117,7 +117,7 @@ EXPORT_API bool emipc_create_task(unsigned char *task_stream, int response_chann
 		EM_DEBUG_LOG("[IPCLib] ======================================================");
 		EM_DEBUG_LOG("[IPCLib] Register new task : %p", task);
 		EM_DEBUG_LOG("[IPCLib] Task API ID : %s (%d)", EM_APIID_TO_STR(task->api_info->api_id), task->api_info->api_id);
-		EM_DEBUG_LOG("[IPCLib] Task Response ID : %d", EM_APIID_TO_STR(task->api_info->response_id));
+		EM_DEBUG_LOG("[IPCLib] Task Response ID : %d", task->api_info->response_id);
 		EM_DEBUG_LOG("[IPCLib] Task APP ID : %d", task->api_info->app_id);
 		EM_DEBUG_LOG("[IPCLib] ======================================================");
 

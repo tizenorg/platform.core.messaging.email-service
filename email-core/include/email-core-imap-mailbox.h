@@ -46,11 +46,12 @@ INTERNAL_FUNC int emcore_check_sync_imap_mailbox(email_mailbox_t *mailbox, int *
  * @param[in] account_id	Specifies the account ID.
  * @param[in] mailbox	Specifies the target mailbox. if NULL, get all mailbox.
  * @param[in] callback	Specifies the callback function for retrieving mailbox list.
+ * @param[in] handle	Specifies the handle for stopping this job.
  * @param[out] err_code	Specifies the error code returned.
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emcore_sync_mailbox_list(int account_id, char *mailbox, int *err_code);
+INTERNAL_FUNC int emcore_sync_mailbox_list(int account_id, char *mailbox, int handle, int *err_code);
 
 /**
  * Download mailbox list from imap server.

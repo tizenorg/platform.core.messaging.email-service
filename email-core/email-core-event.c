@@ -55,6 +55,7 @@
 #include "email-core-smtp.h"
 #include "email-core-utils.h"
 #include "email-core-sound.h"
+#include "email-core-signal.h"
 #include "email-debug-log.h"
 
 
@@ -118,8 +119,8 @@ typedef struct EVENT_CALLBACK_ELEM
 
 static pthread_mutex_t _event_available_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t  _event_available_signal = PTHREAD_COND_INITIALIZER;
-static pthread_mutex_t *_event_queue_lock = NULL;		
 static pthread_mutex_t *_event_callback_table_lock = NULL;
+static pthread_mutex_t *_event_queue_lock = NULL;		
 static EVENT_CALLBACK_LIST *_event_callback_table[EMAIL_ACTION_NUM];		/*  array of singly-linked list for event callbacks */
 
 void *thread_func_branch_command(void *arg);
@@ -1007,8 +1008,8 @@ void* thread_func_branch_command_for_sending_mails(void *arg)
 				EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
 				
 				emcore_show_user_message(event_data.event_param_data_4, EMAIL_ACTION_SEND_MAIL, err);
-				if (!emstorage_notify_network_event(NOTI_SEND_FAIL, event_data.account_id, NULL , event_data.event_param_data_4, err))
-					EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_SEND_FAIL] Failed >>>> ");
+				if (!emcore_notify_network_event(NOTI_SEND_FAIL, event_data.account_id, NULL , event_data.event_param_data_4, err))
+					EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_SEND_FAIL] Failed >>>> ");
 				goto FINISH_OFF;				
 			}
 
@@ -1147,14 +1148,14 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 	if(mailbox_tbl_target)
 		SNPRINTF(mailbox_id_param_string, 10, "%d", mailbox_tbl_target->mailbox_id);
 
-	if (!emstorage_notify_network_event(NOTI_DOWNLOAD_START, input_account_id, (input_mailbox_id == 0 )? NULL : mailbox_id_param_string,  handle_to_be_published, 0))
-		EM_DEBUG_EXCEPTION("emstorage_notify_network_event [ NOTI_DOWNLOAD_START] Failed >>>> ");
+	if (!emcore_notify_network_event(NOTI_DOWNLOAD_START, input_account_id, (input_mailbox_id == 0 )? NULL : mailbox_id_param_string,  handle_to_be_published, 0))
+		EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_DOWNLOAD_START] Failed >>>> ");
 	
 	if (!emnetwork_check_network_status(&err)) {
 		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
 		
-		if (!emstorage_notify_network_event(NOTI_DOWNLOAD_FAIL, input_account_id, (input_mailbox_id == 0 )? NULL : mailbox_id_param_string,  handle_to_be_published, err))
-			EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
+		if (!emcore_notify_network_event(NOTI_DOWNLOAD_FAIL, input_account_id, (input_mailbox_id == 0 )? NULL : mailbox_id_param_string,  handle_to_be_published, err))
+			EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
 	}
 	else  {
 		if (sync_type != EMAIL_SYNC_ALL_MAILBOX) {	/* Sync only particular mailbox */
@@ -1168,13 +1169,13 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 
 			if (!emcore_sync_header(mailbox_tbl_target, mailbox_tbl_spam, NULL, &uid_list, &unread, &err)) {
 				EM_DEBUG_EXCEPTION("emcore_sync_header failed [%d]", err);
-				if (!emstorage_notify_network_event(NOTI_DOWNLOAD_FAIL, mailbox_tbl_target->account_id, mailbox_id_param_string, handle_to_be_published, err))
-					EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
+				if (!emcore_notify_network_event(NOTI_DOWNLOAD_FAIL, mailbox_tbl_target->account_id, mailbox_id_param_string, handle_to_be_published, err))
+					EM_DEBUG_EXCEPTION(" emcore_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
 			}
 			else {
 				EM_DEBUG_LOG("emcore_sync_header succeeded [%d]", err);
-				if (!emstorage_notify_network_event(NOTI_DOWNLOAD_FINISH, mailbox_tbl_target->account_id, mailbox_id_param_string, handle_to_be_published, 0))
-					EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_DOWNLOAD_FINISH] Failed >>>> ");	
+				if (!emcore_notify_network_event(NOTI_DOWNLOAD_FINISH, mailbox_tbl_target->account_id, mailbox_id_param_string, handle_to_be_published, 0))
+					EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_DOWNLOAD_FINISH] Failed >>>> ");	
 			}
 
 			total_unread += unread;
@@ -1195,8 +1196,8 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 
 				if (!emstorage_get_account_list(&account_count, &account_tbl_array , true, false, &err)) {
 					EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [ %d ] ", err);
-					if (!emstorage_notify_network_event(NOTI_DOWNLOAD_FAIL, input_account_id, NULL,  handle_to_be_published, err))
-						EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
+					if (!emcore_notify_network_event(NOTI_DOWNLOAD_FAIL, input_account_id, NULL,  handle_to_be_published, err))
+						EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
 					goto FINISH_OFF;
 				}
 			}
@@ -1208,8 +1209,8 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 				
 				if (!emstorage_get_account_by_id(input_account_id, EMAIL_ACC_GET_OPT_DEFAULT, &account_tbl_array, true, &err)) {
 					EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed [ %d ] ", err);
-					if (!emstorage_notify_network_event(NOTI_DOWNLOAD_FAIL, input_account_id, (input_mailbox_id == 0 )? NULL : mailbox_id_param_string, handle_to_be_published, err))
-						EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
+					if (!emcore_notify_network_event(NOTI_DOWNLOAD_FAIL, input_account_id, (input_mailbox_id == 0 )? NULL : mailbox_id_param_string, handle_to_be_published, err))
+						EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
 					goto FINISH_OFF;
 				}
 				account_count = 1;
@@ -1224,8 +1225,8 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 				if (!emstorage_get_mailbox_list(account_tbl_array[account_index].account_id, 0, EMAIL_MAILBOX_SORT_BY_TYPE_ASC, &mailbox_count, &mailbox_tbl_list, true, &err) || mailbox_count <= 0) {	
 					EM_DEBUG_EXCEPTION("emstorage_get_mailbox failed [%d]", err);
 			
-					if (!emstorage_notify_network_event(NOTI_DOWNLOAD_FAIL, account_tbl_array[account_index].account_id, (input_mailbox_id == 0 )? NULL : mailbox_id_param_string,  handle_to_be_published, err))
-						EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
+					if (!emcore_notify_network_event(NOTI_DOWNLOAD_FAIL, account_tbl_array[account_index].account_id, (input_mailbox_id == 0 )? NULL : mailbox_id_param_string,  handle_to_be_published, err))
+						EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
 	
 					continue;
 				}
@@ -1253,8 +1254,8 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 							if (err == EMAIL_ERROR_LOGIN_FAILURE)
 								EM_DEBUG_EXCEPTION("EMAIL_ERROR_LOGIN_FAILURE ");
 							/* continue; */
-							if (!emstorage_notify_network_event(NOTI_DOWNLOAD_FAIL, account_tbl_array[account_index].account_id, mailbox_id_param_string,  handle_to_be_published, err))
-								EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
+							if (!emcore_notify_network_event(NOTI_DOWNLOAD_FAIL, account_tbl_array[account_index].account_id, mailbox_id_param_string,  handle_to_be_published, err))
+								EM_DEBUG_EXCEPTION(" emcore_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
 							continue;
 						}
 						EM_DEBUG_LOG("emcore_connect_to_remote_mailbox returns [%d] : ", err);
@@ -1287,8 +1288,8 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 #endif /*  __FEATURE_KEEP_CONNECTION__ */ 
 							memset(mailbox_id_param_string, 0, 10);
 							SNPRINTF(mailbox_id_param_string, 10, "%d", mailbox_tbl_list[counter].mailbox_id);
-							if (!emstorage_notify_network_event(NOTI_DOWNLOAD_FAIL, account_tbl_array[account_index].account_id, mailbox_id_param_string,  handle_to_be_published, err))
-								EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_FAIL] Failed >>>> ");
+							if (!emcore_notify_network_event(NOTI_DOWNLOAD_FAIL, account_tbl_array[account_index].account_id, mailbox_id_param_string,  handle_to_be_published, err))
+								EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_FAIL] Failed >>>> ");
 
 							break;
 						}
@@ -1297,8 +1298,8 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 				}
 				
 				EM_DEBUG_LOG("Sync for account_id(%d) is completed....!", account_tbl_array[account_index].account_id);
-				if ((err == EMAIL_ERROR_NONE) && !emstorage_notify_network_event(NOTI_DOWNLOAD_FINISH, account_tbl_array[account_index].account_id, NULL, handle_to_be_published, 0))
-					EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_FINISH] Failed >>>> ");	
+				if ((err == EMAIL_ERROR_NONE) && !emcore_notify_network_event(NOTI_DOWNLOAD_FINISH, account_tbl_array[account_index].account_id, NULL, handle_to_be_published, 0))
+					EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_FINISH] Failed >>>> ");	
 
 				if ((total_unread > 0) && (err = emcore_update_sync_status_of_account(account_tbl_array[account_index].account_id, SET_TYPE_UNION, SYNC_STATUS_HAVE_NEW_MAILS)) != EMAIL_ERROR_NONE)
 					EM_DEBUG_EXCEPTION("emcore_update_sync_status_of_account failed [%d]", err);
@@ -1357,8 +1358,8 @@ int event_handler_EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT(email_account_t *accou
 	if (!emnetwork_check_network_status(&err))  {
 		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
 
-		if (!emstorage_notify_network_event(NOTI_VALIDATE_AND_CREATE_ACCOUNT_FAIL, account->account_id, NULL,  handle_to_be_published, err))
-			EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FAIL] Failed >>>> ");	
+		if (!emcore_notify_network_event(NOTI_VALIDATE_AND_CREATE_ACCOUNT_FAIL, account->account_id, NULL,  handle_to_be_published, err))
+			EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FAIL] Failed >>>> ");	
 		goto FINISH_OFF;
 	}
 	else  {
@@ -1368,8 +1369,8 @@ int event_handler_EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT(email_account_t *accou
 			EM_DEBUG_EXCEPTION("emcore_validate_account_with_account_info failed err :  %d", err);
 			if (err == EMAIL_ERROR_CANCELLED) {
 				EM_DEBUG_EXCEPTION(" notify  :  NOTI_VALIDATE_AND_CREATE_ACCOUNT_CANCEL ");
-				if (!emstorage_notify_network_event(NOTI_VALIDATE_AND_CREATE_ACCOUNT_CANCEL, account->account_id, NULL,  handle_to_be_published, err))
-					EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_VALIDATE_AND_CREATE_ACCOUNT_CANCEL] Failed");
+				if (!emcore_notify_network_event(NOTI_VALIDATE_AND_CREATE_ACCOUNT_CANCEL, account->account_id, NULL,  handle_to_be_published, err))
+					EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_VALIDATE_AND_CREATE_ACCOUNT_CANCEL] Failed");
 				goto FINISH_OFF;
 			}
 			else
@@ -1384,7 +1385,7 @@ int event_handler_EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT(email_account_t *accou
 			emcore_refresh_account_reference();
 			
 			if ((EMAIL_SERVER_TYPE_IMAP4 == account->incoming_server_type)) {
-				if (!emcore_sync_mailbox_list(account->account_id, "", &err))  {
+				if (!emcore_sync_mailbox_list(account->account_id, "", handle_to_be_published, &err))  {
 					EM_DEBUG_EXCEPTION("emcore_get_mailbox_list_to_be_sync falied [%d]", err);
 					/*  delete account whose mailbox couldn't be obtained from server */
 					emcore_delete_account(account->account_id, NULL);
@@ -1394,8 +1395,8 @@ int event_handler_EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT(email_account_t *accou
 			}
 
 			EM_DEBUG_LOG("validating and creating an account are succeeded for account id  [%d]  err [%d]", account->account_id, err);
-			if (!emstorage_notify_network_event(NOTI_VALIDATE_AND_CREATE_ACCOUNT_FINISH, account->account_id, NULL,  handle_to_be_published, err))
-				EM_DEBUG_EXCEPTION("emstorage_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FINISH] Success");	
+			if (!emcore_notify_network_event(NOTI_VALIDATE_AND_CREATE_ACCOUNT_FINISH, account->account_id, NULL,  handle_to_be_published, err))
+				EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FINISH] Success");	
 		}
 	}
 
@@ -1404,8 +1405,8 @@ int event_handler_EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT(email_account_t *accou
 FINISH_OFF:  
 	
 	if (ret == false && err != EMAIL_ERROR_CANCELLED) {
-		if (!emstorage_notify_network_event(NOTI_VALIDATE_AND_CREATE_ACCOUNT_FAIL, account->account_id, NULL,  handle_to_be_published, err))
-			EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_VALIDATE_AND_CREATE_ACCOUNT_FAIL] Failed");	
+		if (!emcore_notify_network_event(NOTI_VALIDATE_AND_CREATE_ACCOUNT_FAIL, account->account_id, NULL,  handle_to_be_published, err))
+			EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_VALIDATE_AND_CREATE_ACCOUNT_FAIL] Failed");	
 	}
 	if (error)
 		*error = err;
@@ -1429,8 +1430,8 @@ int event_handler_EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT(int account_id, email_
 	if (!emnetwork_check_network_status(&err))  {
 		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
 
-		if (!emstorage_notify_network_event(NOTI_VALIDATE_AND_UPDATE_ACCOUNT_FAIL, new_account_info->account_id, NULL,  handle_to_be_published, err))
-			EM_DEBUG_EXCEPTION("emstorage_notify_network_event [ NOTI_VALIDATE_AND_UPDATE_ACCOUNT_FAIL] Failed >>>> ");	
+		if (!emcore_notify_network_event(NOTI_VALIDATE_AND_UPDATE_ACCOUNT_FAIL, new_account_info->account_id, NULL,  handle_to_be_published, err))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_VALIDATE_AND_UPDATE_ACCOUNT_FAIL] Failed >>>> ");	
 		goto FINISH_OFF;
 	}
 	else  {
@@ -1440,8 +1441,8 @@ int event_handler_EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT(int account_id, email_
 			EM_DEBUG_EXCEPTION("emcore_validate_account_with_account_info() failed err :  %d", err);
 			if (err == EMAIL_ERROR_CANCELLED) {
 				EM_DEBUG_EXCEPTION(" notify  :  NOTI_VALIDATE_AND_CREATE_ACCOUNT_CANCEL ");
-				if (!emstorage_notify_network_event(NOTI_VALIDATE_AND_UPDATE_ACCOUNT_CANCEL, new_account_info->account_id, NULL,  handle_to_be_published, err))
-					EM_DEBUG_EXCEPTION("emstorage_notify_network_event [ NOTI_VALIDATE_AND_UPDATE_ACCOUNT_CANCEL] Failed");
+				if (!emcore_notify_network_event(NOTI_VALIDATE_AND_UPDATE_ACCOUNT_CANCEL, new_account_info->account_id, NULL,  handle_to_be_published, err))
+					EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_VALIDATE_AND_UPDATE_ACCOUNT_CANCEL] Failed");
 				goto FINISH_OFF;
 			}
 			else {
@@ -1467,8 +1468,8 @@ int event_handler_EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT(int account_id, email_
 			}
 			
 			EM_DEBUG_LOG("validating and updating an account are succeeded for account id [%d], err [%d]", new_account_info->account_id, err);
-			if (!emstorage_notify_network_event(NOTI_VALIDATE_AND_UPDATE_ACCOUNT_FINISH, new_account_info->account_id, NULL,  handle_to_be_published, err))
-				EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [NOTI_VALIDATE_AND_UPDATE_ACCOUNT_FINISH] Success");	
+			if (!emcore_notify_network_event(NOTI_VALIDATE_AND_UPDATE_ACCOUNT_FINISH, new_account_info->account_id, NULL,  handle_to_be_published, err))
+				EM_DEBUG_EXCEPTION(" emcore_notify_network_event [NOTI_VALIDATE_AND_UPDATE_ACCOUNT_FINISH] Success");	
 		}
 	}
 
@@ -1481,8 +1482,8 @@ FINISH_OFF:
 		emstorage_free_account(&new_account_tbl, 1, NULL);
 	
 	if (ret == false && err != EMAIL_ERROR_CANCELLED) {
-		if (!emstorage_notify_network_event(NOTI_VALIDATE_AND_UPDATE_ACCOUNT_FAIL, new_account_info->account_id, NULL,  handle_to_be_published, err))
-			EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_VALIDATE_AND_CREATE_ACCOUNT_FAIL] Failed");	
+		if (!emcore_notify_network_event(NOTI_VALIDATE_AND_UPDATE_ACCOUNT_FAIL, new_account_info->account_id, NULL,  handle_to_be_published, err))
+			EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_VALIDATE_AND_CREATE_ACCOUNT_FAIL] Failed");	
 	}
 
 	if (error)
@@ -1659,7 +1660,7 @@ int event_handler_EMAIL_EVENT_DOWNLOAD_BODY(int account_id, int mail_id, int opt
 	if (!emnetwork_check_network_status(&err))  {
 		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
 
-		emstorage_notify_network_event(NOTI_DOWNLOAD_BODY_FAIL, mail_id, NULL, handle_to_be_published, err);
+		emcore_notify_network_event(NOTI_DOWNLOAD_BODY_FAIL, mail_id, NULL, handle_to_be_published, err);
 	}
 	else  {
 		if (!emcore_download_body_multi_sections_bulk(NULL, 
@@ -1690,7 +1691,7 @@ int event_handler_EMAIL_EVENT_DOWNLOAD_ATTACHMENT(int account_id, int mail_id, i
 	
 	if (!emnetwork_check_network_status(&err))  {
 		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
-		emstorage_notify_network_event(NOTI_DOWNLOAD_ATTACH_FAIL, mail_id, NULL, attachment_no, err);
+		emcore_notify_network_event(NOTI_DOWNLOAD_ATTACH_FAIL, mail_id, NULL, attachment_no, err);
 	}
 	else  {
 
@@ -1737,8 +1738,8 @@ int event_handler_EMAIL_EVENT_VALIDATE_ACCOUNT(int account_id, int handle_to_be_
 	if (!emnetwork_check_network_status(&err))  {
 		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
 		
-		if (!emstorage_notify_network_event(NOTI_VALIDATE_ACCOUNT_FAIL, account_id, NULL,  handle_to_be_published, err))
-			EM_DEBUG_EXCEPTION("emstorage_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FAIL] Failed >>>>");	
+		if (!emcore_notify_network_event(NOTI_VALIDATE_ACCOUNT_FAIL, account_id, NULL,  handle_to_be_published, err))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FAIL] Failed >>>>");	
 	}
 	else  {
 			
@@ -1747,12 +1748,12 @@ int event_handler_EMAIL_EVENT_VALIDATE_ACCOUNT(int account_id, int handle_to_be_
 
 			if (err == EMAIL_ERROR_CANCELLED) {
 				EM_DEBUG_EXCEPTION("notify  :  NOTI_VALIDATE_ACCOUNT_CANCEL ");
-				if (!emstorage_notify_network_event(NOTI_VALIDATE_ACCOUNT_CANCEL, account_id, NULL,  handle_to_be_published, err))
-					EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_VALIDATE_ACCOUNT_CANCEL] Failed >>>> ");
+				if (!emcore_notify_network_event(NOTI_VALIDATE_ACCOUNT_CANCEL, account_id, NULL,  handle_to_be_published, err))
+					EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_CANCEL] Failed >>>> ");
 			}
 			else {
-				if (!emstorage_notify_network_event(NOTI_VALIDATE_ACCOUNT_FAIL, account_id, NULL,  handle_to_be_published, err))
-					EM_DEBUG_EXCEPTION("emstorage_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FAIL] Failed >>>> ");	
+				if (!emcore_notify_network_event(NOTI_VALIDATE_ACCOUNT_FAIL, account_id, NULL,  handle_to_be_published, err))
+					EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FAIL] Failed >>>> ");	
 			}
 		}
 		else {
@@ -1764,14 +1765,14 @@ int event_handler_EMAIL_EVENT_VALIDATE_ACCOUNT(int account_id, int handle_to_be_
 				if ( EMAIL_SERVER_TYPE_IMAP4 == account_ref->incoming_server_type ) {
 					if (!emcore_check_thread_status()) 
 						err = EMAIL_ERROR_CANCELLED;
-					else if (!emcore_sync_mailbox_list(account_id, "", &err)) 
+					else if (!emcore_sync_mailbox_list(account_id, "", handle_to_be_published, &err))
 						EM_DEBUG_EXCEPTION("\t emcore_get_mailbox_list_to_be_sync falied - %d", err);
 				}
 				
 				if (err > 0) {
 					EM_DEBUG_EXCEPTION("emcore_validate_account succeeded account id  :  %d  err :  %d", account_id, err);
-					if (!emstorage_notify_network_event(NOTI_VALIDATE_ACCOUNT_FINISH, account_id, NULL,  handle_to_be_published, err))
-						EM_DEBUG_EXCEPTION("emstorage_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FINISH] Success >>>>");	
+					if (!emcore_notify_network_event(NOTI_VALIDATE_ACCOUNT_FINISH, account_id, NULL,  handle_to_be_published, err))
+						EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FINISH] Success >>>>");	
 				}
 			}
 		}
@@ -1976,19 +1977,19 @@ FINISH_OFF:
 	return ret;
 }
 
-int event_hanlder_EMAIL_EVENT_SYNC_HEADER_OMA(int account_id, char *maibox_name, int *error)
+int event_hanlder_EMAIL_EVENT_SYNC_HEADER_OMA(int account_id, char *maibox_name, int handle_to_be_published, int *error)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
 	
 	if (!emnetwork_check_network_status(&err))  {
 		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
-		if (!emstorage_notify_network_event(NOTI_DOWNLOAD_FAIL, account_id, maibox_name,  0, err))
-			EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed");	
+		if (!emcore_notify_network_event(NOTI_DOWNLOAD_FAIL, account_id, maibox_name,  0, err))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed");	
 	}
 	else  {
 		EM_DEBUG_LOG("Sync of all mailbox");
-		if (!emcore_sync_mailbox_list(account_id, "", &err))
+		if (!emcore_sync_mailbox_list(account_id, "", handle_to_be_published, &err))
 			EM_DEBUG_EXCEPTION("emcore_sync_mailbox_list failed [%d]", err);
 	}
 
@@ -2032,27 +2033,27 @@ int event_handler_EMAIL_EVENT_SEARCH_ON_SERVER(int account_id, int mailbox_id, c
 
 	SNPRINTF(mailbox_id_param_string, 10, "%d", local_mailbox->mailbox_id);
 
-	if (!emstorage_notify_network_event(NOTI_SEARCH_ON_SERVER_START, account_id, mailbox_id_param_string, handle_to_be_published, 0))
-		EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_SEARCH_ON_SERVER_START] failed >>>>");
+	if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_START, account_id, mailbox_id_param_string, handle_to_be_published, 0))
+		EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_START] failed >>>>");
 	
 	if (!emnetwork_check_network_status(&err)) {
 		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
-		if (!emstorage_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string,  0, err))
-			EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed");
+		if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string,  0, err))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed");
 		goto FINISH_OFF;
 	}
 
 	if (!emcore_connect_to_remote_mailbox(account_id, mailbox_id, (void **)&stream, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed");
-		if (!emstorage_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
-			EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
+		if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
 		goto FINISH_OFF;
 	}
 	
 	if (!mail_search_full(stream, NIL, mail_criteria(criteria), SE_FREE)) {
 		EM_DEBUG_EXCEPTION("mail_search failed");
-		if (!emstorage_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
-			EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
+		if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
 		goto FINISH_OFF;
 	}
 
@@ -2070,8 +2071,8 @@ int event_handler_EMAIL_EVENT_SEARCH_ON_SERVER(int account_id, int mailbox_id, c
 			
 			if (!emcore_make_mail_tbl_data_from_envelope(stream, env, &uid_elem, &new_mail_tbl_data, &err) || !new_mail_tbl_data) {
 				EM_DEBUG_EXCEPTION("emcore_make_mail_tbl_data_from_envelope failed [%d]", err);
-				if (!emstorage_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
-					EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
+				if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
+					EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
 				goto FINISH_OFF;
 			}
 		
@@ -2079,8 +2080,8 @@ int event_handler_EMAIL_EVENT_SEARCH_ON_SERVER(int account_id, int mailbox_id, c
 			if (search_mailbox == NULL) {
 				EM_DEBUG_EXCEPTION("em_malloc failed");
 				err = EMAIL_ERROR_OUT_OF_MEMORY;
-				if (!emstorage_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
-					EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
+				if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
+					EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
 				goto FINISH_OFF;
 			}
 
@@ -2091,14 +2092,14 @@ int event_handler_EMAIL_EVENT_SEARCH_ON_SERVER(int account_id, int mailbox_id, c
 	
 			if ((err = emcore_add_mail_to_mailbox(search_mailbox, new_mail_tbl_data, &mail_id, &thread_id)) != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("emcore_add_mail_to_mailbox failed [%d]", err);
-				if (!emstorage_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
-					EM_DEBUG_EXCEPTION("emstorage_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
+				if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
+					EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
 				goto FINISH_OFF;
 			}
 			memset(mailbox_id_param_string, 0, 10);
 			SNPRINTF(mailbox_id_param_string, 10, "%d", search_mailbox->mailbox_id);
-			if (!emstorage_notify_storage_event(NOTI_MAIL_ADD, account_id, mail_id, mailbox_id_param_string, thread_id)) {
-				EM_DEBUG_EXCEPTION("emstorage_notify_storage_event [NOTI_MAIL_ADD] failed");
+			if (!emcore_notify_storage_event(NOTI_MAIL_ADD, account_id, mail_id, mailbox_id_param_string, thread_id)) {
+				EM_DEBUG_EXCEPTION("emcore_notify_storage_event [NOTI_MAIL_ADD] failed");
 			}
 
 			if (new_mail_tbl_data) {
@@ -2108,8 +2109,8 @@ int event_handler_EMAIL_EVENT_SEARCH_ON_SERVER(int account_id, int mailbox_id, c
 		}
 	}
 
-	if (err == EMAIL_ERROR_NONE && !emstorage_notify_network_event(NOTI_SEARCH_ON_SERVER_FINISH, account_id, NULL, handle_to_be_published, 0)) 
-		EM_DEBUG_EXCEPTION("emstorage_notify_network_event[NOTI_SEARCH_ON_SERVER_FINISH] Failed >>>>>");
+	if (err == EMAIL_ERROR_NONE && !emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FINISH, account_id, NULL, handle_to_be_published, 0)) 
+		EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_SEARCH_ON_SERVER_FINISH] Failed >>>>>");
 
 FINISH_OFF:
 
@@ -2129,24 +2130,27 @@ FINISH_OFF:
 	return true;
 }
 
-static int event_handler_EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER(int input_account_id, int input_mailbox_id, char *input_old_mailbox_path, char *input_new_mailbox_path, int handle_to_be_published)
+static int event_handler_EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER(int input_account_id, int input_mailbox_id, char *input_old_mailbox_path, char *input_new_mailbox_path, char *input_new_mailbox_alias, int handle_to_be_published)
 {
-	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_mailbox_id [%d], input_old_mailbox_path %s], input_new_mailbox_alias [%s], handle_to_be_published [%d]", input_account_id, input_mailbox_id, input_old_mailbox_path, input_new_mailbox_path, handle_to_be_published);
+	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_mailbox_id [%d], input_old_mailbox_path %s], input_new_mailbox_path [%s], input_new_mailbox_alias [%s], handle_to_be_published [%d]", input_account_id, input_mailbox_id, input_old_mailbox_path, input_new_mailbox_path, input_new_mailbox_alias, handle_to_be_published);
 	int err = EMAIL_ERROR_NONE;
 
 	if ((err = emcore_move_mailbox_on_imap_server(input_account_id, input_old_mailbox_path, input_new_mailbox_path)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_move_mailbox_on_imap_server failed [%d]", err);
-		goto FINISH_OFF;
 	}
 
 	if (err == EMAIL_ERROR_NONE) {
-		if(!emstorage_notify_network_event(NOTI_RENAME_MAILBOX_FINISH, input_mailbox_id, input_new_mailbox_path, handle_to_be_published, 0))
-		EM_DEBUG_EXCEPTION("emstorage_notify_network_event[NOTI_RENAME_MAILBOX_FINISH] failed");
-	}
-	else if (!emstorage_notify_network_event(NOTI_RENAME_MAILBOX_FAIL, input_mailbox_id, input_new_mailbox_path, handle_to_be_published, 0))
-		EM_DEBUG_EXCEPTION("emstorage_notify_network_event[NOTI_RENAME_MAILBOX_FAIL] failed");
+		if(!emcore_notify_network_event(NOTI_RENAME_MAILBOX_FINISH, input_mailbox_id, input_new_mailbox_path, handle_to_be_published, 0))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_RENAME_MAILBOX_FINISH] failed");
 
-FINISH_OFF:
+		if ((err = emstorage_rename_mailbox(input_mailbox_id, input_new_mailbox_path, input_new_mailbox_alias, true)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emstorage_rename_mailbox failed [%d]", err);
+		}
+	}
+	else if (!emcore_notify_network_event(NOTI_RENAME_MAILBOX_FAIL, input_mailbox_id, input_new_mailbox_path, handle_to_be_published, 0)) {
+		EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_RENAME_MAILBOX_FAIL] failed");
+	}
+
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
@@ -2257,8 +2261,8 @@ void* thread_func_branch_command(void *arg)
 							break;
 					}
 					
-					if (!emstorage_notify_network_event(noti_id, event_data.account_id, NULL,  handle_to_be_published, err))
-						EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
+					if (!emcore_notify_network_event(noti_id, event_data.account_id, NULL,  handle_to_be_published, err))
+						EM_DEBUG_EXCEPTION(" emcore_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed >>>> ");	
 					is_storage_full = true;
 				}
 			}
@@ -2277,12 +2281,8 @@ void* thread_func_branch_command(void *arg)
 			if (!account_tbl || account_tbl->sync_disabled == 0) {
 				switch (event_data.type)  {
 					case EMAIL_EVENT_SYNC_IMAP_MAILBOX:  /*  get imap mailbox list  */
-						if (!emnetwork_check_network_status(&err))
-							EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
-						else  {
-							if (!emcore_sync_mailbox_list(event_data.account_id, event_data.event_param_data_3, &err))
-								EM_DEBUG_EXCEPTION("emcore_sync_mailbox_list failed [%d]", err);
-						}
+						if (!emcore_sync_mailbox_list(event_data.account_id, event_data.event_param_data_3, handle_to_be_published, &err))
+							EM_DEBUG_EXCEPTION("emcore_sync_mailbox_list failed [%d]", err);
 						EM_SAFE_FREE(event_data.event_param_data_3);
 						break;
 
@@ -2293,7 +2293,7 @@ void* thread_func_branch_command(void *arg)
 
 					case EMAIL_EVENT_SYNC_HEADER_OMA:  /*  synchronize mail header for OMA */
 						if (is_storage_full == false)
-							event_hanlder_EMAIL_EVENT_SYNC_HEADER_OMA(event_data.account_id, event_data.event_param_data_1, &err);
+							event_hanlder_EMAIL_EVENT_SYNC_HEADER_OMA(event_data.account_id, event_data.event_param_data_1, handle_to_be_published, &err);
 						EM_SAFE_FREE(event_data.event_param_data_1);
 						break;
 
@@ -2392,9 +2392,10 @@ void* thread_func_branch_command(void *arg)
 						break;
 
 					case EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER:
-						err = event_handler_EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER(event_data.account_id, event_data.event_param_data_4, (char*)event_data.event_param_data_1, (char*)event_data.event_param_data_2, handle_to_be_published);
+						err = event_handler_EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER(event_data.account_id, event_data.event_param_data_4, (char*)event_data.event_param_data_1, (char*)event_data.event_param_data_2, (char*)event_data.event_param_data_3, handle_to_be_published);
 						EM_SAFE_FREE(event_data.event_param_data_1);
 						EM_SAFE_FREE(event_data.event_param_data_2);
+						EM_SAFE_FREE(event_data.event_param_data_3);
 						break;
 
 					default:
@@ -2407,8 +2408,8 @@ void* thread_func_branch_command(void *arg)
 				account_tbl = NULL;
 			}
 
-			if (!emstorage_notify_response_to_api(event_data.type, handle_to_be_published, err))
-				EM_DEBUG_EXCEPTION("emstorage_notify_response_to_api failed");
+			if (!emcore_notify_response_to_api(event_data.type, handle_to_be_published, err))
+				EM_DEBUG_EXCEPTION("emcore_notify_response_to_api failed");
 
 			emdevice_set_dimming_on_off(true, NULL);
 			em_flush_memory();
@@ -2671,14 +2672,14 @@ INTERNAL_FUNC int emcore_cancel_thread(int handle, void *arg, int *err_code)
 			case EMAIL_EVENT_SEND_MAIL_SAVED: 
 				EM_DEBUG_LOG("EMAIL_EVENT_SEND_MAIL or EMAIL_EVENT_SEND_MAIL_SAVED");
 				_sending_busy_unref();
-				if (!emstorage_notify_network_event(NOTI_SEND_CANCEL, g_event_que[handle].account_id, NULL , g_event_que[handle].event_param_data_4, err))
-					EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_SEND_CANCEL] Failed >>>> ");
+				if (!emcore_notify_network_event(NOTI_SEND_CANCEL, g_event_que[handle].account_id, NULL , g_event_que[handle].event_param_data_4, err))
+					EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_SEND_CANCEL] Failed >>>> ");
 				break;
 			case EMAIL_EVENT_DOWNLOAD_BODY: 
 				EM_DEBUG_LOG("EMAIL_EVENT_DOWNLOAD_BODY");
 				_receiving_busy_unref();
-				if (!emstorage_notify_network_event(NOTI_DOWNLOAD_BODY_CANCEL, g_event_que[handle].account_id, NULL , g_event_que[handle].event_param_data_4, err))
-					EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_SEND_CANCEL] Failed >>>> ");
+				if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_CANCEL, g_event_que[handle].account_id, NULL , g_event_que[handle].event_param_data_4, err))
+					EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_SEND_CANCEL] Failed >>>> ");
 				break;
 
 			case EMAIL_EVENT_SYNC_HEADER: 
@@ -2693,8 +2694,8 @@ INTERNAL_FUNC int emcore_cancel_thread(int handle, void *arg, int *err_code)
 			case EMAIL_EVENT_VALIDATE_ACCOUNT: 
 				EM_DEBUG_LOG(" validate account waiting  :  cancel acc id  :  %d", g_event_que[handle].account_id);
 				_receiving_busy_unref();
-				if (!emstorage_notify_network_event(NOTI_VALIDATE_ACCOUNT_CANCEL, g_event_que[handle].account_id, NULL , g_event_que[handle].event_param_data_4, err))
-					EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_VALIDATE_ACCOUNT_CANCEL] Failed >>>> ");
+				if (!emcore_notify_network_event(NOTI_VALIDATE_ACCOUNT_CANCEL, g_event_que[handle].account_id, NULL , g_event_que[handle].event_param_data_4, err))
+					EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_CANCEL] Failed >>>> ");
 				break;
 
 			case EMAIL_EVENT_DELETE_MAIL: 
@@ -2812,8 +2813,8 @@ INTERNAL_FUNC int emcore_cancel_send_mail_thread(int handle, void *arg, int *err
 			case EMAIL_EVENT_SEND_MAIL_SAVED: 
 				_sending_busy_unref();
 				g_send_event_que[handle].status = EMAIL_EVENT_STATUS_CANCELED;
-				if (!emstorage_notify_network_event(NOTI_SEND_CANCEL, g_send_event_que[handle].account_id, NULL , g_send_event_que[handle].event_param_data_4, err))
-					EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_SEND_CANCEL] Failed >>>> ");
+				if (!emcore_notify_network_event(NOTI_SEND_CANCEL, g_send_event_que[handle].account_id, NULL , g_send_event_que[handle].event_param_data_4, err))
+					EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_SEND_CANCEL] Failed >>>> ");
 				break;			
 			default: 
 				break;

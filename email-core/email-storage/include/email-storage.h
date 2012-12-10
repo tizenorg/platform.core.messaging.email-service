@@ -40,10 +40,9 @@ extern "C"
 #include <sqlite3.h>
 #include <time.h>
 #include "email-types.h"
+#include "email-core-tasks.h"
 #include "email-internal-types.h"
 
-
-#define MAILTEMP            "tmp"
 #define FIRST_ACCOUNT_ID    1
 
 
@@ -149,20 +148,21 @@ typedef struct
 /* mail_box_tbl table entity */
 typedef struct 
 {
-	int                  mailbox_id;
-	int                  account_id;
-	int                  local_yn;
-	char                *mailbox_name;
-	email_mailbox_type_e   mailbox_type;
-	char                *alias;
-	int                  sync_with_server_yn;        /*  whether mailbox is a sync IMAP mailbox */
-	int                  modifiable_yn;              /*  whether mailbox is able to be deleted/modified */
-	int                  unread_count;               /*  Removed. 16-Dec-2010, count unread mails at the moment it is required. not store in the DB */
-	int                  total_mail_count_on_local;  /*  Specifies the total number of mails in the mailbox in the local DB. count unread mails at the moment it is required. not store in the DB */
-	int                  total_mail_count_on_server; /*  Specifies the total number of mails in the mailbox in the mail server */
-	int                  has_archived_mails;
-	int                  mail_slot_size;
-	time_t               last_sync_time;             /*  The last synchronization time */
+	int                   mailbox_id;
+	int                   account_id;
+	int                   local_yn;
+	char                 *mailbox_name;
+	email_mailbox_type_e  mailbox_type;
+	char                 *alias;
+	int                   sync_with_server_yn;        /*  whether mailbox is a sync IMAP mailbox */
+	int                   modifiable_yn;              /*  whether mailbox is able to be deleted/modified */
+	int                   unread_count;               /*  Removed. 16-Dec-2010, count unread mails at the moment it is required. not store in the DB */
+	int                   total_mail_count_on_local;  /*  Specifies the total number of mails in the mailbox in the local DB. count unread mails at the moment it is required. not store in the DB */
+	int                   total_mail_count_on_server; /*  Specifies the total number of mails in the mailbox in the mail server */
+	int                   has_archived_mails;
+	int                   mail_slot_size;
+	int                   no_select;
+	time_t                last_sync_time;             /*  The last synchronization time */
 } emstorage_mailbox_tbl_t;
 
 /* mail_read_uid_tbl table entity */
@@ -1022,7 +1022,7 @@ INTERNAL_FUNC int emstorage_increase_mail_id(int *mail_id, int transaction, int 
 INTERNAL_FUNC int emstorage_add_mail(emstorage_mail_tbl_t *mail, int get_id, int transaction, int *err_code);
 
 /*
- * emstorage_move_multiple_mails
+ * emstorage_move_multiple_mails_on_db
  *
  * description :
  * arguments : 
@@ -1034,7 +1034,7 @@ INTERNAL_FUNC int emstorage_add_mail(emstorage_mail_tbl_t *mail, int get_id, int
  *   err_code :
  * return  : 
  */
-INTERNAL_FUNC int emstorage_move_multiple_mails(int account_id, int input_mailbox_id, int mail_ids[], int number_of_mails, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_move_multiple_mails_on_db(int account_id, int input_mailbox_id, int mail_ids[], int number_of_mails, int transaction, int *err_code);
 
 /*
  * emstorage_delete_mail
@@ -1264,6 +1264,9 @@ INTERNAL_FUNC int emstorage_rollback_transaction(void *d1, void *d2, int *err_co
 
 INTERNAL_FUNC int emstorage_clear_mail_data(int transaction, int *err_code);
 
+
+INTERNAL_FUNC char *emstorage_make_directory_path_from_file_path(char *file_name);
+
 /*
  * emstorage_get_save_name
  *
@@ -1349,20 +1352,6 @@ INTERNAL_FUNC int emstorage_delete_dir(char *src_dir, int *err_code);
 
 INTERNAL_FUNC void emstorage_flush_db_cache();
 INTERNAL_FUNC int emstorage_test(int mail_id, int account_id, char *full_address_to, char *full_address_cc, char *full_address_bcc, int *err_code);
-/**
- * emstorage_notify_storage_event - Notification for storage related operations
- */
-INTERNAL_FUNC int emstorage_notify_storage_event(email_noti_on_storage_event event_type, int data1, int data2 , char *data3, int data4);
-
-/**
- * emstorage_notify_network_event - Notification for network related operations
- */
-INTERNAL_FUNC int emstorage_notify_network_event(email_noti_on_network_event event_type, int data1, char *data2, int data3, int data4);
-
-/**
- * emstorage_notify_response_to_api - Notification for response to API
- */
-INTERNAL_FUNC int emstorage_notify_response_to_api(email_event_type_t event_type, int data1, int data2);
 
 INTERNAL_FUNC int emstorage_get_sender_list(int account_id, const char *mailbox_name, int search_type, const char *search_value, email_sort_type_t sorting, email_sender_list_t** sender_list, int *sender_count,  int *err_code);
 INTERNAL_FUNC int emstorage_free_sender_list(email_sender_list_t **sender_list, int count);
@@ -1518,6 +1507,16 @@ INTERNAL_FUNC int emstorage_get_certificate_by_email_address(char *email_address
 INTERNAL_FUNC int emstorage_get_certificate_by_index(int index, emstorage_certificate_tbl_t **certificate, int transaction, int with_password, int *err_code);
 
 INTERNAL_FUNC int emstorage_delete_certificate(int index, int transaction, int *err_code);
+
+/* task begin */
+INTERNAL_FUNC int emstorage_add_task(email_task_type_t input_task_type, email_task_priority_t input_task_priority, char *input_task_parameter, int input_task_parameter_length, int input_transaction, int *output_task_id);
+
+INTERNAL_FUNC int emstorage_delete_task(int task_id, int transaction);
+
+INTERNAL_FUNC int emstorage_update_task_status(int task_id, email_task_status_type_t task_status, int transaction);
+
+INTERNAL_FUNC int emstorage_query_task(const char *input_conditional_clause, const char *input_ordering_clause, email_task_t **output_task_list, int *output_task_count);
+/* task end*/
 
 #ifdef __cplusplus
 }

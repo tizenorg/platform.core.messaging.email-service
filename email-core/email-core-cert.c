@@ -172,6 +172,7 @@ FINISH_OFF:
 	return file_path;
 }
 */
+#if 0
 INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, char *password, EVP_PKEY **pri_key, X509 **cert, STACK_OF(X509) **ca, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("Certificate path : [%s], password : [%s]", certificate, password);
@@ -217,24 +218,24 @@ FINISH_OFF:
 
 	return ret;	
 }
-#if 0
+#endif
+
 INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X509 **cert, STACK_OF(X509) **ca, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("certificate : [%s]", certificate);
 	int err = EMAIL_ERROR_NONE;
 	int ret = false;
-	int key_size = 0;
+	size_t key_size = 0;
 	char *private_key = NULL;
 
 	/* Variable for certificate */
 	X509 *t_cert = NULL;
+	BIO *bio_mem = NULL;
 //	STACK_OF(X509) *t_ca = NULL;
 	
 	/* Variable for private key */
 	EVP_PKEY *t_pri_key = NULL;
-	PKCS8_PRIV_KEY_INFO *p8inf = NULL;
-	const unsigned char *cu_private_key = NULL;
-	
+
 	CertSvcString csstring;
 	CertSvcInstance cert_instance;
 	CertSvcCertificate csc_cert;
@@ -294,21 +295,35 @@ INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X5
 		goto FINISH_OFF;
 	}
 
-	EM_DEBUG_LOG("private_key : [%s], key_size : [%d]", private_key, key_size);
+	EM_DEBUG_LOG("key_size : [%d], private_key : [%s]", key_size, private_key);
 
 	/* Convert char to pkey */
-	cu_private_key = (const unsigned char *)private_key;
-	p8inf = d2i_PKCS8_PRIV_KEY_INFO(NULL, &cu_private_key, key_size);
-	if (p8inf == NULL) {
-		EM_DEBUG_EXCEPTION("d2i_PKCS8_PRIV_KEY_INFO failed");
+	bio_mem = BIO_new(BIO_s_mem());
+	if (bio_mem == NULL) {
+		EM_DEBUG_EXCEPTION("malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	if (BIO_write(bio_mem, private_key, key_size) <= 0) {
+		EM_DEBUG_EXCEPTION("BIO_write failed");
 		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
 		goto FINISH_OFF;
 	}
-	t_pri_key = EVP_PKCS82PKEY(p8inf);
+
+	t_pri_key = PEM_read_bio_PrivateKey(bio_mem, NULL, 0, NULL);
+	if (t_pri_key == NULL) {
+		EM_DEBUG_EXCEPTION("PEM_read_bio_PrivateKey failed");
+		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
+		goto FINISH_OFF;
+	}
 
 	ret = true;
 	
 FINISH_OFF:
+
+	if (bio_mem)
+		BIO_free(bio_mem);
 
 	if (true) {
 		if (cert)
@@ -321,9 +336,6 @@ FINISH_OFF:
 		EVP_PKEY_free(t_pri_key);
 	}
 
-	if (p8inf)
-		PKCS8_PRIV_KEY_INFO_free(p8inf);
-
 	if (private_key)
 		EM_SAFE_FREE(private_key);
 
@@ -332,7 +344,7 @@ FINISH_OFF:
 
 	return ret;
 }
-#endif
+
 INTERNAL_FUNC int emcore_add_public_certificate(char *public_cert_path, char *save_name, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("Path [%s], filename [%s]", public_cert_path, save_name);
@@ -376,7 +388,7 @@ INTERNAL_FUNC int emcore_add_public_certificate(char *public_cert_path, char *sa
 		extension = "der";
 	}
 	
-	SNPRINTF(temp_file, sizeof(temp_file), "%s%s%s%s%s.%s", MAILHOME, DIR_SEPERATOR, MAILTEMP, DIR_SEPERATOR, save_name, extension);
+	SNPRINTF(temp_file, sizeof(temp_file), "%s%s%s.%s", MAILTEMP, DIR_SEPERATOR, save_name, extension);
 	EM_DEBUG_LOG("temp cert path : [%s]", temp_file);
 
 	if (!emstorage_copy_file(public_cert_path, temp_file, false, &err)) {

@@ -33,9 +33,14 @@
 #define TIMER 30000   // 30 seconds
 #define HAPTIC_TEST_ITERATION 1
 
+#define SETTING_SOUND_STATUS_OFF 0
+#define SETTING_SOUND_STATUS_GLOBAL 1
+#define SETTING_SOUND_STATUS_EMAIL 2
+
 static MMHandleType email_mmhandle = 0;
 static alarm_id_t email_alarm_id = 0;
 static int email_vibe_handle = 0;
+static int setting_sound_status = 0;
 
 static char *filename;
 alarm_entry_t *alarm_info = NULL;
@@ -51,6 +56,21 @@ int   emcore_vibration_stop();
 int   emcore_sound_mp_player_stop();
 bool  emcore_sound_mp_player_destory();
 void *start_alert_thread(void *arg);
+
+bool emcore_set_mp_filepath(const char *key)
+{
+	filename = vconf_get_str(key);
+	if (filename == NULL)
+		return false;
+
+	/* initialize the ringtone path */
+	if (vconf_set_str(VCONF_VIP_NOTI_RINGTONE_PATH, filename) != 0) {
+		EM_DEBUG_EXCEPTION("vconf_set_str failed");
+		return false;
+	}
+
+	return true;
+}
 
 int emcore_alert_sound_init()
 {
@@ -80,10 +100,15 @@ int emcore_alert_sound_filepath_init()
 		return false;
 	}
 
-	memset(filename, 0, MAX_PATH);
+	if (!emcore_set_mp_filepath(VCONFKEY_SETAPPL_NOTI_EMAIL_RINGTONE_PATH_STR)) {
+		/* TODO : Add code to set default ringtone path */
+		EM_DEBUG_EXCEPTION("emcore_set_mp_filepath failed.");
+		return false;
+	}
 
 	return true;
 }
+
 int emcore_alert_vibe_init()
 {
 	email_vibe_handle = device_haptic_open(DEV_IDX_0, 0);	
@@ -95,9 +120,37 @@ int emcore_alert_vibe_init()
 	return true;
 }
 
-void emcore_noti_key_changed_cb(keynode_t *key_node, void *data)
+void emcore_global_noti_key_changed_cb(keynode_t *key_node, void *data)
 {
 	int ret = 0;
+
+	if (setting_sound_status != SETTING_SOUND_STATUS_GLOBAL)
+		return;
+
+	switch (vconf_keynode_get_type(key_node)) {
+	case VCONF_TYPE_INT:
+		ret = alarmmgr_remove_alarm(email_alarm_id);
+		if (ret != ALARMMGR_RESULT_SUCCESS) {
+			EM_DEBUG_EXCEPTION("delete of alarm id failed");
+		}
+		emcore_set_repetition_alarm(vconf_keynode_get_int(key_node));
+		break;
+	case VCONF_TYPE_STRING:
+		filename = vconf_keynode_get_str(key_node);
+		break;
+	default:
+		EM_DEBUG_EXCEPTION("Invalid key type");
+		break;
+	}
+}
+
+void emcore_email_noti_key_changed_cb(keynode_t *key_node, void *data)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int ret = 0;
+
+	if (setting_sound_status != SETTING_SOUND_STATUS_EMAIL)
+		return;
 	
 	switch (vconf_keynode_get_type(key_node)) {
 	case VCONF_TYPE_INT:
@@ -114,19 +167,88 @@ void emcore_noti_key_changed_cb(keynode_t *key_node, void *data)
 		EM_DEBUG_EXCEPTION("Invalid key type");
 		break;
 	}
-	return;
+	EM_DEBUG_FUNC_END();
+}
+
+bool emcore_update_sound_status()
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int ticker_noti = 0;
+
+	/* Get the priority noti ticker */
+	if (vconf_get_bool(VCONF_VIP_NOTI_NOTIFICATION_TICKER, &ticker_noti) != 0) {
+		EM_DEBUG_EXCEPTION("vconf_get_bool failed");
+		return false;
+	}
+
+	setting_sound_status = SETTING_SOUND_STATUS_EMAIL;
+
+	if (!ticker_noti) {
+		/* Get the Global noti ticker */
+		if (vconf_get_bool(VCONFKEY_SETAPPL_STATE_TICKER_NOTI_EMAIL_BOOL, &ticker_noti) != 0) {
+				EM_DEBUG_EXCEPTION("Not display the noti of email");
+				return false;
+		}
+
+		if (!ticker_noti) {
+			EM_DEBUG_LOG("Not use the notification");
+			setting_sound_status = SETTING_SOUND_STATUS_OFF;
+			return true;
+		}
+
+		setting_sound_status = SETTING_SOUND_STATUS_GLOBAL;
+	}
+
+	EM_DEBUG_FUNC_END();
+	return true;
+}
+
+void emcore_sound_status_changed_cb(keynode_t *key_node, void *data)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	if (!emcore_update_sound_status()) {
+		EM_DEBUG_EXCEPTION("emcore_update_sound_status failed");
+		return;
+	}
+	EM_DEBUG_FUNC_END();
 }
 
 bool emcore_noti_init(void *data)
 {
 	struct appdata *ap = data;
-	
-	if (vconf_notify_key_changed(VCONFKEY_SETAPPL_NOTI_EMAIL_ALERT_REP_TYPE_INT, emcore_noti_key_changed_cb, ap) < 0) {
+
+	if (!emcore_update_sound_status()) {
+		EM_DEBUG_EXCEPTION("emcore_update_sound_status failed");
+		return false;
+	}
+
+	/* Noti callback registration */
+	if (vconf_notify_key_changed(VCONFKEY_SETAPPL_NOTI_EMAIL_ALERT_REP_TYPE_INT, emcore_global_noti_key_changed_cb, ap) < 0) {
 		EM_DEBUG_EXCEPTION("Register failed : alert type");
 		return false;
 	}
 
-	if (vconf_notify_key_changed(VCONFKEY_SETAPPL_NOTI_EMAIL_RINGTONE_PATH_STR, emcore_noti_key_changed_cb, ap) < 0) {
+	if (vconf_notify_key_changed(VCONFKEY_SETAPPL_NOTI_EMAIL_RINGTONE_PATH_STR, emcore_global_noti_key_changed_cb, ap) < 0) {
+		EM_DEBUG_EXCEPTION("Register failed : Ringtone path");
+		return false;
+	}
+
+	if (vconf_notify_key_changed(VCONF_VIP_NOTI_REP_TYPE, emcore_email_noti_key_changed_cb, ap) < 0) {
+		EM_DEBUG_EXCEPTION("Register failed : alert type");
+		return false;
+	}
+
+	if (vconf_notify_key_changed(VCONF_VIP_NOTI_RINGTONE_PATH, emcore_email_noti_key_changed_cb, ap) < 0) {
+		EM_DEBUG_EXCEPTION("Register failed : Ringtone path");
+		return false;
+	}
+
+	if (vconf_notify_key_changed(VCONF_VIP_NOTI_NOTIFICATION_TICKER, emcore_sound_status_changed_cb, ap) < 0) {
+		EM_DEBUG_EXCEPTION("Register failed : Ringtone path");
+		return false;
+	}
+
+	if (vconf_notify_key_changed(VCONFKEY_SETAPPL_STATE_TICKER_NOTI_EMAIL_BOOL, emcore_sound_status_changed_cb, ap) < 0) {
 		EM_DEBUG_EXCEPTION("Register failed : Ringtone path");
 		return false;
 	}
@@ -166,15 +288,6 @@ int emcore_alert_init()
 	}
 
 	EM_DEBUG_FUNC_END();	
-	return true;
-}
-
-bool emcore_set_mp_filepath(const char *key)
-{
-	filename = vconf_get_str(key);
-	if (filename == NULL)
-		return false;
-
 	return true;
 }
 
@@ -280,14 +393,14 @@ bool emcore_alert_create()
 		EM_DEBUG_EXCEPTION("emcore_alarm_create failed.");
 		return false;
 	}
-	
+#if 0	
 	/* Set the music file in alert */
 	if (!emcore_set_mp_filepath(VCONFKEY_SETAPPL_NOTI_EMAIL_RINGTONE_PATH_STR)) {
 		/* TODO : Add code to set default ringtone path */
 		EM_DEBUG_EXCEPTION("emcore_set_mp_filepath failed.");
 		return false;
 	}
-	
+#endif	
 	EM_DEBUG_FUNC_END();
 	return true;
 }
@@ -719,7 +832,6 @@ void *start_alert_thread(void *arg)
 		return 0;
 	}
 
-
 	while (1) {
 		if (!emcore_alert_create()) {
 			EM_DEBUG_EXCEPTION("Error : emcore_alert_create failed");
@@ -773,6 +885,9 @@ void *start_alert_thread(void *arg)
 
 INTERNAL_FUNC void emcore_start_alert()
 {
+	if (setting_sound_status == SETTING_SOUND_STATUS_OFF)
+		return;
+
 	ENTER_CRITICAL_SECTION(sound_mutex);
 	WAKE_CONDITION_VARIABLE(sound_condition);
 	LEAVE_CRITICAL_SECTION(sound_mutex);

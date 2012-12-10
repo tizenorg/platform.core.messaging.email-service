@@ -261,6 +261,17 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 			account->outgoing_server_need_authentication = 1;
 			break;
 
+		case 13: /* Yahoo IMAP ID */
+			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
+			account->incoming_server_address= strdup("samsung.imap.mail.yahoo.com");
+			account->incoming_server_port_number = 993;
+			account->incoming_server_secure_connection	= 1;
+			account->outgoing_server_address    = strdup("samsung.smtp.mail.yahoo.com");
+			account->outgoing_server_port_number = 465;
+			account->outgoing_server_secure_connection = 1;
+			account->outgoing_server_need_authentication = 1;
+			break;
+
 		default:
 			testapp_print("Invalid Account Number\n");
 			return FALSE;
@@ -300,6 +311,7 @@ static gboolean testapp_test_create_account()
 	testapp_print("10. Hotmail\n");
 	testapp_print("11. Daum (IMAP4)\n");
 	testapp_print("12. Daum (POP3)\n");
+	testapp_print("13. Yahoo (IMAP ID)\n");
 	testapp_print("Choose server type: ");
 	
 	result_from_scanf = scanf("%d",&account_type);

@@ -151,6 +151,8 @@ static email_account_t* duplicate_account(email_account_t *src)
 	dst->user_data                = (void*) em_malloc(src->user_data_length);
 	if( !dst->user_data ) {
 		EM_DEBUG_EXCEPTION("em_malloc failed");
+		emcore_free_account(dst);
+		EM_SAFE_FREE(dst);
 		return NULL;
 	}
 
@@ -407,7 +409,6 @@ INTERNAL_FUNC int emdaemon_get_account_list(email_account_t** account_list, int*
 	emstorage_account_tbl_t *account_tbl_array = NULL;
 
 	if (!account_list || !count)  {
-		EM_DEBUG_EXCEPTION("account_list[%p], count[%p]", account_list, (*count));
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}

@@ -170,6 +170,29 @@ FINISH_OFF:
 	return ret;
 }	
 
+static char *_make_time_string_to_time_t(time_t time)
+{
+	char *time_string = NULL;
+	struct tm *struct_time = NULL;
+
+	if (!time) {
+		EM_DEBUG_EXCEPTION("Invalid paramter");
+		return NULL;
+	}
+
+	time_string = em_malloc(MAX_DATETIME_STRING_LENGTH);
+	if (time_string == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		return NULL;
+	}
+
+	struct_time = localtime(&time);
+	SNPRINTF(time_string, MAX_DATETIME_STRING_LENGTH, "%d/%d/%d", struct_time->tm_mon + 1, struct_time->tm_mday, struct_time->tm_year + 1900);
+
+	EM_DEBUG_LOG("time string = [%s]", time_string);
+	return time_string;	
+}
+
 static char *_make_criteria_to_search_filter(email_search_filter_t *search_filter, int search_filter_count, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("search_filter : [%p], search_filter_count : [%d]", search_filter, search_filter_count);
@@ -178,6 +201,7 @@ static char *_make_criteria_to_search_filter(email_search_filter_t *search_filte
 	int err = EMAIL_ERROR_NONE;
 	char *criteria = NULL;
 	char *temp_criteria = NULL;
+	char *time_string = NULL;
 	
 	if (search_filter == NULL || search_filter_count < 0) {
 		EM_DEBUG_EXCEPTION("Invalid paramter");
@@ -243,9 +267,21 @@ static char *_make_criteria_to_search_filter(email_search_filter_t *search_filte
 			break;
 
 		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :
+			EM_DEBUG_LOG("time_type_key_value [%d]", search_filter[i].search_filter_key_value.time_type_key_value);
+			time_string = _make_time_string_to_time_t(search_filter[i].search_filter_key_value.time_type_key_value);
+			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "before %s ", time_string);
+			strncat(criteria, temp_criteria, strlen(temp_criteria));
+			break;
+	
 		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON :
+			EM_DEBUG_LOG("time_type_key_value [%d]", search_filter[i].search_filter_key_value.time_type_key_value);
+			break;
+
 		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE :
 			EM_DEBUG_LOG("time_type_key_value [%d]", search_filter[i].search_filter_key_value.time_type_key_value);
+			time_string = _make_time_string_to_time_t(search_filter[i].search_filter_key_value.time_type_key_value);
+			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "since %s ", time_string);
+			strncat(criteria, temp_criteria, strlen(temp_criteria));
 			break;
 
 		default :
@@ -258,8 +294,8 @@ static char *_make_criteria_to_search_filter(email_search_filter_t *search_filte
 
 FINISH_OFF:
 	
-	if (temp_criteria)
-		EM_SAFE_FREE(temp_criteria);
+	EM_SAFE_FREE(temp_criteria);
+	EM_SAFE_FREE(time_string);
 
 	if (err_code != NULL)
 		*err_code = err;
@@ -307,7 +343,6 @@ INTERNAL_FUNC int emdaemon_search_mail_on_server(int input_account_id, int input
 FINISH_OFF:
 	if (!ret) {
 		EM_SAFE_FREE(event_data.event_param_data_1);
-		EM_SAFE_FREE(event_data.event_param_data_2);
 	}
 
 	EM_SAFE_FREE(criteria);
@@ -337,7 +372,7 @@ INTERNAL_FUNC int emdaemon_clear_all_mail_data(int* err_code)
 		return false;
 	}
 
-	emcore_check_unread_mail();
+	emcore_display_unread_in_badge();
 
 	ret = true;
 

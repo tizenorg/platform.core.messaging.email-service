@@ -55,7 +55,7 @@ ADD_SUBDIRECTORY(utilities)
 CONFIGURE_FILE(email-service.pc.in email-service.pc @ONLY)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/email-service.pc DESTINATION lib/pkgconfig) 
 
-#SET(RC_LOCAL_SCRIPT email-service)
-#INSTALL(PROGRAMS ${RC_LOCAL_SCRIPT} DESTINATION /etc/rc.d/init.d)
+# LICENSE file
+INSTALL(FILES ${CMAKE_SOURCE_DIR}/LICENSE DESTINATION /usr/share/license/email-service)
 
-INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/res/ DESTINATION /opt/data/email/res/image FILES_MATCHING PATTERN "*.png")
+INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/res/ DESTINATION /opt/usr/data/email/res/image FILES_MATCHING PATTERN "*.png")

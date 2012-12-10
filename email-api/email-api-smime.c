@@ -37,8 +37,10 @@
 #include "email-storage.h"
 #include "email-utilities.h"
 #include "email-core-mail.h"
+#include "email-core-mime.h"
 #include "email-core-account.h"
 #include "email-core-cert.h"
+#include "email-core-smime.h"
 #include "email-ipc.h"
 
 EXPORT_API int email_add_certificate(char *certificate_path, char *email_address)
@@ -168,14 +170,18 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 {
 	EM_DEBUG_FUNC_BEGIN("mail_id : [%d]", mail_id);
 	int err = EMAIL_ERROR_NONE;
+	int p_output_attachment_count = 0;
+	char *decrypt_filepath = NULL;
 	email_mail_data_t *p_output_mail_data = NULL;
-	emstorage_account_tbl_t *p_account = NULL;
+	email_attachment_data_t *p_output_attachment_data = NULL;
+	
 
 	EM_IF_NULL_RETURN_VALUE(mail_id, EMAIL_ERROR_INVALID_PARAM);
 
 	if (!output_mail_data || !output_attachment_data || !output_attachment_count) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-		return EMAIL_ERROR_INVALID_PARAM;
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
 	}
 
 	if ((err = emcore_get_mail_data(mail_id, &p_output_mail_data)) != EMAIL_ERROR_NONE) {
@@ -183,17 +189,35 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_get_account_by_id(p_output_mail_data->account_id, EMAIL_ACC_GET_OPT_OPTIONS, &p_account, false, &err)) {
-		EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed");
+	if ((err = emcore_get_attachment_data_list(mail_id, &p_output_attachment_data, &p_output_attachment_count)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_get_attachment_data_list failed");
 		goto FINISH_OFF;
 	}
-#if 0
-	emcore_smime_set_decrypt_message(p_output_mail_data->file_path_mime_entity, p_account->certificate_path, decrypt_message, &err);
+
+	if (p_output_attachment_count != 1 || !p_output_attachment_data) {
+		EM_DEBUG_EXCEPTION("This is not the encrypted mail");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	if (!emcore_smime_set_decrypt_message(p_output_attachment_data->attachment_path, p_output_mail_data->full_address_from, &decrypt_filepath, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_smime_set_decrypt_message failed");
+		goto FINISH_OFF;
+	}
 
 	/* Change decrpyt_message to mail_data_t */
+	if (!emcore_parse_mime_file_to_mail(decrypt_filepath, output_mail_data, output_attachment_data, output_attachment_count, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_parse_mime_file_to_mail failed : [%d]", err);
+		goto FINISH_OFF;
+	}
 
-#endif	
 FINISH_OFF:
+
+	if (p_output_mail_data)
+		email_free_mail_data(&p_output_mail_data, 1);
+
+	if (p_output_attachment_data)
+		email_free_attachment_data(&p_output_attachment_data, p_output_attachment_count);
 
 	EM_DEBUG_FUNC_END("ERROR CODE [%d]", err);
 	return err;

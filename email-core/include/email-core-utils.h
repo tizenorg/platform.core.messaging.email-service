@@ -77,7 +77,7 @@ int   emcore_get_empty_session(email_session_t **session);
 int   emcore_clear_session(email_session_t *session);
 int   emcore_get_current_session(email_session_t **session);
 
-INTERNAL_FUNC int emcore_check_unread_mail();
+INTERNAL_FUNC int emcore_display_unread_in_badge();
 INTERNAL_FUNC int emcore_set_network_error(int err_code);
 
 /* Transaction Handling */
@@ -88,7 +88,7 @@ INTERNAL_FUNC int emcore_delete_transaction_info_by_mailId(int mail_id);
 /* For notification bar */
 INTERNAL_FUNC int emcore_update_notification_for_unread_mail(int account_id);
 INTERNAL_FUNC int emcore_clear_all_notifications();
-INTERNAL_FUNC int emcore_add_notification_for_unread_mail(emstorage_mail_tbl_t *input_mail_tbl_data);
+//INTERNAL_FUNC int emcore_add_notification_for_unread_mail(emstorage_mail_tbl_t *input_mail_tbl_data);
 INTERNAL_FUNC int emcore_delete_notification_for_read_mail(int mail_id);
 INTERNAL_FUNC int emcore_delete_notification_by_account(int account_id);
 INTERNAL_FUNC int emcore_finalize_sync(int account_id, int *error);

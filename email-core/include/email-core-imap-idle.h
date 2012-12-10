@@ -33,7 +33,7 @@
 
 /**
 
- * @open
+
  * @fn emcore_create_imap_idle_thread(int *err_code)
  * @brief	Creates a thread that listens for IMAP IDLE Notifications.
  *
@@ -46,7 +46,7 @@ INTERNAL_FUNC int emcore_create_imap_idle_thread(int accountID, int *err_code);
 
 /**
 
- * @open
+
  * @fn emcore_kill_imap_idle_thread(int *err_code)
  * @brief	Kills IMAP IDLE thread
  *

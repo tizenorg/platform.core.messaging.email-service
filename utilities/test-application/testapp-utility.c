@@ -98,6 +98,7 @@ void testapp_show_menu (eEMAIL_MENU menu)
 			testapp_print ("7.  Send read receipt\n");
 			testapp_print ("8.  Delete attachment\n");
 			testapp_print ("9.  Mail Count \n");
+			testapp_print ("10. Move mails to another account\n");
 			testapp_print ("14. Delete a mail \n");
 			testapp_print ("16. Download mail body\n");
 			testapp_print ("17. Download an attachment\n");

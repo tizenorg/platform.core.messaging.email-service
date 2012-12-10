@@ -239,6 +239,8 @@ INTERNAL_FUNC int em_convert_mailbox_to_mailbox_tbl(email_mailbox_t *mailbox, em
 	mailbox_tbl->total_mail_count_on_local  = mailbox->total_mail_count_on_local;
 	mailbox_tbl->total_mail_count_on_server = mailbox->total_mail_count_on_server;
 	mailbox_tbl->mail_slot_size             = mailbox->mail_slot_size;
+	mailbox_tbl->no_select                  = mailbox->no_select;
+	mailbox_tbl->last_sync_time             = mailbox->last_sync_time;
 
 	EM_DEBUG_FUNC_END();
 	return ret;
@@ -259,6 +261,7 @@ INTERNAL_FUNC int em_convert_mailbox_tbl_to_mailbox(emstorage_mailbox_tbl_t *mai
 	mailbox->total_mail_count_on_local  = mailbox_tbl->total_mail_count_on_local;
 	mailbox->total_mail_count_on_server = mailbox_tbl->total_mail_count_on_server;
 	mailbox->mail_slot_size             = mailbox_tbl->mail_slot_size;
+	mailbox->no_select                  = mailbox_tbl->no_select;
 	mailbox->last_sync_time             = mailbox_tbl->last_sync_time;
 
 	EM_DEBUG_FUNC_END();
@@ -578,44 +581,6 @@ static char* append_string_to_stream(char *input_stream, int *input_output_strea
 	return new_stream;
 }
 
-#if 0
-static char* append_binary_to_stream(char *stream, int *stream_length, char *src, int src_size)
-{
-	/* EM_DEBUG_FUNC_BEGIN("input_stream [%p], input_output_stream_length [%p], input_sized_data [%p], input_data_size [%d]", input_stream, input_output_stream_length, input_sized_data, input_data_size); */
-	char *new_stream = NULL;
-
-	if( !stream_length || (stream && *stream_length == 0) || (!stream && *stream_length != 0) ||
-		src_size < 0 ) {
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-		return NULL;
-	}
-
-	/*TODO: don't increase stream buffer incrementally when appending new data */
-	new_stream = (char*)em_malloc(*stream_length + sizeof(int) + src_size);
-
-	if(!new_stream) {
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
-		return NULL;
-	}
-
-
-	if(stream != NULL)
-		memcpy(new_stream, stream, *stream_length);
-
-	memcpy(new_stream + *stream_length, &src_size, sizeof(int));
-
-	if( src_size > 0 )
-		memcpy(new_stream + *stream_length + sizeof(int), src, src_size);
-
-	*stream_length = *stream_length + sizeof(int) + src_size;
-
-	EM_SAFE_FREE(stream);
-	/* EM_DEBUG_FUNC_END("*input_output_stream_length [%d]", *input_output_stream_length); */
-
-	return new_stream;
-}
-#endif
-
 static int fetch_sized_data_from_stream(char *input_stream, int *input_output_stream_offset, int input_data_size, char *output_data)
 {
 	/* EM_DEBUG_FUNC_BEGIN("input_stream [%p], input_output_stream_offset [%p] input_data_size [%d], output_data[%p]", input_stream, input_output_stream_offset, input_data_size, output_data); */
@@ -676,40 +641,6 @@ static int fetch_string_from_stream(char *input_stream, int *input_output_stream
 	/* EM_DEBUG_FUNC_END("stream_offset [%d]", stream_offset); */
 	return EMAIL_ERROR_NONE;
 }
-
-#if 0
-static int fetch_binary_from_stream(char *stream, int *stream_offset, void **dest)
-{
-	/* EM_DEBUG_FUNC_BEGIN("input_stream [%p], input_output_stream_offset [%p] output_string[%p]", input_stream, input_output_stream_offset, output_string); */
-	int length = 0;
-
-	if( !stream || !stream_offset || !dest) {
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-		return EMAIL_ERROR_INVALID_PARAM;
-	}
-
-	int offset = *stream_offset;
-
-	memcpy((void*)&length, (void*) stream + offset, sizeof(int));
-	offset +=  sizeof(int);
-
-	*dest = NULL;
-	if(length > 0) {
-		*dest = (void*)em_malloc(length);
-		if(!*dest) {
-			EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
-			return EMAIL_ERROR_OUT_OF_MEMORY;
-		}
-
-		memcpy(*dest, (void*) stream + offset, length);
-		offset += length;
-	}
-
-	*stream_offset = offset;
-
-	return EMAIL_ERROR_NONE;
-}
-#endif
                                     /* divide struct at binary field (void* user_data)*/
 #define EMAIL_ACCOUNT_FMT   "S(" "isiii" "is" ")" "B" "S(" "issss"  "isiss" "iiiii" "isiss" "iii"\
                                  "$(" "iiiii" "iisii" "iisi" ")" "iiisii" ")"
@@ -737,72 +668,6 @@ INTERNAL_FUNC char* em_convert_account_to_byte_stream(email_account_t* account, 
 	*stream_len = len;
 	EM_DEBUG_FUNC_END();
 	return (char*) buf;
-
-#if 0
-	EM_DEBUG_FUNC_BEGIN("input_account [%p], output_stream_size [%p]", input_account, output_stream_size);
-	char *result_stream = NULL;
-	int stream_size = 0;
-
-	EM_IF_NULL_RETURN_VALUE(input_account, NULL);
-
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->account_name);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->incoming_server_type), sizeof(int));
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->incoming_server_address);
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->user_email_address);
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->incoming_server_user_name);
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->incoming_server_password);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->retrieval_mode), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->incoming_server_port_number), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->incoming_server_secure_connection), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->outgoing_server_type), sizeof(int));
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->outgoing_server_address);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->outgoing_server_port_number), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->outgoing_server_need_authentication), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->outgoing_server_secure_connection), sizeof(int));
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->outgoing_server_user_name);
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->outgoing_server_password);
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->user_display_name);
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->reply_to_address);
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->return_address);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->account_id), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->keep_mails_on_pop_server_after_download), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->auto_download_size), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->outgoing_server_use_same_authenticator), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->pop_before_smtp), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->incoming_server_requires_apop), sizeof(int));
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->logo_icon_path);
-	result_stream = append_binary_to_stream(result_stream, &stream_size, input_account->user_data, input_account->user_data_length);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*) &input_account->user_data_length, sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->options.priority), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->options.keep_local_copy), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->options.req_delivery_receipt), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->options.req_read_receipt), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->options.download_limit), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->options.block_address), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->options.block_subject), sizeof(int));
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->options.display_name_from);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->options.reply_with_body), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->options.forward_with_files), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->options.add_myname_card), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->options.add_signature), sizeof(int));
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->options.signature);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->options.add_my_address_to_bcc), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->check_interval), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->account_svc_id), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->sync_status), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->sync_disabled), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->default_mail_slot_size), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->smime_type), sizeof(int));
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_account->certificate_path);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->cipher_type), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_account->digest_type), sizeof(int));
-
-	*output_stream_size = stream_size;
-
-
-	EM_DEBUG_FUNC_END("stream_size [%d]", stream_size);
-	return result_stream;
-#endif
 }
 
 
@@ -824,67 +689,6 @@ INTERNAL_FUNC void em_convert_byte_stream_to_account(char *stream, int stream_le
 	account->user_data = tb.addr;
 
 	EM_DEBUG_FUNC_END();
-#if 0
-	EM_DEBUG_FUNC_BEGIN();
-	int stream_offset = 0;
-
-	EM_NULL_CHECK_FOR_VOID(input_stream);
-	EM_NULL_CHECK_FOR_VOID(output_account);
-
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->account_name);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->incoming_server_type);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->incoming_server_address);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->user_email_address);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->incoming_server_user_name);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->incoming_server_password);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->retrieval_mode);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->incoming_server_port_number);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->incoming_server_secure_connection);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->outgoing_server_type);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->outgoing_server_address);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->outgoing_server_port_number);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->outgoing_server_need_authentication);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->outgoing_server_secure_connection);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->outgoing_server_user_name);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->outgoing_server_password);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->user_display_name);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->reply_to_address);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->return_address);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->account_id);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->keep_mails_on_pop_server_after_download);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->auto_download_size);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->outgoing_server_use_same_authenticator);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->pop_before_smtp);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->incoming_server_requires_apop);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->logo_icon_path);
-	fetch_binary_from_stream(input_stream, &stream_offset, &output_account->user_data);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->user_data_length);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->options.priority);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->options.keep_local_copy);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->options.req_delivery_receipt);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->options.req_read_receipt);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->options.download_limit);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->options.block_address);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->options.block_subject);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->options.display_name_from);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->options.reply_with_body);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->options.forward_with_files);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->options.add_myname_card);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->options.add_signature);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->options.signature);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->options.add_my_address_to_bcc);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->check_interval);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->account_svc_id);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->sync_status);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->sync_disabled);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->default_mail_slot_size);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->smime_type);
-	fetch_string_from_stream(input_stream, &stream_offset, &output_account->certificate_path);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->cipher_type);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&output_account->digest_type);
-
-	EM_DEBUG_FUNC_END();
-#endif
 }
 
 #define EMAIL_MAIL_DATA_FMT  "S(" "iiiis" "iisss" "issss" "sssss" "sisss"\
@@ -910,74 +714,6 @@ INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_
 	*stream_len = len;
 	EM_DEBUG_FUNC_END();
 	return (char*) buf;
-
-#if 0
-	EM_DEBUG_FUNC_BEGIN("input_mail_data [%p], input_mail_data_count[%d], output_stream_size[%p]", input_mail_data, input_mail_data_count, output_stream_size);
-
-	char *result_stream = NULL;
-	int stream_size = 0;
-	int i = 0;
-
-	EM_IF_NULL_RETURN_VALUE(input_mail_data, NULL);
-	EM_IF_NULL_RETURN_VALUE(output_stream_size, NULL);
-
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_mail_data_count, sizeof(int));
-
-	for(i = 0; i < input_mail_data_count; i++) {
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].mail_id), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].account_id), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].mailbox_id), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].mailbox_type), sizeof(int));
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].subject);
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].date_time), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].server_mail_status), sizeof(int));
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].server_mailbox_name);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].server_mail_id);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].message_id);
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].reference_mail_id), sizeof(int));
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].full_address_from);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].full_address_reply);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].full_address_to);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].full_address_cc);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].full_address_bcc);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].full_address_return);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].email_address_sender);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].email_address_recipient);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].alias_sender);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].alias_recipient);
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].body_download_status), sizeof(int));
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].file_path_plain);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].file_path_html);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].file_path_mime_entity);
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].mail_size), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].flags_seen_field), sizeof(char));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].flags_deleted_field), sizeof(char));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].flags_flagged_field), sizeof(char));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].flags_answered_field), sizeof(char));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].flags_recent_field), sizeof(char));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].flags_draft_field), sizeof(char));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].flags_forwarded_field), sizeof(char));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].DRM_status), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].priority), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].save_status), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].lock_status), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].report_status), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].attachment_count), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].inline_content_count), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].thread_id), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].thread_item_count), sizeof(int));
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_mail_data[i].preview_text);
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].meeting_request_status), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].message_class), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].digest_type), sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mail_data[i].smime_type), sizeof(int));
-	}
-
-	*output_stream_size = stream_size;
-
-	EM_DEBUG_FUNC_END("stream_size [%d]", stream_size);
-	return result_stream;
-#endif
 }
 
 INTERNAL_FUNC void em_convert_byte_stream_to_mail_data(char *stream, int stream_len, email_mail_data_t *mail_data)
@@ -993,84 +729,6 @@ INTERNAL_FUNC void em_convert_byte_stream_to_mail_data(char *stream, int stream_
 	tpl_free(tn);
 
 	EM_DEBUG_FUNC_END();
-#if 0
-	EM_DEBUG_FUNC_BEGIN("input_stream [%p], output_mail_data[%p], output_mail_data_count[%p]", input_stream, output_mail_data, output_mail_data_count);
-
-	int stream_offset = 0;
-	int i = 0;
-
-	EM_NULL_CHECK_FOR_VOID(input_stream);
-	EM_NULL_CHECK_FOR_VOID(output_mail_data);
-	EM_NULL_CHECK_FOR_VOID(output_mail_data_count);
-
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)output_mail_data_count);
-
-	EM_DEBUG_LOG("*output_mail_data_count [%d]", *output_mail_data_count);
-
-	if(output_mail_data_count <= 0) {
-		EM_DEBUG_EXCEPTION("no mail data.");
-		return;
-	}
-
-	*output_mail_data = (email_mail_data_t*)em_malloc(sizeof(email_mail_data_t) * (*output_mail_data_count));
-
-	if(!*output_mail_data) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
-		return;
-	}
-
-	for(i = 0; i < *output_mail_data_count; i++) {
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].mail_id);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].account_id);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].mailbox_id);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].mailbox_type);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].subject);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].date_time);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].server_mail_status);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].server_mailbox_name);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].server_mail_id);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].message_id);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].reference_mail_id);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].full_address_from);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].full_address_reply);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].full_address_to);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].full_address_cc);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].full_address_bcc);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].full_address_return);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].email_address_sender);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].email_address_recipient);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].alias_sender);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].alias_recipient);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].body_download_status);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].file_path_plain);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].file_path_html);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].file_path_mime_entity);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].mail_size);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(char), (char*)&(*output_mail_data)[i].flags_seen_field);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(char), (char*)&(*output_mail_data)[i].flags_deleted_field);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(char), (char*)&(*output_mail_data)[i].flags_flagged_field);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(char), (char*)&(*output_mail_data)[i].flags_answered_field);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(char), (char*)&(*output_mail_data)[i].flags_recent_field);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(char), (char*)&(*output_mail_data)[i].flags_draft_field);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(char), (char*)&(*output_mail_data)[i].flags_forwarded_field);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].DRM_status);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].priority);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].save_status);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].lock_status);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].report_status);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].attachment_count);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].inline_content_count);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].thread_id);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].thread_item_count);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_mail_data)[i].preview_text);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].meeting_request_status);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].message_class);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].digest_type);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(*output_mail_data)[i].smime_type);
-	}
-
-	EM_DEBUG_FUNC_END();
-#endif
 }
 
 
@@ -1111,38 +769,6 @@ INTERNAL_FUNC char* em_convert_attachment_data_to_byte_stream(email_attachment_d
 
 	EM_DEBUG_FUNC_END();
 	return (char*) buf;
-
-#if 0
-	EM_DEBUG_FUNC_BEGIN("input_attachment_data [%p], input_attachment_count [%d], output_stream_size [%p]", input_attachment_data, input_attachment_count, output_stream_size);
-
-	char *result_stream = NULL;
-	int stream_size = 0;
-	int i = 0;
-
-	if(input_attachment_count > 0)
-		EM_IF_NULL_RETURN_VALUE(input_attachment_data, NULL);
-	EM_IF_NULL_RETURN_VALUE(output_stream_size, NULL);
-
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_count, sizeof(int));
-
-	for(i = 0; i < input_attachment_count; i++) {
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].attachment_id, sizeof(int));
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_attachment_data[i].attachment_name);
-		result_stream = append_string_to_stream(result_stream, &stream_size, input_attachment_data[i].attachment_path);
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].attachment_size, sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].mail_id, sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].account_id, sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].mailbox_id, sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].save_status, sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].drm_status, sizeof(int));
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_attachment_data[i].inline_content_status,sizeof(int));
-	}
-
-	*output_stream_size = stream_size;
-
-	EM_DEBUG_FUNC_END("stream_size [%d]", stream_size);
-	return result_stream;
-#endif
 }
 
 INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int stream_len, email_attachment_data_t **attachment_data, int *attachment_count)
@@ -1190,47 +816,6 @@ INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int s
 	*attachment_count = count;
 	*attachment_data = attached;
 	EM_DEBUG_FUNC_END();
-#if 0
-	EM_DEBUG_FUNC_BEGIN("input_stream [%p], output_attachment_data[%p]", input_stream, output_attachment_data);
-
-	int stream_offset = 0;
-	int i = 0;
-
-	EM_NULL_CHECK_FOR_VOID(input_stream);
-	EM_NULL_CHECK_FOR_VOID(output_attachment_data);
-	EM_NULL_CHECK_FOR_VOID(output_attachment_count);
-
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)output_attachment_count);
-
-	EM_DEBUG_LOG("*output_attachment_count [%d]", *output_attachment_count);
-
-	if(output_attachment_count <= 0) {
-		EM_DEBUG_EXCEPTION("no attachment data.");
-		return;
-	}
-
-	*output_attachment_data = (email_attachment_data_t*)em_malloc(sizeof(email_attachment_data_t) * (*output_attachment_count));
-
-	if(!*output_attachment_data) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
-		return;
-	}
-
-	for(i = 0; i < *output_attachment_count; i++) {
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].attachment_id));
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_attachment_data)[i].attachment_name);
-		fetch_string_from_stream(input_stream, &stream_offset, &(*output_attachment_data)[i].attachment_path);
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].attachment_size));
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].mail_id));
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].account_id));
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].mailbox_id));
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].save_status));
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].drm_status));
-		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&((*output_attachment_data)[i].inline_content_status));
-	}
-
-	EM_DEBUG_FUNC_END();
-#endif
 }
 
 
@@ -1256,33 +841,6 @@ INTERNAL_FUNC char* em_convert_mailbox_to_byte_stream(email_mailbox_t *mailbox_d
 	*stream_len = len;
 	EM_DEBUG_FUNC_END("serialized len: %d", len);
 	return (char*) buf;
-
-#if 0
-	EM_DEBUG_FUNC_BEGIN("input_mailbox_data [%p], output_stream_size [%p]", input_mailbox_data, output_stream_size);
-	
-	char *result_stream = NULL;
-	int   stream_size 	=  0;
-
-	EM_IF_NULL_RETURN_VALUE(input_mailbox_data, NULL);
-	EM_IF_NULL_RETURN_VALUE(output_stream_size, NULL);
-
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mailbox_data->mailbox_id), sizeof(int));
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_mailbox_data->mailbox_name);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mailbox_data->mailbox_type), sizeof(int));
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_mailbox_data->alias);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mailbox_data->unread_count), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mailbox_data->total_mail_count_on_local), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mailbox_data->total_mail_count_on_server), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mailbox_data->local), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mailbox_data->account_id), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_mailbox_data->mail_slot_size), sizeof(int));
-	
-	*output_stream_size = stream_size;
-
-	EM_DEBUG_FUNC_END();
-
-	return result_stream;
-#endif
 }
 
 
@@ -1300,25 +858,6 @@ INTERNAL_FUNC void em_convert_byte_stream_to_mailbox(char *stream, int stream_le
 	tpl_free(tn);
 
 	EM_DEBUG_FUNC_END("deserialized len %d", stream_len);
-
-/*	EM_DEBUG_FUNC_BEGIN("input_stream [%p], output_mailbox_data [%p]", input_stream, output_mailbox_data);
-	int 		stream_offset 	= 0;
-
-	EM_NULL_CHECK_FOR_VOID(input_stream);
-	EM_NULL_CHECK_FOR_VOID(output_mailbox_data);
-
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_mailbox_data->mailbox_id));
-	fetch_string_from_stream(input_stream, &stream_offset, &output_mailbox_data->mailbox_name);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_mailbox_data->mailbox_type));
-	fetch_string_from_stream(input_stream, &stream_offset, &output_mailbox_data->alias);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_mailbox_data->unread_count));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_mailbox_data->total_mail_count_on_local));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_mailbox_data->total_mail_count_on_server));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_mailbox_data->local));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_mailbox_data->account_id));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_mailbox_data->mail_slot_size));
-	EM_DEBUG_FUNC_END();
-*/
 }
 
 #define EMAIL_OPTION_FMT "S(" "iiiii" "iisii" "iisi" ")"
@@ -1343,34 +882,6 @@ INTERNAL_FUNC char* em_convert_option_to_byte_stream(email_option_t* option, int
 	*stream_len = len;
 	EM_DEBUG_FUNC_END("serialized len: %d", len);
 	return (char*) buf;
-
-
-#if 0
-	EM_DEBUG_FUNC_BEGIN();
-	char *result_stream = NULL;
-	int stream_size = 0;
-
-	EM_IF_NULL_RETURN_VALUE(input_option, NULL);
-
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_option->priority), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_option->keep_local_copy), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_option->req_delivery_receipt), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_option->req_read_receipt), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_option->download_limit), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_option->block_address), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_option->block_subject), sizeof(int));
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_option->display_name_from);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_option->reply_with_body), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_option->forward_with_files), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_option->add_myname_card), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_option->add_signature), sizeof(int));
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_option->signature);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_option->add_my_address_to_bcc), sizeof(int));
-	*output_stream_size = stream_size;
-
-	EM_DEBUG_FUNC_END();
-	return result_stream;
-#endif
 }
 
 INTERNAL_FUNC void em_convert_byte_stream_to_option(char *stream, int stream_len, email_option_t *option)
@@ -1387,29 +898,6 @@ INTERNAL_FUNC void em_convert_byte_stream_to_option(char *stream, int stream_len
 	tpl_free(tn);
 
 	EM_DEBUG_FUNC_END("deserialized len %d", stream_len);
-
-#if 0
-	EM_DEBUG_FUNC_BEGIN();
-	int stream_offset = 0;
-
-	EM_NULL_CHECK_FOR_VOID(input_stream);
-
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_option->priority));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_option->keep_local_copy));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_option->req_delivery_receipt));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_option->req_read_receipt));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_option->download_limit));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_option->block_address));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_option->block_subject));
-	fetch_string_from_stream(input_stream, &stream_offset, &output_option->display_name_from);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_option->reply_with_body));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_option->forward_with_files));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_option->add_myname_card));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_option->add_signature));
-	fetch_string_from_stream(input_stream, &stream_offset, &output_option->signature);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_option->add_my_address_to_bcc));
-	EM_DEBUG_FUNC_END();
-#endif
 }
 
 
@@ -1435,30 +923,6 @@ INTERNAL_FUNC char* em_convert_rule_to_byte_stream(email_rule_t *rule, int *stre
 	*stream_len = len;
 	EM_DEBUG_FUNC_END("serialized len: %d", len);
 	return (char*) buf;
-
-
-#if 0
-	EM_DEBUG_FUNC_BEGIN();
-	char *result_stream = NULL;
-	int stream_size = 0;
-
-	EM_IF_NULL_RETURN_VALUE(input_rule, NULL);
-	EM_IF_NULL_RETURN_VALUE(output_stream_size, NULL);
-
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_rule->account_id), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_rule->filter_id), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_rule->type), sizeof(int));
-	result_stream = append_string_to_stream(result_stream, &stream_size, input_rule->value);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_rule->faction), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_rule->target_mailbox_id), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_rule->flag1), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_rule->flag2), sizeof(int));
-
-	*output_stream_size = stream_size;
-
-	EM_DEBUG_FUNC_END();
-	return result_stream;
-#endif
 }
 
 INTERNAL_FUNC void em_convert_byte_stream_to_rule(char *stream, int stream_len, email_rule_t *rule)
@@ -1475,27 +939,6 @@ INTERNAL_FUNC void em_convert_byte_stream_to_rule(char *stream, int stream_len, 
 	tpl_free(tn);
 
 	EM_DEBUG_FUNC_END("deserialized len %d", stream_len);
-
-
-
-#if 0
-	EM_DEBUG_FUNC_BEGIN();
-	int stream_offset = 0;
-
-	EM_NULL_CHECK_FOR_VOID(input_stream);
-	EM_NULL_CHECK_FOR_VOID(output_rule);
-
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_rule->account_id));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_rule->filter_id));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_rule->type));
-	fetch_string_from_stream(input_stream, &stream_offset, &output_rule->value);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_rule->faction));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_rule->target_mailbox_id));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_rule->flag1));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_rule->flag2));
-
-	EM_DEBUG_FUNC_END();
-#endif
 }
 
 #define EMAIL_MEETING_REQUEST_FMT   "iiBBs" "sic#Bi" "c#Bi"
@@ -1542,35 +985,6 @@ INTERNAL_FUNC char* em_convert_meeting_req_to_byte_stream(email_meeting_request_
 	*stream_len = len;
 	EM_DEBUG_FUNC_END();
 	return (char*) buf;
-
-
-#if 0
-	EM_DEBUG_FUNC_BEGIN();
-
-	char *result_stream = NULL;
-	int   stream_size        = 0;
-
-	EM_IF_NULL_RETURN_VALUE(input_meeting_req, NULL);
-
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_meeting_req->mail_id), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_meeting_req->meeting_response), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_meeting_req->start_time), sizeof(struct tm));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_meeting_req->end_time), sizeof(struct tm));
-	result_stream = append_string_to_stream    (result_stream, &stream_size, input_meeting_req->location);
-	result_stream = append_string_to_stream    (result_stream, &stream_size, input_meeting_req->global_object_id);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_meeting_req->time_zone.offset_from_GMT), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_meeting_req->time_zone.standard_name, 32);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_meeting_req->time_zone.standard_time_start_date), sizeof(struct tm));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_meeting_req->time_zone.standard_bias), sizeof(int));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&input_meeting_req->time_zone.daylight_name, 32);
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_meeting_req->time_zone.daylight_time_start_date), sizeof(struct tm));
-	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_meeting_req->time_zone.daylight_bias), sizeof(int));
-
-	*output_stream_size = stream_size;
-
-	EM_DEBUG_FUNC_END();
-	return result_stream;
-#endif
 }
 
 
@@ -1613,30 +1027,6 @@ INTERNAL_FUNC void em_convert_byte_stream_to_meeting_req(char *stream, int strea
 		EM_SAFE_FREE(tb[i].addr);
 
 	EM_DEBUG_FUNC_END();
-
-#if 0
-	EM_DEBUG_FUNC_BEGIN();
-	int stream_offset = 0;
-
-	EM_NULL_CHECK_FOR_VOID(input_stream);
-	EM_NULL_CHECK_FOR_VOID(output_meeting_req);
-
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_meeting_req->mail_id));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_meeting_req->meeting_response));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(struct tm), (char*)&(output_meeting_req->start_time));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(struct tm), (char*)&(output_meeting_req->end_time));
-	fetch_string_from_stream    (input_stream, &stream_offset, &output_meeting_req->location);
-	fetch_string_from_stream    (input_stream, &stream_offset, &output_meeting_req->global_object_id);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_meeting_req->time_zone.offset_from_GMT));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, 32, output_meeting_req->time_zone.standard_name);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(struct tm), (char*)&(output_meeting_req->time_zone.standard_time_start_date));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_meeting_req->time_zone.standard_bias));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, 32, output_meeting_req->time_zone.daylight_name);
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(struct tm), (char*)&(output_meeting_req->time_zone.daylight_time_start_date));
-	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(output_meeting_req->time_zone.daylight_bias));
-
-	EM_DEBUG_FUNC_END();
-#endif
 }
 
 INTERNAL_FUNC char* em_convert_search_filter_to_byte_stream(email_search_filter_t *input_search_filter_list,
@@ -1754,7 +1144,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_search_filter(char *input_stream,
 			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :
 			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON     :
 			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE  :
-				fetch_sized_data_from_stream(input_stream, &stream_offset, 32, (char*)&(local_search_filter[i].search_filter_key_value.time_type_key_value));
+				fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(time_t), (char*)&(local_search_filter[i].search_filter_key_value.time_type_key_value));
 				break;
 			default :
 				EM_DEBUG_EXCEPTION("Invalid filter type [%d]", local_search_filter[i].search_filter_type);

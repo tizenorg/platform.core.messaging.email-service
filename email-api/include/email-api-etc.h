@@ -53,7 +53,7 @@ extern "C" {
 
 /**
 
- * @open
+
  * @fn email_show_user_message(void)
  * @brief	This function show user message.
  *

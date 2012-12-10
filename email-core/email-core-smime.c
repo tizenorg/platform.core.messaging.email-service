@@ -52,6 +52,7 @@
 
 #define SMIME_SIGNED_FILE "smime.p7s"
 #define SMIME_ENCRYPT_FILE "smime.p7m"
+#define DECRYPT_TEMP_FILE "decrypt_temp_file.eml"
 
 /* If not present then the default digest algorithm for signing key will be used SHA1 */
 static const EVP_MD *emcore_get_digest_algorithm(email_digest_type digest_type)
@@ -273,15 +274,10 @@ FINISH_OFF:
 	return NULL;
 }
 */
-#define SMIME_DEBUG 1
 
-#ifdef SMIME_DEBUG
-#define TEMP_PASSWORD_PATH "/opt/data/cert_password"
-#endif
-
-INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate, char *password, char *mime_entity, email_digest_type digest_type, char **file_path, int *err_code)
+INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate, char *mime_entity, email_digest_type digest_type, char **file_path, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("certificate path : [%s], password : [%s], mime_entity : [%s]", certificate, password, mime_entity);
+	EM_DEBUG_FUNC_BEGIN("certificate path : [%s], mime_entity : [%s]", certificate, mime_entity);
 	int err, ret = false;
 	char temp_smime_filepath[512];
 	X509 *cert = NULL;
@@ -296,7 +292,7 @@ INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate, char *passw
 	OpenSSL_add_all_algorithms();
 	ERR_load_crypto_strings();
 
-	SNPRINTF(temp_smime_filepath, sizeof(temp_smime_filepath), "%s%s%s%s%s", MAILHOME, DIR_SEPERATOR, MAILTEMP, DIR_SEPERATOR, SMIME_SIGNED_FILE);
+	SNPRINTF(temp_smime_filepath, sizeof(temp_smime_filepath), "%s%s%s", MAILTEMP, DIR_SEPERATOR, SMIME_SIGNED_FILE);
 	EM_DEBUG_LOG("attachment file path of smime : [%s]", temp_smime_filepath);
 
 	smime_attachment = BIO_new_file(temp_smime_filepath, OUTMODE);
@@ -307,17 +303,11 @@ INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate, char *passw
 	}
 
 	/* Load certificate for getting the certificate and private key */
-
-	if (!emcore_load_PFX_file(certificate, password, &private_key, &cert, &other_certs, &err)) {
-		EM_DEBUG_EXCEPTION("Load the private certificate failed : [%d]", err);
-		goto FINISH_OFF;
-	}
-/*
 	if (!emcore_load_PFX_file(certificate, &private_key, &cert, &other_certs, &err)) {
 		EM_DEBUG_EXCEPTION("Load the private certificate failed : [%d]", err);
 		goto FINISH_OFF;
 	}
-*/
+
 	bio_mime_entity = BIO_new_file(mime_entity, READMODE);
 	if (!bio_mime_entity) {
 		EM_DEBUG_EXCEPTION("Cannot open file[%s]", mime_entity);
@@ -353,19 +343,6 @@ INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate, char *passw
 		goto FINISH_OFF;
 	}
 	BIO_flush(smime_attachment);
-#ifdef SMIME_DEBUG
-	BIO *out = NULL;
-	
-	out = BIO_new_file("/opt/data/email/.emfdata/tmp/smout.txt", "w");
-	if (!out)
-		goto FINISH_OFF;
-
-	if (!SMIME_write_PKCS7(out, signed_message, bio_mime_entity, flags))
-		goto FINISH_OFF;
-
-	if (out)
-		BIO_free(out);
-#endif
 	ret = true;
 
 FINISH_OFF:
@@ -373,6 +350,7 @@ FINISH_OFF:
 		*file_path = temp_smime_filepath;
 
 	X509_free(cert);
+	sk_X509_pop_free(other_certs, X509_free);
 	EVP_PKEY_free(private_key);
 	PKCS7_free(signed_message);
 
@@ -410,7 +388,7 @@ INTERNAL_FUNC int emcore_smime_set_encrypt_message(char *recipient_list, char *m
 
 	loaded_cert = cert_svc_cert_context_init();
 
-	SNPRINTF(temp_smime_filepath, sizeof(temp_smime_filepath), "%s%s%s%s%s", MAILHOME, DIR_SEPERATOR, MAILTEMP, DIR_SEPERATOR, SMIME_ENCRYPT_FILE);
+	SNPRINTF(temp_smime_filepath, sizeof(temp_smime_filepath), "%s%s%s", MAILTEMP, DIR_SEPERATOR, SMIME_ENCRYPT_FILE);
 	EM_DEBUG_LOG("attachment file path of smime : [%s]", temp_smime_filepath);
 
 	smime_attachment = BIO_new_file(temp_smime_filepath, OUTMODE);
@@ -448,20 +426,6 @@ INTERNAL_FUNC int emcore_smime_set_encrypt_message(char *recipient_list, char *m
 	}
 	BIO_flush(smime_attachment);
 
-#ifdef SMIME_DEBUG
-	BIO *out = NULL;
-	
-	out = BIO_new_file("/opt/data/email/.emfdata/tmp/smout.txt", "w");
-	if (!out)
-		goto FINISH_OFF;
-
-	if (!SMIME_write_PKCS7(out, encrypt_message, bio_mime_entity, flags))
-		goto FINISH_OFF;
-
-	if (out)
-		BIO_free(out);
-#endif
-
 	ret = true;
 
 FINISH_OFF:
@@ -486,7 +450,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *recipient_list, char *certificate, char *password, char *mime_entity, email_cipher_type cipher_type, email_digest_type digest_type, char **file_path, int *err_code)
+INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *recipient_list, char *certificate, char *mime_entity, email_cipher_type cipher_type, email_digest_type digest_type, char **file_path, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("certificate path : [%s], mime_entity : [%s]", recipient_list, mime_entity);
 	char temp_smime_filepath[512];
@@ -503,10 +467,6 @@ INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *recipient_li
 	const EVP_CIPHER *cipher = NULL;
 	const EVP_MD *digest = NULL;
 
-#ifdef SMIME_DEBUG
-	char *signed_string = NULL;
-	BUF_MEM *buf_mem = NULL;
-#endif
 	/* Variable for private certificate */
 	EVP_PKEY *private_key = NULL;
 	X509 *cert = NULL;
@@ -514,7 +474,7 @@ INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *recipient_li
 	OpenSSL_add_all_algorithms();
 	ERR_load_crypto_strings();
 
-	SNPRINTF(temp_smime_filepath, sizeof(temp_smime_filepath), "%s%s%s%s%s", MAILHOME, DIR_SEPERATOR, MAILTEMP, DIR_SEPERATOR, SMIME_ENCRYPT_FILE);
+	SNPRINTF(temp_smime_filepath, sizeof(temp_smime_filepath), "%s%s%s", MAILTEMP, DIR_SEPERATOR, SMIME_ENCRYPT_FILE);
 	EM_DEBUG_LOG("attachment file path of smime : [%s]", temp_smime_filepath);
 
 	smime_attachment = BIO_new_file(temp_smime_filepath, OUTMODE);
@@ -526,17 +486,11 @@ INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *recipient_li
 
 	/* Signing the mail */
 	/* 1. Load the private certificate */
-
-	if (!emcore_load_PFX_file(certificate, password, &private_key, &cert, &other_certs, &err)) {
-		EM_DEBUG_EXCEPTION("Load the certificate failed : [%d]", err);
-		goto FINISH_OFF;
-	}
-/*
 	if (!emcore_load_PFX_file(certificate, &private_key, &cert, &other_certs, &err)) {
 		EM_DEBUG_EXCEPTION("Load the private certificate failed : [%d]", err);
 		goto FINISH_OFF;
 	}
-*/
+
 	/* 2. Read mime entity */
 	bio_mime_entity = BIO_new_file(mime_entity, READMODE);
 	if (!bio_mime_entity) {
@@ -570,16 +524,6 @@ INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *recipient_li
 		goto FINISH_OFF;
 	}
 
-#ifdef SMIME_DEBUG
-	BIO_get_mem_ptr(bio_signed_message, &buf_mem);
-	signed_string = em_malloc(buf_mem->length);
-	memcpy(signed_string, buf_mem->data, buf_mem->length-1);
-	EM_DEBUG_LOG("Signed message : [%d]", buf_mem->length);
-	EM_DEBUG_LOG("%s", signed_string);
-	EM_DEBUG_LOG("buf data: \n, %s", buf_mem->data);
-	EM_SAFE_FREE(signed_string);
-#endif	
-
 	/* Encrypting the mail */
 	/* 1. Get the recipient certs */
 	if (!get_x509_stack_of_recipient_certs(recipient_list, &recipient_certs, &err)) {
@@ -608,20 +552,6 @@ INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *recipient_li
 	}
 	BIO_flush(smime_attachment);
 
-#ifdef SMIME_DEBUG
-	BIO *out = NULL;
-	
-	out = BIO_new_file("/opt/data/email/.emfdata/tmp/smout.txt", "w");
-	if (!out)
-		goto FINISH_OFF;
-
-	if (!SMIME_write_PKCS7(out, encrypt_message, bio_mime_entity, flags))
-		goto FINISH_OFF;
-
-	if (out)
-		BIO_free(out);
-#endif
-
 	ret = true;
 
 FINISH_OFF:
@@ -630,6 +560,7 @@ FINISH_OFF:
 
 	PKCS7_free(signed_message);
 	PKCS7_free(encrypt_message);
+	EVP_PKEY_free(private_key);
 
 	X509_free(cert);
 	sk_X509_pop_free(other_certs, X509_free);
@@ -650,24 +581,29 @@ FINISH_OFF:
 
 
 
-INTERNAL_FUNC int emcore_smime_set_decrypt_message(char *encrypt_message, char *certificate, char *password, char **decrypt_message, int *err_code)
+INTERNAL_FUNC int emcore_smime_set_decrypt_message(char *encrypt_message, char *from_address, char **decrypt_message, int *err_code)
 {
+	EM_DEBUG_FUNC_BEGIN("encrypt_file : [%s], from_addres : [%s]", encrypt_message, from_address);
+	int i = 0;
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	long string_len = 0;
-	char *temp_decrypt_message;
-	FILE *fp = NULL;
+	char temp_decrypt_filepath[512] = {0, };
 
 	X509 *cert = NULL;
-	STACK_OF(X509) *ca = NULL;
 	EVP_PKEY *private_key = NULL;
-	BIO *bio_cert = NULL, *bio_prikey = NULL;
 	BIO *infile = NULL, *out_buf = NULL;
 	PKCS7 *p7_encrypt_message = NULL;
-	PKCS12 *p12 = NULL;
-	CERT_CONTEXT *loaded_cert = NULL;
+	STACK_OF(X509) *recipient_certs = NULL;
 
+	OpenSSL_add_all_algorithms();
+
+	/* Load the encrypted message */
 	infile = BIO_new_file(encrypt_message, INMODE);
+	if (infile == NULL) {
+		EM_DEBUG_EXCEPTION("Cannot open output file %s", encrypt_message);
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
+		goto FINISH_OFF;
+	}
 
 	p7_encrypt_message = d2i_PKCS7_bio(infile, NULL);
 	if (!p7_encrypt_message) {
@@ -676,52 +612,48 @@ INTERNAL_FUNC int emcore_smime_set_decrypt_message(char *encrypt_message, char *
 		goto FINISH_OFF;
 	}
 
-	loaded_cert = cert_svc_cert_context_init();
+	/* Initialize the output file for decrypted message */
+	SNPRINTF(temp_decrypt_filepath, sizeof(temp_decrypt_filepath), "%s%s%s", MAILTEMP, DIR_SEPERATOR, DECRYPT_TEMP_FILE);
+	EM_DEBUG_LOG("attachment file path of smime : [%s]", temp_decrypt_filepath);
 
-	fp = fopen(certificate, INMODE);
-	if (!fp) {
-		EM_DEBUG_EXCEPTION("Certificate file open failed");
-		goto FINISH_OFF;
-	}
-	
-	p12 = d2i_PKCS12_fp(fp, NULL);
-	fclose(fp);
-
-	if (!p12) {
-		EM_DEBUG_EXCEPTION("Error reading PKCS#12 file\n");
-		goto FINISH_OFF;
-	}	
-
-	if (!PKCS12_parse(p12, password, &private_key, &cert, &ca)) {
-		EM_DEBUG_EXCEPTION("PKCS12_parse failed");
-		goto FINISH_OFF;
-	}
-
-	out_buf = BIO_new(BIO_s_mem());
+	out_buf = BIO_new_file(temp_decrypt_filepath, OUTMODE);
 	if (!out_buf) {
-		EM_DEBUG_EXCEPTION("There is not enough memory.");
-		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		EM_DEBUG_EXCEPTION("Cannot open output file %s", temp_decrypt_filepath);
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	PKCS7_decrypt(p7_encrypt_message, private_key, cert, out_buf, 0);
-	string_len = BIO_get_mem_data(out_buf, &temp_decrypt_message);
+	/* Search Public cert */
+	if (!get_x509_stack_of_recipient_certs(from_address, &recipient_certs, &err)) {
+		EM_DEBUG_EXCEPTION("get_x509_stack_of_recipient_certs failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	for (i = 0; i < sk_X509_num(recipient_certs); i++) 
+		cert = sk_X509_value(recipient_certs, i);
+
+	if (!PKCS7_decrypt(p7_encrypt_message, private_key, cert, out_buf, 0)) {
+		EM_DEBUG_EXCEPTION("Decrpyt failed");
+		err = EMAIL_ERROR_DECRYPT_FAILED;
+		goto FINISH_OFF;
+	}
 
 	ret = true;
 
 FINISH_OFF:
-	*decrypt_message = temp_decrypt_message;
 
+	*decrypt_message = temp_decrypt_filepath;
+
+	EVP_cleanup();
 	X509_free(cert);
+	EVP_PKEY_free(private_key);
 	BIO_free(out_buf);
-	BIO_free(bio_cert);
-	BIO_free(bio_prikey);
 	BIO_free_all(infile);
+	sk_X509_pop_free(recipient_certs, X509_free);
 
 	if (err_code != NULL)
 		*err_code = err;
 
-	cert_svc_cert_context_final(loaded_cert);
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return ret;
 }
@@ -883,12 +815,6 @@ INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(emstorage_account_tbl_t
 	char *mime_entity = NULL;
 	char *smime_file_path = NULL;
 	char *other_certificate_list = NULL;
-#ifdef SMIME_DEBUG
-	char *buf_pointer = NULL;
-	char *password = NULL;
-	char buf[81] = {0, };
-	FILE *fp = NULL;
-#endif
 	email_attachment_data_t new_attachment_data = {0};
 	email_attachment_data_t *temp_attachment_data = NULL;
 
@@ -900,27 +826,6 @@ INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(emstorage_account_tbl_t
 		goto FINISH_OFF;
 	}
 
-	
-#ifdef SMIME_DEBUG
-	fp = fopen(TEMP_PASSWORD_PATH, "r");
-	if (fp == NULL) {
-		EM_DEBUG_EXCEPTION("Open failed");
-		err = EMAIL_ERROR_SYSTEM_FAILURE;
-		goto FINISH_OFF;
-	}
-
-	while (!feof(fp)) {
-		buf_pointer = fgets(buf, 80, fp);
-	}
-
-	fclose(fp);
-	
-	EM_DEBUG_LOG("password : [%s], strlen : [%d]", buf, strlen(buf)-1);
-	password = em_malloc(sizeof(buf));
-	memcpy(password, buf, strlen(buf) - 1);
-
-#endif
-	
 	if (!emcore_make_rfc822_file(input_mail_data, input_attachment_data_list, attachment_count, &rfc822_file, &err))  {
 		EM_DEBUG_EXCEPTION("emcore_make_rfc822_file failed [%d]", err);
 		goto FINISH_OFF;
@@ -935,7 +840,7 @@ INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(emstorage_account_tbl_t
 	/* Signed and Encrypt the message */
 	switch (smime_type) {
 	case EMAIL_SMIME_SIGNED:			/* Clear signed message */
-		if (!emcore_smime_set_signed_message(account_tbl_item->certificate_path, password, mime_entity, account_tbl_item->digest_type, &smime_file_path, &err)) {
+		if (!emcore_smime_set_signed_message(account_tbl_item->certificate_path, mime_entity, account_tbl_item->digest_type, &smime_file_path, &err)) {
 			EM_DEBUG_EXCEPTION("em_core_smime_set_clear_signed_message is failed : [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -983,7 +888,7 @@ INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(emstorage_account_tbl_t
 		EM_DEBUG_LOG("to:[%s], cc:[%s], bcc:[%s]", input_mail_data->full_address_to, input_mail_data->full_address_cc, input_mail_data->full_address_bcc);
 		EM_DEBUG_LOG("length : [%d], email_address : [%s]", address_length, other_certificate_list);
 
-		if (!emcore_smime_set_signed_and_encrypt_message(other_certificate_list, account_tbl_item->certificate_path, password, mime_entity, account_tbl_item->cipher_type, account_tbl_item->digest_type, &smime_file_path, &err)) {
+		if (!emcore_smime_set_signed_and_encrypt_message(other_certificate_list, account_tbl_item->certificate_path, mime_entity, account_tbl_item->cipher_type, account_tbl_item->digest_type, &smime_file_path, &err)) {
 			EM_DEBUG_EXCEPTION("em_core_smime_set_signed_and_encrypt_message is failed : [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -1032,11 +937,6 @@ FINISH_OFF:
 
 	if (!ret && temp_attachment_data)
 		emcore_free_attachment_data(&temp_attachment_data, attachment_count, NULL);	
-	
-#ifdef SMIME_DEBUG
-	if (password)
-		EM_SAFE_FREE(password);
-#endif // SMIME_DEBUG
 	
 	return ret;				
 }

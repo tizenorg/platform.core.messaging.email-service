@@ -37,15 +37,15 @@
 
 #include "email-types.h"
 
-INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate, char *password, char *mime_entity, email_digest_type digest_type, char **file_path, int *err_code);
+INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate, char *mime_entity, email_digest_type digest_type, char **file_path, int *err_code);
 
 INTERNAL_FUNC int emcore_smime_set_encrypt_message(char *other_certificate_list, char *mime_entity, email_cipher_type cipher_type, char **file_path, int *err_code);
 
-INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *recipient_list, char *certificate, char *password, char *mime_entity, email_cipher_type cipher_type, email_digest_type digest_type, char **file_path, int *err_code);
+INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *recipient_list, char *certificate, char *mime_entity, email_cipher_type cipher_type, email_digest_type digest_type, char **file_path, int *err_code);
 
 INTERNAL_FUNC int emcore_smime_verify_signed_message(char *signed_message, char *ca_file, char *ca_path, int *verify);
 
-INTERNAL_FUNC int emcore_smime_set_decrypt_message(char *encrypt_message, char *certifcate, char *password, char **decrypt_message, int *err_code);
+INTERNAL_FUNC int emcore_smime_set_decrypt_message(char *encrypt_message, char *from_address, char **decrypt_message, int *err_code);
 
 INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(emstorage_account_tbl_t *account_tbl_item, email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data_list, int *output_attachment_count);
 

@@ -63,7 +63,7 @@ INTERNAL_FUNC void emcore_reset_streams();
 #endif
 
 INTERNAL_FUNC int  emcore_get_mailbox_list_to_be_sync(int account_id, email_mailbox_t **mailbox_list, int *p_count, int *err_code);
-INTERNAL_FUNC int  emcore_get_list(int account_id, email_mailbox_t **mailbox_list, int *p_count, int *err_code);
+INTERNAL_FUNC int  emcore_get_mailbox_list(int account_id, email_mailbox_t **mailbox_list, int *p_count, int *err_code);
 INTERNAL_FUNC int  emcore_get_mail_count(email_mailbox_t *mailbox, int *total, int *unseen, int *err_code);
 INTERNAL_FUNC int  emcore_create_mailbox(email_mailbox_t *new_mailbox, int on_server, int *err_code);
 INTERNAL_FUNC int  emcore_delete_mailbox(int input_mailbox_id, int on_server, int *err_code);

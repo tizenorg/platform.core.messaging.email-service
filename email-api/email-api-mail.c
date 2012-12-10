@@ -36,9 +36,11 @@
 #include "email-api.h"
 #include "email-ipc.h"
 #include "email-convert.h"
+#include "email-core-tasks.h"
 #include "email-core-utils.h"
 #include "email-core-mail.h"
 #include "email-core-smtp.h"
+#include "email-core-task-manager.h"
 #include "email-storage.h"
 #include "email-utilities.h"
 #include "db-util.h"
@@ -529,8 +531,6 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
-
-
 
 EXPORT_API int email_add_attachment(int mail_id, email_attachment_data_t* attachment)
 {
@@ -1223,6 +1223,84 @@ FINISH_OFF:
 	return err;
 }
 
+int execute_proxy_task(email_task_type_t input_task_type, void *input_task_parameter)
+{
+	EM_DEBUG_FUNC_BEGIN("input_task_type [%d] input_task_parameter [%p]", input_task_type, input_task_parameter);
+
+	int err = EMAIL_ERROR_NONE;
+	int task_parameter_length = 0;
+	char *task_parameter_stream = NULL;
+	HIPC_API hAPI = NULL;
+
+	if(input_task_parameter == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	if((err = emcore_encode_task_parameter(input_task_type, input_task_parameter, &task_parameter_stream, &task_parameter_length)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_encode_task_parameter failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	hAPI = emipc_create_email_api(input_task_type);
+
+	if(!hAPI) {
+		EM_DEBUG_EXCEPTION("emipc_create_email_api failed");
+		err = EMAIL_ERROR_NULL_VALUE;
+		goto FINISH_OFF;
+	}
+
+	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)task_parameter_stream, task_parameter_length)) {
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
+		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+
+	FINISH_OFF:
+	if(hAPI)
+		emipc_destroy_email_api(hAPI);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
+
+EXPORT_API int email_move_mails_to_mailbox_of_another_account(int input_source_mailbox_id, int *input_mail_id_array, int input_mail_id_count, int input_target_mailbox_id, int *output_task_id)
+{
+	EM_DEBUG_FUNC_BEGIN("input_source_mailbox_id[%d] input_mail_id_array[%p] input_mail_id_count[%d] input_target_mailbox_id[%d] output_task_id[%p]",  input_source_mailbox_id, input_mail_id_array, input_mail_id_count, input_target_mailbox_id, output_task_id);
+
+	int err = EMAIL_ERROR_NONE;
+	task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT task_parameter;
+
+	if(input_source_mailbox_id <= 0 || input_target_mailbox_id <= 0 || input_mail_id_array == NULL || input_mail_id_count == 0) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		return err;
+	}
+
+	task_parameter.source_mailbox_id = input_source_mailbox_id;
+	task_parameter.mail_id_array     = input_mail_id_array;
+	task_parameter.mail_id_count     = input_mail_id_count;
+	task_parameter.target_mailbox_id = input_target_mailbox_id;
+
+	if((err = execute_proxy_task(EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT, &task_parameter)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("execute_proxy_task failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+FINISH_OFF:
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
  
 EXPORT_API int email_free_mail_data(email_mail_data_t** mail_list, int count)
 {

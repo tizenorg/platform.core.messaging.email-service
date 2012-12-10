@@ -73,7 +73,7 @@ extern "C"
 #define	EM_DEBUG_LINE                       EM_DEBUG_LOG("FUNC[%s : %d]", __FUNCTION__, __LINE__)
 #define EM_DEBUG_DB_EXEC(eval, expr, X)     if (eval) { EM_DEBUG_LOG X; expr;} else {;}
 
-#define EM_DEBUG_ERROR_FILE_PATH            "/opt/data/email/.emfdata/.critical_error.log"
+#define EM_DEBUG_ERROR_FILE_PATH            "/opt/usr/data/email/.email_data/.critical_error.log"
 #define EM_DEBUG_CRITICAL_EXCEPTION(format, arg...)   \
 			{\
 				FILE *fp_error = NULL;\
@@ -90,6 +90,11 @@ extern "C"
 		strerror_r(errno, buf, sizeof(buf));\
 		EM_DEBUG_EXCEPTION("%s: %s(%d)", str, buf, errno);\
 	})
+
+#define EM_VALIDATION_SYSTEM_LOG(CLASSIFICATION, MAIL_ID, FORMAT, ARG...) {char now_time_string[30] = {0,}; \
+		time_t now = time(NULL); \
+		strftime(now_time_string, 20, "%Y.%m.%d %H:%M:%S", localtime(&now)); \
+		LOG(LOG_VERBOSE, "VLD_EMAIL", "[Email " CLASSIFICATION "]%s, %d," FORMAT "\n", now_time_string, MAIL_ID, ##ARG);}
 
 #ifdef _USE_PROFILE_DEBUG_
 #define EM_PROFILE_BEGIN(pfid) \

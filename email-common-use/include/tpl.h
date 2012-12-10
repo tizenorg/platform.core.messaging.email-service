@@ -51,7 +51,7 @@ extern "C" {
 #endif /* TPL_NOLIB */
 #endif	/* TPL_EXPORTS*/
 #else
-#define TPL_API
+#define TPL_API __attribute__((visibility("default")))
 #endif
 
 /* bit flags (external) */

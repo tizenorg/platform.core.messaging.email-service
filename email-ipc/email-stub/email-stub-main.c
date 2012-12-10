@@ -25,6 +25,7 @@
 #include "email-ipc.h"
 #include "email-ipc-param-list.h"
 #include "email-ipc-build.h"
+#include "email-dbus-activation.h"
 #include "email-stub-socket.h"
 
 #include "email-api.h"
@@ -50,6 +51,8 @@ EXPORT_API bool emipc_initialize_stub_main(PFN_EXECUTE_API fn_api_mapper)
 		EM_DEBUG_EXCEPTION("Socket did not create");
 		return false;
 	}
+
+	emipc_init_dbus_connection();
 
 	EM_DEBUG_FUNC_END();
 	return true;

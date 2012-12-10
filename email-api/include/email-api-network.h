@@ -165,7 +165,7 @@ extern "C" {
 #endif /* __cplusplus */
 
 /**
- * @open
+
  * @fn email_send_mail(int mail_id,	int *handle)
  * @brief	Send a mail.This function is invoked when user wants to send a composed mail.
  *
@@ -180,7 +180,7 @@ EXPORT_API int email_send_mail(int mail_id,	int *handle);
 
 
 /**
- * @open
+
  * @fn email_sync_header(int input_account_id, int input_mailbox_id, int *handle)
  * @brief	Download header of new emails from mail server.This function is invoked when user wants to download only header of new mails.
  *
@@ -196,7 +196,7 @@ EXPORT_API int email_sync_header(int input_account_id, int input_mailbox_id, int
 
 
 /**
- * @open
+
  * @fn email_sync_header_for_all_account(int *handle)
  * @brief	Download header of new emails from mail server for all emails.This function is invoked when user wants to download header of new mails for all accounts.
  *
@@ -210,7 +210,7 @@ EXPORT_API int email_sync_header_for_all_account(int *handle);
 
 
 /**
- * @open
+
  * @fn email_download_body(int mail_id, int with_attachment, int *handle)
  * @brief	Download email body from server.This function is invoked when user wants to download email body with/without attachment based on the option with_attachment
  * 		from the server.
@@ -231,7 +231,7 @@ EXPORT_API int email_download_body(int mail_id, int with_attachment, int *handle
 
 
 /**
- * @open
+
  * @fn email_download_attachment(int mail_id, const char* nth, int *handle);
  * @brief	Download a email nth-attachment from server.This function is invoked if user wants to download only specific attachment of a mail whose body is already downloaded.
  *
@@ -247,7 +247,7 @@ EXPORT_API int email_download_attachment(int mail_id, int nth, int *handle);
 
 
 /**
- * @open
+
  * @fn email_cancel_job(int account_id, int handle);
  * @brief	cancel the ongoing job.This function is invoked if user wants to cancel any ongoing job of a specified account.
  *
@@ -264,7 +264,7 @@ EXPORT_API int email_cancel_job(int input_account_id, int input_handle, email_ca
 
 
 /**
- * @open
+
  * @fn email_get_pending_job(email_action_t action, int account_id, int mail_id, email_event_status_type_t * status);
  * @brief	get pending job list.This function is invoked if user wants to get the pending job list with status information .
  * 		Based on action item of a mail is for a specific account this will give all pending job list.
@@ -282,7 +282,7 @@ EXPORT_API int email_get_pending_job(email_action_t action, int account_id, int 
 
 
 /**
- * @open
+
  * @fn email_get_network_status(int* on_sending, int* on_receiving)
  * @brief	This function gives the  current network status.This gives the information to the user whether sending operation is in progress or receiving operation.
  *
@@ -296,7 +296,7 @@ EXPORT_API int email_get_pending_job(email_action_t action, int account_id, int 
 EXPORT_API int email_get_network_status(int* on_sending, int* on_receiving);
 
 /**
- * @open
+
  * @fn email_send_saved(int account_id, int *handle)
  * @brief	Send all mails to been saved in Offline-mode.This function is invoked when user wants to send an email and after saving it.
  * 		This will save the email in draft mailbox and then sends.
@@ -311,7 +311,7 @@ EXPORT_API int email_get_network_status(int* on_sending, int* on_receiving);
 EXPORT_API int email_send_saved(int account_id, int *handle);
 
 /**
- * @open
+
  * @fn email_sync_imap_mailbox_list(int account_id, int *handle)
  *  @brief	fetch all the mailbox names from server and store the non-existing mailboxes in DB.This function is invoked when user wants to download all server mailboxes from IMAP server
  *
@@ -325,7 +325,7 @@ EXPORT_API int email_send_saved(int account_id, int *handle);
 EXPORT_API int email_sync_imap_mailbox_list(int account_id, int *handle);
 
 /**
- * @open
+
  * @fn email_search_mail_on_server(int input_account_id, int input_mailbox_id, email_search_filter_t *input_search_filter_list, int input_search_filter_count, int *output_handle)
  * @brief	Search the mails on server.
  *

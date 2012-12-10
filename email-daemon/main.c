@@ -50,6 +50,7 @@
 #include "email-core-utils.h"
 #include "email-core-smime.h"
 #include "email-core-cert.h"
+#include "email-core-task-manager.h"
 #include "email-storage.h"
 
 void stb_create_account(HIPC_API a_hAPI)
@@ -312,7 +313,11 @@ void stb_get_account_list(HIPC_API a_hAPI)
 
 			local_stream = em_convert_account_to_byte_stream(account_list+i, &size);
 
-			EM_NULL_CHECK_FOR_VOID(local_stream);
+			if (!local_stream) {
+				EM_DEBUG_EXCEPTION ("INVALID PARAM: local_stream NULL ");
+				emcore_free_account_list(&account_list, count, NULL);
+				return;
+			}
 
 			if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, local_stream, size))
 				EM_DEBUG_EXCEPTION("Add  Param mailbox failed  ");
@@ -613,6 +618,9 @@ void stb_rename_mailbox(HIPC_API a_hAPI)
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
+	EM_SAFE_FREE(mailbox_alias);
+	EM_SAFE_FREE(mailbox_path);
+
 	EM_DEBUG_FUNC_END();
 }
 
@@ -680,7 +688,11 @@ void stb_get_mailbox_list(HIPC_API a_hAPI)
 
 			local_stream = em_convert_mailbox_to_byte_stream(mailbox_list+counter, &size);
 
-			EM_NULL_CHECK_FOR_VOID(local_stream);
+			if (!local_stream) {
+				EM_DEBUG_EXCEPTION ("INVALID PARAM: local_stream NULL ");
+				emcore_free_mailbox_list(&mailbox_list, count);
+				return;
+			}
 
 			if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, local_stream, size))
 				EM_DEBUG_EXCEPTION("Add  Param mailbox failed  ");
@@ -692,6 +704,9 @@ void stb_get_mailbox_list(HIPC_API a_hAPI)
 
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+
+	emcore_free_mailbox_list(&mailbox_list, count);
+
 	EM_DEBUG_FUNC_END();
 }
 
@@ -845,6 +860,9 @@ void stb_get_rule(HIPC_API a_hAPI)
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, local_rule_stream, size))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
 		EM_SAFE_FREE( local_rule_stream );
+
+		emcore_free_rule(rule);
+		EM_SAFE_FREE(rule);
 	}
 
 	if (!emipc_execute_stub_api(a_hAPI)) {
@@ -1105,6 +1123,10 @@ FINISH_OFF:
 
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+
+	if (mail_ids)
+		EM_SAFE_FREE(mail_ids);
+
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1623,6 +1645,11 @@ void stb_add_attachment(HIPC_API a_hAPI)
 		}
 	}
 
+	if (!attachment) {
+		EM_DEBUG_EXCEPTION("em_convert_byte_stream_to_attachment_data failed  ");
+		return;
+	}
+
 	emdaemon_add_attachment(mail_id, attachment, &err);
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -1667,13 +1694,14 @@ void stb_get_attachment(HIPC_API a_hAPI)
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, attachment_stream, size))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
 	}
-		if (!emipc_execute_stub_api(a_hAPI)) {
-			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
-			EM_SAFE_FREE(attachment_stream);
-			return;
-		}
+
+	if (!emipc_execute_stub_api(a_hAPI)) {
+		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+	}
 
 	EM_SAFE_FREE(attachment_stream);
+	emcore_free_attachment_data(&attachment, 1, &err);
+
 	EM_DEBUG_FUNC_END();
 }
 
@@ -2038,22 +2066,14 @@ void stb_clear_result_of_search_mail_on_server(HIPC_API a_hAPI)
 	EM_DEBUG_FUNC_BEGIN();
 	int                      err = EMAIL_ERROR_NONE;
 	int                      account_id = 0;
-	emstorage_mailbox_tbl_t *search_result_mailbox = NULL;
 
 	/* account_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 
 	EM_DEBUG_LOG("account_id [%d]", account_id);
 
-	if (!emstorage_get_mailbox_by_mailbox_type(account_id, EMAIL_MAILBOX_TYPE_SEARCH_RESULT, &search_result_mailbox, true, &err)) {
+	if (!emstorage_delete_mail_by_mailbox(account_id, EMAIL_SEARCH_RESULT_MAILBOX_NAME, true, &err)) 
 		EM_DEBUG_EXCEPTION(" emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
-		goto FINISH_OFF;
-	}
-
-	if ((err = emcore_delete_all_mails_of_mailbox(search_result_mailbox->mailbox_id, false, &err)) == EMAIL_ERROR_NONE)
-		EM_DEBUG_EXCEPTION(" emcore_delete_all_mails_of_mailbox failed [%d]", err);
-
-FINISH_OFF:
 
 	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
@@ -2329,6 +2349,12 @@ void stb_verify_signature(HIPC_API a_hAPI)
 		goto FINISH_OFF;
 	}
 
+	if (attachment_tbl_count <= 0) {
+		EM_DEBUG_EXCEPTION("Invalid signed mail");
+		err = EMAIL_ERROR_INVALID_MAIL;
+		goto FINISH_OFF;
+	}
+
 	for (count = 0; count < attachment_tbl_count; count++) {
 		if (strcasestr(attachment_tbl_list[count].attachment_name, "p7s") == NULL)
 			continue;
@@ -2357,10 +2383,12 @@ FINISH_OFF:
 	if (attachment_tbl_list)
 		emstorage_free_attachment(&attachment_tbl_list, attachment_tbl_count, NULL);
 
-	if (mail_data)
+	if (mail_data) {
 		emcore_free_mail_data(mail_data);
+		EM_SAFE_FREE(mail_data);
+	}
 
-	EM_DEBUG_FUNC_END();    
+	EM_DEBUG_FUNC_END();
 }
 
 void stb_verify_certificate(HIPC_API a_hAPI)
@@ -2470,6 +2498,7 @@ void stb_write_mime_file(HIPC_API a_hAPI)
 	int result_attachment_data_count = 0;
 	int param_index = 0;
 	int err = EMAIL_ERROR_NONE;
+	int ret = EMAIL_ERROR_NONE;
 	char *file_path = NULL;
 	char *output_file_path = NULL;
 	email_mail_data_t result_mail_data = {0};
@@ -2575,7 +2604,11 @@ FINISH_OFF:
 
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
-	
+
+	emstorage_free_attachment(&input_attachment_tbl_data, result_attachment_data_count, &ret);
+
+	emstorage_free_mail(&input_mail_tbl_data, 1, &ret);
+
 	emcore_free_mail_data(&result_mail_data);
 
 	if(result_attachment_data)
@@ -2587,6 +2620,52 @@ FINISH_OFF:
 
 	em_flush_memory();
 	EM_DEBUG_FUNC_END();
+}
+
+void stb_handle_task(int task_type, HIPC_API a_hAPI)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int param_index = 0;
+	int is_async_task = (task_type > EMAIL_ASYNC_TASK_BOUNDARY)?1:0;
+	int err = EMAIL_ERROR_NONE;
+	int task_id = 0;
+	int task_parameter_length = 0;
+	char *task_parameter = NULL;
+
+	/* task_parameter_length */;
+	task_parameter_length = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
+	EM_DEBUG_LOG("task_parameter_length [%d]", task_parameter_length);
+
+	/* task_parameter */
+	if(task_parameter_length > 0)	 {
+		task_parameter = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
+	}
+
+	if(is_async_task) {
+		/* add async task */
+		if((err = emcore_add_task_to_task_table(task_type, EMAIL_TASK_PRIORITY_MID, task_parameter, task_parameter_length, &task_id)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_add_task_to_task_pool failed [%d]", err);
+			goto FINISH_OFF;
+		}
+	}
+	else {
+		/* do sync task */
+	}
+
+FINISH_OFF:
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+
+	if(is_async_task) {
+		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &task_id, sizeof(int)))
+			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+	}
+
+	if (!emipc_execute_stub_api(a_hAPI))
+		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
+
+	em_flush_memory();
+	EM_DEBUG_FUNC_END("err [%d]", err);
 }
 
 void stb_API_mapper(HIPC_API a_hAPI)
@@ -2834,6 +2913,10 @@ void stb_API_mapper(HIPC_API a_hAPI)
 		case _EMAIL_API_WRITE_MIME_FILE :
 			stb_write_mime_file(a_hAPI);
 			break;
+
+		case EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT :
+			stb_handle_task(nAPIID, a_hAPI);
+			break;
 	}
 	EM_DEBUG_FUNC_END();
 }
@@ -2858,11 +2941,6 @@ INTERNAL_FUNC int main(int argc, char *argv[])
 	int err = 0, ret;
 	GMainLoop *mainloop;
 
-	signal(SIGPIPE, SIG_IGN);              /* to ignore signal 13(SIGPIPE) */
-	signal(SIGTERM, callback_for_sigterm); /* to handle signal 15(SIGTERM) - power off case*/
-
-	emdaemon_initialize(&err);
-
 #ifdef USE_OMA_EMN
 	EM_DEBUG_LOG("emdaemon_initialize_emn Start");
 	emdaemon_initialize_emn();
@@ -2876,6 +2954,11 @@ INTERNAL_FUNC int main(int argc, char *argv[])
 		EM_DEBUG_LOG("ipcEmailStub_Initialize Success");
 	else
 		EM_DEBUG_EXCEPTION("ipcEmailStub_Initialize failed");
+
+	signal(SIGPIPE, SIG_IGN);              /* to ignore signal 13(SIGPIPE) */
+	signal(SIGTERM, callback_for_sigterm); /* to handle signal 15(SIGTERM) - power off case*/
+
+	emdaemon_initialize(&err);
 
 	/* Start auto polling */
 #ifdef __FEATURE_AUTO_POLLING__

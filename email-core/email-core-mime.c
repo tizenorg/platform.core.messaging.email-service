@@ -48,7 +48,8 @@
 #include "email-core-mime.h"
 #include "email-storage.h"
 #include "email-core-event.h"
-#include "email-core-account.h" 
+#include "email-core-account.h"
+#include "email-core-signal.h"
 #include "email-debug-log.h"
 
 #define MIME_MESG_IS_SOCKET
@@ -91,6 +92,9 @@
 #define SAVE_TYPE_SIZE       1	/*  only get content siz */
 #define SAVE_TYPE_BUFFER     2	/*  save content to buffe */
 #define SAVE_TYPE_FILE       3	/*  save content to temporary fil */
+
+#define INLINE_ATTACHMENT    1
+#define ATTACHMENT           2
 
 #define EML_FOLDER           20 /*  save eml content to temporary folder */
 
@@ -515,6 +519,7 @@ int emcore_parse_mime(void *stream, int is_file, struct _m_content_info *cnt_inf
 	if (!emcore_check_thread_status())  {
 		if (err_code != NULL)
 			*err_code = EMAIL_ERROR_CANCELLED;
+		emcore_mime_free_mime(mmsg);
 		return false;
 	}
 	
@@ -840,14 +845,26 @@ int emcore_mime_parse_body(void *stream, int is_file, struct _m_mesg *mmsg, stru
 				}
 				
 				EM_DEBUG_LOG("After emcore_mime_get_content_data");
+
+				char *charset = emcore_mime_get_header_value(mmsg->header->part_header, CONTENT_CHARSET, err_code);
+					
+				EM_DEBUG_LOG(">>>> charset [%s]", charset);
 				
-				if (mmsg->header && mmsg->header->part_header && strstr((t = emcore_mime_get_header_value(mmsg->header->part_header, CONTENT_TYPE, err_code)) ? t  :  "", "HTML"))
+				if (mmsg->header && mmsg->header->part_header && strstr((t = emcore_mime_get_header_value(mmsg->header->part_header, CONTENT_TYPE, err_code)) ? t  :  "", "HTML")) {
+					if (!charset || !strncmp(charset, "X-UNKNOWN", strlen("X-UNKNOWN")))
+						cnt_info->text.plain_charset = EM_SAFE_STRDUP("UTF-8");
+					else
+						cnt_info->text.plain_charset = EM_SAFE_STRDUP(charset);
+
+					EM_DEBUG_LOG(">>>> cnt_info->text.plain_charset [%s]", cnt_info->text.plain_charset);
+					
 					cnt_info->text.html = holder;
+					
+					EM_DEBUG_LOG(">>>> cnt_info->text.plain [%s]", cnt_info->text.html);
+
+				}
 				else if (mmsg->header) {
-					char *charset = emcore_mime_get_header_value(mmsg->header->part_header, CONTENT_CHARSET, err_code);
-					
-					EM_DEBUG_LOG(">>>> charset [%s]", charset);
-					
+				
 					if (!charset || !strncmp(charset, "X-UNKNOWN", strlen("X-UNKNOWN")))
 						cnt_info->text.plain_charset = EM_SAFE_STRDUP("UTF-8");
 					else
@@ -1015,7 +1032,7 @@ int emcore_mime_parse_part(void *stream, int is_file, struct _m_part_header *par
 				EM_DEBUG_LOG("default");
 				attachment_name = NULL;
 				content_disposition = NULL;
-				
+
 				if (type == TYPE_MESSAGE) 
 					is_skip = true;
 				
@@ -1030,33 +1047,39 @@ int emcore_mime_parse_part(void *stream, int is_file, struct _m_part_header *par
 				
 				/*  first check inline content */
 				/*  if the content id or content location exis */
-				content_disposition = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_DISPOSITION, err_code);
-				EM_DEBUG_LOG("content_disposition : [%s]", content_disposition);
-				if (content_disposition) {
-					if (!strcasecmp(content_disposition, "inline")) {
-						if (!attachment_name)
-							attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_ID, err_code);
-						if (!attachment_name)
-							attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_NAME, err_code);
+				t = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_TYPE, err_code);
+				EM_DEBUG_LOG("content_type : [%s]", t);
 
-						content_disposition_type = 1;
-					} else if (!strcasecmp(content_disposition, "attachment")) {
-						if (!attachment_name)  
-							attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_NAME, err_code);
+				if (!strstr(t ? t : "", "HTML")) {
+					content_disposition = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_DISPOSITION, err_code);
+					EM_DEBUG_LOG("content_disposition : [%s]", content_disposition);
+
+					attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_ID, err_code);
+					EM_DEBUG_LOG("content_id : [%s]", attachment_name);
+
+					if (!strcasecmp(content_disposition ? content_disposition : "", "attachment")) {
+						attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_NAME, err_code);
+
 						if (!attachment_name)
 							attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_FILENAME, err_code);
 
-						content_disposition_type = 2;
+						content_disposition_type = ATTACHMENT;
+					} else if (!strcasecmp(content_disposition ? content_disposition : "", "inline") || attachment_name) {
+						content_disposition_type = INLINE_ATTACHMENT;	
+					} else if (strstr(content_type, "PKCS7")) {
+						attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_NAME, err_code);
+						EM_DEBUG_LOG_MIME(">> attachment = [%s]", attachment_name ? attachment_name  :  NIL);
+
+					} else {
+						EM_DEBUG_EXCEPTION("Unknow mime");
 					}
-				} else if (strstr(content_type, "PKCS7")) {
-					attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_NAME, err_code);
-					EM_DEBUG_LOG_MIME(">> attachment = [%s]", attachment_name ? attachment_name  :  NIL);
 				}
 
 				if (!emcore_check_thread_status())  {
 					if (err_code != NULL)
 						*err_code = EMAIL_ERROR_CANCELLED;
 					EM_DEBUG_EXCEPTION("EMAIL_ERROR_CANCELLED");
+					emcore_mime_free_part_body(tmp_body);
 					EM_DEBUG_FUNC_END("false");
 					return false;
 				}
@@ -1068,13 +1091,14 @@ int emcore_mime_parse_part(void *stream, int is_file, struct _m_part_header *par
 					EM_DEBUG_LOG_MIME("attachment_name is NULL. It's a text message"); 
 					if (!emcore_mime_get_content_data(stream, is_file, true, boundary_str, content_encoding, &end_of_parsing, SAVE_TYPE_FILE, &holder, &size, NULL, err_code)) {
 						EM_DEBUG_EXCEPTION("emcore_mime_get_content_data failed [%d]", err_code);
+						emcore_mime_free_part_body(tmp_body);
 						return false;
 					}
 
 					EM_DEBUG_LOG("After emcore_mime_get_content_data");
 					
 					if (cnt_info->grab_type & GRAB_TYPE_TEXT)  {
-						if (tmp_body->part_header && strstr((t = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_TYPE, err_code)) ? t  :  "", "HTML"))  {
+						if (tmp_body->part_header && strstr(t ? t  :  "", "HTML"))  {
 							cnt_info->text.html = holder;
 							
 							EM_DEBUG_LOG(" cnt_info->text.html [%s]", cnt_info->text.html);
@@ -1103,84 +1127,86 @@ int emcore_mime_parse_part(void *stream, int is_file, struct _m_part_header *par
 					}
 				}
 				else  {		/*  attachment */
-					EM_DEBUG_LOG_MIME("attachment_name is not NULL. It's a attachment"); 
-					struct attachment_info **file = &cnt_info->file;
-					int i = 1;
-					
-					while (*file && (*file)->next)  {
-						file = &(*file)->next;
-						i++;
-					}
-					
-					if (*file)  {
-						file = &(*file)->next;
-						i++;
-					}
-					
-					*file = em_malloc(sizeof(struct attachment_info));
-					if (*file)  {		
-						(*file)->type = content_disposition_type;
+					EM_DEBUG_LOG("attachment_name is not NULL. It's a attachment"); 
+					struct attachment_info *file = NULL;
+					struct attachment_info *temp_file = cnt_info->file;
 
-						EM_DEBUG_LOG_MIME("file->type : %d", (*file)->type);
-						
-						(*file)->name                 = EM_SAFE_STRDUP(attachment_name);
-						(*file)->content_id           = EM_SAFE_STRDUP(tmp_body->part_header->content_id);
-						if(tmp_body->part_header->type && tmp_body->part_header->subtype) {
-							SNPRINTF(mime_type_buffer, 128, "%s/%s", tmp_body->part_header->type, tmp_body->part_header->subtype);
-							(*file)->attachment_mime_type = EM_SAFE_STRDUP(mime_type_buffer);
-						}
-						
-						/*  check if the current file is target file */
-						if ( (cnt_info->grab_type & GRAB_TYPE_ATTACHMENT) || (*file)->type == 1)  {
-							/*  get content by file */
-							EM_DEBUG_LOG_MIME("Trying to get content"); 
-							if (!emcore_mime_get_content_data(stream, is_file, false, boundary_str, content_encoding, &end_of_parsing, SAVE_TYPE_FILE, &holder, &size, NULL, err_code)) {
-								EM_DEBUG_EXCEPTION("emcore_mime_get_content_data failed [%d]", err_code);
-								EM_DEBUG_FUNC_END("false");
-								return false;
-							}
-							(*file)->save = holder;
-						}
-						else  {
-							/*  only get content size */
-							EM_DEBUG_LOG_MIME("Pass downloading"); 
-							if (!emcore_mime_get_content_data(stream, is_file, false, boundary_str, content_encoding, &end_of_parsing, SAVE_TYPE_SIZE, NULL, &size, NULL, err_code)) {
-								EM_DEBUG_EXCEPTION("emcore_mime_get_content_data failed [%d]", err_code);
-								EM_DEBUG_FUNC_END("false");
-								return false;
-							}
-
-							(*file)->save = NULL;
-						}
-						
-						if (err_code)
-							EM_DEBUG_LOG("end_of_parsing [%d], err_code [%d]", end_of_parsing, *err_code);
-						
-						(*file)->size = size;
-						
-						if (strstr(content_type, APPLICATION_STR))  {
-							pTemp = content_type + strlen(APPLICATION_STR);	
-							
-							if (strcasecmp(pTemp, MIME_SUBTYPE_DRM_OBJECT) == 0)
-								(*file)->drm = EMAIL_ATTACHMENT_DRM_OBJECT;
-							else if (strcasecmp(pTemp, MIME_SUBTYPE_DRM_RIGHTS) == 0)
-								(*file)->drm = EMAIL_ATTACHMENT_DRM_RIGHTS;
-							else if (strcasecmp(pTemp, MIME_SUBTYPE_DRM_DCF) == 0)
-								(*file)->drm = EMAIL_ATTACHMENT_DRM_DCF;
-						}
-					}
-					else  {
+					file = em_malloc(sizeof(struct attachment_info));
+					if (file == NULL) {
 						EM_DEBUG_EXCEPTION("em_malloc failed...");
 						emcore_mime_free_part_body(tmp_body);
 						EM_DEBUG_FUNC_END("false");
 						return false;
 					}
-				}
 
+					file->type = content_disposition_type;
+
+					EM_DEBUG_LOG("file->type : %d", file->type);
+					
+					file->name                 = EM_SAFE_STRDUP(attachment_name);
+					file->content_id           = EM_SAFE_STRDUP(tmp_body->part_header->content_id);
+					if(tmp_body->part_header->type && tmp_body->part_header->subtype) {
+						SNPRINTF(mime_type_buffer, 128, "%s/%s", tmp_body->part_header->type, tmp_body->part_header->subtype);
+						file->attachment_mime_type = EM_SAFE_STRDUP(mime_type_buffer);
+					}
+					
+					/*  check if the current file is target file */
+					if ((cnt_info->grab_type & GRAB_TYPE_ATTACHMENT) || file->type == INLINE_ATTACHMENT)  {
+						/*  get content by file */
+						EM_DEBUG_LOG_MIME("Trying to get content"); 
+						if (!emcore_mime_get_content_data(stream, is_file, false, boundary_str, content_encoding, &end_of_parsing, SAVE_TYPE_FILE, &holder, &size, NULL, err_code)) {
+							EM_DEBUG_EXCEPTION("emcore_mime_get_content_data failed [%d]", err_code);
+							emcore_mime_free_part_body(tmp_body);
+							emcore_free_attachment_info(file);
+							EM_DEBUG_FUNC_END("false");
+							return false;
+						}
+
+						file->save = holder;
+					} else {
+						/*  only get content size */
+						EM_DEBUG_LOG_MIME("Pass downloading"); 
+						if (!emcore_mime_get_content_data(stream, is_file, false, boundary_str, content_encoding, &end_of_parsing, SAVE_TYPE_SIZE, NULL, &size, NULL, err_code)) {
+							EM_DEBUG_EXCEPTION("emcore_mime_get_content_data failed [%d]", err_code);
+							emcore_mime_free_part_body(tmp_body);
+							emcore_free_attachment_info(file);
+							EM_DEBUG_FUNC_END("false");
+							return false;
+						}
+
+						file->save = NULL;
+					}
+					
+					if (err_code)
+						EM_DEBUG_LOG("end_of_parsing [%d], err_code [%d]", end_of_parsing, *err_code);
+					
+					file->size = size;
+					
+					if (strstr(content_type, APPLICATION_STR))  {
+						pTemp = content_type + strlen(APPLICATION_STR);	
+						
+						if (strcasecmp(pTemp, MIME_SUBTYPE_DRM_OBJECT) == 0)
+							file->drm = EMAIL_ATTACHMENT_DRM_OBJECT;
+						else if (strcasecmp(pTemp, MIME_SUBTYPE_DRM_RIGHTS) == 0)
+							file->drm = EMAIL_ATTACHMENT_DRM_RIGHTS;
+						else if (strcasecmp(pTemp, MIME_SUBTYPE_DRM_DCF) == 0)
+							file->drm = EMAIL_ATTACHMENT_DRM_DCF;
+					}
+
+					while (temp_file && temp_file->next)
+						temp_file = temp_file->next;
+
+					if (temp_file == NULL)
+						cnt_info->file = file;
+					else
+						temp_file->next = file;
+				}
+	
 				if (!emcore_check_thread_status())  {
 					if (err_code != NULL)
 						*err_code = EMAIL_ERROR_CANCELLED;
 					EM_DEBUG_EXCEPTION("EMAIL_ERROR_CANCELLED");
+					emcore_mime_free_part_body(tmp_body);
 					EM_DEBUG_FUNC_END("false");
 					return false;
 				}
@@ -1695,7 +1721,7 @@ int emcore_mime_get_content_data(void *stream, int is_file, int is_text, char *b
 		EM_DEBUG_LOG("holder[%s]", *holder);
 		
 		fd = open(*holder, O_WRONLY|O_CREAT, 0644);
-		if (fd <= 0)  {
+		if (fd < 0)  {
 			EM_DEBUG_EXCEPTION("holder open failed :  holder is a filename that will be saved.");
 			goto FINISH_OFF;
 		}
@@ -1764,7 +1790,6 @@ int emcore_mime_get_content_data(void *stream, int is_file, int is_text, char *b
 			
 		if (mode > SAVE_TYPE_SIZE) {	/*  decode content */
 			emcore_decode_body_text(buf, dec_len, encoding, &dec_len, err_code);
-			EM_DEBUG_LOG("decode buf : [%s]", buf);
 
 			if (is_text) {
 				result_buffer = em_replace_string(buf, "cid:", "");
@@ -1813,9 +1838,8 @@ int emcore_mime_get_content_data(void *stream, int is_file, int is_text, char *b
 FINISH_OFF: 
 	if (err_code != NULL)
 		*err_code = error;
-				
-	if (fd > 0) 
-		close(fd);
+
+	close(fd);
 
 	if (ret) {
 		if (size)
@@ -1908,7 +1932,7 @@ int emcore_mime_skip_content_data(void *stream,
 	return true; 
 } 
 
-/*  get temporary file nam */
+/*  get temporary file name */
 char *emcore_mime_get_save_file_name(int *err_code) 
 { 
 	EM_DEBUG_FUNC_BEGIN();
@@ -1920,7 +1944,7 @@ char *emcore_mime_get_save_file_name(int *err_code)
 
 	memset(tempname, 0x00, sizeof(tempname));
 
-	SNPRINTF(tempname, sizeof(tempname), "%s%s%s%s%d", MAILHOME, DIR_SEPERATOR, MAILTEMP, DIR_SEPERATOR, rand());
+	SNPRINTF(tempname, sizeof(tempname), "%s%s%d", MAILTEMP, DIR_SEPERATOR, rand());
 	EM_DEBUG_FUNC_END();
 	return EM_SAFE_STRDUP(tempname);
 } 
@@ -2014,8 +2038,8 @@ FINISH_OFF:
 		EM_DEBUG_LOG("received_percentage = %d, last_notified_percentage = %d", received_percentage, last_notified_percentage);
 		
 		if (received_percentage > last_notified_percentage + 5) {
-			if (!emstorage_notify_network_event(NOTI_DOWNLOAD_BODY_START, _pop3_receiving_mail_id, "dummy-file", _pop3_total_body_size, _pop3_received_body_size))
-				EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
+			if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_START, _pop3_receiving_mail_id, "dummy-file", _pop3_total_body_size, _pop3_received_body_size))
+				EM_DEBUG_EXCEPTION(" emcore_notify_network_event [NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 			else
 				EM_DEBUG_LOG("NOTI_DOWNLOAD_BODY_START notified (%d / %d)", _pop3_received_body_size, _pop3_total_body_size);
 			_pop3_last_notified_body_size = _pop3_received_body_size;
@@ -2140,6 +2164,26 @@ void emcore_free_content_info(struct _m_content_info *cnt_info)
 	EM_DEBUG_FUNC_END();
 }
 
+void emcore_free_attachment_info(struct attachment_info *attchment)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	struct attachment_info *p;
+
+	if (!attchment) return;
+
+	while (attchment) {
+		p = attchment->next;
+		EM_SAFE_FREE(attchment->name);
+		EM_SAFE_FREE(attchment->save);
+		EM_SAFE_FREE(attchment->attachment_mime_type);
+		EM_SAFE_FREE(attchment->content_id);
+		EM_SAFE_FREE(attchment);
+		attchment = p;
+	}
+
+	EM_DEBUG_FUNC_END();
+}
+
 /* get body-part in nested part */
 static PARTLIST *emcore_get_allnested_part_full(MAILSTREAM *stream, int msg_uid, BODY *body, struct _m_content_info *cnt_info, int *err_code, PARTLIST *section_list)
 {
@@ -2245,13 +2289,11 @@ PARTLIST* emcore_get_body_full(MAILSTREAM *stream, int msg_uid, BODY *body, stru
 		case TYPEMODEL:
 		case TYPEOTHER:
 
-			EM_DEBUG_LOG("g_inline_count [%d], body->id [%s], body->location [%s], body->disposition.type[%s]", g_inline_count, body->id, body->location, body->disposition.type);
-
 			/* Form list of attachment followed by list of inline images */
-			if (body->id && (g_inline_count || body->location || body->disposition.type)) {
+			if (body->id || body->location || body->disposition.type) {
 
 				char filename[512] = {0, };
-				struct attachment_info **ai = NULL;
+				struct attachment_info *ai = NULL;
 				struct attachment_info *prev_ai = NULL;
 				struct attachment_info *next_ai = NULL;
 				int i = 0;
@@ -2262,84 +2304,83 @@ PARTLIST* emcore_get_body_full(MAILSTREAM *stream, int msg_uid, BODY *body, stru
 					/* To form list of attachment info - Attachment list followed by inline attachment list */
 					prev_ai = NULL;
 					next_ai = NULL;
-					ai      = &cnt_info->file;
+					ai      = cnt_info->file;
 					
-					EM_DEBUG_LOG(" ai - %p ", (*ai));
+					EM_DEBUG_LOG("ai - %p", ai);
 
 					if (ai != NULL) {
 						/* if ((body->id) || (body->location) */
 						if ((body->id) || (body->location) || ((body->disposition.type != NULL) && ((body->disposition.type[0] == 'i') || (body->disposition.type[0] == 'I')))) {
 							/* For Inline content append to the end */
-							for (i = 1; *ai; ai = &(*ai)->next)
+							for (i = 1; ai; ai = ai->next)
 								i++;
 						}
 						else {
 							/* For attachment - search till Inline content found and insert before inline */
-							for (i = 1; *ai; ai = &(*ai)->next) {
-								if ((*ai)->type == 1)  {
+							for (i = 1; ai; ai = ai->next) {
+								if (ai->type == 1)  {
 									/* Means inline image */
 									EM_DEBUG_LOG("Found Inline Content ");
-									next_ai = (*ai);
+									next_ai = ai;
 									break;
 								}
 								i++;
-								prev_ai = (*ai);
+								prev_ai = ai;
 							}
 						}
 					}
-					if (!(*ai = em_malloc(sizeof(struct attachment_info))))  {
+
+					ai = em_malloc(sizeof(struct attachment_info));
+					if (ai == NULL)  {
 						EM_DEBUG_EXCEPTION("em_malloc failed...");
+						return NULL;				
 					}
-					else {
-						if (ai == NULL)
-							cnt_info->file = (*ai);
+					cnt_info->file = ai;
 
-						if ((body->id) || (body->location) || ((body->disposition.type != NULL) && ((body->disposition.type[0] == 'i') || (body->disposition.type[0] == 'I'))))
-							(*ai)->type = 1; /* inline contents */
-						else
-							(*ai)->type = 2; /* attachment */
-						
-						(*ai)->name                 = EM_SAFE_STRDUP(filename);
-						(*ai)->size                 = body->size.bytes;
-						(*ai)->content_id           = EM_SAFE_STRDUP(body->id);
-						if ( emcore_get_content_type_from_mail_bodystruct(body, 512, content_type_buffer) == EMAIL_ERROR_NONE)
-							(*ai)->attachment_mime_type = EM_SAFE_STRDUP(content_type_buffer);
-						
-#ifdef __ATTACHMENT_OPTI__
-						(*ai)->encoding = body->encoding;
-						if (body->sparep)
-							(*ai)->section = EM_SAFE_STRDUP(body->sparep);
-
-						EM_DEBUG_LOG(" Encoding - %d  Section No - %s ", (*ai)->encoding, (*ai)->section);
-#endif
-						
-						EM_DEBUG_LOG("Type[%d], Name[%s],  Path[%s] ", (*ai)->type, (*ai)->name, (*ai)->save);
-						if (body->type == TYPEAPPLICATION)  {
-							if (!strcasecmp(body->subtype, MIME_SUBTYPE_DRM_OBJECT))
-								(*ai)->drm = EMAIL_ATTACHMENT_DRM_OBJECT;
-							else if (!strcasecmp(body->subtype, MIME_SUBTYPE_DRM_RIGHTS))
-								(*ai)->drm = EMAIL_ATTACHMENT_DRM_RIGHTS;
-							else if (!strcasecmp(body->subtype, MIME_SUBTYPE_DRM_DCF))
-								(*ai)->drm = EMAIL_ATTACHMENT_DRM_DCF;
-							else if (!strcasecmp(body->subtype, "pkcs7-mime"))
-								cnt_info->grab_type = cnt_info->grab_type | GRAB_TYPE_ATTACHMENT;
-						} 
+					if ((body->id) || (body->location) || ((body->disposition.type != NULL) && ((body->disposition.type[0] == 'i') || (body->disposition.type[0] == 'I'))))
+						ai->type = 1; /* inline contents */
+					else
+						ai->type = 2; /* attachment */
 					
-						if ((*ai)->type != 1 && next_ai != NULL) {
-							/* Means next_ai points to the inline attachment info structure */
-							if (prev_ai == NULL) {
-								/* First node is inline attachment */
-								(*ai)->next = next_ai;
-								cnt_info->file = (*ai);
-							}
-							else {
-								prev_ai->next = (*ai);
-								(*ai)->next = next_ai;
-							}
+					ai->name                 = EM_SAFE_STRDUP(filename);
+					ai->size                 = body->size.bytes;
+					ai->content_id           = EM_SAFE_STRDUP(body->id);
+					if (emcore_get_content_type_from_mail_bodystruct(body, 512, content_type_buffer) == EMAIL_ERROR_NONE)
+						ai->attachment_mime_type = EM_SAFE_STRDUP(content_type_buffer);
+					
+#ifdef __ATTACHMENT_OPTI__
+					ai->encoding = body->encoding;
+					if (body->sparep)
+						ai->section = EM_SAFE_STRDUP(body->sparep);
+
+					EM_DEBUG_LOG("Encoding - %d  Section No - %s ", ai->encoding, ai->section);
+#endif
+					
+					EM_DEBUG_LOG("Type[%d], Name[%s], Path[%s] ", ai->type, ai->name, ai->save);
+					if (body->type == TYPEAPPLICATION)  {
+						if (!strcasecmp(body->subtype, MIME_SUBTYPE_DRM_OBJECT))
+							ai->drm = EMAIL_ATTACHMENT_DRM_OBJECT;
+						else if (!strcasecmp(body->subtype, MIME_SUBTYPE_DRM_RIGHTS))
+							ai->drm = EMAIL_ATTACHMENT_DRM_RIGHTS;
+						else if (!strcasecmp(body->subtype, MIME_SUBTYPE_DRM_DCF))
+							ai->drm = EMAIL_ATTACHMENT_DRM_DCF;
+						else if (!strcasecmp(body->subtype, "pkcs7-mime"))
+							cnt_info->grab_type = cnt_info->grab_type | GRAB_TYPE_ATTACHMENT;
+					} 
+				
+					if (ai->type != 1 && next_ai != NULL) {
+						/* Means next_ai points to the inline attachment info structure */
+						if (prev_ai == NULL) {
+							/* First node is inline attachment */
+							ai->next = next_ai;
+							cnt_info->file = ai;
+						}
+						else {
+							prev_ai->next = ai;
+							ai->next = next_ai;
 						}
 					}
 				}
-
 			}
 							
 			
@@ -2484,6 +2525,7 @@ static int emcore_write_response_into_file(char *filename, char *write_mode, cha
 		if (!(fp = fopen(filename, write_mode)))  {
 			EM_DEBUG_EXCEPTION("fopen failed - %s", filename);
 			error = EMAIL_ERROR_SYSTEM_FAILURE;
+			EM_SAFE_FREE(decoded);
 			return false;
 		}
 
@@ -2570,7 +2612,7 @@ static int emcore_write_response_into_file(char *filename, char *write_mode, cha
 
 		EM_DEBUG_LOG("Trying to fwrite. decoded_len [%d]", decoded_len);
 
-		if (decoded_len > 0 && fwrite(decoded, decoded_len, 1, fp) < 0)  {
+		if (decoded_len > 0 && fwrite(decoded, decoded_len, 1, fp) == 0)  {
 			EM_DEBUG_EXCEPTION("Error Occured while writing. fwrite(\"%s\") failed. decoded_len [%d], written_bytes [%d] ", decoded, decoded_len, written_bytes);
 			error = EMAIL_ERROR_SYSTEM_FAILURE;
 			goto FINISH_OFF;
@@ -2795,23 +2837,23 @@ static int imap_mail_write_body_to_file(MAILSTREAM *stream, int account_id, int 
 				
 				if (is_attachment) {
 					EM_DEBUG_LOG("Attachment number [%d]", is_attachment);
-					if (!emstorage_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, filename, is_attachment, 0))
-						EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>> ");
+					if (!emcore_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, filename, is_attachment, 0))
+						EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>> ");
 					_imap4_download_noti_interval_value =  body_size *DOWNLOAD_NOTI_INTERVAL_PERCENT / 100;
 					_imap4_total_body_size = body_size;
 				}
 				else {
 					if (multi_part_body_size) {
 						EM_DEBUG_LOG("Multipart body size is [%d]", multi_part_body_size);
-						if (!emstorage_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, filename, multi_part_body_size, 0))
-							EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
+						if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, filename, multi_part_body_size, 0))
+							EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 						_imap4_download_noti_interval_value =  multi_part_body_size *DOWNLOAD_NOTI_INTERVAL_PERCENT / 100;
 						/*  _imap4_total_body_size should be set before calling this functio */
 						/* _imap4_total_body_size */
 					}
 					else {
-						if (!emstorage_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, filename, body_size, 0))
-							EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>>");
+						if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, filename, body_size, 0))
+							EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>>");
 						_imap4_download_noti_interval_value =  body_size *DOWNLOAD_NOTI_INTERVAL_PERCENT / 100;
 						_imap4_total_body_size = body_size;
 					}
@@ -2851,17 +2893,17 @@ static int imap_mail_write_body_to_file(MAILSTREAM *stream, int account_id, int 
 							EM_DEBUG_LOG("DOWNLOADING STATUS NOTIFY  :  Total[%d] / [%d] = %d %% Completed.", _imap4_received_body_size, _imap4_total_body_size, 100*_imap4_received_body_size/_imap4_total_body_size);
 					
 						if (is_attachment) {
-							if (_imap4_total_body_size && !emstorage_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, filename, is_attachment, 100 *_imap4_received_body_size / _imap4_total_body_size))
-								EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>> ");
+							if (_imap4_total_body_size && !emcore_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, filename, is_attachment, 100 *_imap4_received_body_size / _imap4_total_body_size))
+								EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>> ");
 						}
 						else {
 							if (multi_part_body_size) {
-								if (!emstorage_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, filename, _imap4_total_body_size, _imap4_received_body_size))
-									EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
+								if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, filename, _imap4_total_body_size, _imap4_received_body_size))
+									EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 							}
 							else {
-								if (!emstorage_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, filename, _imap4_total_body_size, _imap4_received_body_size))
-									EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>>");
+								if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, filename, _imap4_total_body_size, _imap4_received_body_size))
+									EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>>");
 							}
 						}	/*  if (is_attachment) .. else .. */
 					}
@@ -2909,18 +2951,18 @@ static int imap_mail_write_body_to_file(MAILSTREAM *stream, int account_id, int 
 								EM_DEBUG_LOG("DOWNLOADING STATUS NOTIFY  :  Total[%d] / [%d] = %d %% Completed.", _imap4_received_body_size, _imap4_total_body_size, 100*_imap4_received_body_size/_imap4_total_body_size);
 							
 								if (is_attachment) {
-									if (!emstorage_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, filename, is_attachment, 100 *_imap4_received_body_size / _imap4_total_body_size))
-										EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>> ");
+									if (!emcore_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, filename, is_attachment, 100 *_imap4_received_body_size / _imap4_total_body_size))
+										EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>> ");
 								}
 								else {
 									if (multi_part_body_size) {
 										/* EM_DEBUG_LOG("DOWNLOADING..........  :  Multipart body size is [%d]", multi_part_body_size) */
-									if (!emstorage_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, filename, _imap4_total_body_size, _imap4_received_body_size))
-											EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
+									if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, filename, _imap4_total_body_size, _imap4_received_body_size))
+											EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 									}
 									else {
-										if (!emstorage_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, filename, _imap4_total_body_size, _imap4_received_body_size))
-											EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>>");
+										if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, filename, _imap4_total_body_size, _imap4_received_body_size))
+											EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>>");
 									}
 								}	/*  if (is_attachment) .. else .. */
 							}
@@ -3174,14 +3216,14 @@ static int emcore_get_body_part_imap_full(MAILSTREAM *stream, int msg_uid, int a
 					goto FINISH_OFF;
 				}				
 				
-			/* Search info from attachment list followed by inline attachment list */
+				/* Search info from attachment list followed by inline attachment list */
 
 				ai = cnt_info->file;
 				EM_DEBUG_LOG("ai - %p ", (ai));
 				
 				/* For Inline content append to the end */
 				for (i = 1; ai; ai = ai->next, i++) {
-					if (ai->save == NULL && (ai->content_id != NULL && !strcmp(ai->content_id, body->id))) {
+					if (ai->save == NULL && (ai->content_id != NULL && EM_SAFE_STRCMP(ai->content_id, body->id) == 0)) {
 						EM_DEBUG_LOG("Found matching details ");
 						ai->save = buf;
 						break;
@@ -3192,8 +3234,8 @@ static int emcore_get_body_part_imap_full(MAILSTREAM *stream, int msg_uid, int a
 			FINISH_OFF_IF_CANCELED;
 				
 			if (cnt_info->grab_type == GRAB_TYPE_ATTACHMENT) {
-				if (!emstorage_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, buf, cnt_info->file_no, 0))
-					EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>> ");
+				if (!emcore_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, buf, cnt_info->file_no, 0))
+					EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>> ");
 				
 				_imap4_download_noti_interval_value =  body_size *DOWNLOAD_NOTI_INTERVAL_PERCENT / 100;
 				_imap4_total_body_size = body_size;
@@ -3201,14 +3243,14 @@ static int emcore_get_body_part_imap_full(MAILSTREAM *stream, int msg_uid, int a
 			else {
 				if (multi_part_body_size) {
 					EM_DEBUG_LOG("Multipart body size is [%d]", multi_part_body_size);
-					if (!emstorage_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, buf, multi_part_body_size, 0))
-						EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
+					if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, buf, multi_part_body_size, 0))
+						EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 					
 					_imap4_download_noti_interval_value =  multi_part_body_size *DOWNLOAD_NOTI_INTERVAL_PERCENT / 100;
 				}
 				else {
-					if (!emstorage_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, buf, body_size, 0))
-						EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
+					if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, buf, body_size, 0))
+						EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 					
 					_imap4_download_noti_interval_value =  body_size *DOWNLOAD_NOTI_INTERVAL_PERCENT / 100;
 					_imap4_total_body_size = body_size;
@@ -3271,18 +3313,18 @@ static int emcore_get_body_part_imap_full(MAILSTREAM *stream, int msg_uid, int a
 					EM_DEBUG_LOG("DOWNLOADING STATUS NOTIFY  :  Total[%d] / [%d] = %d %% Completed.", _imap4_received_body_size, _imap4_total_body_size, imap4_total_body_download_progress);
 				
 					if (cnt_info->grab_type == GRAB_TYPE_ATTACHMENT) {
-						if (!emstorage_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, buf, cnt_info->file_no, imap4_total_body_download_progress))
-							EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>> ");
+						if (!emcore_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, buf, cnt_info->file_no, imap4_total_body_download_progress))
+							EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>> ");
 					}
 					else {
 							if (multi_part_body_size) {
 								/* EM_DEBUG_LOG("DOWNLOADING..........  :  Multipart body size is [%d]", multi_part_body_size) */
-							if (!emstorage_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, buf, _imap4_total_body_size, _imap4_received_body_size))
-									EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
+							if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, buf, _imap4_total_body_size, _imap4_received_body_size))
+									EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 							}
 							else {
-							if (!emstorage_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, buf, _imap4_total_body_size, _imap4_received_body_size))
-									EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>>");
+							if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, buf, _imap4_total_body_size, _imap4_received_body_size))
+									EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>>");
 							}
 					}	/*  if (is_attachment) .. else .. */
 				}
@@ -3352,18 +3394,18 @@ static int emcore_get_body_part_imap_full(MAILSTREAM *stream, int msg_uid, int a
 							EM_DEBUG_LOG("DOWNLOADING STATUS NOTIFY  :  Total[%d] / [%d] = %d %% Completed.", _imap4_received_body_size, _imap4_total_body_size, imap4_total_body_download_progress);
 						
 							if (cnt_info->grab_type == GRAB_TYPE_ATTACHMENT) {
-								if (!emstorage_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, buf, cnt_info->file_no, imap4_total_body_download_progress))
-									EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>> ");
+								if (!emcore_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, buf, cnt_info->file_no, imap4_total_body_download_progress))
+									EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>> ");
 							}
 							else {
 								if (multi_part_body_size) {
 									/* EM_DEBUG_LOG("DOWNLOADING..........  :  Multipart body size is [%d]", multi_part_body_size) */
-									if (!emstorage_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, buf, _imap4_total_body_size, _imap4_received_body_size))
-										EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
+									if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, buf, _imap4_total_body_size, _imap4_received_body_size))
+										EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 								}
 								else {
-									if (!emstorage_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, buf, _imap4_total_body_size, _imap4_received_body_size))
-										EM_DEBUG_EXCEPTION(" emstorage_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>>");
+									if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, buf, _imap4_total_body_size, _imap4_received_body_size))
+										EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>>");
 								}
 							}	/*  if (is_attachment) .. else .. */
 						}
@@ -4599,7 +4641,8 @@ INTERNAL_FUNC int emcore_set_fetch_body_section(BODY *body, int enable_inline_li
 		return FAILURE;
 	}
 	
-	body->id = cpystr("1"); /*  top level body */
+//	body->id = cpystr("1"); /*  top level body */
+	EM_DEBUG_LOG("body->id : [%s]", body->id);
 	
 	g_inline_count = 0;
 	EM_SAFE_FREE(g_inline_list);
@@ -5020,7 +5063,7 @@ INTERNAL_FUNC int emcore_make_mail_data_from_mime_data(struct _m_mesg *mmsg, str
 			goto FINISH_OFF;
 		}
 
-		if (!emstorage_get_save_name(EML_FOLDER, eml_mail_id, 0, cnt_info->text.plain_charset ? cnt_info->text.plain_charset : "UTF-8", buf, &err)) {
+		if (!emstorage_get_save_name(EML_FOLDER, eml_mail_id, 0, cnt_info->text.plain_charset ? cnt_info->text.plain_charset : UNKNOWN_CHARSET_PLAIN_TEXT_FILE, buf, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -5041,12 +5084,13 @@ INTERNAL_FUNC int emcore_make_mail_data_from_mime_data(struct _m_mesg *mmsg, str
 		}
 		
 		if (cnt_info->text.plain_charset != NULL) {
-			memcpy(html_body, cnt_info->text.plain_charset, strlen(cnt_info->text.plain_charset));
-			strcat(html_body, HTML_EXTENSION_STRING);
+			SNPRINTF(html_body, MAX_PATH, "%s%s", cnt_info->text.plain_charset, HTML_EXTENSION_STRING);
 		}
 		else {
-			memcpy(html_body, "UTF-8.htm", strlen("UTF-8.htm"));
+			strcpy(html_body, UNKNOWN_CHARSET_HTML_TEXT_FILE);
 		}
+
+
 		if (!emstorage_get_save_name(EML_FOLDER, eml_mail_id, 0, html_body, buf, &err))  {
 			EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 			goto FINISH_OFF;
@@ -5162,8 +5206,10 @@ FINISH_OFF:
 		if (output_attachment_count)
 			*output_attachment_count = local_attachment_count;
 	} else {
-		if (p_mail_data)
+		if (p_mail_data) {
 			emcore_free_mail_data(p_mail_data);
+			EM_SAFE_FREE(p_mail_data);
+		}
 
 		if (attachment)
 			emcore_free_attachment_data(&attachment, attachment_num, NULL);
@@ -5172,6 +5218,7 @@ FINISH_OFF:
 	if (err_code)
 		*err_code = err;
 
+	EM_DEBUG_FUNC_END("ret : [%d]", ret);
 	return ret;
 }
 

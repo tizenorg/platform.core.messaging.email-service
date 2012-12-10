@@ -11,10 +11,6 @@ MESSAGE("")
 MESSAGE(">>> current directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 MESSAGE(">>> Build type: ${CMAKE_BUILD_TYPE}")
 
-#SET(VISIBILITY "-DEXPORT_API=\"__attribute__((visibility(\\\"default\\\")))\"")
-#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${VISIBILITY} -fvisibility=hidden")
-#SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${VISIBILITY} -fvisibility=hidden")
-
 SET(IPC-LIB "email-ipc")
 SET(IPC-SRCS
 	${CMAKE_SOURCE_DIR}/email-ipc/email-ipc-api.c
@@ -32,6 +28,7 @@ SET(IPC-SRCS
 	${CMAKE_SOURCE_DIR}/email-ipc/email-stub/email-stub-socket.c
 	${CMAKE_SOURCE_DIR}/email-ipc/email-stub/email-stub-task.c
 	${CMAKE_SOURCE_DIR}/email-ipc/email-stub/email-stub-task-manager.c
+	${CMAKE_SOURCE_DIR}/email-ipc/email-activation/email-dbus-activation.c
 )
 
 INCLUDE_DIRECTORIES(
@@ -39,16 +36,17 @@ INCLUDE_DIRECTORIES(
 	${CMAKE_SOURCE_DIR}/email-ipc/include
 	${CMAKE_SOURCE_DIR}/email-ipc/email-proxy/include
 	${CMAKE_SOURCE_DIR}/email-ipc/email-stub/include
-#	${CMAKE_SOURCE_DIR}/email-ipc/email-common/include
 	${CMAKE_SOURCE_DIR}/email-ipc/email-socket/include
 	${CMAKE_SOURCE_DIR}/email-ipc/email-ipc-api/include
+	${CMAKE_SOURCE_DIR}/email-ipc/email-activation/include
 	${CMAKE_SOURCE_DIR}/email-common-use/include
 	${CMAKE_SOURCE_DIR}/email-api/include
 	${CMAKE_SOURCE_DIR}/email-core/email-storage/include/
+	${CMAKE_SOURCE_DIR}/email-core/include/
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(ipc_pkgs REQUIRED dlog glib-2.0)
+pkg_check_modules(ipc_pkgs REQUIRED dlog dbus-1 glib-2.0)
 
 FOREACH(flag ${ipc_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
@@ -56,20 +54,25 @@ ENDFOREACH(flag)
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${EXTRA_CFLAGS}")
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
-#message("***cmake_c_flags ${CMAKE_C_FLAGS}")
-#message("***extra_cflags ${EXTRA_CFLAGS}")
-#message("***base_pkgs_cflags ${base_pkgs_CFLAGS}")
-#message("***result ${CMAKE_CXX_FLAGS}")
-
 
 ADD_DEFINITIONS("-DBRSDK_VER=\"2\"")
 
 SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
+
+MESSAGE("Before DBUS binding")
+
+FIND_PROGRAM(DBUS_BINDING_TOOL NAMES dbus-binding-tool)
+EXEC_PROGRAM("${DBUS_BINDING_TOOL}" ARGS "--prefix=email_service ${CMAKE_CURRENT_SOURCE_DIR}/email-activation/email-service.xml --mode=glib-client --output=${CMAKE_CURRENT_SOURCE_DIR}/email-activation/include/email-service-glue.h")
+EXEC_PROGRAM("${DBUS_BINDING_TOOL}" ARGS "--prefix=email_service ${CMAKE_CURRENT_SOURCE_DIR}/email-activation/email-service.xml --mode=glib-server --output=${CMAKE_CURRENT_SOURCE_DIR}/email-activation/include/email-service-binding.h")
+
+MESSAGE("After DBUS binding")
 
 ADD_LIBRARY(${IPC-LIB} SHARED ${IPC-SRCS})
 TARGET_LINK_LIBRARIES(${IPC-LIB} ${ipc_pkgs_LDFLAGS} email-common-use pthread)
 SET_TARGET_PROPERTIES(${IPC-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${IPC-LIB} PROPERTIES VERSION ${VERSION})
 
+INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/email-activation/email-service.service DESTINATION share/dbus-1/services)
 INSTALL(TARGETS ${IPC-LIB} DESTINATION lib COMPONENT RuntimeLibraries)
+
 

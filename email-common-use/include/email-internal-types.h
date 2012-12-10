@@ -50,7 +50,7 @@ extern "C"
 #define __FEATURE_MOVE_TO_OUTBOX_FIRST__
 /*  #define __FEATURE_PARTIAL_BODY_FOR_POP3__ */
 /*  #define __FEATURE_KEEP_CONNECTION__  */
-#define __FEATURE_DRM__
+/*  #define __FEATURE_DRM__ */
 #define __FEATURE_PARTIAL_BODY_DOWNLOAD__
 #define __FEATURE_HEADER_OPTIMIZATION__
 #define __FEATURE_SEND_OPTMIZATION__
@@ -62,10 +62,11 @@ extern "C"
 #define __FEATURE_USE_SHARED_MUTEX_FOR_GENERATING_MAIL_ID__
 #define __FEATURE_XLIST_SUPPORT__
 #define __FEATURE_SUPPORT_REPORT_MAIL__
+#define __FEATURE_SUPPORT_IMAP_ID__
+#define __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__
+#define __FEATURE_SUPPORT_VALIDATION_SYSTEM__
 /*  #define __FEATURE_USE_SHARED_MUTEX_FOR_PROTECTED_FUNC_CALL__ */
 /*  #define __FEATURE_IMAP_IDLE__ */
-
-#define _TIZEN_PUBLIC_ /* __FEATURE_WDS_SUPPORT__ and __FEATURE_NOTIFICATION_FOR_NEW_MAIL__ and MDM_PHASE_2*/
 
 /* ----------------------------------------------------------------------------- */
 /*  Macro */
@@ -81,8 +82,8 @@ extern "C"
 #define PARTIAL_BODY_SIZE_IN_BYTES          15360     /*  Partial Body download - 15K */
 #define NO_LIMITATION                       0
 #define MAX_MAILBOX_TYPE                    100
-#define EMAIL_SYNC_ALL_MAILBOX                1
-#define EMAIL_ATTACHMENT_MAX_COUNT            512
+#define EMAIL_SYNC_ALL_MAILBOX              1
+#define EMAIL_ATTACHMENT_MAX_COUNT          512
 #define DOWNLOAD_MAX_BUFFER_SIZE            8000
 #define LOCAL_MAX_BUFFER_SIZE               1000000
 #define IMAP_MAX_COMMAND_LENGTH             1000
@@ -93,17 +94,20 @@ extern "C"
 #define MAIL_ID_STRING_LENGTH               10
 #define	EMAIL_LIMITATION_FREE_SPACE         (5) /*  This value is 5MB */
 #define EMAIL_MAIL_MAX_COUNT                5000
-#define HTML_EXTENSION_STRING       ".htm"
-#define MAX_PATH_HTML               256
+#define HTML_EXTENSION_STRING               ".htm"
+#define MAX_PATH_HTML                       256
+#define MAX_ACTIVE_TASK                     10
 
 #define DIR_SEPERATOR                       "/"
 
-#define DATA_PATH                           "/opt/data"
-#define DB_PATH                             "/opt/dbspace"
-#define EMAIL_SERVICE_DB_FILE_PATH          "/opt/dbspace/.email-service.db"
+#define USERDATA_PATH                       "/opt/usr"
+#define DATA_PATH                           "/opt/usr/data"
+#define DB_PATH                             "/opt/usr/dbspace"
+#define EMAIL_SERVICE_DB_FILE_PATH          "/opt/usr/dbspace/.email-service.db"
 
 #define EMAILPATH 					        DATA_PATH"/email"
-#define MAILHOME 					        DATA_PATH"/email/.emfdata"
+#define MAILHOME 					        DATA_PATH"/email/.email_data"
+#define MAILTEMP                            MAILHOME"/tmp"
 #define DIRECTORY_PERMISSION                0755
 
 #define MIME_SUBTYPE_DRM_OBJECT             "vnd.oma.drm.message"
@@ -112,7 +116,14 @@ extern "C"
 
 #define SHM_FILE_FOR_DB_LOCK                "/.email_shm_db_lock"
 
-#define NATIVE_EMAIL_APPLICATION_PKG        "org.tizen.email"
+#define NATIVE_EMAIL_APPLICATION_PKG        "com.samsung.email"
+
+#define IMAP_ID_OS                          "TIZEN"
+#define IMAP_ID_OS_VERSION                  "2.0b"
+#define IMAP_ID_VENDOR                      "Samsung Mobile"
+#define IMAP_ID_DEVICE_NAME                 "GT-I8800_EUR_XX"
+#define IMAP_ID_AGUID                       "1"
+#define IMAP_ID_ACLID                       "Samsung"
 
 #ifdef __FEATURE_USE_SHARED_MUTEX_FOR_GENERATING_MAIL_ID__
 #define SHM_FILE_FOR_MAIL_ID_LOCK           "/.email_shm_mail_id_lock"
@@ -182,6 +193,7 @@ typedef pthread_t thread_t;
 #define VCONF_KEY_DEFAULT_SLOT_SIZE     "db/private/email-service/slot_size"
 #define VCONF_KEY_LATEST_MAIL_ID        "db/private/email-service/latest_mail_id"
 #define VCONF_KEY_DEFAULT_ACCOUNT_ID    "db/private/email-service/default_account_id"
+#define VCONF_KEY_NOTI_PRIVATE_ID       "db/private/email-service/noti_private_id"
 
 #define OUTMODE "wb"
 #define INMODE "rb"
@@ -254,7 +266,7 @@ enum
 };
 
 /*  event information */
-typedef struct 
+typedef struct
 {
 	int                      account_id;         /*  in general, account id */
 	email_event_type_t         type;
@@ -270,7 +282,7 @@ typedef struct
 } email_event_t;
 
 
-typedef struct 
+typedef struct
 {
 	int   num;
 	void *data;
@@ -298,20 +310,21 @@ typedef struct
 
 typedef struct
 {
-	int                 mailbox_id;                 /**< Unique id on mailbox table.*/
-	char               *mailbox_name;               /**< Specifies the path of mailbox.*/
-	email_mailbox_type_e  mailbox_type;               /**< Specifies the type of mailbox */
-	char               *alias;                      /**< Specifies the display name of mailbox.*/
-	int                 unread_count;               /**< Specifies the Unread Mail count in the mailbox.*/
-	int                 total_mail_count_on_local;  /**< Specifies the total number of mails in the mailbox in the local DB.*/
-	int                 total_mail_count_on_server; /**< Specifies the total number of mails in the mailbox in the mail server.*/
-	int                 local;                      /**< Specifies the local mailbox.*/
-	int                 synchronous;                /**< Specifies the mailbox with synchronized the server.*/
-	int                 account_id;                 /**< Specifies the account ID for mailbox.*/
-	int                 has_archived_mails;         /**< Specifies the archived mails.*/
-	int                 mail_slot_size;             /**< Specifies how many mails can be stored in local mailbox.*/
-	void               *user_data;                  /**< Specifies the internal data.*/
-	void               *mail_stream;                /**< Specifies the internal data.*/
+	int                    mailbox_id;                 /**< Unique id on mailbox table.*/
+	char                  *mailbox_name;               /**< Specifies the path of mailbox.*/
+	email_mailbox_type_e   mailbox_type;               /**< Specifies the type of mailbox */
+	char                  *alias;                      /**< Specifies the display name of mailbox.*/
+	int                    unread_count;               /**< Specifies the Unread Mail count in the mailbox.*/
+	int                    total_mail_count_on_local;  /**< Specifies the total number of mails in the mailbox in the local DB.*/
+	int                    total_mail_count_on_server; /**< Specifies the total number of mails in the mailbox in the mail server.*/
+	int                    local;                      /**< Specifies the local mailbox.*/
+	int                    synchronous;                /**< Specifies the mailbox with synchronized the server.*/
+	int                    account_id;                 /**< Specifies the account ID for mailbox.*/
+	int                    has_archived_mails;         /**< Specifies the archived mails.*/
+	int                    mail_slot_size;             /**< Specifies how many mails can be stored in local mailbox.*/
+	int                    no_select;                  /**< Specifies the 'no_select' attribute from xlist.*/
+	void                  *user_data;                  /**< Specifies the internal data.*/
+	void                  *mail_stream;                /**< Specifies the internal data.*/
 } email_internal_mailbox_t;
 
 #ifdef __FEATURE_KEEP_CONNECTION__
@@ -335,12 +348,17 @@ typedef struct
 	int   contact_id;
 } email_mail_contact_info_t;
 
-/*  global account lis */
-typedef struct email_account_list
-{
+/*  global account list */
+typedef struct email_account_list {
     email_account_t *account;
     struct email_account_list *next;
 } email_account_list_t;
+
+typedef struct {
+	int                task_id;
+	email_task_type_t  task_type;
+	thread_t           thread_id;
+} email_active_task_t;
 
 typedef void (*email_event_callback)(int total, int done, int status, int account_id, int mail_id, int handle, void *user_data, int error);
 

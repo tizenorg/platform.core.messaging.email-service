@@ -117,14 +117,14 @@ extern "C" {
 
 /**
 
- * @open
+
  * @fn email_get_rule(int filter_id, email_rule_t** filtering_set)
  * @brief	Get a information of filtering.
  *
  * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure
  * @param[in] filter_id			Specifies the filter ID.
  * @param[out] filtering_set	The returned information of filter are saved here.
- * @exception 	#EMAIL_ERROR-INVALID_PARAM 	-Invalid argument
+ * @exception 	EMAIL_ERROR_INVALID_PARAM 	-Invalid argument
  * @see 	email_rule_t
  * @remarks N/A
  */
@@ -132,7 +132,7 @@ EXPORT_API int email_get_rule(int filter_id, email_rule_t** filtering_set);
 
 /**
 
- * @open
+
  * @fn email_get_rule_list(email_rule_t** filtering_set, int* count)
  * @brief	Get all filterings.This function gives all the filter rules already set before by user.
  * 		This will provide total number of filter rules available and information of all rules.
@@ -140,7 +140,7 @@ EXPORT_API int email_get_rule(int filter_id, email_rule_t** filtering_set);
  * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure
  * @param[out] filtering_set		The returned filterings are saved here.(possibly NULL)
  * @param[out] count				The count of returned filters is saved here.(possibly 0)
- * @exception 	#EMAIL_ERROR-INVALID_PARAM 	-Invalid argument
+ * @exception 	EMAIL_ERROR_INVALID_PARAM 	-Invalid argument
  * @see 	email_rule_t
  * @remarks N/A
  */
@@ -148,13 +148,13 @@ EXPORT_API int email_get_rule_list(email_rule_t** filtering_set, int* count);
 
 /**
 
- * @open
+
  * @fn email_add_rule(email_rule_t* filtering_set)
  * @brief	Add a filter information.This function is invoked if user wants to add a new filter rule.
  *
  * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
  * @param[in] filtering_set		Specifies the pointer of adding filter structure.
- * @exception 	#EMAIL_ERROR-INVALID_PARAM 	-Invalid argument
+ * @exception 	EMAIL_ERROR_INVALID_PARAM 	-Invalid argument
  * @see 	email_rule_t
  * @remarks N/A
  */
@@ -162,14 +162,14 @@ EXPORT_API int email_add_rule(email_rule_t* filtering_set);
 
 /**
 
- * @open
+
  * @fn email_update_rule(int filter_id, email_rule_t* new_set)
  * @brief	Change a filter information.This function will update the existing filter rule with new information.
  *
  * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
  * @param[in] filter_id	Specifies the original filter ID.
  * @param[in] new_set	Specifies the information of new filter.
- * @exception 	#EMAIL_ERROR-INVALID_PARAM 	-Invalid argument
+ * @exception 	EMAIL_ERROR_INVALID_PARAM 	-Invalid argument
  * @see 	email_rule_t
  * @remarks N/A
  */
@@ -177,13 +177,12 @@ EXPORT_API int email_update_rule(int filter_id, email_rule_t* new_set);
 
 /**
 
- * @open
  * @fn email_delete_rule(int filter_id)
  * @brief	Delete a filter information.This function will delete the exsting filter information by specified filter Id.
  *
  * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure
  * @param[in] filter_id	Specifies the filter ID.
- * @exception 	#EMAIL_ERROR-INVALID_PARAM 	-Invalid argument
+ * @exception 	EMAIL_ERROR_INVALID_PARAM 	-Invalid argument
  * @see 	none
  * @remarks N/A
  */
@@ -193,14 +192,13 @@ EXPORT_API int email_delete_rule(int filter_id);
 
 /**
 
- * @open
  * @fn email_free_rule (email_rule_t** filtering_set, int count)
  * @brief	Free allocated memory.
  *
  * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure
  * @param[in] filtering_set	Specifies the pointer of pointer of filter structure for memory free.
  * @param[in] count			Specifies the count of filter.
- * @exception 	#EMAIL_ERROR-INVALID_PARAM 	-Invalid argument
+ * @exception 	EMAIL_ERROR_INVALID_PARAM 	-Invalid argument
  * @see 	email_rule_t
  * @remarks N/A
  */

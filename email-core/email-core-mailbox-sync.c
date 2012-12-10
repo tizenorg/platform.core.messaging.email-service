@@ -30,8 +30,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <vconf.h>
 
 #include "email-internal-types.h"
+
+#ifdef __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__
+#include <vconf/vconf-internal-email-keys.h>
+#endif /* __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__ */
 
 #include "c-client.h"
 #include "lnx_inc.h"
@@ -49,6 +54,7 @@
 #include "email-core-smtp.h"
 #include "email-core-account.h" 
 #include "email-storage.h"
+#include "email-core-signal.h"
 #include "flstring.h"
 #include "email-debug-log.h"
 
@@ -954,7 +960,7 @@ static int emcore_get_uids_to_download(MAILSTREAM *stream, email_account_t *acco
 					goto FINISH_OFF;
 				}
 				/* emcore_delete_notification_for_read_mail(mail->mail_id); */
-				emcore_check_unread_mail(); 
+				emcore_display_unread_in_badge(); 
 			}
 			
 			if (!emstorage_remove_downloaded_mail(input_mailbox_tbl->account_id, input_mailbox_tbl->mailbox_name, downloaded_uids[i].s_uid, true, &err)) {   /*  remove uid from uid list */
@@ -1028,7 +1034,7 @@ static int emcore_add_read_mail_uid(emstorage_mailbox_tbl_t *input_maibox_data, 
 	
 	read_mail_uid.account_id = input_maibox_data->account_id;
 	
-	if (!(input_maibox_data->mailbox_name) || !(server_mailbox_name)){
+	if (!(input_maibox_data->mailbox_id) || !(server_mailbox_name)){
 		if (!emstorage_get_mailbox_by_mailbox_type(input_maibox_data->account_id, EMAIL_MAILBOX_TYPE_INBOX, &mailbox_tbl, false, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
 			goto FINISH_OFF;
@@ -1325,6 +1331,7 @@ int emcore_make_mail_tbl_data_from_envelope(MAILSTREAM *mail_stream, ENVELOPE *i
 	EM_PROFILE_BEGIN(emCoreParseEnvelope);
 	EM_DEBUG_FUNC_BEGIN("input_envelope[%p], input_uid_elem [%p], output_mail_tbl_data[%p],  err_code[%p]", input_envelope, input_uid_elem, output_mail_tbl_data, err_code);
 
+	int zone_hour = 0;
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 	int priority = 3;
@@ -1420,11 +1427,15 @@ int emcore_make_mail_tbl_data_from_envelope(MAILSTREAM *mail_stream, ENVELOPE *i
 	
 	memset((void*)&temp_time_info, 0,  sizeof(struct tm));
 
-	temp_time_info.tm_sec  = mail_cache_element->seconds;
-	temp_time_info.tm_min  = mail_cache_element->minutes - mail_cache_element->zminutes;
-	temp_time_info.tm_hour = mail_cache_element->hours - mail_cache_element->zhours;
+	EM_DEBUG_LOG("tm_hour[%d] zhours [%d] tm_min[%d] zminutes[%d] zoocident[%d]", mail_cache_element->hours, mail_cache_element->zhours,  mail_cache_element->minutes, mail_cache_element->zminutes, mail_cache_element->zoccident);
 
-	if(mail_cache_element->hours - mail_cache_element->zhours < 0) {
+	zone_hour = mail_cache_element->zhours * (mail_cache_element->zoccident?-1:1);
+	
+	temp_time_info.tm_sec  = mail_cache_element->seconds;
+	temp_time_info.tm_min  = mail_cache_element->minutes + mail_cache_element->zminutes;
+	temp_time_info.tm_hour = mail_cache_element->hours - zone_hour;
+
+	if(temp_time_info.tm_hour < 0) {
 		temp_time_info.tm_mday = mail_cache_element->day - 1;
 		temp_time_info.tm_hour += 24;
 	}
@@ -1477,6 +1488,7 @@ INTERNAL_FUNC int emcore_sync_header(emstorage_mailbox_tbl_t *input_mailbox_tbl,
 
 	int ret = false;
 	int err = EMAIL_ERROR_NONE, err_2 = EMAIL_ERROR_NONE;
+	int err_from_vconf = 0;
 	int status = EMAIL_LIST_FAIL;
 	int download_limit_count;
 	email_account_t        *account_ref = NULL;
@@ -1512,6 +1524,12 @@ INTERNAL_FUNC int emcore_sync_header(emstorage_mailbox_tbl_t *input_mailbox_tbl,
 
 	FINISH_OFF_IF_CANCELED;
 	
+#ifdef __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__
+	if ((err_from_vconf = vconf_set_int(VCONFKEY_EMAIL_SYNC_STATE, 1)) != 0 ) {
+		EM_DEBUG_LOG("vconf_set_int failed [%d]", err_from_vconf);
+	}
+#endif /* __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__ */
+
 #ifndef 	__FEATURE_KEEP_CONNECTION__
 	/*  h.gahlaut :  Recycling of stream is taken care internally in emcore_connect_to_remote_mailbox so no need of this code here */
 	if (stream_recycle)
@@ -1734,10 +1752,10 @@ INTERNAL_FUNC int emcore_sync_header(emstorage_mailbox_tbl_t *input_mailbox_tbl,
 #ifndef __PARTIAL_BODY_FOR_POP3__
 					}
 #endif /*  __PARTIAL_BODY_FOR_POP3__ */
-
+/*
 					if (!uid_elem->flag.seen && input_mailbox_tbl->mailbox_type != EMAIL_MAILBOX_TYPE_SPAMBOX)
 						emcore_add_notification_for_unread_mail(new_mail_tbl_data);
-					
+*/					
 					FINISH_OFF_IF_CANCELED;
 					
 					if (!uid_elem->flag.seen)
@@ -1747,8 +1765,8 @@ INTERNAL_FUNC int emcore_sync_header(emstorage_mailbox_tbl_t *input_mailbox_tbl,
 					EM_DEBUG_LOG("Header Percentage Completed [%d] : [%d/%d]  mail_id [%d]", percentage, i+1, total, mail_id);
 					SNPRINTF(mailbox_id_param_string, 10, "%d", input_mailbox_tbl->mailbox_id);
 
-					if (!emstorage_notify_storage_event(NOTI_MAIL_ADD, account_id, mail_id, mailbox_id_param_string, thread_id))
-						EM_DEBUG_EXCEPTION("emstorage_notify_storage_event [NOTI_MAIL_ADD] failed");
+					if (!emcore_notify_storage_event(NOTI_MAIL_ADD, account_id, mail_id, mailbox_id_param_string, thread_id))
+						EM_DEBUG_EXCEPTION("emcore_notify_storage_event [NOTI_MAIL_ADD] failed");
 				}
 			
 				/* Set contact log */
@@ -1795,6 +1813,12 @@ FINISH_OFF:
 		EM_DEBUG_EXCEPTION("emcore_remove_overflowed_mails failed - %d", err_2);
 
 	emstorage_stamp_last_sync_time_of_mailbox(input_mailbox_tbl->mailbox_id, 1);
+
+#ifdef __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__
+	if ((err_from_vconf = vconf_set_int(VCONFKEY_EMAIL_SYNC_STATE, 0)) != 0 ) {
+		EM_DEBUG_LOG("vconf_set_int failed [%d]", err_from_vconf);
+	}
+#endif /* __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__ */
 
 	if (new_mail_tbl_data)
 		emstorage_free_mail(&new_mail_tbl_data, 1, NULL);
@@ -2377,9 +2401,9 @@ void mail_appenduid(char *mailbox, unsigned long uidvalidity, SEARCHSET *set)
     EM_DEBUG_LOG("append uid - %s", g_append_uid_rsp);
 }
 
-INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int account_id, int mail_id, int *err_code)
+INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id [%d], mail_id [%d], err_code [%p]", account_id, mail_id, *err_code);
+	EM_DEBUG_FUNC_BEGIN("mail_id [%d], err_code [%p]", mail_id, *err_code);
 
 	int                             err                  = EMAIL_ERROR_NONE;
 	int                             ret                  = false;
@@ -2927,7 +2951,7 @@ static int emcore_parse_plain_part_for_partial_body(char *header_start_string, c
 
 /*  Content-Type:  IMAGE/octet-stream; name = Default.png */
 /*  Content-Transfer-Encoding:  BASE64 */
-/*  Content-ID:  <4b0d6810b17291f9438783a8eb9d5228@com.tizen.email> */
+/*  Content-ID:  <4b0d6810b17291f9438783a8eb9d5228@com.samsung.slp.email> */
 /*  Content-Disposition:  inline; filename = Default.png */
 
 static int emcore_parse_image_part_for_partial_body(char *header_start_string, char *start_header, char *boundary_string, char *bufsendforparse, email_image_data *image_data, int body_size)
@@ -3326,6 +3350,7 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 			if (modified_body_structure_string != NULL) {
 				EM_SAFE_STRNCPY(body_structure_string, modified_body_structure_string, strlen(modified_body_structure_string));
 				EM_DEBUG_LOG("modified_body_structure_string [%s]", modified_body_structure_string);
+				EM_SAFE_FREE(modified_body_structure_string);
 			}
 			imap_parse_body_structure (stream, body, (unsigned char **)&body_structure_string, reply_from_server);
 			
@@ -3926,7 +3951,9 @@ FINISH_OFF:
 	if (error)
 		*error = err;
 
-	EM_DEBUG_FUNC_END("ret [%d] err [%d]", ret, err);	
+	emstorage_free_account(&pbd_account_tbl, 1, NULL);
+
+	EM_DEBUG_FUNC_END("ret [%d] err [%d]", ret, err);
 	return ret;
 }
 
@@ -3974,7 +4001,7 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 			return NIL;
 		}
 		linelen = strlen(pline);
-		
+
 		if (strcasestr(pline, "BODYSTRUCTURE") != NULL) {
 			temp_body_buffer_size = 0;
 			flags = 0;
@@ -3994,10 +4021,11 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 
 		if (temp_body_buffer_size <= input_download_size) {
 			if (allocated_buffer_size < (bytes_copied + linelen)) {
-				allocated_buffer_size = allocated_buffer_size + (BULK_PARTIAL_BODY_DOWNLOAD_COUNT - count) * input_download_size;
+				allocated_buffer_size = allocated_buffer_size + (BULK_PARTIAL_BODY_DOWNLOAD_COUNT - count + 1) * input_download_size;
 				retPartialBuffer->buffer = (char *)realloc(retPartialBuffer->buffer, allocated_buffer_size);
 				if (NULL == retPartialBuffer->buffer) {
 					EM_DEBUG_EXCEPTION("realloc failed");
+					EM_SAFE_FREE(pline);
 					EM_SAFE_FREE(retPartialBuffer);
 					return NIL;
 				}			
@@ -4014,6 +4042,9 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 
 			if (!ret_reply){
 				EM_DEBUG_EXCEPTION("em_malloc failed");
+				EM_SAFE_FREE(pline);
+				EM_SAFE_FREE(retPartialBuffer->buffer);
+				EM_SAFE_FREE(retPartialBuffer);
 				return NIL;
 			}
 

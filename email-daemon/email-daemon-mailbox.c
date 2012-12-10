@@ -113,8 +113,8 @@ INTERNAL_FUNC int emdaemon_get_mailbox_list(int account_id, email_mailbox_t** ma
 		goto FINISH_OFF;
 	}
 
-	if (!emcore_get_list(account_id, mailbox_list, count, &err))  {
-		EM_DEBUG_EXCEPTION("emcore_get_list failed [%d]", err);
+	if (!emcore_get_mailbox_list(account_id, mailbox_list, count, &err))  {
+		EM_DEBUG_EXCEPTION("emcore_get_mailbox_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
@@ -398,9 +398,13 @@ INTERNAL_FUNC int emdaemon_delete_mailbox_all(email_mailbox_t* mailbox, int* err
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 
-	if (!mailbox || mailbox->account_id <= 0)  {
-		if (mailbox == NULL)
-			EM_DEBUG_EXCEPTION("malibox->account_id[%d]", mailbox->account_id);
+	if (!mailbox)  {
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	if (mailbox->account_id <= 0)  {
+		EM_DEBUG_EXCEPTION("malibox->account_id[%d]", mailbox->account_id);
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
@@ -554,14 +558,7 @@ INTERNAL_FUNC int emdaemon_rename_mailbox(int input_mailbox_id, char *input_mail
 			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed [%d]", err);
 			goto FINISH_OFF;
 		}
-	}
 
-	if ((err = emstorage_rename_mailbox(input_mailbox_id, input_mailbox_path, input_mailbox_alias, true)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emstorage_rename_mailbox failed [%d]", err);
-		goto FINISH_OFF;
-	}
-
-	if (input_on_server) {
 		if (!emstorage_get_account_by_id(old_mailbox_data->account_id, EMAIL_ACC_GET_OPT_DEFAULT, &account_data, true, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed [%d]", err);
 			goto FINISH_OFF;
@@ -573,6 +570,7 @@ INTERNAL_FUNC int emdaemon_rename_mailbox(int input_mailbox_id, char *input_mail
 			event_data.type               = EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER;
 			event_data.event_param_data_1 = EM_SAFE_STRDUP(old_mailbox_data->mailbox_name);
 			event_data.event_param_data_2 = EM_SAFE_STRDUP(input_mailbox_path);
+			event_data.event_param_data_3 = EM_SAFE_STRDUP(input_mailbox_alias);
 			event_data.event_param_data_4 = input_mailbox_id;
 			event_data.account_id         = old_mailbox_data->account_id;
 
@@ -580,6 +578,12 @@ INTERNAL_FUNC int emdaemon_rename_mailbox(int input_mailbox_id, char *input_mail
 				EM_DEBUG_EXCEPTION("emcore_insert_event falied [%d]", err);
 				goto FINISH_OFF;
 			}
+		}
+	}
+	else {
+		if ((err = emstorage_rename_mailbox(input_mailbox_id, input_mailbox_path, input_mailbox_alias, true)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emstorage_rename_mailbox failed [%d]", err);
+			goto FINISH_OFF;
 		}
 	}
 

@@ -45,8 +45,8 @@
 #include <vconf.h>
 #include <regex.h>
 #include <pthread.h>
-
 #include <notification.h>
+#include <badge.h>
 
 #include "email-types.h"
 #include "email-core-global.h"
@@ -59,6 +59,7 @@
 #include "email-core-mailbox-sync.h" 
 #include "email-core-mime.h"
 #include "email-core-sound.h" 
+#include "email-core-signal.h"
 #include "email-utilities.h"
 #include "email-convert.h"
 
@@ -76,7 +77,8 @@
 #define EMAIL_CH_SQUARE_BRACKET_S '['
 #define EMAIL_CH_SQUARE_BRACKET_E ']'
 #define EMAIL_CH_SPACE            ' '
-#define EMAIL_NOTI_ICON_PATH      "/opt/data/email/res/image/Q02_Notification_email.png"
+#define EMAIL_NOTI_ICON_PATH      EMAILPATH"/res/image/Q02_Notification_email.png"
+#define VCONF_KEY_UNREAD_MAIL_COUNT "db/badge/com.samsung.email"
 
 typedef struct  _em_transaction_info_type_t {
 	int mail_id;
@@ -315,7 +317,7 @@ int emcore_get_temp_file_name(char **filename, int *err_code)
 	/* Create Directory If deleted by user*/
 	emstorage_create_dir_if_delete();
 	
-	SNPRINTF(tempname, sizeof(tempname), "%s%c%s%c%d", MAILHOME, DIR_SEPERATOR_CH, MAILTEMP, DIR_SEPERATOR_CH, rand());
+	SNPRINTF(tempname, sizeof(tempname), "%s%c%d", MAILTEMP, DIR_SEPERATOR_CH, rand());
 	
 	char *p = EM_SAFE_STRDUP(tempname);
 	if (p == NULL) {
@@ -544,7 +546,105 @@ int emcore_get_current_session(email_session_t **session)
 	return (i != SESSION_MAX) ? true : false;
 }
 
-int emcore_check_unread_mail()
+int emcore_get_mail_count_by_query(int priority_sender, int *total_mail, int *unread_mail, int *err_code)
+{
+	EM_DEBUG_FUNC_BEGIN();
+
+	int ret = false;
+	int err = EMAIL_ERROR_NONE;
+	int i, count;
+	int type = EMAIL_PRIORITY_SENDER;
+	int unread_count = 0;
+	int total_count = 0;
+	char *conditional_clause_string = NULL;
+
+	int rule_count = 0;
+	int is_completed = 0;
+	emstorage_rule_tbl_t *rule = NULL;
+
+	int filter_count = 0;
+	email_list_filter_t *filter_list = NULL;
+
+	if (priority_sender) {
+		/* Get rule list */
+		if (!emstorage_get_rule(ALL_ACCOUNT, type, 0, &rule_count, &is_completed, &rule, true, &err) || !rule) {
+			EM_DEBUG_EXCEPTION("emstorage_get_rule failed");
+			goto FINISH_OFF;
+		}
+
+		/* Make query for searching unread mail */
+		filter_count = (rule_count * 2) + 1;				// 1 is unseen field.
+		filter_list = em_malloc(sizeof(email_list_filter_t) * filter_count);
+		if (filter_list == NULL) {
+			EM_DEBUG_EXCEPTION("em_malloc failed");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
+		for (i = 0, count = 0; i < filter_count - 1; i += 2, count++) {
+			filter_list[i].list_filter_item_type                             = EMAIL_LIST_FILTER_ITEM_RULE;
+			filter_list[i].list_filter_item.rule.rule_type                   = EMAIL_LIST_FILTER_RULE_INCLUDE;
+			filter_list[i].list_filter_item.rule.target_attribute            = EMAIL_MAIL_ATTRIBUTE_FROM;
+			filter_list[i].list_filter_item.rule.key_value.string_type_value = EM_SAFE_STRDUP(rule[count].value);
+
+			filter_list[i+1].list_filter_item_type                           = EMAIL_LIST_FILTER_ITEM_OPERATOR;
+			if (i == (filter_count - 2)) {
+				filter_list[i+1].list_filter_item.operator_type          = EMAIL_LIST_FILTER_OPERATOR_AND;
+			} else {
+				filter_list[i+1].list_filter_item.operator_type          = EMAIL_LIST_FILTER_OPERATOR_OR;
+			}
+		}
+
+		filter_list[i].list_filter_item_type                              = EMAIL_LIST_FILTER_ITEM_RULE;
+		filter_list[i].list_filter_item.rule.rule_type                    = EMAIL_LIST_FILTER_RULE_EQUAL;
+		filter_list[i].list_filter_item.rule.target_attribute             = EMAIL_MAIL_ATTRIBUTE_FLAGS_SEEN_FIELD;
+		filter_list[i].list_filter_item.rule.key_value.integer_type_value = 0;
+
+		if ((err = emstorage_write_conditional_clause_for_getting_mail_list(filter_list, filter_count, NULL, 0, -1, -1, &conditional_clause_string)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emstorage_write_conditional_clause_for_getting_mail_list failed[%d]", err);
+			goto FINISH_OFF;
+		}
+		
+		EM_DEBUG_LOG("conditional_clause_string[%s]", conditional_clause_string);
+
+		/* Search the mail of priority sender in DB */
+		if ((err = emstorage_query_mail_count(conditional_clause_string, true, &total_count, &unread_count)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emstorage_query_mail_count failed:[%d]", err);
+			goto FINISH_OFF;
+		}
+	} else {
+		if (!emstorage_get_mail_count(ALL_ACCOUNT, NULL, &total_count, &unread_count, true, &err))  {
+			EM_DEBUG_EXCEPTION(" emstorage_get_mail_count failed - %d", err);
+
+			goto FINISH_OFF;
+		}
+	}
+
+	ret = true;
+
+FINISH_OFF:
+
+	if (rule)
+		emstorage_free_rule(&rule, rule_count, NULL);
+
+	if (filter_list)
+		emstorage_free_list_filter(&filter_list, filter_count);
+
+	EM_SAFE_FREE(conditional_clause_string);
+
+	if (total_mail)
+		*total_mail = total_count;
+	
+	if (unread_mail)
+		*unread_mail = unread_count;
+
+	if (err_code)
+		*err_code = err;
+
+	return ret;
+}
+
+int emcore_display_unread_in_badge()
 {
 	EM_DEBUG_FUNC_BEGIN();
 	
@@ -552,114 +652,196 @@ int emcore_check_unread_mail()
 	int err = EMAIL_ERROR_NONE;
 	int total_unread_count = 0;
 	int total_mail_count = 0;
-	email_mailbox_t mailbox;
+	int badge_ticker = 0;
+	int priority_sender = 0;
 	
-	memset(&mailbox, 0x00, sizeof(email_mailbox_t));
 
-	/* ALL_ACCOUNT used, so not calling emstorage_get_mailbox_name_by_mailbox_type to get mailbox name */
-	mailbox.account_id = ALL_ACCOUNT;
-	mailbox.mailbox_name = NULL;
-	
-	if (!emcore_get_mail_count(&mailbox, &total_mail_count, &total_unread_count, &err))  {
-		EM_DEBUG_EXCEPTION("emcore_get_mail_count failed [%d]", err);
+	/* Get the Global noti ticker */
+	if (vconf_get_bool(VCONFKEY_TICKER_NOTI_BADGE_EMAIL, &badge_ticker) != 0) {
+		EM_DEBUG_EXCEPTION("vconf_get_bool failed");
+		err = EMAIL_ERROR_GCONF_FAILURE;
 		goto FINISH_OFF;
 	}
-	
-	EM_DEBUG_LOG("total_unread_count [%d]", total_unread_count);
-	
+
+	/* Get the priority noti ticker */
+	if (!badge_ticker) {
+		if (vconf_get_bool(VCONF_VIP_NOTI_BADGE_TICKER, &badge_ticker) != 0) {
+			EM_DEBUG_EXCEPTION("vconf_get_bool failed");
+			err = EMAIL_ERROR_GCONF_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		if (!badge_ticker) {
+			EM_DEBUG_LOG("Not display the badge");
+			ret = true;
+			goto FINISH_OFF;
+		}
+
+		priority_sender = 1;
+	}
+
+	/* Get unread mail count */
+	if (!emcore_get_mail_count_by_query(priority_sender, &total_mail_count, &total_unread_count, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_get_mail_count_by_query failed");
+		goto FINISH_OFF;
+	}
+
 	/* temporarily disable : set unread count to badge */
-	/*
-	if ( vconf_set_int(VCONF_KEY_UNREAD_MAIL_COUNT, total_unread_count) != 0 ) {
+	if (vconf_set_int(VCONF_KEY_UNREAD_MAIL_COUNT, total_unread_count) != 0) {
 		EM_DEBUG_EXCEPTION("vconf_set_int failed");
 		err = EMAIL_ERROR_GCONF_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	*/
+	/* Use badge API */
+	badge_error_e badge_err = BADGE_ERROR_NONE;
+	bool exist;
+
+	if((badge_err = badge_is_existing(" com.samsung.email ", &exist)) != BADGE_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("badge_is_existing failed [%d]", badge_err);
+		err = EMAIL_ERROR_BADGE_API_FAILED;
+		goto FINISH_OFF;
+	}
+	if (!exist) {
+		/* create badge */
+		if((badge_err = badge_create("com.samsung.email", "/usr/bin/email-service")) != BADGE_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("badge_create failed [%d]", badge_err);
+			err = EMAIL_ERROR_BADGE_API_FAILED;
+			goto FINISH_OFF;
+		}
+	}
+
+	if((badge_err = badge_set_count("com.samsung.email", total_unread_count)) != BADGE_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("badge_set_count failed [%d]", badge_err);
+		err = EMAIL_ERROR_BADGE_API_FAILED;
+		goto FINISH_OFF;
+	}
+
+	if (total_unread_count <= 0)
+		goto FINISH_OFF;
+
 	ret = true;
+
 FINISH_OFF:
 
 	return ret;
 }
 
-static int emcore_add_notification_for_user_message(int account_id, int mail_id, char *title, char *content, time_t log_time)
+static int emcore_layout_multi_noti(notification_h noti, int unread_mail, char *email_address, char *account_name)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int ret = true;
-	int err = EMAIL_ERROR_NONE;
-	notification_h noti = NULL;
 	notification_error_e noti_err = NOTIFICATION_ERROR_NONE;
-	emstorage_account_tbl_t *account_tbl = NULL;
+	char modified_string[10];
 
-	if (!emstorage_get_account_by_id(account_id, EMAIL_ACC_GET_OPT_ACCOUNT_NAME, &account_tbl, true, &err)) {
-		EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed [%d]", err);
+	noti_err = notification_set_layout(noti, NOTIFICATION_LY_NOTI_EVENT_MULTIPLE);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_layout NOTI_EVENT_SINGLE failed [%d]", noti_err);
 		goto FINISH_OFF;
 	}
 
-	noti = notification_new(NOTIFICATION_TYPE_NOTI, account_id, mail_id);
+	SNPRINTF(modified_string, sizeof(modified_string), "%d", unread_mail);
 
-	if(noti == NULL) {
-		EM_DEBUG_EXCEPTION("notification_new failed");
-		goto FINISH_OFF;
-	}
-	
-	if( (noti_err = notification_set_time(noti, log_time)) != NOTIFICATION_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("notification_set_time failed [%d]", noti_err);
+	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, "Email", NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_TITLE failed");
 		goto FINISH_OFF;
 	}
 
-	if( (noti_err = notification_set_text_domain(noti, NATIVE_EMAIL_APPLICATION_PKG, "/opt/apps/org.tizen.email/res/locale/")) != NOTIFICATION_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("notification_set_text_domain failed [%d]", noti_err);
+	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_EVENT_COUNT, modified_string, NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_EVENT_COUNT failed");
 		goto FINISH_OFF;
 	}
 
-	if( (noti_err = notification_set_title(noti, title, NULL)) != NOTIFICATION_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("notification_set_title failed [%d]", noti_err);
+	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_CONTENT, "new emails", NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_CONTENT failed");
 		goto FINISH_OFF;
 	}
 
-	if( (noti_err = notification_set_content(noti, content, NULL)) != NOTIFICATION_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("notification_set_content failed [%d]", noti_err);
-		goto FINISH_OFF;
-	}
-	
-	if ((noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_GROUP_TITLE, title, NULL, NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
+	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_INFO_1, email_address, NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_INFO_1 failed");
 		goto FINISH_OFF;
 	}
 
-	if ((noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_GROUP_CONTENT, content, NULL, NOTIFICATION_VARIABLE_TYPE_STRING, NOTIFICATION_COUNT_DISPLAY_TYPE_LEFT, NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
+	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_INFO_2, account_name, NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_INFO_2 failed");
 		goto FINISH_OFF;
 	}
 
-	if ((noti_err = notification_set_image(noti, NOTIFICATION_IMAGE_TYPE_ICON, EMAIL_NOTI_ICON_PATH)) != NOTIFICATION_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("notification_set_image failed [%d]", noti_err);
-		goto FINISH_OFF;
-	}
-
-	if ((noti_err = notification_set_pkgname(noti, NATIVE_EMAIL_APPLICATION_PKG)) != NOTIFICATION_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("notification_set_pkgname failed [%d]", noti_err);
-		goto FINISH_OFF;
-	}		
-
-	if( (noti_err = notification_set_application(noti, NATIVE_EMAIL_APPLICATION_PKG)) != NOTIFICATION_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("notification_set_application failed [%d]", noti_err);
-		goto FINISH_OFF;
-	}
-
-	if( (noti_err = notification_insert(noti, NULL)) != NOTIFICATION_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("notification_insert failed [%d]", noti_err);
+	noti_err = notification_set_image(noti, NOTIFICATION_IMAGE_TYPE_ICON, EMAIL_NOTI_ICON_PATH);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_image TYPE_ICON failed");
 		goto FINISH_OFF;
 	}
 
 FINISH_OFF:
-	if( (noti_err = notification_free(noti)) != NOTIFICATION_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("notification_free failed [%d]", noti_err);
+
+	EM_DEBUG_FUNC_END("noti_err : [%d]", noti_err);
+	return noti_err;
+}
+
+static int emcore_layout_single_noti(notification_h noti, char *account_name, char *display_sender, time_t time, char *subject)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	notification_error_e noti_err = NOTIFICATION_ERROR_NONE;
+
+	noti_err = notification_set_layout(noti, NOTIFICATION_LY_NOTI_EVENT_SINGLE);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_layout NOTI_EVENT_SINGLE failed [%d]", noti_err);
+		goto FINISH_OFF;
 	}
 
-	if (noti_err != NOTIFICATION_ERROR_NONE)
-		ret = false;
+	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, "Email", NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_TITLE failed");
+		goto FINISH_OFF;
+	}
+
+	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_CONTENT, account_name, NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_CONTENT failed");
+		goto FINISH_OFF;
+	}
+
+	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_INFO_1, display_sender, NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_INFO_1 failed");
+		goto FINISH_OFF;
+	}
+
+	/*
+	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_INFO_SUB_1, time, NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_INFO_SUB_1 failed");
+		goto FINISH_OFF;
+	}
+	*/
+
+	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_INFO_2, subject, NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_INFO_2 failed");
+		goto FINISH_OFF;
+	}
+
+	noti_err = notification_set_image(noti, NOTIFICATION_IMAGE_TYPE_ICON, EMAIL_NOTI_ICON_PATH);
+	if (noti_err != NOTIFICATION_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("notification_set_image TYPE_ICON failed");
+		goto FINISH_OFF;
+	}
+
+FINISH_OFF:
+
+	EM_DEBUG_FUNC_END("noti_err : [%d]", noti_err);
+	return noti_err;
+}
+
+static int emcore_add_notification(int account_id, int mail_id, email_action_t action)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int err = EMAIL_ERROR_NONE;
 
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
 	return ret;	
@@ -670,14 +852,6 @@ INTERNAL_FUNC int emcore_show_user_message(int id, email_action_t action, int er
 	EM_DEBUG_FUNC_BEGIN("id[%d], action[%d], error[%d]", id, action, error);
 
 	int ret = false;
-	time_t log_time = 0;
-	struct tm *log_time_tm;
-
-	time(&log_time);
-	log_time_tm = localtime(&log_time);
-	log_time = mktime(log_time_tm);
-
-	EM_DEBUG_LOG("sec[%d], min[%d], hour[%d], day[%d], month[%d], year[%d]" ,log_time_tm->tm_sec, log_time_tm->tm_min, log_time_tm->tm_hour, log_time_tm->tm_mday, log_time_tm->tm_mon, log_time_tm->tm_year);
 
 	if (action == EMAIL_ACTION_SEND_MAIL && error != EMAIL_ERROR_CANCELLED) {
 	/*  In case email is cancelled using cancel button in Outbox there is no need to show Cancel/Retry Pop up */
@@ -696,8 +870,12 @@ INTERNAL_FUNC int emcore_show_user_message(int id, email_action_t action, int er
 			return false;
 		}
 
-		if (!emcore_add_notification_for_user_message(mail_table_data->account_id, id, "Failed to send a mail.", mail_table_data->subject, log_time)) {
+		if (!emcore_add_notification(mail_table_data->account_id, id, action)) {
 			EM_DEBUG_EXCEPTION("emcore_notification_set error");
+
+			if (!emstorage_free_mail(&mail_table_data, 1, NULL))
+				EM_DEBUG_EXCEPTION("emstorage_free_mail Failed");
+
 			return false;
 		}
 
@@ -962,7 +1140,6 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 	int          err = EMAIL_ERROR_NONE;
 	unsigned int byte_read = 0;
 	unsigned int byte_written = 0;
-	int          result_strlen = 0;
 	int          local_preview_buffer_length = 0;
 	char        *local_preview_text = NULL;
 	char        *encoding_type = NULL;
@@ -1007,7 +1184,7 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 		byte_read = fread(local_preview_text, sizeof(char), st_buf.st_size, fp);
 
 		if (ferror(fp)) {
-			EM_DEBUG_EXCEPTION("fread failed [%s]", input_plain_path);
+			EM_DEBUG_EXCEPTION("fread failed [%s]", input_html_path);
 			err = EMAIL_ERROR_SYSTEM_FAILURE;
 			goto FINISH_OFF;
 		}
@@ -1016,8 +1193,6 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 			EM_DEBUG_EXCEPTION("emcore_strip failed");
 			goto FINISH_OFF;
 		}
-
-		result_strlen = EM_SAFE_STRLEN(local_preview_text);
 	}
 
 	if ( (local_preview_text == NULL || (local_preview_text && strlen(local_preview_text) == 0) ) && input_plain_path != NULL) {
@@ -1049,37 +1224,42 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 		reg_replace(local_preview_text, CR_STRING, " ");
 		reg_replace(local_preview_text, LF_STRING, " ");
 		reg_replace(local_preview_text, TAB_STRING, " ");
-
-		result_strlen = EM_SAFE_STRLEN(local_preview_text);
 	}
-
-
 
 	if(local_preview_text) {
 		em_trim_left(local_preview_text);
+		EM_DEBUG_LOG("local_preview_text : [%s]", local_preview_text);
 		if(encoding_type && strcasecmp(encoding_type, "UTF-8") != 0) {
 			EM_DEBUG_LOG("encoding_type [%s]", encoding_type);
 			utf8_encoded_string = (char*)g_convert (local_preview_text, -1, "UTF-8", encoding_type, &byte_read, &byte_written, &glib_error);
 
-			if(utf8_encoded_string) {
-				EM_SAFE_FREE(local_preview_text);
-				local_preview_text = utf8_encoded_string;
-			}
-			else 
-				EM_DEBUG_EXCEPTION("g_convert failed");
-		}
-		
-		if (!(*output_preview_buffer = (char*)em_malloc(sizeof(char) * (result_strlen + 1)))) {
-			EM_DEBUG_EXCEPTION("em_malloc failed");
-			err = EMAIL_ERROR_OUT_OF_MEMORY;
-			goto FINISH_OFF;
-		}
+			if(utf8_encoded_string == NULL) {
+				EM_DEBUG_EXCEPTION("g_convert failed : byte_read[%d], strlen : [%d]", byte_read, EM_SAFE_STRLEN(local_preview_text));
+				EM_DEBUG_LOG("Error is G_CONVERT_ERROR_ILLEGAL_SEQUENCE");
 
-		EM_SAFE_STRNCPY(*output_preview_buffer, local_preview_text, result_strlen);
-		/* EM_DEBUG_LOG("local_preview_text[%s], byte_read[%d], result_strlen[%d]", local_preview_text, byte_read, result_strlen); */
+				if (!g_error_matches (glib_error, G_CONVERT_ERROR, G_CONVERT_ERROR_ILLEGAL_SEQUENCE)) {
+					EM_DEBUG_EXCEPTION("g_convert failed");
+					goto FINISH_OFF;
+				}
+				
+				EM_DEBUG_LOG("Extract the preview text, again");
+
+				utf8_encoded_string = (char *)g_convert(local_preview_text, byte_read, "UTF-8", encoding_type, &byte_read, &byte_written, &glib_error);
+				if (utf8_encoded_string == NULL) {
+					EM_DEBUG_EXCEPTION("g_convert failed : byte_read[%d]", byte_read);
+					goto FINISH_OFF;
+				}
+
+			}	
+			EM_SAFE_FREE(local_preview_text);
+			local_preview_text = utf8_encoded_string;
+		}
 	}
 
 FINISH_OFF:
+
+	if (local_preview_text != NULL)
+		*output_preview_buffer = EM_SAFE_STRDUP(local_preview_text);
 
 	EM_SAFE_FREE(local_preview_text);
 	EM_SAFE_FREE(encoding_type);
@@ -1364,9 +1544,9 @@ INTERNAL_FUNC int emcore_send_noti_for_new_mail(int account_id, char *mailbox_na
 
 	SNPRINTF(param_string, sizeof(param_string), "%s%c%s%c%s%c%s%c%s", mailbox_name, 0x01, subject, 0x01, from, 0x01, uid, 0x01, datetime);
 
-	if (emstorage_notify_network_event(NOTI_DOWNLOAD_NEW_MAIL, account_id, param_string, 0, 0) == 0) {	/*  failed */
+	if (emcore_notify_network_event(NOTI_DOWNLOAD_NEW_MAIL, account_id, param_string, 0, 0) == 0) {	/*  failed */
 		error_code = EMAIL_ERROR_UNKNOWN;
-		EM_DEBUG_EXCEPTION("emstorage_notify_network_event is failed");
+		EM_DEBUG_EXCEPTION("emcore_notify_network_event is failed");
 		goto FINISH_OFF;
 	}
 
@@ -1377,31 +1557,42 @@ FINISH_OFF:
 	return error_code;
 }
 
-
-
 #define MAX_TITLE_LENGTH 1024
 int emcore_update_notification_for_unread_mail(int account_id)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id[%d]", account_id); 
-	int error_code = EMAIL_ERROR_NONE;
-	notification_error_e noti_err = NOTIFICATION_ERROR_NONE;
-
-	if((noti_err = notification_update(NULL)) != NOTIFICATION_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("notification_update failed");
+	EM_DEBUG_FUNC_BEGIN("acccount_id[%d]", account_id);
+	int ret = false;
+	int i, account_count = 0;
+	int err = EMAIL_ERROR_NONE;
+	emstorage_account_tbl_t *p_account_tbl = NULL;
+	
+	if (!emstorage_get_account_list(&account_count, &p_account_tbl, true, false, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
+	for (i = 0; i < account_count ; i++) {
+		if (!emcore_add_notification(p_account_tbl[i].account_id, 0, EMAIL_ACTION_NUM)) {
+			EM_DEBUG_EXCEPTION("emcore_add_notification failed");
+			continue;
+		}
+	}
+
+	ret = true;
+
 FINISH_OFF:
 
-	EM_DEBUG_FUNC_END("return [%d]", error_code);
-	return error_code;
+	if (p_account_tbl)
+		emstorage_free_account(&p_account_tbl, account_count, NULL);
+
+	EM_DEBUG_FUNC_END();
+	return ret;
 }
 
 INTERNAL_FUNC int emcore_finalize_sync(int account_id, int *error)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id [%d], error [%p]", account_id, error);
 	int err = EMAIL_ERROR_NONE, ret = true, result_sync_status = SYNC_STATUS_FINISHED;
-	emstorage_account_tbl_t *account_tbl = NULL;
 
 	if ((err = emcore_update_sync_status_of_account(account_id, SET_TYPE_MINUS, SYNC_STATUS_SYNCING)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_EXCEPTION("emcore_update_sync_status_of_account failed [%d]", err);
@@ -1411,18 +1602,17 @@ INTERNAL_FUNC int emcore_finalize_sync(int account_id, int *error)
 
 	if (result_sync_status == SYNC_STATUS_HAVE_NEW_MAILS) {
 		if (!emcore_update_notification_for_unread_mail(ALL_ACCOUNT))
-			EM_DEBUG_EXCEPTION("emcore_update_notification_for_unread_mail failed");	
-			emcore_check_unread_mail();
-			/* Temp.. exception for EAS */
-			if(account_id >= FIRST_ACCOUNT_ID)
-				emstorage_get_account_by_id(account_id, EMAIL_ACC_GET_OPT_DEFAULT, &account_tbl, true, &err);
-			if(account_tbl && account_tbl->incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC)
-				emcore_start_alert();
+			EM_DEBUG_EXCEPTION("emcore_update_notification_for_unread_mail failed");
 
-			if ((err = emcore_update_sync_status_of_account(account_id, SET_TYPE_MINUS, SYNC_STATUS_HAVE_NEW_MAILS)) != EMAIL_ERROR_NONE)
-				EM_DEBUG_EXCEPTION("emcore_update_sync_status_of_account failed [%d]", err);
+		if (!emcore_display_unread_in_badge()) 
+			EM_DEBUG_EXCEPTION("emcore_display_unread_in_badge failed");
 
+		emcore_start_alert();
+
+		if ((err = emcore_update_sync_status_of_account(account_id, SET_TYPE_MINUS, SYNC_STATUS_HAVE_NEW_MAILS)) != EMAIL_ERROR_NONE)
+			EM_DEBUG_EXCEPTION("emcore_update_sync_status_of_account failed [%d]", err);
 	}
+
 	EM_DEBUG_FUNC_END();
 	return ret;
 }
@@ -1451,36 +1641,19 @@ FINISH_OFF:
 	return error_code;
 }
 
-INTERNAL_FUNC int emcore_add_notification_for_unread_mail(emstorage_mail_tbl_t *input_mail_tbl_data)
-{
-	EM_DEBUG_FUNC_BEGIN("input_mail_tbl_data[%p]", input_mail_tbl_data);
-
-	int err = EMAIL_ERROR_NONE;
-
-	if (input_mail_tbl_data == NULL) {
-		EM_DEBUG_EXCEPTION("input_mail_tbl_data is NULL");
-		return EMAIL_ERROR_INVALID_PARAM;
-	}
-
-	EM_DEBUG_FUNC_END("err[%d]", err);
-	return err;
-}
-
-
-INTERNAL_FUNC int emcore_delete_notification_for_read_mail(int mail_id)
-{
-	EM_DEBUG_FUNC_BEGIN();
-	int error_code = EMAIL_ERROR_NONE;
-	EM_DEBUG_FUNC_END();
-	return error_code;
-}
-
 #define EAS_EXECUTABLE_PATH "/usr/bin/eas-engine"
 
 INTERNAL_FUNC int emcore_delete_notification_by_account(int account_id)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id [%d]", account_id);
 	int error_code = EMAIL_ERROR_NONE;
+	int private_id = 0;
+	char vconf_private_id[MAX_PATH] = {0, };
+	
+	SNPRINTF(vconf_private_id, sizeof(vconf_private_id), "%s/%d", VCONF_KEY_NOTI_PRIVATE_ID, account_id);
+	if (vconf_get_int(vconf_private_id, &private_id) != 0) {
+		EM_DEBUG_EXCEPTION("vconf_get_int failed");
+	}
 	EM_DEBUG_FUNC_END();
 	return error_code;
 }

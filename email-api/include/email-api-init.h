@@ -98,7 +98,7 @@ extern "C" {
 
 /**
 
- * @open
+
  * @fn email_init_storage(void)
  * @brief	Create all tables for email.
  *
@@ -111,7 +111,7 @@ EXPORT_API int email_init_storage(void);
 
 /**
 
- * @open
+
  * @fn email_open_db(void)
  * @brief This function Open the email DB and register busy handler
  *
@@ -125,7 +125,7 @@ EXPORT_API int email_open_db(void);
 
 /**
 
- * @open
+
  * @fn email_close_db(void)
  * @brief	This function closes the connection of  the email DB
  *
@@ -138,7 +138,7 @@ EXPORT_API int email_close_db(void);
 
 /**
 
- * @open
+
  * @fn email_service_begin(void)
  * @brief	Does the IPC Proxy Initialization by the Application which used the Email FW API's
  *
@@ -151,7 +151,7 @@ EXPORT_API int email_service_begin(void);
 
 /**
 
- * @open
+
  * @fn email_service_end(void)
  * @brief	This function does the IPC Proxy Finaization by the Application which used the Email FW API's
  *

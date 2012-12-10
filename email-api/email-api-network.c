@@ -46,7 +46,6 @@ EXPORT_API int email_send_mail(int mail_id, int *handle)
 {
 	EM_DEBUG_FUNC_BEGIN("mail_id[%d], handle[%p]", mail_id, handle);
 	
-	char* pSendingOption = NULL;
 	int err = EMAIL_ERROR_NONE;
 	emstorage_mail_tbl_t* mail_table_data = NULL;
 	email_account_server_t account_server_type;
@@ -63,8 +62,12 @@ EXPORT_API int email_send_mail(int mail_id, int *handle)
 		EM_DEBUG_EXCEPTION("Failed to get mail by mail_id [%d]", err);
 		goto FINISH_OFF;
 	}
-		
-	EM_IF_ACCOUNT_ID_NULL(mail_table_data->account_id, EMAIL_ERROR_INVALID_PARAM);
+
+	if (mail_table_data->account_id <= 0) {
+		EM_DEBUG_EXCEPTION ("EM_IF_ACCOUNT_ID_NULL: Account ID [ %d ]  ", mail_table_data->account_id);
+		emstorage_free_mail(&mail_table_data, 1, NULL);
+		return EMAIL_ERROR_INVALID_PARAM;
+	}
 
 	EM_DEBUG_LOG("mail_table_data->account_id[%d], mail_table_data->mailbox_name[%s]", mail_table_data->account_id, mail_table_data->mailbox_name);
 
@@ -102,17 +105,22 @@ EXPORT_API int email_send_mail(int mail_id, int *handle)
 	else {
 		hAPI = emipc_create_email_api(_EMAIL_API_SEND_MAIL);	
 
-		EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
+		if (!hAPI ) {
+			EM_DEBUG_EXCEPTION ("INVALID PARAM: hAPI NULL ");
+			emstorage_free_mail(&mail_table_data, 1, NULL);
+			return EMAIL_ERROR_NULL_VALUE;
+		}
 
 		/* mail_id */
 		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)&mail_id, sizeof(int))){
 			EM_DEBUG_EXCEPTION("email_send_mail--Add Param mail_id failed");
+			emstorage_free_mail(&mail_table_data, 1, NULL);
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 		}
 
 		if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("email_send_mail--emipc_execute_proxy_api failed  ");
-			EM_SAFE_FREE(pSendingOption);
+			emstorage_free_mail(&mail_table_data, 1, NULL);
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_CRASH);
 		}
 
@@ -126,7 +134,8 @@ EXPORT_API int email_send_mail(int mail_id, int *handle)
 FINISH_OFF:
 	emipc_destroy_email_api(hAPI);
 	hAPI = (HIPC_API)NULL;
-	EM_SAFE_FREE(pSendingOption); 
+
+	emstorage_free_mail(&mail_table_data, 1, NULL);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);  
 	return err;	
@@ -369,7 +378,11 @@ EXPORT_API int email_download_body(int mail_id, int with_attachment, int *handle
 		goto FINISH_OFF;
 	}
 
-	EM_IF_ACCOUNT_ID_NULL(mail_table_data->account_id, EMAIL_ERROR_INVALID_PARAM);
+	if (mail_table_data->account_id <= 0) {
+		EM_DEBUG_EXCEPTION("EM_IF_ACCOUNT_ID_NULL: Account ID [ %d ]  ", mail_table_data->account_id);
+		goto FINISH_OFF;
+	}
+
 	account_id = mail_table_data->account_id;
 		
 	/*  2010/02/12 ch715.lee : check account bind type and branch off  */
@@ -477,7 +490,11 @@ EXPORT_API int email_download_attachment(int mail_id, int nth, int *handle)
 		goto FINISH_OFF;
 	}
 
-	EM_IF_ACCOUNT_ID_NULL(mail_table_data->account_id, EMAIL_ERROR_INVALID_PARAM);
+	if (mail_table_data->account_id <= 0) {
+		EM_DEBUG_EXCEPTION("EM_IF_ACCOUNT_ID_NULL: Account ID [ %d ]  ", mail_table_data->account_id);
+		goto FINISH_OFF;
+	}
+
 	account_id = mail_table_data->account_id;
 	
 	if ( em_get_account_server_type_by_account_id(account_id, &account_server_type, true, &err) == false ) {
@@ -603,22 +620,29 @@ EXPORT_API int email_cancel_job(int input_account_id, int input_handle, email_ca
 		/*  request canceling to stub */
 		hAPI = emipc_create_email_api(_EMAIL_API_CANCEL_JOB);
 
-		EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
+		if (!hAPI) {
+			EM_DEBUG_EXCEPTION ("INVALID PARAM: hAPI NULL ");
+			err = EMAIL_ERROR_NULL_VALUE;
+			goto FINISH_OFF;
+		}
 
 		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &input_account_id, sizeof(int))) {		/*  input_account_id == 0 */
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
+			err = EMAIL_ERROR_NULL_VALUE;
+			goto FINISH_OFF;
 		}
 
 		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &input_handle, sizeof(int))) {
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
+			err = EMAIL_ERROR_NULL_VALUE;
+			goto FINISH_OFF;
 		}
 
 		/* Execute API */
 		if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
-			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
+			err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
+			goto FINISH_OFF;
 		}
 
 		emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
@@ -670,7 +694,7 @@ EXPORT_API int email_cancel_job(int input_account_id, int input_handle, email_ca
 FINISH_OFF:
 	emipc_destroy_email_api(hAPI);
 	hAPI = NULL;
-	if ( account_list )
+	if (account_list)
 		emstorage_free_account(&account_list, account_count, NULL);
 		
 	EM_DEBUG_FUNC_END("err [%d]", err);  
@@ -905,8 +929,6 @@ EXPORT_API int email_clear_result_of_search_mail_on_server(int input_account_id)
 	HIPC_API  hAPI = NULL;
 	email_account_server_t account_server_type = EMAIL_SERVER_TYPE_NONE;
 	ASNotiData as_noti_data;
-	emstorage_mailbox_tbl_t* mailbox = NULL;
-	int mailbox_id = 0;
 
 	EM_IF_NULL_RETURN_VALUE(input_account_id,         EMAIL_ERROR_INVALID_PARAM);
 
@@ -938,17 +960,11 @@ EXPORT_API int email_clear_result_of_search_mail_on_server(int input_account_id)
 		}
 	}
 	else {
-		if (!emstorage_get_mailbox_by_mailbox_type(input_account_id, EMAIL_MAILBOX_TYPE_SEARCH_RESULT, &mailbox, true, &err) || !mailbox)  {
-			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_name_by_mailbox_type failed [%d]", err);
-			goto FINISH_OFF;
-		}
-		mailbox_id = mailbox->mailbox_id;
-
 		hAPI = emipc_create_email_api(_EMAIL_API_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER);
 
 		EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 
-		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (void*)&mailbox_id, sizeof(int))) {
+		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (void*)&input_account_id, sizeof(int))) {
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
 			err = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
 			goto FINISH_OFF;
@@ -972,9 +988,6 @@ FINISH_OFF:
 		emipc_destroy_email_api(hAPI);
 		hAPI = NULL;
 	}
-
-	if(mailbox)
-		emstorage_free_mailbox(&mailbox, 1, &err);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;

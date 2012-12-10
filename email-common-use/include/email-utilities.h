@@ -47,6 +47,7 @@ INTERNAL_FUNC char* em_skip_whitespace_without_strdup(char *source_string);
 INTERNAL_FUNC char* em_replace_all_string(char *source_string, char *old_string, char *new_string);
 INTERNAL_FUNC char* em_replace_string(char *source_string, char *old_string, char *new_string);
 INTERNAL_FUNC void  em_flush_memory();
+INTERNAL_FUNC int   em_get_file_name_from_file_path(char *input_source_file_path, char **output_file_name);
 INTERNAL_FUNC int   em_get_file_name_and_extension_from_file_path(char *input_source_file_path, char **output_file_name, char **output_extention);
 INTERNAL_FUNC char* em_get_extension_from_file_path(char *source_file_path, int *err_code);
 INTERNAL_FUNC int   em_get_encoding_type_from_file_path(const char *input_file_path, char **output_encoding_type);
@@ -56,7 +57,7 @@ INTERNAL_FUNC int   em_verify_email_address(char *address, int without_bracket, 
 INTERNAL_FUNC int   em_verify_email_address_of_mail_data(email_mail_data_t *mail_data, int without_bracket, int *err_code);
 INTERNAL_FUNC int   em_verify_email_address_of_mail_tbl(emstorage_mail_tbl_t *input_mail_tbl, int input_without_bracket);
 
-INTERNAL_FUNC int   em_find_pos_stripped_subject_for_thread_view(char *subject, char *stripped_subject);
+INTERNAL_FUNC int   em_find_pos_stripped_subject_for_thread_view(char *subject, char *stripped_subject, int stripped_subject_buffer_size);
 INTERNAL_FUNC int   em_find_tag_for_thread_view(char *subject, int *result);
 
 INTERNAL_FUNC int   em_encode_base64(char *src, unsigned long src_len, char **enc, unsigned long* enc_len, int *err_code);

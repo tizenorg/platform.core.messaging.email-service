@@ -34,11 +34,13 @@
 #include <sys/types.h>
 #include "email-types.h"
 #include "email-utilities.h"
+#include "email-convert.h"
 #include "email-debug-log.h"
 #include "email-core-global.h"
 #include "email-core-utils.h"
 #include "email-core-mailbox.h"
 #include "email-core-event.h"
+#include "email-network.h"
 #include "email-core-mail.h"
 #include "email-core-imap-mailbox.h"   
 #include "email-storage.h"
@@ -160,7 +162,7 @@ INTERNAL_FUNC int emcore_remove_connection_info(int account_id)
 /* description
  *    get local mailbox list
  */
-INTERNAL_FUNC int emcore_get_list(int account_id, email_mailbox_t **mailbox_list, 	int *p_count, int *err_code)
+INTERNAL_FUNC int emcore_get_mailbox_list(int account_id, email_mailbox_t **mailbox_list, 	int *p_count, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], mailbox_list[%p], p_count[%p], err_code[%p]", account_id, mailbox_list, p_count, err_code);
 	
@@ -201,6 +203,8 @@ INTERNAL_FUNC int emcore_get_list(int account_id, email_mailbox_t **mailbox_list
 		memset(*mailbox_list, 0x00, (sizeof(email_mailbox_t) * count));
 		
 		for (i = 0; i < count; i++)  {
+			em_convert_mailbox_tbl_to_mailbox(local_mailbox_list + i, (*mailbox_list) + i);
+			/*
 			(*mailbox_list)[i].mailbox_id = local_mailbox_list[i].mailbox_id;
 			(*mailbox_list)[i].account_id = account_id;
 			(*mailbox_list)[i].mailbox_name = local_mailbox_list[i].mailbox_name; local_mailbox_list[i].mailbox_name = NULL;
@@ -211,6 +215,9 @@ INTERNAL_FUNC int emcore_get_list(int account_id, email_mailbox_t **mailbox_list
 			(*mailbox_list)[i].total_mail_count_on_local = local_mailbox_list[i].total_mail_count_on_local;
 			(*mailbox_list)[i].total_mail_count_on_server = local_mailbox_list[i].total_mail_count_on_server;
 			(*mailbox_list)[i].mail_slot_size = local_mailbox_list[i].mail_slot_size;
+			(*mailbox_list)[i].no_select = local_mailbox_list[i].no_select;
+			(*mailbox_list)[i].last_sync_time = local_mailbox_list[i].last_sync_time;
+			*/
 		}
 	}
 	else
@@ -275,6 +282,8 @@ int emcore_get_mailbox_list_to_be_sync(int account_id, email_mailbox_t **mailbox
 		memset(tmp_mailbox_list, 0x00, (sizeof(email_mailbox_t) * count));
 		
 		for (i = 0; i < count; i++)  {
+			em_convert_mailbox_tbl_to_mailbox(mailbox_tbl_list + i, tmp_mailbox_list + i);
+			/*
 			tmp_mailbox_list[i].mailbox_id = mailbox_tbl_list[i].mailbox_id;
 			tmp_mailbox_list[i].account_id = account_id;
 			tmp_mailbox_list[i].mailbox_name = mailbox_tbl_list[i].mailbox_name; mailbox_tbl_list[i].mailbox_name = NULL;
@@ -285,6 +294,7 @@ int emcore_get_mailbox_list_to_be_sync(int account_id, email_mailbox_t **mailbox
 			tmp_mailbox_list[i].total_mail_count_on_local = mailbox_tbl_list[i].total_mail_count_on_local;
 			tmp_mailbox_list[i].total_mail_count_on_server = mailbox_tbl_list[i].total_mail_count_on_server;
 			tmp_mailbox_list[i].mail_slot_size = mailbox_tbl_list[i].mail_slot_size;
+			*/
 		}
 	}
 	else
@@ -351,7 +361,6 @@ INTERNAL_FUNC int emcore_create_mailbox(email_mailbox_t *new_mailbox, int on_ser
 		/* Create a mailbox from Sever */
 		if (!emcore_create_imap_mailbox(new_mailbox, &err)) {
 			EM_DEBUG_EXCEPTION(">>>>> mailbox Creation in Server FAILED >>> ");
-	
 			goto FINISH_OFF;
 		}
 		else
@@ -635,8 +644,6 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info(email_accou
 		if (!(mail_stream = mail_open(reusable_stream, mbox_path, IMAP_2004_LOG))) {	
 			EM_DEBUG_EXCEPTION("mail_open failed. session->error[%d], session->network[%d]", session->error, session->network);
 			
-			if (session->network != EMAIL_ERROR_NONE)
-				session->error = session->network;
 			if ((session->error == EMAIL_ERROR_UNKNOWN) || (session->error == EMAIL_ERROR_NONE))
 				session->error = EMAIL_ERROR_CONNECTION_FAILURE;
 			
@@ -822,6 +829,7 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox(int account_id, int input_mai
 	
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
+	email_session_t *session = NULL;
 	email_account_t *ref_account = emcore_get_account_reference(account_id);
 
 	if (!ref_account)  {		
@@ -830,9 +838,28 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox(int account_id, int input_mai
 		goto FINISH_OFF;
 	}
 
+	if (!emcore_check_thread_status()) {
+		error = EMAIL_ERROR_CANCELLED;
+		goto FINISH_OFF;
+	}
+
+	if (!emnetwork_check_network_status(&error)) {
+		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", error);
+		goto FINISH_OFF;
+	}
+
+	if (!emcore_get_empty_session(&session)) {
+		EM_DEBUG_EXCEPTION("emcore_get_empty_session failed...");
+		error = EMAIL_ERROR_SESSION_NOT_FOUND;
+		goto FINISH_OFF;
+	}
+
 	ret = emcore_connect_to_remote_mailbox_with_account_info(ref_account, input_mailbox_id, mail_stream, &error);
 
 FINISH_OFF: 
+
+	emcore_clear_session(session);
+	
 	if (err_code)
 		*err_code = error;
 	
@@ -877,10 +904,10 @@ INTERNAL_FUNC void emcore_free_mailbox_list(email_mailbox_t **mailbox_list, int 
 	if (count <= 0 || !mailbox_list || !*mailbox_list)  {
 		EM_DEBUG_EXCEPTION("INVALID_PARAM: mailbox_list[%p], count[%d]", mailbox_list, count);
 		return;
-		}
+	}
 		
-		email_mailbox_t *p = *mailbox_list;
-		int i;
+	email_mailbox_t *p = *mailbox_list;
+	int i;
 		
 	for (i = 0; i < count; i++)
 		emcore_free_mailbox(p+i);
@@ -889,7 +916,7 @@ INTERNAL_FUNC void emcore_free_mailbox_list(email_mailbox_t **mailbox_list, int 
 	*mailbox_list = NULL;
 
 	EM_DEBUG_FUNC_END();
-		}
+}
 
 
 INTERNAL_FUNC void emcore_free_mailbox(email_mailbox_t *mailbox)

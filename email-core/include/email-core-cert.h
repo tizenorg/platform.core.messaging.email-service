@@ -48,9 +48,9 @@ INTERNAL_FUNC int emcore_verify_signature(char *p7s_file_path, char *mime_entity
 INTERNAL_FUNC int emcore_verify_certificate(char *certificate, int *validity, int *err_code);
 
 INTERNAL_FUNC int emcore_free_certificate(email_certificate_t **certificate, int count, int *err_code);
-
-INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, char *password, EVP_PKEY **pri_key, X509 **cert, STACK_OF(X509) **ca, int *err_code);
 /*
-INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X509 **cert, STACK_OF(X509) **ca, int *err_code);
+INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, char *password, EVP_PKEY **pri_key, X509 **cert, STACK_OF(X509) **ca, int *err_code);
 */
+INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X509 **cert, STACK_OF(X509) **ca, int *err_code);
+
 #endif
