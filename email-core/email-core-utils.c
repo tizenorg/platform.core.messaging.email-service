@@ -78,7 +78,7 @@
 #define EMAIL_CH_SQUARE_BRACKET_E ']'
 #define EMAIL_CH_SPACE            ' '
 #define EMAIL_NOTI_ICON_PATH      EMAILPATH"/res/image/Q02_Notification_email.png"
-#define VCONF_KEY_UNREAD_MAIL_COUNT "db/badge/com.samsung.email"
+#define VCONF_KEY_UNREAD_MAIL_COUNT "db/badge/org.tizen.email"
 
 typedef struct  _em_transaction_info_type_t {
 	int mail_id;
@@ -697,21 +697,21 @@ int emcore_display_unread_in_badge()
 	badge_error_e badge_err = BADGE_ERROR_NONE;
 	bool exist;
 
-	if((badge_err = badge_is_existing(" com.samsung.email ", &exist)) != BADGE_ERROR_NONE) {
+	if((badge_err = badge_is_existing(" org.tizen.email ", &exist)) != BADGE_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("badge_is_existing failed [%d]", badge_err);
 		err = EMAIL_ERROR_BADGE_API_FAILED;
 		goto FINISH_OFF;
 	}
 	if (!exist) {
 		/* create badge */
-		if((badge_err = badge_create("com.samsung.email", "/usr/bin/email-service")) != BADGE_ERROR_NONE) {
+		if((badge_err = badge_create("org.tizen.email", "/usr/bin/email-service")) != BADGE_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("badge_create failed [%d]", badge_err);
 			err = EMAIL_ERROR_BADGE_API_FAILED;
 			goto FINISH_OFF;
 		}
 	}
 
-	if((badge_err = badge_set_count("com.samsung.email", total_unread_count)) != BADGE_ERROR_NONE) {
+	if((badge_err = badge_set_count("org.tizen.email", total_unread_count)) != BADGE_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("badge_set_count failed [%d]", badge_err);
 		err = EMAIL_ERROR_BADGE_API_FAILED;
 		goto FINISH_OFF;
@@ -841,7 +841,7 @@ FINISH_OFF:
 static int emcore_add_notification(int account_id, int mail_id, email_action_t action)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int err = EMAIL_ERROR_NONE;
+	int ret = EMAIL_ERROR_NONE;
 
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
 	return ret;	
@@ -870,7 +870,7 @@ INTERNAL_FUNC int emcore_show_user_message(int id, email_action_t action, int er
 			return false;
 		}
 
-		if (!emcore_add_notification(mail_table_data->account_id, id, action)) {
+		if (emcore_add_notification(mail_table_data->account_id, id, action) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_notification_set error");
 
 			if (!emstorage_free_mail(&mail_table_data, 1, NULL))
@@ -1572,7 +1572,7 @@ int emcore_update_notification_for_unread_mail(int account_id)
 	}
 
 	for (i = 0; i < account_count ; i++) {
-		if (!emcore_add_notification(p_account_tbl[i].account_id, 0, EMAIL_ACTION_NUM)) {
+		if (emcore_add_notification(p_account_tbl[i].account_id, 0, EMAIL_ACTION_NUM) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_add_notification failed");
 			continue;
 		}

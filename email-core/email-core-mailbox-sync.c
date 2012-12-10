@@ -2951,7 +2951,7 @@ static int emcore_parse_plain_part_for_partial_body(char *header_start_string, c
 
 /*  Content-Type:  IMAGE/octet-stream; name = Default.png */
 /*  Content-Transfer-Encoding:  BASE64 */
-/*  Content-ID:  <4b0d6810b17291f9438783a8eb9d5228@com.samsung.slp.email> */
+/*  Content-ID:  <4b0d6810b17291f9438783a8eb9d5228@org.tizen.email> */
 /*  Content-Disposition:  inline; filename = Default.png */
 
 static int emcore_parse_image_part_for_partial_body(char *header_start_string, char *start_header, char *boundary_string, char *bufsendforparse, email_image_data *image_data, int body_size)

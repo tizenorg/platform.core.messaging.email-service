@@ -116,7 +116,7 @@ extern "C"
 
 #define SHM_FILE_FOR_DB_LOCK                "/.email_shm_db_lock"
 
-#define NATIVE_EMAIL_APPLICATION_PKG        "com.samsung.email"
+#define NATIVE_EMAIL_APPLICATION_PKG        "org.tizen.email"
 
 #define IMAP_ID_OS                          "TIZEN"
 #define IMAP_ID_OS_VERSION                  "2.0b"

@@ -301,7 +301,7 @@ static int _emdaemon_get_polling_account_and_timeinterval(alarm_id_t  alarm_id, 
 	return true;
 }
 
-#define AUTO_POLL_DESTINATION 	"com.samsung.email-service"
+#define AUTO_POLL_DESTINATION 	"org.tizen.email-service"
 static int _emdaemon_create_alarm(int alarm_interval, alarm_id_t *p_alarm_id)
 {
 	EM_DEBUG_FUNC_BEGIN();

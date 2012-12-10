@@ -2235,7 +2235,7 @@ static int attach_part(BODY *body, const unsigned char *data, int data_len, char
 
 		if (is_inline) {	
 			/*  CONTENT-ID */
-			part->body.id = emcore_generate_content_id_string("com.samsung.slp.email", &error);
+			part->body.id = emcore_generate_content_id_string("org.tizen.email", &error);
 			part->body.type = TYPEIMAGE;
 			/*  EM_SAFE_FREE(part->body.subtype); */
 			/*  part->body.subtype = EM_SAFE_STRDUP(content_sub_type); */
