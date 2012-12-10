@@ -117,6 +117,9 @@ vconftool set -t int    db/private/email-service/latest_mail_id "0"     -g 6514
 # for default account id
 vconftool set -t int    db/private/email-service/default_account_id "0" -g 6514
 
+# for badge
+vconftool set -t int    db/badge/org.tizen.email "0" -g 6514
+
 vconftool set -t int    db/email_handle/active_sync_handle "-1" 	-g 6514
 
 # for default account id
@@ -128,8 +131,16 @@ vconftool set -t int    db/private/email-service/noti_rep_type "0" -g 6514
 vconftool set -t int    db/private/email-service/noti_notification_ticker "0" -g 6514
 vconftool set -t int    db/private/email-service/noti_display_content_ticker "0" -g 6514
 vconftool set -t int    db/private/email-service/noti_badge_ticker "0" -i -g 6514
-vconftool set -t int    db/private/email-service/noti_private_id "0" -i -g 6514
-
+vconftool set -t int    db/private/email-service/noti_private_id/1 "0" -i -g 6514
+vconftool set -t int    db/private/email-service/noti_private_id/2 "0" -i -g 6514
+vconftool set -t int    db/private/email-service/noti_private_id/3 "0" -i -g 6514
+vconftool set -t int    db/private/email-service/noti_private_id/4 "0" -i -g 6514
+vconftool set -t int    db/private/email-service/noti_private_id/5 "0" -i -g 6514
+vconftool set -t int    db/private/email-service/noti_private_id/6 "0" -i -g 6514
+vconftool set -t int    db/private/email-service/noti_private_id/7 "0" -i -g 6514
+vconftool set -t int    db/private/email-service/noti_private_id/8 "0" -i -g 6514
+vconftool set -t int    db/private/email-service/noti_private_id/9 "0" -i -g 6514
+vconftool set -t int    db/private/email-service/noti_private_id/10 "0" -i -g 6514
 
 #################################################################
 # Set executin script
@@ -160,7 +171,9 @@ echo "[EMAIL-SERVICE] Finish executing script ..."
 # Create DB file and tables.
 #################################################################
 echo "[EMAIL-SERVICE] Creating Email Tables ..."
-sqlite3 /opt/dbspace/.email-service.db 'PRAGMA journal_mode = PERSIST;
+mkdir -p /opt/usr
+mkdir -p /opt/usr/dbspace
+sqlite3 /opt/usr/dbspace/.email-service.db 'PRAGMA journal_mode = PERSIST;
 CREATE TABLE mail_account_tbl 
 ( 
 	account_id                               INTEGER PRIMARY KEY,
@@ -398,13 +411,12 @@ CREATE INDEX mail_idx_thread_item_count ON mail_tbl (thread_item_count);
 
 echo "[EMAIL-SERVICE] Finish Creating Email Tables."
 
+chgrp db_email_service /opt/usr/dbspace/.email-service.db*
+chmod 664 /opt/usr/dbspace/.email-service.db
+chmod 664 /opt/usr/dbspace/.email-service.db-journal
 
-chgrp db_email_service /opt/dbspace/.email-service.db*
-chmod 664 /opt/dbspace/.email-service.db
-chmod 664 /opt/dbspace/.email-service.db-journal
-
-mkdir -m775 -p /opt/data/email/.emfdata
-chgrp db_email_service /opt/data/email/.emfdata
+mkdir -m775 -p /opt/usr/data/email/.email_data
+chgrp db_email_service /opt/usr/data/email/.email_data
 
 %postun -p /sbin/ldconfig
 
@@ -415,14 +427,13 @@ chgrp db_email_service /opt/data/email/.emfdata
 %{_sysconfdir}/rc.d/rc3.d/S70email-service
 %{_sysconfdir}/rc.d/rc5.d/S70email-service
 %{_bindir}/email-service
-/opt/data/email/res/*
+/opt/usr/data/email/res/*
 %{_libdir}/lib*.so.*
 %{_libdir}/systemd/user/email.service
 %{_libdir}/systemd/user/tizen-middleware.target.wants/email.service
+/usr/share/dbus-1/services/email-service.service
 
 %files devel
 %{_includedir}/email-service/*.h
 %{_libdir}/lib*.so
 %{_libdir}/pkgconfig/*.pc
-
-
