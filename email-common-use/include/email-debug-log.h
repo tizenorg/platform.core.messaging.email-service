@@ -53,14 +53,10 @@ extern "C"
 #undef LOG_TAG
 #endif
 
-#define LOG_TAG "email-service"
+#define LOG_TAG "EMAIL_SERVICE"
 
-#define	EM_DEBUG_LOG(format, arg...)   \
-			SLOGD("[%s() :%s:%d] " format "\n", 	__FUNCTION__, \
-				 (rindex(__FILE__, '/')? rindex(__FILE__,'/')+1 : __FILE__ ),  __LINE__, ##arg)
-#define	EM_DEBUG_EXCEPTION(format, arg...) \
-			SLOGE("[%s() :%s:%d][EXCEPTION!!] " format "\n", __FUNCTION__, \
-				(rindex(__FILE__, '/')? rindex(__FILE__,'/')+1 : __FILE__ ),   __LINE__, ##arg)
+#define	EM_DEBUG_LOG(format, arg...)	SLOGD(format, ##arg)
+#define	EM_DEBUG_EXCEPTION(format, arg...)	SLOGE("[EXCEPTION!] " format "\n", ##arg)
 
 #ifdef  _DEBUG_MIME_PARSE_
 #define EM_DEBUG_LOG_MIME(format, arg...)   EM_DEBUG_LOG(format, ##arg)
