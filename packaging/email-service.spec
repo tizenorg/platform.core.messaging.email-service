@@ -1,6 +1,6 @@
 Name:       email-service
 Summary:    E-mail Framework Middleware package
-Version:    0.10.14
+Version:    0.10.15
 Release:    1
 Group:      System/Libraries
 License:    TBD
@@ -417,6 +417,9 @@ chmod 664 /opt/usr/dbspace/.email-service.db-journal
 
 mkdir -m775 -p /opt/usr/data/email/.email_data
 chgrp db_email_service /opt/usr/data/email/.email_data
+
+mkdir -m775 -p /opt/usr/data/email/.email_data/tmp
+chgrp db_email_service /opt/usr/data/email/.email_data/tmp
 
 %postun -p /sbin/ldconfig
 

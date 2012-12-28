@@ -108,7 +108,7 @@ extern "C"
 #define EMAILPATH 					        DATA_PATH"/email"
 #define MAILHOME 					        DATA_PATH"/email/.email_data"
 #define MAILTEMP                            MAILHOME"/tmp"
-#define DIRECTORY_PERMISSION                0755
+#define DIRECTORY_PERMISSION                0775
 
 #define MIME_SUBTYPE_DRM_OBJECT             "vnd.oma.drm.message"
 #define MIME_SUBTYPE_DRM_RIGHTS             "vnd.oma.drm.rights+xml"

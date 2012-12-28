@@ -2210,5 +2210,63 @@ INTERNAL_FUNC void emcore_free_rule(email_rule_t* rule)
 	EM_DEBUG_FUNC_END();
 }
 
+INTERNAL_FUNC int emcore_search_string_from_file(char *file_path, char *search_string, int *result)
+{
+	EM_DEBUG_FUNC_BEGIN("file_path : [%s], search_string : [%s]", file_path, search_string);
+	int error = EMAIL_ERROR_NONE;
+	int file_size = 0;
+	int p_result = 1;
+	FILE *fp = NULL;
+	char *buf = NULL;
 
+	if (search_string == NULL || file_path == NULL) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		error = EMAIL_ERROR_INVALID_PARAM;
+		return error;
+	}
+
+	fp = fopen(file_path, "r");
+	if (fp == NULL) {
+		EM_DEBUG_EXCEPTION("fopen failed");
+		error = EMAIL_ERROR_SYSTEM_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	if (!emcore_get_file_size(file_path, &file_size, &error)) {
+		EM_DEBUG_EXCEPTION("emcore_get_file_size failed");
+		goto FINISH_OFF;
+	}
+
+	buf = em_malloc(file_size);
+	if (buf == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		error = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	if (fread(buf, sizeof(char), file_size, fp) != file_size) {
+		EM_DEBUG_EXCEPTION("Get the data from file : failed");
+		error = EMAIL_ERROR_SYSTEM_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	buf = em_replace_all_string(buf, CRLF_STRING, "");
+	if (!strstr(buf, search_string)) {
+		EM_DEBUG_LOG("Not found string");
+		p_result = 0;
+	}
+
+FINISH_OFF:
+
+	if (result)
+		*result = p_result;
+	
+	if (fp)
+		fclose(fp);
+
+	EM_SAFE_FREE(buf);	
+
+	EM_DEBUG_FUNC_END("error:[%d]", error);
+	return error;
+}
 /* EOF */

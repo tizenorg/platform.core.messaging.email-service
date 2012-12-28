@@ -186,6 +186,7 @@ INTERNAL_FUNC int emcore_delete_activity(emstorage_activity_tbl_t *activity, int
 
 INTERNAL_FUNC void emcore_free_rule(email_rule_t* rule);
 
+INTERNAL_FUNC int emcore_search_string_from_file(char *file_path, char *search_string, int *result);
 
 #ifdef __cplusplus
 }

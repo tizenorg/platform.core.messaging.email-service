@@ -4327,14 +4327,14 @@ int emcore_delete_mail_attachment(int attachment_id, int *err_code)
 		return false;
 	}
 
-	int ret = false;
+	int ret = true;
 	int error = EMAIL_ERROR_NONE;
 	char attachment_folder_path[MAX_PATH] = {0, };
 	emstorage_attachment_tbl_t *attachment_tbl = NULL;
 	
 	if (!emstorage_get_attachment(attachment_id, &attachment_tbl, true, &error)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_attachment failed");
-		goto FINISH_OFF;
+		return false;
 	}
 
 	/*  BEGIN TRANSACTION; */
@@ -4342,34 +4342,32 @@ int emcore_delete_mail_attachment(int attachment_id, int *err_code)
 	
 	if (!emstorage_delete_attachment_on_db(attachment_id, false, &error))  {
 		EM_DEBUG_EXCEPTION("emstorage_delete_attachment_on_db failed [%d]", error);
+
+		if (emstorage_rollback_transaction(NULL, NULL, NULL) == false)
+			error = EMAIL_ERROR_DB_FAILURE;
+
+		ret = false;
 		goto FINISH_OFF;
 	}
 
-	SNPRINTF(attachment_folder_path, sizeof(attachment_folder_path), "%s/%d/%d", MAILHOME, attachment_tbl->account_id, attachment_tbl->mail_id);
+	SNPRINTF(attachment_folder_path, sizeof(attachment_folder_path), "%s/%d/%d/%d", MAILHOME, attachment_tbl->account_id, attachment_tbl->mail_id, attachment_id);
 
-	if (!emstorage_delete_dir(attachment_folder_path, &error)) {
+	if (!emstorage_delete_dir(attachment_folder_path, NULL)) {
 		EM_DEBUG_EXCEPTION("emstorage_delete_dir failed");
-		goto FINISH_OFF;
 	}
-	ret = true;
-	
+
+	if (emstorage_commit_transaction(NULL, NULL, NULL) == false) {
+		error = EMAIL_ERROR_DB_FAILURE;
+		ret = false;
+	}
+
 FINISH_OFF:
 	if (attachment_tbl)
 		emstorage_free_attachment(&attachment_tbl, 1, NULL);
 
-	if (ret == true) {	/*  COMMIT TRANSACTION; */
-		if (emstorage_commit_transaction(NULL, NULL, NULL) == false) {
-			error = EMAIL_ERROR_DB_FAILURE;
-			ret = false;
-		}
-	}
-	else {	/*  ROLLBACK TRANSACTION; */
-		if (emstorage_rollback_transaction(NULL, NULL, NULL) == false)
-			error = EMAIL_ERROR_DB_FAILURE;
-	}
-
 	if (err_code != NULL)
 		*err_code = error;
+
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
 	return ret;
 }
@@ -4757,7 +4755,6 @@ INTERNAL_FUNC int emcore_move_mail(int mail_ids[], int mail_ids_count, int dst_m
 
 	if (!emstorage_get_mail_field_by_multiple_mail_id(mail_ids, mail_ids_count, RETRIEVE_FLAG, &mail_list, true, &err) || !mail_list) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mail_field_by_multiple_mail_id failed [%d]", err);
-
 		goto FINISH_OFF;
 	}
 

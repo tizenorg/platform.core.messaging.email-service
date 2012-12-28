@@ -297,7 +297,6 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 	/*  default variabl */
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	char vconf_private_id[MAX_PATH] = {0,};
 
 	if (account_id < FIRST_ACCOUNT_ID)  {
 		EM_DEBUG_EXCEPTION("account_id[%d]", account_id);
@@ -352,6 +351,11 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 		goto FINISH_OFF;
 	}
 
+	/* Delete contact log */
+	if ( ((err = emcore_delete_contacts_log(account_id)) != EMAIL_ERROR_NONE) && (err != EMAIL_ERROR_DATA_NOT_FOUND) ) {
+			EM_DEBUG_EXCEPTION("emcore_delete_contacts_log failed : [%d]", err);
+	}
+
 	/*  BEGIN TRANSACTION;		 */
 	emstorage_begin_transaction(NULL, NULL, NULL);
 	
@@ -386,16 +390,6 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 	emcore_delete_notification_by_account(account_id);
 	emcore_refresh_account_reference();
 
-	/* Delete contact log */
-		if ( ((err = emcore_delete_contacts_log(account_id)) != EMAIL_ERROR_NONE) && (err != EMAIL_ERROR_DATA_NOT_FOUND) ) {
-			EM_DEBUG_EXCEPTION("emcore_delete_contacts_log failed : [%d]", err);
-			goto FINISH_OFF;
-		}
-
-	/* Delete Noti private ID */
-	SNPRINTF(vconf_private_id, sizeof(vconf_private_id), "%s/%d", VCONF_KEY_NOTI_PRIVATE_ID, account_id);
-	if (vconf_unset_recursive(vconf_private_id) != 0) 
-		EM_DEBUG_EXCEPTION("vconf_unset_recursive failed");
 
 	ret = true;
 
@@ -1191,13 +1185,11 @@ INTERNAL_FUNC int emcore_update_sync_status_of_account(int input_account_id, ema
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_set_operator [%d], input_sync_status [%d]", input_account_id, input_set_operator, input_sync_status);
 	int err = EMAIL_ERROR_NONE;
-	int err_from_account_svc = 0;
+
 	emstorage_account_tbl_t *account_tbl_data = NULL;
 
 	if (!emstorage_update_sync_status_of_account(input_account_id, input_set_operator, input_sync_status, true, &err))
 		EM_DEBUG_EXCEPTION("emstorage_update_sync_status_of_account failed [%d]", err);
-
-FINISH_OFF:
 
 	if (account_tbl_data)
 		emstorage_free_account(&account_tbl_data, 1, NULL);
