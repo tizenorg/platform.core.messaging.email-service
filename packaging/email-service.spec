@@ -1,6 +1,6 @@
 Name:       email-service
 Summary:    E-mail Framework Middleware package
-Version:    0.10.15
+Version:    0.10.16
 Release:    1
 Group:      System/Libraries
 License:    TBD

@@ -5214,6 +5214,12 @@ INTERNAL_FUNC int emcore_parse_mime_file_to_mail(char *eml_file_path, email_mail
 		goto FINISH_OFF;
 	}
 
+	if (!mmsg->header->part_header) {
+		EM_DEBUG_EXCEPTION("Invalid eml format");
+		err = EMAIL_ERROR_INVALID_DATA;	
+		goto FINISH_OFF;
+	}
+
 	if (!emcore_mime_parse_body(eml_fp, is_file, mmsg, cnt_info, NULL, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_mime_parse_body failed : [%d]", err);
 		goto FINISH_OFF;
