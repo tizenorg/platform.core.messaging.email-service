@@ -249,7 +249,7 @@ static gboolean testapp_test_add_mail (int *result_mail_id)
 	fflush(body_file);
 	fclose(body_file);
 
-	testapp_print(" > Select smime? [0: Normal, 1: sign, 2: Encrpyt, 3: sing + encrypt] : ");
+	testapp_print(" > Select smime? [0: Normal, 1: sign, 2: Encrypt, 3: sing + encrypt] : ");
 	result_from_scanf = scanf("%d", &smime_type);
 	test_mail_data->smime_type = smime_type;
 	
@@ -333,6 +333,7 @@ static gboolean testapp_test_update_mail()
 	int                    mail_id = 0;
 	int                    err = EMAIL_ERROR_NONE;
 	int                    test_attachment_data_count = 0;
+	int                    ret = 0;
 	char                   arg[50];
 	email_mail_data_t       *test_mail_data = NULL;
 	email_attachment_data_t *test_attachment_data_list = NULL;
@@ -343,6 +344,11 @@ static gboolean testapp_test_update_mail()
 
 	email_get_mail_data(mail_id, &test_mail_data);
 
+	if (!test_mail_data) {
+		testapp_print("email_get_mail_data() failed\n");
+		return FALSE;
+	}
+
 	testapp_print("\n > Enter Subject: ");
 	result_from_scanf = scanf("%s", arg);
 
@@ -351,7 +357,7 @@ static gboolean testapp_test_update_mail()
 	if (test_mail_data->attachment_count > 0) {
 		if ( (err = email_get_attachment_data_list(mail_id, &test_attachment_data_list, &test_attachment_data_count)) != EMAIL_ERROR_NONE ) {
 			testapp_print("email_get_meeting_request() failed [%d]\n", err);
-			return FALSE;
+			goto FINISH_OFF;
 		}
 	}	
 
@@ -361,7 +367,7 @@ static gboolean testapp_test_update_mail()
 		
 		if ( (err = email_get_meeting_request(mail_id, &meeting_req)) != EMAIL_ERROR_NONE ) {
 			testapp_print("email_get_meeting_request() failed [%d]\n", err);
-			return FALSE;
+			goto FINISH_OFF;
 		}
 	
 		testapp_print("\n > Enter meeting response: ");
@@ -372,7 +378,11 @@ static gboolean testapp_test_update_mail()
 			testapp_print("email_update_mail failed.[%d]\n", err);
 		else
 			testapp_print("email_update_mail success\n");
-		
+
+	ret = 1;
+
+FINISH_OFF:
+
 	if(test_mail_data)
 		email_free_mail_data(&test_mail_data, 1);
 		
@@ -381,6 +391,9 @@ static gboolean testapp_test_update_mail()
 		
 	if(meeting_req)
 		email_free_meeting_request(&meeting_req, 1);
+
+	if (!ret)
+		return FALSE;
 
 	return TRUE;
 }
@@ -1051,6 +1064,8 @@ static gboolean testapp_test_move_mails_to_mailbox_of_another_account()
 
 	testapp_print("\n > Enter mail count: ");
 	result_from_scanf = scanf("%d", &mail_id_count);
+
+	mail_id_count = (mail_id_count < 5000)?mail_id_count:5000;
 
 	if(mail_id_count > 0) {
 		mail_id_array = malloc(sizeof(int) * mail_id_count);
@@ -1770,7 +1785,7 @@ static gboolean testapp_test_email_write_mime_file()
 
 
 	err = email_get_mail_data(mail_id, &mail_data);
-	if (err != EMAIL_ERROR_NONE) {
+	if (err != EMAIL_ERROR_NONE || mail_data == NULL) {
 		testapp_print("email_get_mail_data failed : [%d]\n", err);
 		return false;
 	}

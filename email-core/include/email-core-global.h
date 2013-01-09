@@ -42,7 +42,9 @@ extern email_account_list_t *g_account_list;
 extern int g_account_num;
 extern int g_account_retrieved;
 
-INTERNAL_FUNC email_account_t *emcore_get_new_account_reference();
+INTERNAL_FUNC int emcore_get_account_from_unvalidated_account_list(int input_unvalidated_account_id, email_account_t **oupput_account);
+INTERNAL_FUNC int emcore_add_account_to_unvalidated_account_list(email_account_t *input_new_account);
+INTERNAL_FUNC int emcore_delete_account_from_unvalidated_account_list(int input_account_id);
 
 #ifdef __cplusplus
 }

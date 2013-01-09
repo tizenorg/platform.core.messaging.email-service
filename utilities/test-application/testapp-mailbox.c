@@ -206,7 +206,44 @@ static gboolean testapp_test_set_local_mailbox()
 	return FALSE;
 }
 
-static gboolean testapp_test_get_mailbox_by_type ()
+static gboolean testapp_test_delete_mailbox_ex()
+{
+	int  err = EMAIL_ERROR_NONE;
+	int  mailbox_id_count = 0 ;
+	int *mailbox_id_array = NULL;
+	int  account_id = 0;
+	int  on_server = 0;
+	int  handle = 0;
+	int  i = 0;
+	int  result_from_scanf = 0;
+
+	testapp_print("\n > Enter account_id: ");
+	result_from_scanf = scanf("%d", &account_id);
+
+	testapp_print("\n > Enter mailbox_id_count: ");
+	result_from_scanf = scanf("%d", &mailbox_id_count);
+
+	testapp_print("\n > Enter on_server: ");
+	result_from_scanf = scanf("%d", &on_server);
+
+	mailbox_id_count = (mailbox_id_count < 5000)?mailbox_id_count:5000;
+
+	if(mailbox_id_count > 0) {
+		mailbox_id_array = malloc(sizeof(int) * mailbox_id_count);
+	}
+
+	for(i = 0; i < mailbox_id_count; i++) {
+		testapp_print("\n > Enter mailbox id: ");
+		result_from_scanf = scanf("%d", (mailbox_id_array + i));
+	}
+
+	err = email_delete_mailbox_ex(account_id, mailbox_id_array, mailbox_id_count, on_server, &handle);
+
+	testapp_print("\nemail_delete_mailbox_ex returns [%d], handle [%d] \n", err, handle);
+	return 0;
+}
+
+static gboolean testapp_test_get_mailbox_by_type()
 {
 
 	int account_id =0;	
@@ -375,6 +412,10 @@ static gboolean testapp_test_interpret_command (int menu_number)
 
 		case 5:
 			testapp_test_set_local_mailbox();
+			break;
+
+		case 6:
+			testapp_test_delete_mailbox_ex();
 			break;
 
 		case 7:

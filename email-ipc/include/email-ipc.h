@@ -51,39 +51,36 @@ typedef void (*PFN_PROXY_CALLBACK)	(HIPC_API input_api_handle, void* pParam1, vo
 typedef void (*PFN_EXECUTE_API)		(HIPC_API input_api_handle);
 
 /*  ------------------------------------------------------------------------------------------------------------ */
-/* 	Proxy AP */
+/* 	Proxy API */
 /*  ------------------------------------------------------------------------------------------------------------ */
 EXPORT_API int emipc_initialize_proxy();
-
 EXPORT_API int emipc_finalize_proxy();
-
 EXPORT_API int emipc_execute_proxy_api(HIPC_API input_api_handle);
 
 /*  ------------------------------------------------------------------------------------------------------------ */
-/* 	Stub AP */
+/* 	Stub API */
 /*  ------------------------------------------------------------------------------------------------------------ */
 EXPORT_API bool emipc_initialize_stub(PFN_EXECUTE_API input_api_mapper);
-
 EXPORT_API bool emipc_finalize_stub();
-
 EXPORT_API bool emipc_execute_stub_api(HIPC_API input_api_handle);
 
 /*  ------------------------------------------------------------------------------------------------------------ */
-/* 	AP */
+/* 	API */
 /*  ------------------------------------------------------------------------------------------------------------ */
 EXPORT_API HIPC_API emipc_create_email_api(long api_id);
-EXPORT_API void     emipc_destroy_email_api(HIPC_API input_api_handle);
+EXPORT_API void emipc_destroy_email_api(HIPC_API input_api_handle);
 
-EXPORT_API long     emipc_get_api_id(HIPC_API input_api_handle);
-EXPORT_API long     emipc_get_app_id(HIPC_API input_api_handle);
+EXPORT_API long emipc_get_api_id(HIPC_API input_api_handle);
+EXPORT_API long emipc_get_app_id(HIPC_API input_api_handle);
 
 EXPORT_API bool emipc_add_parameter(HIPC_API api, EPARAMETER_DIRECTION direction, void *data, int data_length);
 EXPORT_API bool emipc_add_dynamic_parameter(HIPC_API api, EPARAMETER_DIRECTION direction, void *data, int data_length);
-EXPORT_API int      emipc_get_parameter(HIPC_API input_api_handle, EPARAMETER_DIRECTION input_parameter_direction, int input_parameter_index, int input_parameter_buffer_size, void *output_parameter);
+EXPORT_API int emipc_get_parameter(HIPC_API input_api_handle, EPARAMETER_DIRECTION input_parameter_direction, int input_parameter_index, int input_parameter_buffer_size, void *output_parameter);
 EXPORT_API void* emipc_get_nth_parameter_data(HIPC_API api_handle, EPARAMETER_DIRECTION direction, int param_index);
-EXPORT_API int      emipc_get_parameter_length(HIPC_API input_api_handle, EPARAMETER_DIRECTION input_parameter_direction, int input_parameter_index);
-EXPORT_API int   emipc_get_nth_parameter_length(HIPC_API input_api_handle, EPARAMETER_DIRECTION input_parameter_direction, int input_parameter_index);
+EXPORT_API int emipc_get_parameter_length(HIPC_API input_api_handle, EPARAMETER_DIRECTION input_parameter_direction, int input_parameter_index);
+EXPORT_API int emipc_get_nth_parameter_length(HIPC_API input_api_handle, EPARAMETER_DIRECTION input_parameter_direction, int input_parameter_index);
 
+EXPORT_API int emipc_execute_proxy_task(email_task_type_t input_task_type, void *input_task_parameter);
 #ifdef __cplusplus
 }
 #endif

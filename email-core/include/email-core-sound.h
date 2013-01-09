@@ -25,8 +25,8 @@
 #include <mm_player.h>
 #include <mm_error.h>
 #include <mm_session_private.h>
-#include <devman_haptic.h>
 #include <alarm.h>
+#include <feedback.h>
 
 typedef enum
 {
@@ -52,6 +52,13 @@ typedef enum
 	EMAIL_GCONF_VALUE_REPEAT_5MINS,
 	EMAIL_GCONF_VALUE_REPEAT_10MINS,
 } EMAIL_ALERT_REPEAT_ALARM;
+
+typedef enum
+{
+	SETTING_NOTI_STATUS_OFF    = 0,
+	SETTING_NOTI_STATUS_GLOBAL = 1, 
+	SETTING_NOTI_STATUS_EMAIL  = 2, 
+} EMAIL_NOTI_STATUS;
 
 #ifdef Min
 #undef Min

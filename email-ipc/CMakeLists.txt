@@ -46,7 +46,7 @@ INCLUDE_DIRECTORIES(
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(ipc_pkgs REQUIRED dlog dbus-1 glib-2.0)
+pkg_check_modules(ipc_pkgs REQUIRED dlog dbus-1 glib-2.0 libsystemd-daemon)
 
 FOREACH(flag ${ipc_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")

@@ -45,7 +45,6 @@ extern "C"
 
 /* ----------------------------------------------------------------------------- */
 /*  Feature definitions */
-#define __FEATURE_USING_ACCOUNT_SVC__
 #define __FEATURE_BACKUP_ACCOUNT__
 #define __FEATURE_MOVE_TO_OUTBOX_FIRST__
 /*  #define __FEATURE_PARTIAL_BODY_FOR_POP3__ */
@@ -65,6 +64,7 @@ extern "C"
 #define __FEATURE_SUPPORT_IMAP_ID__
 #define __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__
 #define __FEATURE_SUPPORT_VALIDATION_SYSTEM__
+#define __FEATURE_PROGRESS_IN_OUTBOX__
 /*  #define __FEATURE_USE_SHARED_MUTEX_FOR_PROTECTED_FUNC_CALL__ */
 /*  #define __FEATURE_IMAP_IDLE__ */
 
@@ -92,6 +92,7 @@ extern "C"
 #define MAX_PATH                            4096      /* /usr/src/linux-2.4.20-8/include/linux/limits.h */
 #define DATETIME_LENGTH                     16
 #define MAIL_ID_STRING_LENGTH               10
+#define MAILBOX_ID_STRING_LENGTH            10
 #define	EMAIL_LIMITATION_FREE_SPACE         (5) /*  This value is 5MB */
 #define EMAIL_MAIL_MAX_COUNT                5000
 #define HTML_EXTENSION_STRING               ".htm"
@@ -108,7 +109,7 @@ extern "C"
 #define EMAILPATH 					        DATA_PATH"/email"
 #define MAILHOME 					        DATA_PATH"/email/.email_data"
 #define MAILTEMP                            MAILHOME"/tmp"
-#define DIRECTORY_PERMISSION                0775
+#define DIRECTORY_PERMISSION                0755
 
 #define MIME_SUBTYPE_DRM_OBJECT             "vnd.oma.drm.message"
 #define MIME_SUBTYPE_DRM_RIGHTS             "vnd.oma.drm.rights+xml"
@@ -201,6 +202,9 @@ typedef pthread_t thread_t;
 
 #define TYPEPKCS7_SIGN 10	
 #define TYPEPKCS7_MIME 11
+
+#define INLINE_ATTACHMENT    1
+#define ATTACHMENT           2
 
 /* __FEATURE_LOCAL_ACTIVITY__ supported
 #define BULK_OPERATION_COUNT              50

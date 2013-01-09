@@ -192,7 +192,7 @@ int emcore_imap_idle_loop_start(email_mailbox_t *mailbox_list,  int num, int *er
 					sprintf(tag, "%08lx", 0xffffffff & (((MAILSTREAM *)temp->mail_stream)->gensym++));
     					sprintf(cmd, "%s DONE\015\012", tag);
 
-					if (!imap_local->netstream || !net_sout(imap_local->netstream, cmd, (int)strlen(cmd))) {
+					if (!imap_local->netstream || !net_sout(imap_local->netstream, cmd, (int)EM_SAFE_STRLEN(cmd))) {
 						EM_DEBUG_EXCEPTION("network error - failed to DONE on Mailbox - %s ", temp->name);
 					}
 					else {
@@ -412,7 +412,7 @@ static int emcore_imap_idle_connect_and_idle_on_mailbox(email_mailbox_t *mailbox
 	sprintf(cmd, "%s IDLE\015\012", tag);
 
 	/* Send IDLE command */
-	if (!imap_local->netstream || !net_sout(imap_local->netstream, cmd, (int)strlen(cmd))) {
+	if (!imap_local->netstream || !net_sout(imap_local->netstream, cmd, (int)EM_SAFE_STRLEN(cmd))) {
 		EM_DEBUG_EXCEPTION("network error - failed to IDLE on Mailbox - %s ", mailbox->mailbox_name);
 		err = EMAIL_ERROR_IMAP4_IDLE_FAILURE;
 		goto FINISH_OFF;

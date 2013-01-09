@@ -154,6 +154,7 @@ static int get_x509_stack_of_recipient_certs(char *recipients, STACK_OF(X509) **
 	temp_recipient_certs = sk_X509_new_null();
 
 	temp_recipients = EM_SAFE_STRDUP(recipients);
+	temp_recipients = em_replace_all_string(temp_recipients, ",", ";");	
 	token = strtok_r(temp_recipients, ";", &str);
 
 	do {
@@ -346,8 +347,8 @@ INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate, char *mime_
 	ret = true;
 
 FINISH_OFF:
-	if (file_path)
-		*file_path = temp_smime_filepath;
+	if (file_path && ret)
+		*file_path = EM_SAFE_STRDUP(temp_smime_filepath);
 
 	X509_free(cert);
 	sk_X509_pop_free(other_certs, X509_free);
@@ -429,8 +430,8 @@ INTERNAL_FUNC int emcore_smime_set_encrypt_message(char *recipient_list, char *m
 	ret = true;
 
 FINISH_OFF:
-	if (file_path)
-		*file_path = temp_smime_filepath;
+	if (file_path && ret)
+		*file_path = EM_SAFE_STRDUP(temp_smime_filepath);
 
 	PKCS7_free(encrypt_message);
 
@@ -555,8 +556,8 @@ INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *recipient_li
 	ret = true;
 
 FINISH_OFF:
-	if (file_path)
-		*file_path = temp_smime_filepath;
+	if (file_path && ret)
+		*file_path = EM_SAFE_STRDUP(temp_smime_filepath);
 
 	PKCS7_free(signed_message);
 	PKCS7_free(encrypt_message);
@@ -581,10 +582,9 @@ FINISH_OFF:
 
 
 
-INTERNAL_FUNC int emcore_smime_set_decrypt_message(char *encrypt_message, char *from_address, char **decrypt_message, int *err_code)
+INTERNAL_FUNC int emcore_smime_set_decrypt_message(char *encrypt_message, char *certificate, char **decrypt_message, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("encrypt_file : [%s], from_addres : [%s]", encrypt_message, from_address);
-	int i = 0;
+	EM_DEBUG_FUNC_BEGIN("encrypt_file : [%s], certificate : [%s]", encrypt_message, certificate);
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 	char temp_decrypt_filepath[512] = {0, };
@@ -623,14 +623,11 @@ INTERNAL_FUNC int emcore_smime_set_decrypt_message(char *encrypt_message, char *
 		goto FINISH_OFF;
 	}
 
-	/* Search Public cert */
-	if (!get_x509_stack_of_recipient_certs(from_address, &recipient_certs, &err)) {
-		EM_DEBUG_EXCEPTION("get_x509_stack_of_recipient_certs failed [%d]", err);
+	/* Search private cert */
+	if (!emcore_load_PFX_file(certificate, &private_key, &cert, NULL, &err)) {
+		EM_DEBUG_EXCEPTION("Load the private certificate failed : [%d]", err);
 		goto FINISH_OFF;
 	}
-
-	for (i = 0; i < sk_X509_num(recipient_certs); i++) 
-		cert = sk_X509_value(recipient_certs, i);
 
 	if (!PKCS7_decrypt(p7_encrypt_message, private_key, cert, out_buf, 0)) {
 		EM_DEBUG_EXCEPTION("Decrpyt failed");
@@ -642,7 +639,8 @@ INTERNAL_FUNC int emcore_smime_set_decrypt_message(char *encrypt_message, char *
 
 FINISH_OFF:
 
-	*decrypt_message = temp_decrypt_filepath;
+	if (decrypt_message && ret)
+		*decrypt_message = EM_SAFE_STRDUP(temp_decrypt_filepath);
 
 	EVP_cleanup();
 	X509_free(cert);
@@ -810,13 +808,14 @@ INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(emstorage_account_tbl_t
 	int smime_type = EMAIL_SMIME_NONE;
 	int address_length = 0;
 	int attachment_count = input_attachment_count;
+	int file_size = 0;
 	char *name = NULL;
 	char *rfc822_file = NULL;
 	char *mime_entity = NULL;
 	char *smime_file_path = NULL;
 	char *other_certificate_list = NULL;
 	email_attachment_data_t new_attachment_data = {0};
-	email_attachment_data_t *temp_attachment_data = NULL;
+	email_attachment_data_t *new_attachment_list = NULL;
 
 	/* Validating parameters */
 	
@@ -903,21 +902,25 @@ INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(emstorage_account_tbl_t
 
 		break;
 	}
-/*
-	if (!emcore_get_file_size(smime_file_path, &size, &err)) {
-		EM_DEBUG_EXCEPTION("emcore_get_file_size failed : [%d]", err);
+
+	if (!emcore_get_file_size(smime_file_path, &file_size, NULL)) {
+		EM_DEBUG_EXCEPTION("emcore_get_file_size failed");
 		goto FINISH_OFF;
 	}
-*/
-	new_attachment_data.attachment_size = 1;
+
+	new_attachment_data.attachment_size = file_size;
 	new_attachment_data.save_status = 1;
 
+	new_attachment_list = (email_attachment_data_t *)em_malloc(sizeof(email_attachment_data_t) * attachment_count);
+	if (new_attachment_list == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		goto FINISH_OFF;
+	}
 
-	temp_attachment_data = (email_attachment_data_t *)em_malloc(sizeof(email_attachment_data_t) * attachment_count);
 	if (input_attachment_data_list != NULL)
-		temp_attachment_data = input_attachment_data_list;
+		new_attachment_list = input_attachment_data_list;
 
-	temp_attachment_data[attachment_count-1] = new_attachment_data;
+	new_attachment_list[attachment_count-1] = new_attachment_data;
 
 	input_mail_data->smime_type = smime_type;
 	input_mail_data->file_path_mime_entity = EM_SAFE_STRDUP(mime_entity);
@@ -930,14 +933,10 @@ FINISH_OFF:
 		*output_attachment_count = attachment_count;
 	
 	if (output_attachment_data_list) 
-		*output_attachment_data_list = temp_attachment_data;
-	
+		*output_attachment_data_list = new_attachment_list;
 
 	*output_mail_data = input_mail_data;
 
-	if (!ret && temp_attachment_data)
-		emcore_free_attachment_data(&temp_attachment_data, attachment_count, NULL);	
-	
 	return ret;				
 }
 

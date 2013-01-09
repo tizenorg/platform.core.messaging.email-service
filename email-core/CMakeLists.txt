@@ -170,7 +170,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage openssl accounts-svc mm-player mm-session devman_haptic alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge)
+pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage openssl accounts-svc mm-player mm-session alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge feedback)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${core_pkgs_CFLAGS})

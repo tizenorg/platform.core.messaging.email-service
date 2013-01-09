@@ -68,8 +68,10 @@ INTERNAL_FUNC void* em_memdup(void* src, int len)
 	}
 
 	void *p = calloc(1,len);
-	if (!p)
+	if (!p) {
 		EM_DEBUG_EXCEPTION("malloc failed");
+		return NULL;
+	}
 
 	memcpy(p, src, len);
 
@@ -92,8 +94,8 @@ INTERNAL_FUNC char *em_trim_left(char *str)
 
 	temp_buffer = EM_SAFE_STRDUP(p);
 
-	strncpy(str, temp_buffer, strlen(str));
-	str[strlen(temp_buffer)] = NULL_CHAR;
+	strncpy(str, temp_buffer, EM_SAFE_STRLEN(str));
+	str[EM_SAFE_STRLEN(temp_buffer)] = NULL_CHAR;
 
 	EM_SAFE_FREE(temp_buffer);
 
@@ -108,7 +110,7 @@ INTERNAL_FUNC char *em_trim_right(char *str)
 	/* EM_DEBUG_FUNC_BEGIN() */
 	if (!str) return NULL;
 
-	p = str+strlen(str)-1;
+	p = str+EM_SAFE_STRLEN(str)-1;
 	while (((int)p >= (int)str) && (*p == ' ' || *p == '\t' || *p == LF || *p == CR))
 		*p --= '\0';
 
@@ -140,7 +142,7 @@ INTERNAL_FUNC char*  em_lower_string(char *str)
 
 INTERNAL_FUNC int em_upper_path(char *path)
 {
-	int i = 0, is_utf7 = 0, len = path ? (int)strlen(path) : -1;
+	int i = 0, is_utf7 = 0, len = path ? (int)EM_SAFE_STRLEN(path) : -1;
 	for (; i < len; i++) {
 		if (path[i] == '&' || path[i] == 5) {
 			is_utf7 = 1;
@@ -165,7 +167,7 @@ INTERNAL_FUNC void em_skip_whitespace(char *addr_str, char **pAddr)
 	if (!addr_str)
 		return ;
 	char *str = addr_str;
-	char ptr[strlen(str)+1]  ;
+	char ptr[EM_SAFE_STRLEN(str)+1]  ;
 	int i, j = 0;
 
 	str = addr_str ;
@@ -210,8 +212,8 @@ INTERNAL_FUNC char* em_replace_all_string(char *source_string, char *old_string,
 	EM_IF_NULL_RETURN_VALUE(old_string, NULL);
 	EM_IF_NULL_RETURN_VALUE(new_string, NULL);
 
-	old_str_length = strlen(old_string);
-	new_str_length = strlen(new_string);
+	old_str_length = EM_SAFE_STRLEN(old_string);
+	new_str_length = EM_SAFE_STRLEN(new_string);
 	
 	if (old_str_length != new_str_length) {
 		for (i = 0; source_string[i] != '\0';) {
@@ -223,7 +225,7 @@ INTERNAL_FUNC char* em_replace_all_string(char *source_string, char *old_string,
 			}
 		}
 	} else {
-		i = strlen(source_string);
+		i = EM_SAFE_STRLEN(source_string);
 	}
 
 	result_buffer = (char *)malloc(i + 1 + count*(new_str_length-old_str_length));
@@ -265,7 +267,7 @@ INTERNAL_FUNC char* em_replace_string(char *source_string, char *old_string, cha
 		return NULL;
 	}
 
-	buffer_length	= strlen(source_string) + 1024;
+	buffer_length	= EM_SAFE_STRLEN(source_string) + 1024;
 	result_buffer  = (char *)em_malloc(buffer_length);
 
 	if (!result_buffer) {
@@ -274,9 +276,9 @@ INTERNAL_FUNC char* em_replace_string(char *source_string, char *old_string, cha
 	}
 
 	strncpy(result_buffer, source_string, p - source_string);
-	snprintf(result_buffer + strlen(result_buffer), buffer_length - strlen(result_buffer), "%s%s", new_string, p + strlen(old_string));
+	snprintf(result_buffer + strlen(result_buffer), buffer_length - strlen(result_buffer), "%s%s", new_string, p + strlen(old_string)); /*prevent 34351*/
 
-	EM_DEBUG_FUNC_END("result_buffer[%s]", result_buffer);
+	EM_DEBUG_FUNC_END("result_buffer[%p]", result_buffer);
 	return result_buffer;
 }
 
@@ -352,7 +354,7 @@ INTERNAL_FUNC int em_get_file_name_from_file_path(char *input_source_file_path, 
 		goto FINISH_OFF;
 	}
 
-	pos_on_string        = strlen(input_source_file_path) - 1;
+	pos_on_string        = EM_SAFE_STRLEN(input_source_file_path) - 1;
 	end_pos_of_file_path = input_source_file_path + pos_on_string;
 	end_pos_of_file_name = end_pos_of_file_path;
 
@@ -397,7 +399,7 @@ INTERNAL_FUNC int em_get_file_name_and_extension_from_file_path(char *input_sour
 		goto FINISH_OFF;
 	}
 
-	pos_on_string        = strlen(input_source_file_path) - 1;
+	pos_on_string        = EM_SAFE_STRLEN(input_source_file_path) - 1;
 	end_pos_of_file_path = input_source_file_path + pos_on_string;
 	end_pos_of_file_name = end_pos_of_file_path;
 
@@ -446,7 +448,7 @@ INTERNAL_FUNC char *em_get_extension_from_file_path(char *source_file_path, int 
 		goto FINISH_OFF;
 	}
 
-	pos_on_string = strlen(source_file_path) - 1;
+	pos_on_string = EM_SAFE_STRLEN(source_file_path) - 1;
 
 	while(pos_on_string > 0 && source_file_path[pos_on_string--] != '.') ;
 
@@ -479,7 +481,7 @@ INTERNAL_FUNC int em_get_encoding_type_from_file_path(const char *input_file_pat
 		goto FINISH_OFF;
 	}
 
-	enf_of_string = pos_of_filename = strlen(input_file_path);
+	enf_of_string = pos_of_filename = EM_SAFE_STRLEN(input_file_path);
 
 	while(pos_of_filename >= 0 && input_file_path[pos_of_filename--] != '/') {
 		if(input_file_path[pos_of_filename] == '.')
@@ -584,7 +586,7 @@ INTERNAL_FUNC int em_verify_email_address(char *address, int without_bracket, in
 	int ret = false, error = EMAIL_ERROR_NONE;
 	char *reg_rule = NULL;
 
-	if(!address || strlen(address) == 0) {
+	if(!address || EM_SAFE_STRLEN(address) == 0) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		if (err_code)
 			*err_code = EMAIL_ERROR_INVALID_PARAM;
@@ -603,7 +605,7 @@ INTERNAL_FUNC int em_verify_email_address(char *address, int without_bracket, in
 		return false;
 	}
 
-	int alias_len = strlen(address) + 1;
+	int alias_len = EM_SAFE_STRLEN(address) + 1;
 	regmatch_t pmatch[alias_len];
 
 	bzero(pmatch, alias_len);
@@ -1084,6 +1086,14 @@ INTERNAL_FUNC int em_send_notification_to_active_sync_engine(int subType, ASNoti
 			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox.account_id), DBUS_TYPE_INVALID);
 			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox.mailbox_id), DBUS_TYPE_INVALID);
 			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox.handle), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_DELETE_MAILBOX_EX :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox_ex.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox_ex.mailbox_id_count), DBUS_TYPE_INVALID);
+			for(i = 0; i <data->delete_mailbox_ex.mailbox_id_count; i++)
+				dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->delete_mailbox_ex.mailbox_id_array[i]), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox_ex.handle), DBUS_TYPE_INVALID);
 			break;
 
 		default:

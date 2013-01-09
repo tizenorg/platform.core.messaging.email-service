@@ -27,6 +27,7 @@
 #include "email-ipc-param-list.h"
 #include "email-ipc-socket.h"
 #include "email-proxy-main.h"
+#include "email-core-task-manager.h"
 
 #include "email-debug-log.h"
 #include "email-errors.h"
@@ -196,5 +197,53 @@ EXPORT_API int emipc_get_nth_parameter_length(HIPC_API api, EPARAMETER_DIRECTION
 	return -1;
 }
 
+EXPORT_API int emipc_execute_proxy_task(email_task_type_t input_task_type, void *input_task_parameter)
+{
+	EM_DEBUG_FUNC_BEGIN("input_task_type [%d] input_task_parameter [%p]", input_task_type, input_task_parameter);
 
+	int err = EMAIL_ERROR_NONE;
+	int task_parameter_length = 0;
+	char *task_parameter_stream = NULL;
+	HIPC_API hAPI = NULL;
+
+	if(input_task_parameter == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	if((err = emcore_encode_task_parameter(input_task_type, input_task_parameter, &task_parameter_stream, &task_parameter_length)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_encode_task_parameter failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	hAPI = emipc_create_email_api(input_task_type);
+
+	if(!hAPI) {
+		EM_DEBUG_EXCEPTION("emipc_create_email_api failed");
+		err = EMAIL_ERROR_NULL_VALUE;
+		goto FINISH_OFF;
+	}
+
+	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)task_parameter_stream, task_parameter_length)) {
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
+		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+
+	FINISH_OFF:
+	if(hAPI)
+		emipc_destroy_email_api(hAPI);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
 

@@ -136,6 +136,7 @@ void testapp_show_menu (eEMAIL_MENU menu)
 			testapp_print (" 3. Raname mailbox\n");
 			testapp_print (" 4. Get IMAP mailbox List\n");
 			testapp_print (" 5. Set local mailbox\n");
+			testapp_print (" 6. Delete mailbox ex\n");
 			testapp_print (" 7. Get mailbox by mailbox type\n");
 			testapp_print (" 8. Set mailbox type\n");
 			testapp_print (" 9. Set mail slot size\n");

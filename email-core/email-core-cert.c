@@ -256,7 +256,7 @@ INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X5
 	}
 
 	/* Make the pfxID string */
-	err = certsvc_string_new(cert_instance, certificate, strlen(certificate), &csstring);
+	err = certsvc_string_new(cert_instance, certificate, EM_SAFE_STRLEN(certificate), &csstring);
 	if (err != CERTSVC_SUCCESS) {
 		EM_DEBUG_EXCEPTION("certsvc_string_new failed : [%d]", err);
 		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
@@ -629,6 +629,8 @@ FINISH_OFF:
 	if (err_code != NULL) {
 		*err_code = err;
 	}
+
+	cert_svc_cert_context_final(context);
 
 	EM_DEBUG_FUNC_END();
 	return ret;

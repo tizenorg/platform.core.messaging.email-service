@@ -62,6 +62,7 @@
 #define EMAIL_ERROR_ACCOUNT_MAX_COUNT                   -1053    /*  There is too many account */
 #define EMAIL_ERROR_MAIL_MEMORY_FULL                    -1054    /*  There is no more storage */
 #define EMAIL_ERROR_DATA_TOO_LONG                       -1025    /*  Data is too long */
+#define EMAIL_ERROR_MAXIMUM_DEVICES_LIMIT_REACHED       -1530    /*  EAS - Maximum devices limit reached */
 
 /* Error codes for storage */
 #define EMAIL_ERROR_DB_FAILURE                          -1029    /*  database operation failed */
@@ -149,6 +150,7 @@
 
 /* Error codes for mails */
 #define EMAIL_ERROR_MAIL_NOT_FOUND_ON_SERVER            -1055    /*  The expected mail is not found in server */
+#define EMAIL_ERROR_MAIL_IS_NOT_DOWNLOADED              -1095    /*  The mail is not downloaded */
 
 /* Error codes for attachment */
 #define EMAIL_ERROR_ATTACHMENT_SIZE_EXCEED_POLICY_LIMIT -7001

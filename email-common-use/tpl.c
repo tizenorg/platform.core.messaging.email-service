@@ -343,7 +343,7 @@ static tpl_node *tpl_map_va(char *fmt, va_list ap) {
 
     /* set up root nodes special ser_osz to reflect overhead of preamble */
     root->ser_osz =  sizeof(uint32_t); /* tpl leading length */
-    root->ser_osz += strlen(fmt) + 1;  /* fmt + NUL-terminator */
+    root->ser_osz += EM_SAFE_STRLEN(fmt) + 1;  /* fmt + NUL-terminator */
     root->ser_osz += 4;                /* 'tpl' magic prefix + flags byte */
 
     parent=root;
@@ -560,10 +560,10 @@ static tpl_node *tpl_map_va(char *fmt, va_list ap) {
     if (lparen_level != 0) goto fail;
 
     /* copy the format string, save for convenience */
-    ((tpl_root_data*)(root->data))->fmt = tpl_hook.malloc(strlen(fmt)+1);
+    ((tpl_root_data*)(root->data))->fmt = tpl_hook.malloc(EM_SAFE_STRLEN(fmt)+1);
     if (((tpl_root_data*)(root->data))->fmt == NULL)
         fatal_oom();
-    memcpy(((tpl_root_data*)(root->data))->fmt,fmt,strlen(fmt)+1);
+    memcpy(((tpl_root_data*)(root->data))->fmt,fmt,EM_SAFE_STRLEN(fmt)+1);
 
     return root;
 
@@ -875,7 +875,7 @@ static void *tpl_dump_atyp(tpl_node *n, tpl_atyp* at, void *dv) {
                     /* dump the string length followed by the string */
                     for(i=0; i < c->num; i++) {
                       memcpy(&strp,datav,sizeof(char*)); /* cp to aligned */
-                      slen = strp ? (strlen(strp)+1) : 0;
+                      slen = strp ? (EM_SAFE_STRLEN(strp)+1) : 0;
                       dv = tpl_cpv(dv,&slen,sizeof(uint32_t));
                       if (slen > 1) dv = tpl_cpv(dv,strp,slen-1);
                       datav = (void*)((uintptr_t)datav + sizeof(char*));
@@ -944,7 +944,7 @@ static size_t tpl_ser_osz(tpl_node *n) {
                 for(i=0; i < c->num; i++) {
                   sz += sizeof(uint32_t);  /* string len */
                   memcpy(&strp,&((char**)c->data)[i],sizeof(char*)); /* cp to aligned */
-                  sz += strp ? strlen(strp) : 0;
+                  sz += strp ? EM_SAFE_STRLEN(strp) : 0;
                 }
                 break;
             case TPL_TYPE_ARY:
@@ -1080,7 +1080,7 @@ static int tpl_dump_to_mem(tpl_node *r,void *addr,size_t sz) {
     dv = tpl_cpv(dv,TPL_MAGIC,3);         /* copy tpl magic prefix */
     dv = tpl_cpv(dv,&flags,1);            /* copy flags byte */
     dv = tpl_cpv(dv,&sz32,sizeof(uint32_t));/* overall length (inclusive) */
-    dv = tpl_cpv(dv,fmt,strlen(fmt)+1);   /* copy format with NUL-term */
+    dv = tpl_cpv(dv,fmt,EM_SAFE_STRLEN(fmt)+1);   /* copy format with NUL-term */
     fxlens = tpl_fxlens(r,&num_fxlens);
     dv = tpl_cpv(dv,fxlens,num_fxlens*sizeof(uint32_t));/* fmt # lengths */
 
@@ -1106,7 +1106,7 @@ static int tpl_dump_to_mem(tpl_node *r,void *addr,size_t sz) {
             case TPL_TYPE_STR:
                 for(i=0; i < c->num; i++) {
                   char *str = ((char**)c->data)[i];
-                  slen = str ? strlen(str)+1 : 0;
+                  slen = str ? EM_SAFE_STRLEN(str)+1 : 0;
                   dv = tpl_cpv(dv,&slen,sizeof(uint32_t));  /* string len */
                   if (slen>1) dv = tpl_cpv(dv,str,slen-1); /*string*/
                 }
@@ -1358,7 +1358,7 @@ TPL_API char* tpl_peek(int mode, ...) {
 
        first_atom = strspn(fmt, "S()"); /* skip any leading S() */
 
-       datapeek_flen = strlen(datapeek_f);
+       datapeek_flen = EM_SAFE_STRLEN(datapeek_f);
        if (strspn(datapeek_f, tpl_datapeek_ok_chars) < datapeek_flen) {
          tpl_hook.oops("invalid TPL_DATAPEEK format: %s\n", datapeek_f);
          tpl_hook.free(fmt_cpy); fmt_cpy = NULL; /* fail */
@@ -1848,7 +1848,7 @@ TPL_API int tpl_pack(tpl_node *r, int i) {
                      block also works if the string pointer is NULL. */
                   char *caddr = ((char**)child->addr)[fidx];
                   char **cdata = &((char**)child->data)[fidx];
-                  slen = caddr ?  (strlen(caddr) + 1) : 0;
+                  slen = caddr ?  (EM_SAFE_STRLEN(caddr) + 1) : 0;
                   if (slen) {
                     str = tpl_hook.malloc(slen);
                     if (!str) fatal_oom();

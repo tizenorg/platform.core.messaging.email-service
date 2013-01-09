@@ -452,7 +452,7 @@ INTERNAL_FUNC long tcp_sout_lnx(TCPSTREAM *stream, char *string, unsigned long s
 			continue;
 		}
 
-		if (!(nwrite = write(sockid, string, size)) < 0) {
+		if ((nwrite = write(sockid, string, size)) < 0) { /*prevent 22857*/
 			EM_DEBUG_EXCEPTION("socket write error");
 /* 			if (errno == EINTR) continue; */
 			tcp_abort(stream);
@@ -485,6 +485,6 @@ JOB_CANCEL:
 
 INTERNAL_FUNC long tcp_soutr_lnx(TCPSTREAM *stream, char *string)
 {
-	return tcp_sout_lnx(stream, string, strlen(string));
+	return tcp_sout_lnx(stream, string, EM_SAFE_STRLEN(string));
 }
 

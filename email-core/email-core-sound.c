@@ -33,14 +33,9 @@
 #define TIMER 30000   // 30 seconds
 #define HAPTIC_TEST_ITERATION 1
 
-#define SETTING_SOUND_STATUS_OFF 0
-#define SETTING_SOUND_STATUS_GLOBAL 1
-#define SETTING_SOUND_STATUS_EMAIL 2
-
 static MMHandleType email_mmhandle = 0;
 static alarm_id_t email_alarm_id = 0;
-static int email_vibe_handle = 0;
-static int setting_sound_status = 0;
+static int setting_noti_status = 0;
 
 static char *filename;
 alarm_entry_t *alarm_info = NULL;
@@ -51,8 +46,6 @@ static pthread_mutex_t mmhandle_mutex = PTHREAD_MUTEX_INITIALIZER;
 static thread_t g_alert_thread;
 
 void  emcore_set_repetition_alarm(int repetition);
-int   emcore_vibration_destory();
-int   emcore_vibration_stop();
 int   emcore_sound_mp_player_stop();
 bool  emcore_sound_mp_player_destory();
 void *start_alert_thread(void *arg);
@@ -83,12 +76,15 @@ int emcore_alert_sound_init()
 
 int emcore_alert_alarm_init()
 {
+	EM_DEBUG_FUNC_BEGIN();
+
 	int ret = ALARMMGR_RESULT_SUCCESS;
 	
 	ret = alarmmgr_init("email-service-0");
-	if (ret != 0) 
+	if (ret != ALARMMGR_RESULT_SUCCESS) 
 		EM_DEBUG_EXCEPTION("alarmmgr_init failed : [%d]", ret);
 
+	EM_DEBUG_FUNC_END();
 	return ret;
 }
 
@@ -109,23 +105,10 @@ int emcore_alert_sound_filepath_init()
 	return true;
 }
 
-int emcore_alert_vibe_init()
-{
-	email_vibe_handle = device_haptic_open(DEV_IDX_0, 0);	
-	if (!email_vibe_handle) {
-		EM_DEBUG_EXCEPTION("device_haptic_open failed");
-		return false;
-	}
-
-	return true;
-}
-
 void emcore_global_noti_key_changed_cb(keynode_t *key_node, void *data)
 {
+	EM_DEBUG_FUNC_BEGIN();
 	int ret = 0;
-
-	if (setting_sound_status != SETTING_SOUND_STATUS_GLOBAL)
-		return;
 
 	switch (vconf_keynode_get_type(key_node)) {
 	case VCONF_TYPE_INT:
@@ -142,6 +125,8 @@ void emcore_global_noti_key_changed_cb(keynode_t *key_node, void *data)
 		EM_DEBUG_EXCEPTION("Invalid key type");
 		break;
 	}
+
+	EM_DEBUG_FUNC_END();
 }
 
 void emcore_email_noti_key_changed_cb(keynode_t *key_node, void *data)
@@ -149,9 +134,6 @@ void emcore_email_noti_key_changed_cb(keynode_t *key_node, void *data)
 	EM_DEBUG_FUNC_BEGIN();
 	int ret = 0;
 
-	if (setting_sound_status != SETTING_SOUND_STATUS_EMAIL)
-		return;
-	
 	switch (vconf_keynode_get_type(key_node)) {
 	case VCONF_TYPE_INT:
 		ret = alarmmgr_remove_alarm(email_alarm_id);
@@ -170,7 +152,7 @@ void emcore_email_noti_key_changed_cb(keynode_t *key_node, void *data)
 	EM_DEBUG_FUNC_END();
 }
 
-bool emcore_update_sound_status()
+bool emcore_update_noti_status()
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int ticker_noti = 0;
@@ -181,33 +163,37 @@ bool emcore_update_sound_status()
 		return false;
 	}
 
-	setting_sound_status = SETTING_SOUND_STATUS_EMAIL;
+	EM_DEBUG_LOG("ticker_noti of vip : [%d]", ticker_noti);
 
-	if (!ticker_noti) {
+	if (ticker_noti <= 0) {
 		/* Get the Global noti ticker */
 		if (vconf_get_bool(VCONFKEY_SETAPPL_STATE_TICKER_NOTI_EMAIL_BOOL, &ticker_noti) != 0) {
 				EM_DEBUG_EXCEPTION("Not display the noti of email");
 				return false;
 		}
 
+		EM_DEBUG_LOG("ticker_noti of global : [%d]", ticker_noti);
+
 		if (!ticker_noti) {
 			EM_DEBUG_LOG("Not use the notification");
-			setting_sound_status = SETTING_SOUND_STATUS_OFF;
+			setting_noti_status = SETTING_NOTI_STATUS_OFF;
 			return true;
 		}
 
-		setting_sound_status = SETTING_SOUND_STATUS_GLOBAL;
+		setting_noti_status = SETTING_NOTI_STATUS_GLOBAL;
+	} else {
+		setting_noti_status = SETTING_NOTI_STATUS_EMAIL;
 	}
 
 	EM_DEBUG_FUNC_END();
 	return true;
 }
 
-void emcore_sound_status_changed_cb(keynode_t *key_node, void *data)
+void emcore_noti_status_changed_cb(keynode_t *key_node, void *data)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	if (!emcore_update_sound_status()) {
-		EM_DEBUG_EXCEPTION("emcore_update_sound_status failed");
+	if (!emcore_update_noti_status()) {
+		EM_DEBUG_EXCEPTION("emcore_update_noti_status failed");
 		return;
 	}
 	EM_DEBUG_FUNC_END();
@@ -215,44 +201,40 @@ void emcore_sound_status_changed_cb(keynode_t *key_node, void *data)
 
 bool emcore_noti_init(void *data)
 {
+	EM_DEBUG_FUNC_BEGIN();
 	struct appdata *ap = data;
 
-	if (!emcore_update_sound_status()) {
-		EM_DEBUG_EXCEPTION("emcore_update_sound_status failed");
+	if (!emcore_update_noti_status()) {
+		EM_DEBUG_EXCEPTION("emcore_update_noti_status failed");
 		return false;
 	}
 
 	/* Noti callback registration */
 	if (vconf_notify_key_changed(VCONFKEY_SETAPPL_NOTI_EMAIL_ALERT_REP_TYPE_INT, emcore_global_noti_key_changed_cb, ap) < 0) {
 		EM_DEBUG_EXCEPTION("Register failed : alert type");
-		return false;
 	}
 
 	if (vconf_notify_key_changed(VCONFKEY_SETAPPL_NOTI_EMAIL_RINGTONE_PATH_STR, emcore_global_noti_key_changed_cb, ap) < 0) {
 		EM_DEBUG_EXCEPTION("Register failed : Ringtone path");
-		return false;
 	}
 
 	if (vconf_notify_key_changed(VCONF_VIP_NOTI_REP_TYPE, emcore_email_noti_key_changed_cb, ap) < 0) {
 		EM_DEBUG_EXCEPTION("Register failed : alert type");
-		return false;
 	}
 
 	if (vconf_notify_key_changed(VCONF_VIP_NOTI_RINGTONE_PATH, emcore_email_noti_key_changed_cb, ap) < 0) {
 		EM_DEBUG_EXCEPTION("Register failed : Ringtone path");
-		return false;
 	}
 
-	if (vconf_notify_key_changed(VCONF_VIP_NOTI_NOTIFICATION_TICKER, emcore_sound_status_changed_cb, ap) < 0) {
+	if (vconf_notify_key_changed(VCONF_VIP_NOTI_NOTIFICATION_TICKER, emcore_noti_status_changed_cb, ap) < 0) {
 		EM_DEBUG_EXCEPTION("Register failed : Ringtone path");
-		return false;
 	}
 
-	if (vconf_notify_key_changed(VCONFKEY_SETAPPL_STATE_TICKER_NOTI_EMAIL_BOOL, emcore_sound_status_changed_cb, ap) < 0) {
+	if (vconf_notify_key_changed(VCONFKEY_SETAPPL_STATE_TICKER_NOTI_EMAIL_BOOL, emcore_noti_status_changed_cb, ap) < 0) {
 		EM_DEBUG_EXCEPTION("Register failed : Ringtone path");
-		return false;
 	}
 
+	EM_DEBUG_FUNC_END();
 	return true;
 }
 
@@ -274,11 +256,6 @@ int emcore_alert_init()
 
 	if ((err = emcore_alert_alarm_init()) != ALARMMGR_RESULT_SUCCESS) {
 		EM_DEBUG_EXCEPTION("emcore_alert_alarm_init failed : [%d]", err);
-		return false;		
-	}
-
-	if (!emcore_alert_vibe_init()) {
-		EM_DEBUG_EXCEPTION("emcore_alert_vibe_init failed");
 		return false;		
 	}
 
@@ -335,20 +312,6 @@ bool emcore_sound_mp_player_create()
 		EM_DEBUG_EXCEPTION("mm_player create fail [%d]", err);
 		return false;
 	}	
-	EM_DEBUG_FUNC_END();
-	return true;
-}
-
-bool emcore_vibration_create() 
-{	
-	EM_DEBUG_FUNC_BEGIN();
-
-	email_vibe_handle = device_haptic_open(DEV_IDX_0, 0);
-
-	if (email_vibe_handle < 0) {
-		EM_DEBUG_EXCEPTION("vibration create failed");
-		return false;
-	}
 	EM_DEBUG_FUNC_END();
 	return true;
 }
@@ -416,12 +379,6 @@ bool emcore_alert_destory()
 		return false;
 	}			
 
-	/* Destroy the vibration handle */
-	if (!emcore_vibration_destory()) {
-		EM_DEBUG_EXCEPTION("emcore_vibration_destory fail");
-		return false;
-	}	
-
 	/* Destroy the alarm handle */
 	ret = alarmmgr_free_alarm(alarm_info);
 	if (ret != ALARMMGR_RESULT_SUCCESS) {
@@ -452,62 +409,49 @@ gboolean mp_player_timeout_cb(void *data)
 	return false;
 }
 
-gboolean vibration_timeout_cb(void *data)
+bool emcore_vibration_start()
 {
 	EM_DEBUG_FUNC_BEGIN();
+	int ret = false;
+	int error = FEEDBACK_ERROR_NONE;
+	int call_state = 0;
 
-	emcore_vibration_stop();
-	emcore_vibration_destory();
-	
-	EM_DEBUG_FUNC_END();
-	return false;
-}
-
-bool emcore_vibration_start(int haptic_level)
-{
-	EM_DEBUG_FUNC_BEGIN();
-	int ret = 0;
-	int vibPattern = EFFCTVIBE_NOTIFICATION;
-
-	if (haptic_level == 0) {
-		EM_DEBUG_LOG("The level of haptic is zero");
-		return true;
+	error = vconf_get_int(VCONFKEY_CALL_STATE, &call_state);
+	if (error == -1) {
+		EM_DEBUG_EXCEPTION("vconf_get_int failed");
+		goto FINISH_OFF;
 	}
 
-	ret = device_haptic_play_pattern(email_vibe_handle, vibPattern, HAPTIC_TEST_ITERATION, haptic_level);
-
-	if (ret != 0) {
-		EM_DEBUG_EXCEPTION("Fail to play haptic  :  [%d]", ret);
-		return false;
+	error = feedback_initialize();
+	if (error != FEEDBACK_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("feedback_initialize failed : [%d]", error);
+		goto FINISH_OFF;
 	}
 
-	if ((ret = g_timeout_add(TIMER, (GSourceFunc) vibration_timeout_cb, NULL) <= 0))
-	{
-		EM_DEBUG_EXCEPTION("play_alert - Failed to start timer [%d]", ret);
-		return false;		
-	}	
+	if (call_state > VCONFKEY_CALL_OFF && call_state < VCONFKEY_CALL_STATE_MAX) {	
+		error = feedback_play_type(FEEDBACK_TYPE_VIBRATION, FEEDBACK_PATTERN_EMAIL_ON_CALL);
+	} else {
+		error = feedback_play_type(FEEDBACK_TYPE_VIBRATION, FEEDBACK_PATTERN_EMAIL);
+	}
+
+	if (error != FEEDBACK_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("feedback_play failed : [%d]", error);
+		goto FINISH_OFF;
+	}
+
+	ret = true;
+
+FINISH_OFF:
+
+	error = feedback_deinitialize();
+	if (error != FEEDBACK_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("feedback_deinitialize failed : [%d]", error);
+	}
 	
 	EM_DEBUG_FUNC_END();
-	return true;
+	return ret;
 }
 
-int emcore_vibration_stop()
-{
-	int err = MM_ERROR_NONE;
-	if ((err = device_haptic_stop_play(email_vibe_handle)) != 0)
-		EM_DEBUG_EXCEPTION("Fail to stop haptic  :  [%d]", err);
-
-	return err;
-}
-
-int emcore_vibration_destory()
-{
-	int err = MM_ERROR_NONE;
-	if ((err = device_haptic_close(email_vibe_handle)) != 0)
-		EM_DEBUG_EXCEPTION("Fail to close haptic  :  [%d]", err);
-
-	return err;
-}
 int emcore_sound_mp_player_start(char *filepath)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -527,7 +471,7 @@ int emcore_sound_mp_player_start(char *filepath)
 	mm_player_set_message_callback(email_mmhandle, emcore_mp_player_state_cb, (void  *)email_mmhandle);
 
 	EM_DEBUG_LOG("Before mm_player_set_attribute filepath = %s", filepath);
-	if ((err = mm_player_set_attribute(email_mmhandle, NULL, "sound_volume_type", MM_SOUND_VOLUME_TYPE_NOTIFICATION, "profile_uri", filepath, strlen(filepath), NULL)) != MM_ERROR_NONE)
+	if ((err = mm_player_set_attribute(email_mmhandle, NULL, "sound_volume_type", MM_SOUND_VOLUME_TYPE_NOTIFICATION, "profile_uri", filepath, EM_SAFE_STRLEN(filepath), NULL)) != MM_ERROR_NONE)
 	{
 		EM_DEBUG_EXCEPTION("mm_player_set_attribute faile [ %d ] ", err);
 		return err;
@@ -648,8 +592,7 @@ int emcore_get_alert_type()
 	int err;
 	int alert_type = -1;
 
- 	if (!(err = get_vconf_data(EMAIL_SOUND_STATUS, &sound_status)))
-	{
+	if (!(err = get_vconf_data(EMAIL_SOUND_STATUS, &sound_status))) {
 		EM_DEBUG_EXCEPTION("Don't get sound status");
 		return err;
 	}
@@ -776,7 +719,7 @@ bool set_alarm(int repetition_time)
 
 	ret = alarmmgr_set_cb(emcore_alarm_timeout_cb, NULL);
 
-	if (ret != 0) {
+	if (ret != ALARMMGR_RESULT_SUCCESS) {
 		EM_DEBUG_EXCEPTION("Failed : alarmmgr_set_cb() -> error[%d]", ret);
 		return false;
 	}
@@ -821,10 +764,10 @@ void emcore_set_repetition_alarm(int repetition)
 
 void *start_alert_thread(void *arg)
 {
-	EM_DEBUG_FUNC_END();
+	EM_DEBUG_FUNC_BEGIN();
 	
 	int err = 0;
-	int level = 0;
+	int repetition = 0;
 
 	if (!emcore_alert_init())
 	{
@@ -838,13 +781,11 @@ void *start_alert_thread(void *arg)
 			return 0;
 		}
 
-		err = get_vconf_data(EMAIL_ALERT_REP_TYPE, &level);
-		emcore_set_repetition_alarm(level);
+		err = get_vconf_data(EMAIL_ALERT_REP_TYPE, &repetition);
+		emcore_set_repetition_alarm(repetition);
 
 		ENTER_CRITICAL_SECTION(sound_mutex);
 		SLEEP_CONDITION_VARIABLE(sound_condition , sound_mutex);
-
-		err = get_vconf_data(EMAIL_ALERT_VIBE_STENGTH, &level);
 
 		switch (emcore_get_alert_type())
 		{
@@ -856,12 +797,10 @@ void *start_alert_thread(void *arg)
 				emcore_sound_mp_player_start(filename);
 				break;
 			case EMAIL_ALERT_TYPE_VIB:
-				emcore_vibration_create();
-				emcore_vibration_start(level);
+				emcore_vibration_start();
 				break;
 			case EMAIL_ALERT_TYPE_MELODY_AND_VIB:
-				emcore_vibration_create();
-				emcore_vibration_start(level);
+				emcore_vibration_start();
 				if (!emcore_sound_mp_player_create()) {
 					EM_DEBUG_LOG("emcore_sound_mp_player_create failed : [%d]", email_mmhandle);
 					break;
@@ -880,15 +819,19 @@ void *start_alert_thread(void *arg)
 		EM_DEBUG_LOG("Start FINISH");
 		emcore_alarm_destory();
 	}
+
+	EM_DEBUG_FUNC_END();
 	return 0;
 }	
 
 INTERNAL_FUNC void emcore_start_alert()
 {
-	if (setting_sound_status == SETTING_SOUND_STATUS_OFF)
+	EM_DEBUG_FUNC_BEGIN("setting_noti_status : [%d]", setting_noti_status);
+
+	if (setting_noti_status == SETTING_NOTI_STATUS_OFF)
 		return;
 
 	ENTER_CRITICAL_SECTION(sound_mutex);
 	WAKE_CONDITION_VARIABLE(sound_condition);
 	LEAVE_CRITICAL_SECTION(sound_mutex);
-}	
+}

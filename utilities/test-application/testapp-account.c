@@ -281,6 +281,7 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 	err_code = email_add_account_with_validation(account, &handle);
 	if( err_code < 0) {
 		testapp_print ("   email_add_account_with_validation error : %d\n",err_code);
+		err_code = email_free_account(&account, 1);
 		return FALSE;
 	}
 

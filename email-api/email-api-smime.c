@@ -61,13 +61,13 @@ EXPORT_API int email_add_certificate(char *certificate_path, char *email_address
 		goto FINISH_OFF;
 	}
 
-	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, certificate_path, strlen(certificate_path)+1)) {
+	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, certificate_path, EM_SAFE_STRLEN(certificate_path)+1)) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter certificate_path[%s] failed", certificate_path);
 		err = EMAIL_ERROR_NULL_VALUE;
 		goto FINISH_OFF;
 	}
 
-	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, email_address, strlen(email_address)+1)) {
+	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, email_address, EM_SAFE_STRLEN(email_address)+1)) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter certificate_path[%s] failed", email_address);
 		err = EMAIL_ERROR_NULL_VALUE;
 		goto FINISH_OFF;
@@ -113,7 +113,7 @@ EXPORT_API int email_delete_certificate(char *email_address)
 		goto FINISH_OFF;
 	}
 
-	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, email_address, strlen(email_address)+1)) {
+	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, email_address, EM_SAFE_STRLEN(email_address)+1)) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter email_address[%s] failed", email_address);
 		err = EMAIL_ERROR_NULL_VALUE;
 		goto FINISH_OFF;
@@ -174,7 +174,7 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 	char *decrypt_filepath = NULL;
 	email_mail_data_t *p_output_mail_data = NULL;
 	email_attachment_data_t *p_output_attachment_data = NULL;
-	
+	emstorage_account_tbl_t *p_account_tbl = NULL;
 
 	EM_IF_NULL_RETURN_VALUE(mail_id, EMAIL_ERROR_INVALID_PARAM);
 
@@ -189,6 +189,11 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 		goto FINISH_OFF;
 	}
 
+	if (!emstorage_get_account_by_id(p_output_mail_data->account_id, EMAIL_ACC_GET_OPT_OPTIONS, &p_account_tbl, false, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed : [%d]", err);
+		goto FINISH_OFF;
+	}
+
 	if ((err = emcore_get_attachment_data_list(mail_id, &p_output_attachment_data, &p_output_attachment_count)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_get_attachment_data_list failed");
 		goto FINISH_OFF;
@@ -200,7 +205,7 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 		goto FINISH_OFF;
 	}
 
-	if (!emcore_smime_set_decrypt_message(p_output_attachment_data->attachment_path, p_output_mail_data->full_address_from, &decrypt_filepath, &err)) {
+	if (!emcore_smime_set_decrypt_message(p_output_attachment_data->attachment_path, p_account_tbl->certificate_path, &decrypt_filepath, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_smime_set_decrypt_message failed");
 		goto FINISH_OFF;
 	}
@@ -212,6 +217,9 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 	}
 
 FINISH_OFF:
+
+	if (p_account_tbl)
+		emstorage_free_account(&p_account_tbl, 1, NULL);
 
 	if (p_output_mail_data)
 		email_free_mail_data(&p_output_mail_data, 1);
@@ -289,7 +297,7 @@ EXPORT_API int email_verify_certificate(char *certificate_path, int *verify)
 		goto FINISH_OFF;
 	}
 
-	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, certificate_path, strlen(certificate_path)+1)) {
+	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, certificate_path, EM_SAFE_STRLEN(certificate_path)+1)) {
 		EM_DEBUG_EXCEPTION("emipc_add_paramter failed : [%s]", certificate_path);
 		err = EMAIL_ERROR_NULL_VALUE;
 		goto FINISH_OFF;
@@ -334,12 +342,12 @@ EXPORT_API int email_check_ocsp_status(char *email_address, char *response_url, 
 	
 	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 
-	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, email_address, strlen(email_address)+1)) {
+	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, email_address, EM_SAFE_STRLEN(email_address)+1)) {
 		EM_DEBUG_EXCEPTION("email_check_ocsp_status--ADD Param email_address failed");
 		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 	}
 
-	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, response_url, strlen(response_url)+1)) {
+	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, response_url, EM_SAFE_STRLEN(response_url)+1)) {
 		EM_DEBUG_EXCEPTION("email_check_ocsp_status--ADD Param response_url failed");
 		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 	}

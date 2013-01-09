@@ -251,26 +251,26 @@ static char *_make_criteria_to_search_filter(email_search_filter_t *search_filte
 		case EMAIL_SEARCH_FILTER_TYPE_FROM :
 			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
 			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "from %s ", search_filter[i].search_filter_key_value.string_type_key_value);
-			strncat(criteria, temp_criteria, strlen(temp_criteria));
+			strncat(criteria, temp_criteria, EM_SAFE_STRLEN(temp_criteria));
 			break;
 
 		case EMAIL_SEARCH_FILTER_TYPE_SUBJECT :
 			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
 			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "subject %s ", search_filter[i].search_filter_key_value.string_type_key_value);
-			strncat(criteria, temp_criteria, strlen(temp_criteria));
+			strncat(criteria, temp_criteria, EM_SAFE_STRLEN(temp_criteria));
 			break;
 
 		case EMAIL_SEARCH_FILTER_TYPE_KEYWORD :
 			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
 			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "keyword %s ", search_filter[i].search_filter_key_value.string_type_key_value);
-			strncat(criteria, temp_criteria, strlen(temp_criteria));
+			strncat(criteria, temp_criteria, EM_SAFE_STRLEN(temp_criteria));
 			break;
 
 		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :
 			EM_DEBUG_LOG("time_type_key_value [%d]", search_filter[i].search_filter_key_value.time_type_key_value);
 			time_string = _make_time_string_to_time_t(search_filter[i].search_filter_key_value.time_type_key_value);
 			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "before %s ", time_string);
-			strncat(criteria, temp_criteria, strlen(temp_criteria));
+			strncat(criteria, temp_criteria, EM_SAFE_STRLEN(temp_criteria));
 			break;
 	
 		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON :
@@ -281,7 +281,7 @@ static char *_make_criteria_to_search_filter(email_search_filter_t *search_filte
 			EM_DEBUG_LOG("time_type_key_value [%d]", search_filter[i].search_filter_key_value.time_type_key_value);
 			time_string = _make_time_string_to_time_t(search_filter[i].search_filter_key_value.time_type_key_value);
 			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "since %s ", time_string);
-			strncat(criteria, temp_criteria, strlen(temp_criteria));
+			strncat(criteria, temp_criteria, EM_SAFE_STRLEN(temp_criteria));
 			break;
 
 		default :
@@ -314,7 +314,7 @@ INTERNAL_FUNC int emdaemon_search_mail_on_server(int input_account_id, int input
 	if (input_mailbox_id == 0 || input_account_id < 0) {
 		EM_DEBUG_EXCEPTION("Invalid parameter");
 		error = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF;
+		return false;
 	}
 
 	email_event_t event_data;

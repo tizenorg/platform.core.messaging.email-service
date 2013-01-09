@@ -238,6 +238,12 @@ static gboolean testapp_test_encoding_test()
 	}
 FINISH_OFF:
 
+	if (encoded_file_name)
+		free(encoded_file_name);
+
+	if (base64_file_name)
+		free(base64_file_name);
+
 	return error;
 }
 

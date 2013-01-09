@@ -76,10 +76,12 @@ static int _emdaemon_load_email_core()
 	if (emcore_start_event_loop_for_sending_mails(&err) < 0)
 		goto FINISH_OFF;
 
+	/* Disabled task manager
 	if ((err = emcore_start_task_manager_loop()) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_start_task_manager_loop failed [%d]",err);
 		goto FINISH_OFF;
 	}
+	*/
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
 	if (emcore_start_thread_for_downloading_partial_body(&err) < 0) {
@@ -137,8 +139,8 @@ static void callback_for_SYNC_ALL_STATUS_from_account_svc(keynode_t *input_node,
 			if(!emdaemon_sync_header(account_list[i].account_id, mailbox_tbl_data->mailbox_id, &handle, &err)) {
 				EM_DEBUG_EXCEPTION("emdaemon_sync_header for [%d] failed [%d]", account_list[i].account_id, err);
 			}
-			if(mailbox_tbl_data)
-				emstorage_free_mailbox(&mailbox_tbl_data, 1, NULL);
+
+			emstorage_free_mailbox(&mailbox_tbl_data, 1, NULL); /* prevent 27459: remove unnecesary if clause */
 			mailbox_tbl_data = NULL;
 		}
 		else {

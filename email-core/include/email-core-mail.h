@@ -185,7 +185,7 @@ INTERNAL_FUNC int emcore_delete_mail(int account_id, int mail_id[], int num, int
  * @return This function returns true on success or false on failure.
  */
 INTERNAL_FUNC int   emcore_delete_all_mails_of_acount(int input_account_id);
-INTERNAL_FUNC int   emcore_delete_all_mails_of_mailbox(int input_mailbox_id, int input_from_server, int *err_code);
+INTERNAL_FUNC int   emcore_delete_all_mails_of_mailbox(int input_account_id, int input_mailbox_id, int input_from_server, int *err_code);
 
 INTERNAL_FUNC void  emcore_free_mail_data_list(email_mail_data_t **mail_list, int count);
 INTERNAL_FUNC void  emcore_free_mail_data(email_mail_data_t *mail);
@@ -193,7 +193,7 @@ INTERNAL_FUNC void  emcore_free_content_info(struct _m_content_info *cnt_info);
 INTERNAL_FUNC void  emcore_free_attachment_info(struct attachment_info *attchment);
 
 INTERNAL_FUNC int   emcore_move_mail_on_server(int account_id, int src_mailbox_id,  int mail_ids[], int num, char *dest_mailbox, int *error_code);
-INTERNAL_FUNC int   emcore_move_mail_to_another_account_on_local_storeage(int input_task_id, int input_mail_id, int input_source_mailbox_id, int input_target_mailbox_id, int *result_mail_id);
+INTERNAL_FUNC int   emcore_move_mail_to_another_account(int input_mail_id, int input_source_mailbox_id, int input_target_mailbox_id, int input_task_id);
 INTERNAL_FUNC int   emcore_sync_flag_with_server(int mail_id, int *err_code);
 INTERNAL_FUNC int   emcore_sync_seen_flag_with_server(int mail_ids[], int num, int *err_code);
 

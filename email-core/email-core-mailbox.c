@@ -374,7 +374,6 @@ INTERNAL_FUNC int emcore_create_mailbox(email_mailbox_t *new_mailbox, int on_ser
 	local_mailbox.mailbox_id = new_mailbox->mailbox_id;
 	local_mailbox.account_id = new_mailbox->account_id;
 	local_mailbox.local_yn = new_mailbox->local;
-	local_mailbox.sync_with_server_yn = local_mailbox.local_yn ? 0 : 1;
 	local_mailbox.mailbox_name = new_mailbox->mailbox_name;
 	local_mailbox.alias = new_mailbox->alias;
 	local_mailbox.mailbox_type = new_mailbox->mailbox_type;
@@ -383,10 +382,10 @@ INTERNAL_FUNC int emcore_create_mailbox(email_mailbox_t *new_mailbox, int on_ser
 	local_mailbox.total_mail_count_on_server = 0;
 	emcore_get_default_mail_slot_count(&local_mailbox.mail_slot_size, NULL);
 
-	if (strncmp(new_mailbox->mailbox_name, EMAIL_INBOX_NAME, strlen(EMAIL_INBOX_NAME))    == 0 || 
-		strncmp(new_mailbox->mailbox_name, EMAIL_DRAFTBOX_NAME, strlen(EMAIL_DRAFTBOX_NAME)) == 0 ||
-		strncmp(new_mailbox->mailbox_name, EMAIL_OUTBOX_NAME, strlen(EMAIL_OUTBOX_NAME)) == 0 || 
-		strncmp(new_mailbox->mailbox_name, EMAIL_SENTBOX_NAME, strlen(EMAIL_SENTBOX_NAME))  == 0)
+	if (strncmp(new_mailbox->mailbox_name, EMAIL_INBOX_NAME, EM_SAFE_STRLEN(EMAIL_INBOX_NAME))    == 0 || 
+		strncmp(new_mailbox->mailbox_name, EMAIL_DRAFTBOX_NAME, EM_SAFE_STRLEN(EMAIL_DRAFTBOX_NAME)) == 0 ||
+		strncmp(new_mailbox->mailbox_name, EMAIL_OUTBOX_NAME, EM_SAFE_STRLEN(EMAIL_OUTBOX_NAME)) == 0 || 
+		strncmp(new_mailbox->mailbox_name, EMAIL_SENTBOX_NAME, EM_SAFE_STRLEN(EMAIL_SENTBOX_NAME))  == 0)
 		local_mailbox.modifiable_yn = 0;			/*  can be deleted/modified */
 	else
 		local_mailbox.modifiable_yn = 1;
@@ -426,17 +425,17 @@ INTERNAL_FUNC int emcore_delete_mailbox(int input_mailbox_id, int on_server, int
 		goto FINISH_OFF;
 	}
 
-	if (!emcore_delete_all_mails_of_mailbox(input_mailbox_id, on_server, &err))  {
-		EM_DEBUG_EXCEPTION("emcore_delete_all_mails_of_mailbox failed [%d]", err);
-		goto FINISH_OFF;
-	}
-
 	if (on_server) {
-		EM_DEBUG_LOG(">>  Delete the mailbox in Sever >>> ");
+		EM_DEBUG_LOG("Delete the mailbox in Sever >>> ");
 		if  (!emcore_delete_imap_mailbox(input_mailbox_id, &err))
-			EM_DEBUG_EXCEPTION("Delete the mailbox in server : failed");
+			EM_DEBUG_EXCEPTION("Delete the mailbox in server : failed [%d]", err);
 		else
 			EM_DEBUG_LOG("Delete the mailbox in server : success");
+	}
+
+	if (!emcore_delete_all_mails_of_mailbox(mailbox_tbl->account_id, input_mailbox_id, false, &err))  {
+		EM_DEBUG_EXCEPTION("emcore_delete_all_mails_of_mailbox failed [%d]", err);
+		goto FINISH_OFF;
 	}
 
 	if (!emstorage_delete_mailbox(mailbox_tbl->account_id, -1, input_mailbox_id, true, &err))  {
@@ -453,27 +452,54 @@ FINISH_OFF:
 
 	if (err_code != NULL)
 		*err_code = err;
-	
+	EM_DEBUG_FUNC_END("err[%d]", err);
 	return ret;
+}
+
+
+INTERNAL_FUNC int emcore_delete_mailbox_ex(int input_account_id, int *input_mailbox_id_array, int input_mailbox_id_count, int input_on_server)
+{
+	EM_DEBUG_FUNC_BEGIN("input_account_id [%d] input_mailbox_id_array[%p] input_mailbox_id_count[%d] input_on_server[%d]", input_mailbox_id_array, input_mailbox_id_array, input_mailbox_id_count, input_on_server);
+	int err = EMAIL_ERROR_NONE;
+	int i = 0;
+
+	if(input_account_id == 0 || input_mailbox_id_count <= 0 || input_mailbox_id_array == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	if((err = emstorage_set_field_of_mailbox_with_integer_value(input_account_id, input_mailbox_id_array, input_mailbox_id_count, "deleted_flag", 1, true)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emstorage_set_field_of_mailbox_with_integer_value failed[%d]", err);
+		goto FINISH_OFF;
+	}
+
+	for(i = 0; i < input_mailbox_id_count; i++) {
+		if(!emcore_delete_mailbox(input_mailbox_id_array[i] , input_on_server, &err)) {
+			EM_DEBUG_EXCEPTION("emcore_delete_mailbox failed [%d]", err);
+			goto FINISH_OFF;
+		}
+	}
+
+FINISH_OFF:
+	EM_DEBUG_FUNC_END("err[%d]", err);
+	return err;
 }
 
 INTERNAL_FUNC int emcore_delete_mailbox_all(email_mailbox_t *mailbox, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN();
-	
-	EM_DEBUG_LOG(" mailbox[%p], err_code[%p]", mailbox, err_code);
+	EM_DEBUG_FUNC_BEGIN(" mailbox[%p], err_code[%p]", mailbox, err_code);
 	
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 
 	if (mailbox == NULL) {
 		EM_DEBUG_EXCEPTION(" mailbox[%p]", mailbox);
-		
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 	
-	if (!emcore_delete_all_mails_of_mailbox(mailbox->mailbox_id, 0, /*NULL, */ &err)) {
+	if (!emcore_delete_all_mails_of_mailbox(mailbox->account_id, mailbox->mailbox_id, 0, /*NULL, */ &err)) {
 		EM_DEBUG_EXCEPTION(" emcore_delete_all_mails_of_mailbox failed - %d", err);
 		
 		goto FINISH_OFF;
@@ -491,7 +517,7 @@ INTERNAL_FUNC int emcore_delete_mailbox_all(email_mailbox_t *mailbox, int *err_c
 FINISH_OFF: 
 	if (err_code != NULL)
 		*err_code = err;
-	
+	EM_DEBUG_FUNC_END("err[%d]", err);
 	return ret;
 }
 
@@ -739,7 +765,7 @@ FINISH_OFF:
 	EM_SAFE_FREE(mailbox_name);
 
 	if (mailbox) {
-		emstorage_free_mailbox(&mailbox, 1, &error);
+		emstorage_free_mailbox(&mailbox, 1, NULL);
 	}
 
 	if (err_code != NULL)
@@ -983,14 +1009,11 @@ INTERNAL_FUNC void emcore_bind_mailbox_type(email_internal_mailbox_t *mailbox_li
 	
 	for (i = 0 ; i < MAX_MAILBOX_TYPE ; i++) {
 		pMailboxType1 = g_mailbox_type + i;
-		
-		if (pMailboxType1->mailbox_name) {
-			if (0 == strcmp(pMailboxType1->mailbox_name, mailbox_list->mailbox_name)) {
-				mailbox_list->mailbox_type = pMailboxType1->mailbox_type;
-				EM_DEBUG_LOG("mailbox_list->mailbox_type[%d]", mailbox_list->mailbox_type);
-				bIsNotUserMailbox = true;
-				break;
-			}				
+		if (0 == EM_SAFE_STRCMP(pMailboxType1->mailbox_name, mailbox_list->mailbox_name)) { /*prevent 24662*/
+			mailbox_list->mailbox_type = pMailboxType1->mailbox_type;
+			EM_DEBUG_LOG("mailbox_list->mailbox_type[%d]", mailbox_list->mailbox_type);
+			bIsNotUserMailbox = true;
+			break;
 		}
 	}
 

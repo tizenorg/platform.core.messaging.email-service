@@ -193,12 +193,12 @@ EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_na
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 		}
 
-		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, input_mailbox_name, strlen(input_mailbox_name)+1 )) {
+		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, input_mailbox_name, EM_SAFE_STRLEN(input_mailbox_name)+1 )) {
 			EM_DEBUG_EXCEPTION(" emipc_add_parameter for input_mailbox_path failed");
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 		}
 
-		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, input_mailbox_alias, strlen(input_mailbox_alias)+1 )) {
+		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, input_mailbox_alias, EM_SAFE_STRLEN(input_mailbox_alias)+1 )) {
 			EM_DEBUG_EXCEPTION(" emipc_add_parameter for input_mailbox_alias failed");
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 		}
@@ -311,6 +311,70 @@ FINISH_OFF:
 	if (mailbox_tbl) {
 		emstorage_free_mailbox(&mailbox_tbl, 1, NULL);
 	}
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
+
+EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_id_array, int input_mailbox_id_count, int input_on_server, int *output_handle)
+{
+	EM_DEBUG_FUNC_BEGIN("input_account_id [%d] input_mailbox_id_array[%p] input_mailbox_id_count[%d] input_on_server[%d] output_handle[%p]", input_mailbox_id_array, input_mailbox_id_array, input_mailbox_id_count, input_on_server, output_handle);
+	int err = EMAIL_ERROR_NONE;
+	email_account_server_t account_server_type;
+	task_parameter_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX task_parameter;
+
+	if(input_account_id == 0 || input_mailbox_id_count <= 0 || input_mailbox_id_array == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	/*  check account bind type and branch off  */
+	if ( em_get_account_server_type_by_account_id(input_account_id, &account_server_type, false, &err) == false ) {
+		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
+		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	if ( account_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC && input_on_server) {
+		int as_handle;
+		ASNotiData as_noti_data;
+
+		if ( em_get_handle_for_activesync(&as_handle, &err) == false ) {
+			EM_DEBUG_EXCEPTION("em_get_handle_for_activesync failed[%d].", err);
+			err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		/*  noti to active sync */
+		as_noti_data.delete_mailbox_ex.handle            = as_handle;
+		as_noti_data.delete_mailbox_ex.account_id        = input_account_id;
+		as_noti_data.delete_mailbox_ex.mailbox_id_array  = input_mailbox_id_array;
+		as_noti_data.delete_mailbox_ex.mailbox_id_count  = input_mailbox_id_count;
+		as_noti_data.delete_mailbox_ex.on_server         = input_on_server;
+
+		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_DELETE_MAILBOX_EX, &as_noti_data) == false) {
+			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
+			err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		if(output_handle)
+			*output_handle = as_handle;
+	}
+	else {
+		task_parameter.account_id        = input_account_id;
+		task_parameter.mailbox_id_array  = input_mailbox_id_array;
+		task_parameter.mailbox_id_count  = input_mailbox_id_count;
+		task_parameter.on_server         = input_on_server;
+
+		if((err = emipc_execute_proxy_task(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, &task_parameter)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("execute_proxy_task failed [%d]", err);
+			goto FINISH_OFF;
+		}
+	}
+
+FINISH_OFF:
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
@@ -587,7 +651,7 @@ EXPORT_API int email_set_mail_slot_size(int account_id, int mailbox_id, int new_
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], mailbox_id[%d], new_slot_size[%d]", account_id, mailbox_id, new_slot_size);
 
-	int err = EMAIL_ERROR_NONE, *handle = NULL;
+	int err = EMAIL_ERROR_NONE;
 
 	if(new_slot_size < 0) {
 		EM_DEBUG_EXCEPTION("new_slot_size should be greater than 0 or should be equal to 0");
@@ -621,10 +685,11 @@ EXPORT_API int email_set_mail_slot_size(int account_id, int mailbox_id, int new_
 	
 	 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
 		EM_DEBUG_LOG("email_set_mail_slot_size error VALUE [%d]", err);
-		if(handle) {
+		/*prevent 23139*/
+/*		if(handle) {
 			emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), handle);
 			EM_DEBUG_LOG("email_set_mail_slot_size handle VALUE [%d]", handle);
-		}
+		} */
 		emipc_destroy_email_api(hAPI);
 		hAPI = NULL;
 		

@@ -55,8 +55,10 @@ typedef struct
 
 typedef struct 
 {
-	char *buffer;
-	int buflen;
+	char *header;
+	int header_len;
+	char *body;
+	int body_len;
 } email_partial_buffer;
 
 #endif
@@ -168,7 +170,7 @@ int emcore_get_uid(emcore_uid_list *uid_list, int msgno, char **uid, int *err_co
  */
 int emcore_free_uids(emcore_uid_list *uid_list, int *err_code);
 
-INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id, int *err_code);
+INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id);
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
 INTERNAL_FUNC int emcore_download_bulk_partial_mail_body(MAILSTREAM *stream, email_event_partial_body_thd *pbd_event, int count, int *error);

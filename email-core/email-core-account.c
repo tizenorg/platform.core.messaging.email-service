@@ -51,10 +51,6 @@
 #include "email-core-signal.h"
 #include "email-core-imap-mailbox.h"
 
-#ifdef __FEATURE_USING_ACCOUNT_SVC__
-#include "account.h"
-#endif /*  __FEATURE_USING_ACCOUNT_SVC__ */
-
 char *g_default_mbox_alias[MAILBOX_COUNT] =
 {
 	EMAIL_INBOX_DISPLAY_NAME,
@@ -88,35 +84,38 @@ email_mailbox_type_e g_default_mbox_type[MAILBOX_COUNT] =
 INTERNAL_FUNC email_account_t* emcore_get_account_reference(int account_id)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d]", account_id);
-	EM_PROFILE_BEGIN(profile_emcore_get_account_reference);
 	email_account_list_t **p;
+	email_account_t *result_account = NULL;
 
-	if (account_id == NEW_ACCOUNT_ID)
-		return emcore_get_new_account_reference();
-
-	if (account_id > 0)  {
+	if (account_id < 0){
+		emcore_get_account_from_unvalidated_account_list(account_id, &result_account);
+		return result_account;
+	}
+	else if (account_id > 0)  {
 		p = &g_account_list;
 		while (*p)  {
-			if ((*p)->account->account_id == account_id)
-				return ((*p)->account);
+			if ((*p)->account->account_id == account_id) {
+				result_account = ((*p)->account);
+				break;
+			}
 			p = &(*p)->next;
 		}
 
-		/*  refresh and check once agai */
+		/*  refresh and check once again */
 		if (emcore_refresh_account_reference() == true) {
 			p = &g_account_list;
 			while (*p)  {
-				if ((*p)->account->account_id == account_id)
-					return ((*p)->account);
-
+				if ((*p)->account->account_id == account_id) {
+					result_account = ((*p)->account);
+					break;
+				}
 				p = &(*p)->next;
 			}
 		}
 	}
 
-	EM_PROFILE_END(profile_emcore_get_account_reference);
-	EM_DEBUG_FUNC_END();
-	return NULL;
+	EM_DEBUG_FUNC_END("[%p]", result_account);
+	return result_account;
 }
 
 
@@ -328,23 +327,6 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 
 #endif
 
-#ifdef __FEATURE_USING_ACCOUNT_SVC__
-	{
-		int error_code;
-		email_account_t *account_to_be_deleted;
-
-		account_to_be_deleted = emcore_get_account_reference(account_id);
-		if (account_to_be_deleted && account_to_be_deleted->incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
-			EM_DEBUG_LOG("Calling account_svc_delete with account_svc_id[%d]", account_to_be_deleted->account_svc_id);
-			error_code = account_connect();
-			EM_DEBUG_LOG("account_connect returns [%d]", error_code);
-			error_code = account_delete_from_db_by_id(account_to_be_deleted->account_svc_id);
-			EM_DEBUG_LOG("account_delete_from_db_by_id returns [%d]", error_code);
-			error_code = account_disconnect();
-			EM_DEBUG_LOG("account_disconnect returns [%d]", error_code);
-		}
-	}
-#endif
 	if (emcore_cancel_all_threads_of_an_account(account_id) < EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("There are some remaining jobs. I couldn't stop them.");
 		err = EMAIL_ERROR_CANNOT_STOP_THREAD;
@@ -424,7 +406,7 @@ INTERNAL_FUNC int emcore_create_account(email_account_t *account, int *err_code)
 
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	int i, count = 0, is_preset_IMAP_account = false;
+	int i, count = 0;
 	int private_id = 0;
 	char vconf_private_id[MAX_PATH] = {0, };
 	email_mailbox_t local_mailbox = {0};
@@ -484,11 +466,8 @@ INTERNAL_FUNC int emcore_create_account(email_account_t *account, int *err_code)
 		goto FINISH_OFF;
 	}
 	account->account_id = temp_account_tbl->account_id;
-	is_preset_IMAP_account = ((account->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4)) ? true : false;/*  && (account->is_preset_account)) ? true  :  false */
 
-	EM_DEBUG_LOG("is_preset_IMAP_account  :  %d", is_preset_IMAP_account);
-
-	if ((account->incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC)	&& (!is_preset_IMAP_account)) {
+	if (account->incoming_server_type == EMAIL_SERVER_TYPE_POP3) {
 		/* 1. create default local mailbox
 		*    (Inbox, Draft, Outbox, Sentbox) */
 		for (i = 0; i < MAILBOX_COUNT; i++) {
@@ -1185,11 +1164,12 @@ INTERNAL_FUNC int emcore_update_sync_status_of_account(int input_account_id, ema
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_set_operator [%d], input_sync_status [%d]", input_account_id, input_set_operator, input_sync_status);
 	int err = EMAIL_ERROR_NONE;
-
 	emstorage_account_tbl_t *account_tbl_data = NULL;
+
 
 	if (!emstorage_update_sync_status_of_account(input_account_id, input_set_operator, input_sync_status, true, &err))
 		EM_DEBUG_EXCEPTION("emstorage_update_sync_status_of_account failed [%d]", err);
+
 
 	if (account_tbl_data)
 		emstorage_free_account(&account_tbl_data, 1, NULL);

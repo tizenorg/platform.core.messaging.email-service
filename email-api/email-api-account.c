@@ -191,7 +191,7 @@ EXPORT_API int email_update_account(int account_id, email_account_t* new_account
 	int with_validation = false;
 	char* new_account_stream = NULL;
 
-	if ((account_id <= 0) || !new_account || (with_validation != false && with_validation != true))  {
+	if ( account_id <= 0 || !new_account )  { /*prevent 23138*/
 		EM_DEBUG_EXCEPTION("account_id[%d], new_account[%p], with_validation[%d]", account_id, new_account, with_validation);
 		return  EMAIL_ERROR_INVALID_PARAM;
 	}
@@ -434,7 +434,6 @@ EXPORT_API int email_add_account_with_validation(email_account_t* account, int *
 
 	if(emstorage_check_duplicated_account(account, true, &err) == false) {
 		EM_DEBUG_EXCEPTION("emstorage_check_duplicated_account failed (%d) ", err);
-
 		return err;
 	}
 
@@ -488,7 +487,7 @@ EXPORT_API int email_backup_accounts_into_secure_storage(const char *file_name)
 	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 
 	/* file_name */
-	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)file_name, strlen(file_name)+1)) {
+	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)file_name, EM_SAFE_STRLEN(file_name)+1)) {
 		EM_DEBUG_EXCEPTION(" emipc_add_parameter account_id  failed ");
 		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 	}
@@ -528,7 +527,7 @@ EXPORT_API int email_restore_accounts_from_secure_storage(const char * file_name
 	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 
 	/* file_name */
-	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)file_name, strlen(file_name)+1)) {
+	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)file_name, EM_SAFE_STRLEN(file_name)+1)) {
 		EM_DEBUG_EXCEPTION(" emipc_add_parameter account_id  failed ");
 		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 	}

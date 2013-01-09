@@ -136,7 +136,7 @@ EXPORT_API int email_write_mime_file(email_mail_data_t *input_mail_data, email_a
 		goto FINISH_OFF;
 	}
 
-	if (*output_file_path && (size = strlen(*output_file_path)) > 0) {
+	if (*output_file_path && (size = EM_SAFE_STRLEN(*output_file_path)) > 0) {
 		EM_DEBUG_LOG("output_file_path : [%s] size : [%d]", *output_file_path, size);
 		size = size + 1;
 	} else {
@@ -210,3 +210,5 @@ EXPORT_API int email_get_mime_entity(char *mime_path, char **mime_entity)
 	EM_DEBUG_FUNC_END();
 	return err;
 }
+
+

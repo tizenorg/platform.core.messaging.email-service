@@ -21,7 +21,6 @@ BuildRequires:  pkgconfig(gthread-2.0)
 BuildRequires:  pkgconfig(aul)
 BuildRequires:  pkgconfig(vconf-internal-keys)
 BuildRequires:  pkgconfig(vconf)
-BuildRequires:  pkgconfig(heynoti)
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(db-util)
 BuildRequires:  pkgconfig(dbus-1)
@@ -33,16 +32,17 @@ BuildRequires:  pkgconfig(openssl)
 BuildRequires:  pkgconfig(alarm-service)
 BuildRequires:  pkgconfig(mm-player)
 BuildRequires:  pkgconfig(mm-session)
-BuildRequires:  pkgconfig(devman_haptic)
 BuildRequires:  pkgconfig(secure-storage)
 BuildRequires:  pkgconfig(notification)
 BuildRequires:  pkgconfig(accounts-svc)
+BuildRequires:  pkgconfig(libsystemd-daemon)
 BuildRequires:  pkgconfig(capi-base-common)
 BuildRequires:  pkgconfig(libcurl)
 BuildRequires:  pkgconfig(libxml-2.0)
 BuildRequires:  pkgconfig(gconf-2.0)
 BuildRequires:  pkgconfig(cert-svc)
 BuildRequires:  pkgconfig(badge)
+BuildRequires:  pkgconfig(feedback)
 
 
 BuildRoot:  %{_tmppath}/%{name}-%{version}-build
@@ -118,9 +118,7 @@ vconftool set -t int    db/private/email-service/latest_mail_id "0"     -g 6514
 vconftool set -t int    db/private/email-service/default_account_id "0" -g 6514
 
 # for badge
-vconftool set -t int    db/badge/org.tizen.email "0" -g 6514
-
-vconftool set -t int    db/email_handle/active_sync_handle "-1" 	-g 6514
+vconftool set -t int    db/badge/com.samsung.email "0" -g 6514
 
 # for default account id
 vconftool set -t int    memory/sync/email "0" -i -g 6514
@@ -128,9 +126,9 @@ vconftool set -t int    memory/sync/email "0" -i -g 6514
 # for priority send 
 vconftool set -t string db/private/email-service/noti_ringthone_path "Whistle.mp3" -g 6514
 vconftool set -t int    db/private/email-service/noti_rep_type "0" -g 6514
-vconftool set -t int    db/private/email-service/noti_notification_ticker "0" -g 6514
-vconftool set -t int    db/private/email-service/noti_display_content_ticker "0" -g 6514
-vconftool set -t int    db/private/email-service/noti_badge_ticker "0" -i -g 6514
+vconftool set -t bool   db/private/email-service/noti_notification_ticker "0" -g 6514
+vconftool set -t bool   db/private/email-service/noti_display_content_ticker "0" -g 6514
+vconftool set -t bool   db/private/email-service/noti_badge_ticker "0" -i -g 6514
 vconftool set -t int    db/private/email-service/noti_private_id/1 "0" -i -g 6514
 vconftool set -t int    db/private/email-service/noti_private_id/2 "0" -i -g 6514
 vconftool set -t int    db/private/email-service/noti_private_id/3 "0" -i -g 6514
@@ -253,7 +251,7 @@ CREATE TABLE mail_box_tbl
 	mailbox_name                     VARCHAR(256),    
 	mailbox_type                     INTEGER,    
 	alias                            VARCHAR(256),    
-	sync_with_server_yn              INTEGER,    
+	deleted_flag                     INTEGER,    
 	modifiable_yn                    INTEGER,    
 	total_mail_count_on_server       INTEGER,
 	has_archived_mails               INTEGER,    
@@ -411,17 +409,33 @@ CREATE INDEX mail_idx_thread_item_count ON mail_tbl (thread_item_count);
 
 echo "[EMAIL-SERVICE] Finish Creating Email Tables."
 
-chgrp db_email_service /opt/usr/dbspace/.email-service.db*
+chgrp 6006 /opt/usr/dbspace/.email-service.db*
 chmod 664 /opt/usr/dbspace/.email-service.db
 chmod 664 /opt/usr/dbspace/.email-service.db-journal
 
 mkdir -m775 -p /opt/usr/data/email/.email_data
-chgrp db_email_service /opt/usr/data/email/.email_data
+chgrp 6006 /opt/usr/data/email/.email_data
 
 mkdir -m775 -p /opt/usr/data/email/.email_data/tmp
-chgrp db_email_service /opt/usr/data/email/.email_data/tmp
+chgrp 6006 /opt/usr/data/email/.email_data/tmp
 
-%postun -p /sbin/ldconfig
+mkdir -p /opt/share/cert-svc/certs/trusteduser/email
+chgrp 6006 /opt/share/cert-svc/certs/trusteduser/email
+
+systemctl daemon-reload
+if [ $1 == 1 ]; then
+    systemctl restart email.service
+fi
+
+%preun
+if [ $1 == 0]; then
+    systemctl stop email.service
+fi
+
+%postun
+/sbin/ldconfig
+systemctl daemon-reload
+
 
 %files
 %manifest email-service.manifest

@@ -107,10 +107,10 @@ static void _cb_parser_start_element(void* ctx, WBXMLTag* element, WBXMLAttribut
         return ;
     }
 
-    len = strlen((char *)wbxml_tag_get_xml_name(element)) + 1;
+    len = EM_SAFE_STRLEN((char *)wbxml_tag_get_xml_name(element)) + 1;
     while (atts[j] != NULL)
     {
-        len += (strlen((char *)wbxml_attribute_get_xml_name(atts[j])) + strlen((char *)wbxml_attribute_get_xml_value(atts[j])) + 7);
+        len += (EM_SAFE_STRLEN((char *)wbxml_attribute_get_xml_name(atts[j])) + EM_SAFE_STRLEN((char *)wbxml_attribute_get_xml_value(atts[j])) + 7);
         j++;
     }
     len += 3;
@@ -208,7 +208,7 @@ static int _get_addr_from_element(unsigned char* elm,
         if ((s = (unsigned char*)strchr((char *)p, ';')))
         {
             *s = '\0';
-            if (strlen((char *)p)) user = (unsigned char*)EM_SAFE_STRDUP((char *)p);
+            if (EM_SAFE_STRLEN((char *)p)) user = (unsigned char*)EM_SAFE_STRDUP((char *)p);
             p = s + 1;
         }
         if ((s = (unsigned char*)strchr((char *)p, '@')))
@@ -238,7 +238,7 @@ static int _get_addr_from_element(unsigned char* elm,
         if ((s = (unsigned char*)strchr((char *)p, ';')))
         {
             *s = '\0';
-            if (strlen((char *)p)) user = (unsigned char*)EM_SAFE_STRDUP((char *)p);
+            if (EM_SAFE_STRLEN((char *)p)) user = (unsigned char*)EM_SAFE_STRDUP((char *)p);
             p = s + 1;
         }
         if ((s = (unsigned char*)strchr((char *)p, '@')))
@@ -259,10 +259,10 @@ static int _get_addr_from_element(unsigned char* elm,
 
         if ((s = (unsigned char*)strchr((char *)p, '?'))) * s = '\0';
         else if ((s = (unsigned char*)strchr((char *)p, ';'))) * s = '\0';
-        else s = p + strlen((char *)p);
+        else s = p + EM_SAFE_STRLEN((char *)p);
         if (*(s - 1) == '/') *(s - 1) = '\0';
 
-        if (strlen((char *)p)) mailbox =(unsigned char*) EM_SAFE_STRDUP((char *)p);
+        if (EM_SAFE_STRLEN((char *)p)) mailbox =(unsigned char*) EM_SAFE_STRDUP((char *)p);
         break;
 
     case 'h': /*  not supported */
@@ -562,7 +562,7 @@ INTERNAL_FUNC int emdaemon_handle_emn_notification(unsigned char* wbxml_b64, ema
 
 	if ((account.incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) && (account.flag2 == 3))  {
 
-		if (!mailbox_name || strncmp(pmailbox, mailbox_name, strlen(pmailbox)) != 0)  {
+		if (!mailbox_name || strncmp(pmailbox, mailbox_name, EM_SAFE_STRLEN(pmailbox)) != 0)  {
 			EM_DEBUG_EXCEPTION("invalid inbox name [%p]", mailbox_name);
 			err = EMAIL_ERROR_INVALID_MAILBOX;
 			goto FINISH_OFF;

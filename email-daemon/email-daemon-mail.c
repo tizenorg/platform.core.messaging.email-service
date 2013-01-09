@@ -256,13 +256,13 @@ INTERNAL_FUNC int emdaemon_add_mail(email_mail_data_t *input_mail_data, email_at
 	}
 
 #ifdef __FEATURE_SYNC_CLIENT_TO_SERVER__
-	if ( input_from_eas == 0) {
+	if ( input_from_eas == 0 && ref_account->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
 		event_data.type               = EMAIL_EVENT_SAVE_MAIL;
 		event_data.account_id         = input_mail_data->account_id;
 		event_data.event_param_data_4 = input_mail_data->mail_id;
 
-		if (!emcore_insert_event_for_sending_mails(&event_data, &handle, &err))  {
-			EM_DEBUG_EXCEPTION("emcore_insert_event_for_sending_mails failed [%d]", err);
+		if (!emcore_insert_event(&event_data, &handle, &err))  {
+			EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", err);
 			goto FINISH_OFF;
 		}
 	}
@@ -617,7 +617,7 @@ int emdaemon_delete_mail_all(int input_mailbox_id, int input_from_server, int *o
 		goto FINISH_OFF;
 	}
 	
-	if(!emcore_delete_all_mails_of_mailbox(input_mailbox_id, EMAIL_DELETE_LOCALLY, &err)) {
+	if(!emcore_delete_all_mails_of_mailbox(mailbox_tbl->account_id, input_mailbox_id, EMAIL_DELETE_LOCALLY, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_delete_all_mails_of_mailbox failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -692,7 +692,7 @@ int emdaemon_delete_mail_all(int input_mailbox_id, int input_from_server, int *o
 	ret = true;
 	
 FINISH_OFF:
-
+	
 	if (mailbox_tbl)
 		emstorage_free_mailbox(&mailbox_tbl, 1, NULL);
 

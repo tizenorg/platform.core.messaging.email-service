@@ -751,7 +751,7 @@ static char *g_test_query[] = {
 		"   mailbox_name,  "
 		"   mailbox_type,   "
 		"   alias,  "
-		"   sync_with_server_yn,  "
+		"   deleted_flag,  "
 		"   modifiable_yn,  "
 		"   total_mail_count_on_server,  "
 		"   has_archived_mails, "
@@ -971,7 +971,7 @@ static int _get_table_field_data_string(char **table, char **buf, int ucs2, int 
 	if (pTemp == NULL) 
 		*buf = NULL;
 	else {
-		sLen = strlen(pTemp);
+		sLen = EM_SAFE_STRLEN(pTemp);
 		if(sLen) {
 			*buf = (char *) em_malloc(sLen + 1);
 			if (*buf == NULL) {
@@ -1323,11 +1323,11 @@ char *cpy_str(char *src)
 	char *p = NULL;
 	
 	if (src)  {
-		if (!(p = em_malloc((int)strlen(src) + 1)))  {
+		if (!(p = em_malloc((int)EM_SAFE_STRLEN(src) + 1)))  {
 			EM_DEBUG_EXCEPTION("mailoc failed...");
 			return NULL;
 		}
-		strncpy(p, src, strlen(src));
+		strncpy(p, src, EM_SAFE_STRLEN(src));
 	}
 	
 	return p;
@@ -1704,7 +1704,7 @@ INTERNAL_FUNC int emstorage_create_table(emstorage_create_db_type_t type, int *e
 	", mailbox_name                 VARCHAR(256) \n"
 	", mailbox_type                 INTEGER \n"
 	", alias                        VARCHAR(256) \n"
-	", sync_with_server_yn          INTEGER \n"
+	", deleted_flag          INTEGER \n"
 	", modifiable_yn                INTEGER \n"
 	", total_mail_count_on_server   INTEGER \n"
 	", has_archived_mails           INTEGER \n"
@@ -2252,7 +2252,7 @@ INTERNAL_FUNC int emstorage_create_table(emstorage_create_db_type_t type, int *e
 
 		EM_DEBUG_LOG("CREATE TABLE mail_certificate_tbl");
 
-		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_TASK_TBL], sizeof(sql_query_string));
+		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_TASK_TBL], sizeof(sql_query_string)-1); /*prevent 21984 */
 
 		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
 		EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; }, ("SQL(%s) exec fail:%d -%s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -2315,7 +2315,7 @@ INTERNAL_FUNC int emstorage_query_mail_count(const char *input_conditional_claus
 	EM_SAFE_STRCAT(sql_query_string, (char*)input_conditional_clause);
 
 	if (output_total_mail_count)  {
-		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 		EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 			("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -2668,13 +2668,13 @@ INTERNAL_FUNC int emstorage_query_mail_tbl(const char *conditional_clause, int t
 		if (p_data_tbl[i].body_download_status) {
 			struct stat buf;
 			
-			if (p_data_tbl[i].file_path_html && strlen(p_data_tbl[i].file_path_html) > 0) {
+			if (p_data_tbl[i].file_path_html && EM_SAFE_STRLEN(p_data_tbl[i].file_path_html) > 0) {
 				if (stat(p_data_tbl[i].file_path_html, &buf) == -1) {
 					EM_DEBUG_LINE;
 					p_data_tbl[i].body_download_status = 0;
 				}
 			}
-			else if (p_data_tbl[i].file_path_plain && strlen(p_data_tbl[i].file_path_plain) > 0) {
+			else if (p_data_tbl[i].file_path_plain && EM_SAFE_STRLEN(p_data_tbl[i].file_path_plain) > 0) {
 				if (stat(p_data_tbl[i].file_path_plain, &buf) == -1){
 					EM_DEBUG_LINE;
 					p_data_tbl[i].body_download_status = 0;
@@ -2725,18 +2725,17 @@ INTERNAL_FUNC int emstorage_query_mailbox_tbl(const char *input_conditional_clau
 	int total_count = 0;
 	char **result;
 	char sql_query_string[QUERY_SIZE] = {0, };
-	char *fields = "MBT.mailbox_id, MBT.account_id, local_yn, MBT.mailbox_name, MBT.mailbox_type, alias, sync_with_server_yn, modifiable_yn, total_mail_count_on_server, has_archived_mails, mail_slot_size, no_select, last_sync_time ";
+	char *fields = "MBT.mailbox_id, MBT.account_id, local_yn, MBT.mailbox_name, MBT.mailbox_type, alias, deleted_flag, modifiable_yn, total_mail_count_on_server, has_archived_mails, mail_slot_size, no_select, last_sync_time ";
 	emstorage_mailbox_tbl_t* p_data_tbl = NULL;
-	DB_STMT hStmt = NULL;
 	sqlite3 *local_db_handle = emstorage_get_db_connection();
 
 	EMSTORAGE_START_READ_TRANSACTION(input_transaction);
 
-	if (input_get_mail_count == 0) {	/*  without mail count  */
+	if (input_get_mail_count == 0) {	/* without mail count */
 		col_index = 13;
 		SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT %s FROM mail_box_tbl AS MBT %s", fields, input_conditional_clause);
 	}
-	else {	/*  with read count and total count */
+	else {	/* with read count and total count */
 		col_index = 15;
 		SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT %s, total, read  FROM mail_box_tbl AS MBT LEFT OUTER JOIN (SELECT mailbox_name, count(mail_id) AS total, SUM(flags_seen_field) AS read FROM mail_tbl %s GROUP BY mailbox_name) AS MT ON MBT.mailbox_name = MT.mailbox_name %s %s", fields, input_conditional_clause, input_conditional_clause, input_ordering_clause);
 	}
@@ -2756,7 +2755,7 @@ INTERNAL_FUNC int emstorage_query_mailbox_tbl(const char *input_conditional_clau
 	}
 
 	if ((p_data_tbl = (emstorage_mailbox_tbl_t*)em_malloc(sizeof(emstorage_mailbox_tbl_t) * count)) == NULL) {
-		EM_DEBUG_EXCEPTION("malloc failed...");
+		EM_DEBUG_EXCEPTION("em_malloc failed...");
 		error = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}
@@ -2768,7 +2767,7 @@ INTERNAL_FUNC int emstorage_query_mailbox_tbl(const char *input_conditional_clau
 		_get_table_field_data_string(result, &(p_data_tbl[i].mailbox_name), 0, col_index++);
 		_get_table_field_data_int(result, (int*)&(p_data_tbl[i].mailbox_type), col_index++);
 		_get_table_field_data_string(result, &(p_data_tbl[i].alias), 0, col_index++);
-		_get_table_field_data_int(result, &(p_data_tbl[i].sync_with_server_yn), col_index++);
+		_get_table_field_data_int(result, &(p_data_tbl[i].deleted_flag), col_index++);
 		_get_table_field_data_int(result, &(p_data_tbl[i].modifiable_yn), col_index++);
 		_get_table_field_data_int(result, &(p_data_tbl[i].total_mail_count_on_server), col_index++);
 		_get_table_field_data_int(result, &(p_data_tbl[i].has_archived_mails), col_index++);
@@ -2794,19 +2793,11 @@ FINISH_OFF:
 		*output_mailbox_count = count;
 		EM_DEBUG_LOG("Mailbox Count [ %d]", count);
 	}
-	else if (p_data_tbl != NULL)
-		emstorage_free_mailbox(&p_data_tbl, count, NULL);
-
-	if (hStmt != NULL)  {
-		rc = sqlite3_finalize(hStmt);
-		if (rc != SQLITE_OK) {
-			EM_DEBUG_LOG(" sqlite3_finalize failed - %d", rc);
-
-			error = EMAIL_ERROR_DB_FAILURE;
-		}
-	}
 
 	EMSTORAGE_FINISH_READ_TRANSACTION(input_transaction);
+
+	sqlite3_release_memory(-1);
+
 	_DISCONNECT_DB;
 
 	EM_DEBUG_FUNC_END("error [%d]", error);
@@ -2902,7 +2893,7 @@ INTERNAL_FUNC int emstorage_get_account_count(int *count, int transaction, int *
 	EMSTORAGE_START_READ_TRANSACTION(transaction);
 	SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT COUNT(*) FROM mail_account_tbl");
 	EM_DEBUG_LOG("SQL STMT [ %s ]", sql_query_string);
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_LOG("Before sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -2981,7 +2972,7 @@ INTERNAL_FUNC int emstorage_get_account_list(int *select_num, emstorage_account_
 	}
 	SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT * FROM mail_account_tbl ORDER BY account_id");
 
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 
 	EM_DEBUG_LOG("After sqlite3_prepare_v2 hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -3081,14 +3072,12 @@ INTERNAL_FUNC int emstorage_get_account_list(int *select_num, emstorage_account_
 				error = EMAIL_ERROR_SECURED_STORAGE_FAILURE;
 				goto FINISH_OFF;
 			}
-			EM_DEBUG_LOG("recv_password_file_name[%s], incoming_server_password[%s]", recv_password_file_name,  p_data_tbl[i].incoming_server_password);
 			
 			if ((error = _read_password_from_secure_storage(send_password_file_name, &(p_data_tbl[i].outgoing_server_password))) < 0) {
 				EM_DEBUG_EXCEPTION("_read_password_from_secure_storage()  failed. [%d]", error);
 				error = EMAIL_ERROR_SECURED_STORAGE_FAILURE;
 				goto FINISH_OFF;
 			}
-			EM_DEBUG_LOG("send_password_file_name[%s], password[%s]", send_password_file_name,  p_data_tbl[i].outgoing_server_password);
 		}
 
 		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_step(hStmt), rc);
@@ -3552,7 +3541,7 @@ INTERNAL_FUNC int emstorage_get_account_by_id(int account_id, int pulloption, em
 
 	/*  Make query string */
 	SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT ");
-	sql_len = strlen(sql_query_string);
+	sql_len = EM_SAFE_STRLEN(sql_query_string);
 		
 	if (pulloption & EMAIL_ACC_GET_OPT_DEFAULT) {
 		SNPRINTF(sql_query_string + sql_len, sizeof(sql_query_string) - sql_len,
@@ -3583,12 +3572,12 @@ INTERNAL_FUNC int emstorage_get_account_by_id(int account_id, int pulloption, em
 			"user_data_length,"
 			"check_interval,"
 			"sync_status,");
-		sql_len = strlen(sql_query_string); 
+		sql_len = EM_SAFE_STRLEN(sql_query_string); 
 	}
 
 	if (pulloption & EMAIL_ACC_GET_OPT_ACCOUNT_NAME) {
 		SNPRINTF(sql_query_string + sql_len, sizeof(sql_query_string) - sql_len, " account_name, ");
-		sql_len = strlen(sql_query_string); 
+		sql_len = EM_SAFE_STRLEN(sql_query_string); 
 	}
 
 	/*  get from secure storage, not from db */
@@ -3616,7 +3605,7 @@ INTERNAL_FUNC int emstorage_get_account_by_id(int account_id, int pulloption, em
 			"cipher_type,"
 			"digest_type,");
 
-		sql_len = strlen(sql_query_string); 
+		sql_len = EM_SAFE_STRLEN(sql_query_string); 
 	}
 
 	/*  dummy value, FROM WHERE clause */
@@ -3626,7 +3615,7 @@ INTERNAL_FUNC int emstorage_get_account_by_id(int account_id, int pulloption, em
 	EM_DEBUG_LOG("query = [%s]", sql_query_string);
 
 	/*  execute a sql and count rows */
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 	
@@ -3786,7 +3775,7 @@ INTERNAL_FUNC int emstorage_get_password_length_of_account(int account_id, int *
 		goto FINISH_OFF;
 	}
 
-	*password_length = strlen(temp_password);
+	*password_length = EM_SAFE_STRLEN(temp_password);
 	
 	EM_DEBUG_LOG("recv_password_file_name[%s], *password_length[%d]", recv_password_file_name,  *password_length);
 
@@ -3876,7 +3865,7 @@ INTERNAL_FUNC int emstorage_update_account(int account_id, emstorage_account_tbl
 		", digest_type = ?"
 		" WHERE account_id = ?");	 
  
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_LOG("After sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_LOG("SQL[%s]", sql_query_string);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -3957,16 +3946,16 @@ INTERNAL_FUNC int emstorage_update_account(int account_id, emstorage_account_tbl
 
 	/*  save passwords to the secure storage */
 	EM_DEBUG_LOG("save to the secure storage : recv_file[%s], recv_pass[%s], send_file[%s], send_pass[%s]", recv_password_file_name, account_tbl->incoming_server_password, send_password_file_name, account_tbl->outgoing_server_password);
-	if (account_tbl->incoming_server_password && (strlen(account_tbl->incoming_server_password) > 0)) {
-		if (ssm_write_buffer(account_tbl->incoming_server_password, strlen(account_tbl->incoming_server_password), recv_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
+	if (account_tbl->incoming_server_password && (EM_SAFE_STRLEN(account_tbl->incoming_server_password) > 0)) {
+		if (ssm_write_buffer(account_tbl->incoming_server_password, EM_SAFE_STRLEN(account_tbl->incoming_server_password), recv_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
 			EM_DEBUG_EXCEPTION(" ssm_write_buffer failed -recv incoming_server_password : file[%s]", recv_password_file_name);
 			error = EMAIL_ERROR_SYSTEM_FAILURE;
 			goto FINISH_OFF;		
 		}
 	}
 
-	if (account_tbl->outgoing_server_password && (strlen(account_tbl->outgoing_server_password) > 0)) {
-		if (ssm_write_buffer(account_tbl->outgoing_server_password, strlen(account_tbl->outgoing_server_password), send_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
+	if (account_tbl->outgoing_server_password && (EM_SAFE_STRLEN(account_tbl->outgoing_server_password) > 0)) {
+		if (ssm_write_buffer(account_tbl->outgoing_server_password, EM_SAFE_STRLEN(account_tbl->outgoing_server_password), send_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
 			EM_DEBUG_EXCEPTION(" ssm_write_buffer failed -send password : file[%s]", send_password_file_name);
 			error = EMAIL_ERROR_SYSTEM_FAILURE;
 			goto FINISH_OFF;		
@@ -4263,7 +4252,7 @@ INTERNAL_FUNC int emstorage_add_account(emstorage_account_tbl_t* account_tbl, in
 		"  , ? "  /*   digest_type */
 		") ");
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -4332,12 +4321,12 @@ INTERNAL_FUNC int emstorage_add_account(emstorage_account_tbl_t* account_tbl, in
 
 	/*  save passwords to the secure storage */
 	EM_DEBUG_LOG("save to the secure storage : recv_file[%s], send_file[%s]", recv_password_file_name, send_password_file_name);
-	if ( (error_from_ssm = ssm_write_buffer(account_tbl->incoming_server_password, strlen(account_tbl->incoming_server_password), recv_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL)) < 0) {
+	if ( (error_from_ssm = ssm_write_buffer(account_tbl->incoming_server_password, EM_SAFE_STRLEN(account_tbl->incoming_server_password), recv_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL)) < 0) {
 		EM_DEBUG_EXCEPTION("ssm_write_buffer failed [%d] - recv password : file[%s]", error_from_ssm, recv_password_file_name);
 		error = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;		
 	}
-	if ( (error_from_ssm = ssm_write_buffer(account_tbl->outgoing_server_password, strlen(account_tbl->outgoing_server_password), send_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL)) < 0) {
+	if ( (error_from_ssm = ssm_write_buffer(account_tbl->outgoing_server_password, EM_SAFE_STRLEN(account_tbl->outgoing_server_password), send_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL)) < 0) {
 		EM_DEBUG_EXCEPTION("ssm_write_buffer failed [%d] - send password : file[%s]", error_from_ssm, send_password_file_name);
 		error = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;		
@@ -4568,12 +4557,12 @@ INTERNAL_FUNC int emstorage_get_mailbox_list(int account_id, int local_yn, email
 		
 	if (account_id == ALL_ACCOUNT) {
 		if (local_yn == EMAIL_MAILBOX_FROM_SERVER || local_yn == EMAIL_MAILBOX_FROM_LOCAL)
-			SNPRINTF(conditional_clause_string + strlen(conditional_clause_string), sizeof(conditional_clause_string)-(strlen(conditional_clause_string)+1), " WHERE local_yn = %d ", local_yn);
+			SNPRINTF(conditional_clause_string + EM_SAFE_STRLEN(conditional_clause_string), sizeof(conditional_clause_string)-(EM_SAFE_STRLEN(conditional_clause_string)+1), " WHERE local_yn = %d ", local_yn);
 	}
 	else {
 		SNPRINTF(conditional_clause_string, sizeof(conditional_clause_string), "WHERE account_id = %d  ", account_id);
 		if (local_yn == EMAIL_MAILBOX_FROM_SERVER || local_yn == EMAIL_MAILBOX_FROM_LOCAL)
-			SNPRINTF(conditional_clause_string + strlen(conditional_clause_string), sizeof(conditional_clause_string)-(strlen(conditional_clause_string)+1), " AND local_yn = %d ", local_yn);
+			SNPRINTF(conditional_clause_string + EM_SAFE_STRLEN(conditional_clause_string), sizeof(conditional_clause_string)-(EM_SAFE_STRLEN(conditional_clause_string)+1), " AND local_yn = %d ", local_yn);
 	}
 
 	EM_DEBUG_LOG("conditional_clause_string[%s]", conditional_clause_string);
@@ -4631,17 +4620,17 @@ INTERNAL_FUNC int emstorage_get_mailbox_list_ex(int account_id, int local_yn, in
 	}
 
 	if (local_yn == EMAIL_MAILBOX_FROM_SERVER || local_yn == EMAIL_MAILBOX_FROM_LOCAL) {
-		SNPRINTF(conditional_clause_string + strlen(conditional_clause_string), sizeof(conditional_clause_string)-(strlen(conditional_clause_string)+1), "WHERE local_yn = %d ",  local_yn);
+		SNPRINTF(conditional_clause_string + EM_SAFE_STRLEN(conditional_clause_string), sizeof(conditional_clause_string)-(EM_SAFE_STRLEN(conditional_clause_string)+1), "WHERE local_yn = %d ",  local_yn);
 		where_clause_count++;
 	}
 
 	if (account_id > 0) {
 		if (where_clause_count == 0) {
-			SNPRINTF(conditional_clause_string + strlen(conditional_clause_string), sizeof(conditional_clause_string)-(strlen(conditional_clause_string)+1), " WHERE ");
-			SNPRINTF(conditional_clause_string + strlen(conditional_clause_string), sizeof(conditional_clause_string)-(strlen(conditional_clause_string)+1), " account_id = %d ", account_id);
+			SNPRINTF(conditional_clause_string + EM_SAFE_STRLEN(conditional_clause_string), sizeof(conditional_clause_string)-(EM_SAFE_STRLEN(conditional_clause_string)+1), " WHERE ");
+			SNPRINTF(conditional_clause_string + EM_SAFE_STRLEN(conditional_clause_string), sizeof(conditional_clause_string)-(EM_SAFE_STRLEN(conditional_clause_string)+1), " account_id = %d ", account_id);
 		}
 		else
-			SNPRINTF(conditional_clause_string + strlen(conditional_clause_string), sizeof(conditional_clause_string)-(strlen(conditional_clause_string)+1), " AND account_id = %d ", account_id);
+			SNPRINTF(conditional_clause_string + EM_SAFE_STRLEN(conditional_clause_string), sizeof(conditional_clause_string)-(EM_SAFE_STRLEN(conditional_clause_string)+1), " AND account_id = %d ", account_id);
 	}
 
 	SNPRINTF(ordering_clause_string, QUERY_SIZE, " ORDER BY MBT.mailbox_name ");
@@ -4815,7 +4804,7 @@ INTERNAL_FUNC int emstorage_get_mailbox_by_name(int account_id, int local_yn, ch
 		(*result_mailbox)->mailbox_name               = EM_SAFE_STRDUP(mailbox_name);
 		(*result_mailbox)->mailbox_type               = EMAIL_MAILBOX_TYPE_SEARCH_RESULT;
 		(*result_mailbox)->alias                      = EM_SAFE_STRDUP(mailbox_name);
-		(*result_mailbox)->sync_with_server_yn        = 0;
+		(*result_mailbox)->deleted_flag               = 0;
 		(*result_mailbox)->modifiable_yn              = 1;
 		(*result_mailbox)->total_mail_count_on_server = 1;
 		(*result_mailbox)->has_archived_mails         = 0;
@@ -4868,7 +4857,7 @@ INTERNAL_FUNC int emstorage_get_mailbox_by_mailbox_type(int account_id, email_ma
 	emstorage_account_tbl_t *account = NULL;
 	DB_STMT hStmt = NULL;
 	char sql_query_string[QUERY_SIZE] = {0,};
-	char *fields = "mailbox_id, account_id, local_yn, mailbox_name, mailbox_type, alias, sync_with_server_yn, modifiable_yn, total_mail_count_on_server, has_archived_mails, mail_slot_size, no_select, last_sync_time ";
+	char *fields = "mailbox_id, account_id, local_yn, mailbox_name, mailbox_type, alias, deleted_flag, modifiable_yn, total_mail_count_on_server, has_archived_mails, mail_slot_size, no_select, last_sync_time ";
 	
 	sqlite3 *local_db_handle = emstorage_get_db_connection();
 	EMSTORAGE_START_READ_TRANSACTION(transaction);
@@ -4888,7 +4877,7 @@ INTERNAL_FUNC int emstorage_get_mailbox_by_mailbox_type(int account_id, email_ma
 	EM_DEBUG_LOG("query = [%s]", sql_query_string);
  		
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE; goto FINISH_OFF; }, ("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
 
@@ -4918,7 +4907,7 @@ INTERNAL_FUNC int emstorage_get_mailbox_by_mailbox_type(int account_id, email_ma
 	_get_stmt_field_data_string(hStmt, &(p_data_tbl->mailbox_name), 0, col_index++);
 	_get_stmt_field_data_int(hStmt, (int*)&(p_data_tbl->mailbox_type), col_index++);
 	_get_stmt_field_data_string(hStmt, &(p_data_tbl->alias), 0, col_index++);
-	_get_stmt_field_data_int(hStmt, &(p_data_tbl->sync_with_server_yn), col_index++);
+	_get_stmt_field_data_int(hStmt, &(p_data_tbl->deleted_flag), col_index++);
 	_get_stmt_field_data_int(hStmt, &(p_data_tbl->modifiable_yn), col_index++);
 	_get_stmt_field_data_int(hStmt, &(p_data_tbl->total_mail_count_on_server), col_index++);
 	_get_stmt_field_data_int(hStmt, &(p_data_tbl->has_archived_mails), col_index++);
@@ -4931,8 +4920,6 @@ INTERNAL_FUNC int emstorage_get_mailbox_by_mailbox_type(int account_id, email_ma
 FINISH_OFF:
 	if (ret == true)
 		*mailbox_name = p_data_tbl;
-	else if (p_data_tbl != NULL)
-		emstorage_free_mailbox(&p_data_tbl, 1, NULL);
 	
 	if (hStmt != NULL)  {
 		rc = sqlite3_finalize(hStmt);
@@ -5013,7 +5000,7 @@ INTERNAL_FUNC int emstorage_get_mailbox_id_by_mailbox_type(int account_id, email
 	EM_DEBUG_LOG("query = [%s]", sql_query_string);
 
 
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -5085,7 +5072,7 @@ INTERNAL_FUNC int emstorage_get_mailbox_name_by_mailbox_type(int account_id, ema
 	EM_DEBUG_LOG("query = [%s]", sql_query_string);
 
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -5238,7 +5225,7 @@ INTERNAL_FUNC int emstorage_update_mailbox(int account_id, int local_yn, int inp
 			", mailbox_name = ?"
 			", mailbox_type = ?"
 			", alias = ?"
-			", sync_with_server_yn = ?"
+			", deleted_flag = ?"
 			", modifiable_yn= ?"
 			", mail_slot_size= ?"
 			", total_mail_count_on_server = ?"
@@ -5256,7 +5243,7 @@ INTERNAL_FUNC int emstorage_update_mailbox(int account_id, int local_yn, int inp
 			", mailbox_name = ?"
 			", mailbox_type = ?"
 			", alias = ?"
-			", sync_with_server_yn = ?"
+			", deleted_flag = ?"
 			", modifiable_yn= ?"
 			", mail_slot_size= ?"
 			", total_mail_count_on_server = ?"
@@ -5268,7 +5255,7 @@ INTERNAL_FUNC int emstorage_update_mailbox(int account_id, int local_yn, int inp
 
 		
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -5276,7 +5263,7 @@ INTERNAL_FUNC int emstorage_update_mailbox(int account_id, int local_yn, int inp
 	_bind_stmt_field_data_string(hStmt, i++, (char *)result_mailbox->mailbox_name ? result_mailbox->mailbox_name : "", 0, MAILBOX_NAME_LEN_IN_MAIL_READ_MAIL_UID_TBL);
 	_bind_stmt_field_data_int(hStmt, i++, result_mailbox->mailbox_type);
 	_bind_stmt_field_data_string(hStmt, i++, (char *)result_mailbox->alias ? result_mailbox->alias : "", 0, ALIAS_LEN_IN_MAIL_BOX_TBL);
-	_bind_stmt_field_data_int(hStmt, i++, result_mailbox->sync_with_server_yn);
+	_bind_stmt_field_data_int(hStmt, i++, result_mailbox->deleted_flag);
 	_bind_stmt_field_data_int(hStmt, i++, result_mailbox->modifiable_yn);
 	_bind_stmt_field_data_int(hStmt, i++, result_mailbox->mail_slot_size);
 	_bind_stmt_field_data_int(hStmt, i++, result_mailbox->total_mail_count_on_server);
@@ -5358,7 +5345,7 @@ INTERNAL_FUNC int emstorage_update_mailbox_type(int account_id, int local_yn, ch
 
 	EM_DEBUG_LOG("SQL(%s)", sql_query_string);
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -5392,7 +5379,7 @@ INTERNAL_FUNC int emstorage_update_mailbox_type(int account_id, int local_yn, ch
 
 	EM_DEBUG_LOG("SQL[%s]", sql_query_string);
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -5457,7 +5444,7 @@ INTERNAL_FUNC int emstorage_set_local_mailbox(int input_mailbox_id, int input_is
 
 	EM_DEBUG_LOG("SQL(%s)", sql_query_string);
 
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -5496,6 +5483,83 @@ FINISH_OFF:
 	return error;
 }
 
+INTERNAL_FUNC int emstorage_set_field_of_mailbox_with_integer_value(int input_account_id, int *input_mailbox_id_array, int input_mailbox_id_count, char *input_field_name, int input_value, int transaction)
+{
+	EM_DEBUG_FUNC_BEGIN("input_account_id [%d] input_mailbox_id_array[%p] input_mailbox_id_count[%d] input_field_name[%p] input_value[%d] err_code[%p]", input_account_id, input_mailbox_id_array, input_mailbox_id_count, input_field_name, input_value, transaction);
+	int i = 0;
+	int err = EMAIL_ERROR_NONE;
+	int rc = 0;
+	int result = false;
+	int cur_mailbox_id_string = 0;
+	int mailbox_id_string_buffer_length = 0;
+	char  sql_query_string[QUERY_SIZE] = {0, };
+	char *mailbox_id_string_buffer = NULL;
+	char *parameter_string = NULL;
+	sqlite3 *local_db_handle = NULL;
+
+	if (input_mailbox_id_array == NULL || input_mailbox_id_count == 0 || input_field_name == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		return EMAIL_ERROR_INVALID_PARAM;
+	}
+
+	local_db_handle = emstorage_get_db_connection();
+
+	/* Generating mail id list string */
+	mailbox_id_string_buffer_length = MAILBOX_ID_STRING_LENGTH * input_mailbox_id_count;
+
+	mailbox_id_string_buffer = em_malloc(mailbox_id_string_buffer_length);
+
+	if(!mailbox_id_string_buffer) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	for(i = 0; i < input_mailbox_id_count; i++)
+		cur_mailbox_id_string += SNPRINTF_OFFSET(mailbox_id_string_buffer, cur_mailbox_id_string, mailbox_id_string_buffer_length, "%d,", input_mailbox_id_array[i]);
+
+	if(EM_SAFE_STRLEN(mailbox_id_string_buffer) > 1)
+		mailbox_id_string_buffer[EM_SAFE_STRLEN(mailbox_id_string_buffer) - 1] = NULL_CHAR;
+
+	/* Generating notification parameter string */
+	parameter_string = em_malloc(mailbox_id_string_buffer_length + EM_SAFE_STRLEN(input_field_name) + 2);
+
+	if(!parameter_string) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	SNPRINTF(parameter_string, QUERY_SIZE, "%s%c%s", input_field_name, 0x01, mailbox_id_string_buffer);
+
+	/* Write query string */
+	SNPRINTF(sql_query_string, QUERY_SIZE, "UPDATE mail_box_tbl SET %s = %d WHERE mailbox_id in (%s) ", input_field_name, input_value, mailbox_id_string_buffer);
+
+	EM_DEBUG_LOG("sql_query_string [%s]", sql_query_string);
+
+	/* Execute query */
+	EMSTORAGE_START_WRITE_TRANSACTION(transaction, err);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
+	EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {err = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
+		("SQL(%s) exec fail:%d -%s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
+	if (sqlite3_changes(local_db_handle) == 0)
+		EM_DEBUG_LOG("no mail matched...");
+
+	result = true;
+
+FINISH_OFF:
+	EMSTORAGE_FINISH_WRITE_TRANSACTION(transaction, result, err);
+	_DISCONNECT_DB;
+
+	if (result && parameter_string && !emcore_notify_storage_event(NOTI_MAILBOX_FIELD_UPDATE, input_account_id, 0, parameter_string, input_value))
+		EM_DEBUG_EXCEPTION("emcore_notify_storage_event failed : NOTI_MAIL_FIELD_UPDATE [%s,%d]", input_field_name, input_value);
+
+	EM_SAFE_FREE(mailbox_id_string_buffer);
+	EM_SAFE_FREE(parameter_string);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
 
 INTERNAL_FUNC int emstorage_add_mailbox(emstorage_mailbox_tbl_t* mailbox_tbl, int transaction, int *err_code)
 {
@@ -5542,7 +5606,7 @@ INTERNAL_FUNC int emstorage_add_mailbox(emstorage_mailbox_tbl_t* mailbox_tbl, in
 		", ?"    /* mailbox_name */
 		", ?"    /* mailbox_type */
 		", ?"    /* alias */
-		", ?"    /* sync_with_server_yn */
+		", ?"    /* deleted_flag */
 		", ?"    /* modifiable_yn */
 		", ?"    /* total_mail_count_on_server */
 		", ?"    /* has_archived_mails */
@@ -5551,7 +5615,7 @@ INTERNAL_FUNC int emstorage_add_mailbox(emstorage_mailbox_tbl_t* mailbox_tbl, in
 		", ? )");/* last_sync_time */
 	
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_LOG("After sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -5564,7 +5628,7 @@ INTERNAL_FUNC int emstorage_add_mailbox(emstorage_mailbox_tbl_t* mailbox_tbl, in
 	_bind_stmt_field_data_string(hStmt, col_index++, (char *)mailbox_tbl->mailbox_name, 0, MAILBOX_NAME_LEN_IN_MAIL_BOX_TBL);
 	_bind_stmt_field_data_int(hStmt, col_index++, mailbox_tbl->mailbox_type);
 	_bind_stmt_field_data_string(hStmt, col_index++, (char *)mailbox_tbl->alias, 0, ALIAS_LEN_IN_MAIL_BOX_TBL);
-	_bind_stmt_field_data_int(hStmt, col_index++, mailbox_tbl->sync_with_server_yn);
+	_bind_stmt_field_data_int(hStmt, col_index++, mailbox_tbl->deleted_flag);
 	_bind_stmt_field_data_int(hStmt, col_index++, mailbox_tbl->modifiable_yn);
 	_bind_stmt_field_data_int(hStmt, col_index++, mailbox_tbl->total_mail_count_on_server);
 	_bind_stmt_field_data_int(hStmt, col_index++, 0);
@@ -5673,7 +5737,7 @@ INTERNAL_FUNC int emstorage_delete_mailbox(int account_id, int local_yn, int inp
 		SNPRINTF(sql_query_string, sizeof(sql_query_string), "DELETE FROM mail_box_tbl WHERE account_id = %d AND local_yn = %d ", account_id, local_yn);
 	
 	if (input_mailbox_id > 0)  {		/*  0 means all mailbox_name */
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(1+ strlen(sql_query_string)), "AND mailbox_id = %d", input_mailbox_id);
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(1+ EM_SAFE_STRLEN(sql_query_string)), "AND mailbox_id = %d", input_mailbox_id);
 	}
 	
 	EM_DEBUG_LOG("mailbox sql_query_string [%s]", sql_query_string);
@@ -5860,7 +5924,7 @@ INTERNAL_FUNC int emstorage_get_downloaded_mail(int mail_id, emstorage_mail_tbl_
 	
 	SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT * FROM mail_read_mail_uid_tbl WHERE local_uid = %d", mail_id);
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_LOG("sqlite3_prepare hStmt = %p", hStmt);
 
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -5946,7 +6010,7 @@ INTERNAL_FUNC int emstorage_get_downloaded_list(int account_id, int mailbox_id, 
  
 	
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_LOG("sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -6064,7 +6128,7 @@ INTERNAL_FUNC int emstorage_get_downloaded_mail_size(int account_id, char *mailb
 	}
 	
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -6147,7 +6211,7 @@ INTERNAL_FUNC int emstorage_add_downloaded_mail(emstorage_read_mail_uid_tbl_t* r
 		", ? )");
 	
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc2);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc2);
 	if (rc2 != SQLITE_OK)  {
 		EM_DEBUG_LOG("sqlite3_prepare hStmt = %p", hStmt);
 		EM_DEBUG_EXCEPTION("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle));
@@ -6245,7 +6309,7 @@ INTERNAL_FUNC int emstorage_change_read_mail_uid(int account_id, int mailbox_id,
 		" AND s_uid = ?");
 
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_LOG("sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -6319,11 +6383,11 @@ INTERNAL_FUNC int emstorage_remove_downloaded_mail(int account_id, char *mailbox
 	SNPRINTF(sql_query_string, sizeof(sql_query_string), "DELETE FROM mail_read_mail_uid_tbl WHERE account_id = %d ", account_id);
 	
 	if (mailbox_name) {		/*  NULL means all mailbox_name */
-		SNPRINTF(sql_query_string+strlen(sql_query_string), sizeof(sql_query_string) - (1 + strlen(sql_query_string)), "AND mailbox_name = '%s' ", mailbox_name);
+		SNPRINTF(sql_query_string+EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string) - (1 + EM_SAFE_STRLEN(sql_query_string)), "AND mailbox_name = '%s' ", mailbox_name);
 	}
 	
 	if (uid) {		/*  NULL means all mail */
-		SNPRINTF(sql_query_string+strlen(sql_query_string), sizeof(sql_query_string) - (1 + strlen(sql_query_string)), "AND s_uid='%s' ", uid);
+		SNPRINTF(sql_query_string+EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string) - (1 + EM_SAFE_STRLEN(sql_query_string)), "AND s_uid='%s' ", uid);
 	}
 	
 	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
@@ -6456,7 +6520,7 @@ INTERNAL_FUNC int emstorage_get_rule(int account_id, int type, int start_idx, in
 		SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT * FROM mail_rule_tbl WHERE account_id = %d ORDER BY type", account_id);
 		
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_LOG("sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -6563,7 +6627,7 @@ INTERNAL_FUNC int emstorage_get_rule_by_id(int account_id, int rule_id, emstorag
 	SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT * FROM mail_rule_tbl WHERE account_id = %d AND rule_id = %d", account_id, rule_id);
 	
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -6599,8 +6663,6 @@ INTERNAL_FUNC int emstorage_get_rule_by_id(int account_id, int rule_id, emstorag
 FINISH_OFF:
 	if (ret == true)
 		*rule = p_data_tbl;
-	else if (p_data_tbl != NULL)
-		emstorage_free_rule(&p_data_tbl, 1, NULL);
 	
 	if (hStmt != NULL)  {
 		EM_DEBUG_LOG(" before sqlite3_finalize hStmt = %p", hStmt);
@@ -6657,7 +6719,7 @@ INTERNAL_FUNC int emstorage_change_rule(int account_id, int rule_id, emstorage_r
 		" AND rule_id = ?");
  
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_LOG(" Before sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -6729,7 +6791,7 @@ INTERNAL_FUNC int emstorage_find_rule(emstorage_rule_tbl_t* rule, int transactio
 		rule->type, rule->value);
  
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -6817,7 +6879,7 @@ INTERNAL_FUNC int emstorage_add_rule(emstorage_rule_tbl_t* rule, int transaction
 		", ?"		/*  flag1 */
 		", ?)");	/*  flag2 */
  
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc_2);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc_2);
 	if (rc_2 != SQLITE_OK)  {
 		EM_DEBUG_EXCEPTION("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc_2, sqlite3_errmsg(local_db_handle));
 		error = EMAIL_ERROR_DB_FAILURE;
@@ -6964,12 +7026,12 @@ INTERNAL_FUNC int emstorage_get_mail_count(int account_id, const char *mailbox_n
 		SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT COUNT(*) FROM mail_tbl");
 		
 		if (account_id != ALL_ACCOUNT)  {
-			SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " WHERE account_id = %d", account_id);
+			SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " WHERE account_id = %d", account_id);
 			if (mailbox_name)
-				SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " AND UPPER(mailbox_name) =  UPPER('%s')", mailbox_name);
+				SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " AND UPPER(mailbox_name) =  UPPER('%s')", mailbox_name);
 		}
 		else if (mailbox_name)
-			SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " WHERE UPPER(mailbox_name) =  UPPER('%s')", mailbox_name);
+			SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " WHERE UPPER(mailbox_name) =  UPPER('%s')", mailbox_name);
 		
 #ifdef USE_GET_RECORD_COUNT_API
 	 	char **result;
@@ -6982,7 +7044,7 @@ INTERNAL_FUNC int emstorage_get_mail_count(int account_id, const char *mailbox_n
 		sqlite3_free_table(result);
 #else
 		
-		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 		EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF2; },
 			("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -6997,12 +7059,12 @@ INTERNAL_FUNC int emstorage_get_mail_count(int account_id, const char *mailbox_n
 		SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT COUNT(*) FROM mail_tbl WHERE flags_seen_field = 0");		/*  fSEEN = 0x01 */
 		
 		if (account_id != ALL_ACCOUNT)
-			SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " AND account_id = %d", account_id);
+			SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " AND account_id = %d", account_id);
 		
 		if (mailbox_name)
-			SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " AND mailbox_name = '%s'", mailbox_name);
+			SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " AND mailbox_name = '%s'", mailbox_name);
 		else
-			SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " AND mailbox_type NOT IN (3, 5)");
+			SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " AND mailbox_type NOT IN (3, 5)");
 		
  		char **result;
 		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_get_table(local_db_handle, sql_query_string, &result, NULL, NULL, NULL), rc);
@@ -7097,7 +7159,7 @@ INTERNAL_FUNC int emstorage_get_mail_field_by_id(int mail_id, int type, emstorag
 	
 	EM_DEBUG_LOG("Query [%s]", sql_query_string);
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -7253,9 +7315,9 @@ INTERNAL_FUNC int emstorage_get_mail_field_by_multiple_mail_id(int mail_ids[], i
 
 	for(i = 0; i < number_of_mails; i++) 		
 		cur_sql_query_string += SNPRINTF_OFFSET(sql_query_string, cur_sql_query_string, QUERY_SIZE, "%d,", mail_ids[i]);
-	sql_query_string[strlen(sql_query_string) - 1] = ')';
+	sql_query_string[EM_SAFE_STRLEN(sql_query_string) - 1] = ')';
 	
-	EM_DEBUG_LOG("Query [%s], Length [%d]", sql_query_string, strlen(sql_query_string));
+	EM_DEBUG_LOG("Query [%s], Length [%d]", sql_query_string, EM_SAFE_STRLEN(sql_query_string));
 
 	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_get_table(local_db_handle, sql_query_string, &result, &item_count, 0, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc && -1 != rc), {error = EMAIL_ERROR_DB_FAILURE;sqlite3_free_table(result);goto FINISH_OFF; },
@@ -7271,8 +7333,8 @@ INTERNAL_FUNC int emstorage_get_mail_field_by_multiple_mail_id(int mail_ids[], i
 
 	if(number_of_mails != item_count) {
 		EM_DEBUG_EXCEPTION("Can't find all emails");
-		/* error = EMAIL_ERROR_MAIL_NOT_FOUND;
-		goto FINISH_OFF; */ /* removed temporarily */
+		error = EMAIL_ERROR_MAIL_NOT_FOUND;
+		goto FINISH_OFF;
 	}
 
 	col_index = field_count;
@@ -7411,32 +7473,32 @@ INTERNAL_FUNC int emstorage_mail_search_start(emstorage_search_filter_t* search,
 	SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT * FROM mail_tbl");
 	
 	if (account_id != ALL_ACCOUNT)  {
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " WHERE account_id = %d", account_id);
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " WHERE account_id = %d", account_id);
 		and = true;
 	}
 	
 	if (mailbox_name)  {
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " %s mailbox_name = '%s'", and ? "AND" : "WHERE", mailbox_name);
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " %s mailbox_name = '%s'", and ? "AND" : "WHERE", mailbox_name);
 		and = true;
 	}
 	
 	while (p)  {
 
 		if (p->key_type) {
-			if (!strncmp(p->key_type, "subject", strlen("subject"))) {
-				SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " %s subject LIKE '%%%%%s%%%%'", and ? "AND" : "WHERE", p->key_value);
+			if (!strncmp(p->key_type, "subject", EM_SAFE_STRLEN("subject"))) {
+				SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " %s subject LIKE '%%%%%s%%%%'", and ? "AND" : "WHERE", p->key_value);
 				and = true;
 			}
-			else if (!strncmp(p->key_type, "full_address_from", strlen("full_address_from"))) {
-				SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " %s full_address_from LIKE '%%%%%s%%%%'", and ? "AND" : "WHERE", p->key_value);
+			else if (!strncmp(p->key_type, "full_address_from", EM_SAFE_STRLEN("full_address_from"))) {
+				SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " %s full_address_from LIKE '%%%%%s%%%%'", and ? "AND" : "WHERE", p->key_value);
 				and = true;
 			}
-			else if (!strncmp(p->key_type, "full_address_to", strlen("full_address_to"))) {
-				SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " %s full_address_to LIKE '%%%%%s%%%%'", and ? "AND" : "WHERE", p->key_value);
+			else if (!strncmp(p->key_type, "full_address_to", EM_SAFE_STRLEN("full_address_to"))) {
+				SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " %s full_address_to LIKE '%%%%%s%%%%'", and ? "AND" : "WHERE", p->key_value);
 				and = true;
 			}
-			else if (!strncmp(p->key_type, "email_address", strlen("email_address"))) {
-				SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " %s email_address_sender = '%s' OR email_address_recipient = '%s'", and ? "AND" : "WHERE", p->key_value, p->key_value);
+			else if (!strncmp(p->key_type, "email_address", EM_SAFE_STRLEN("email_address"))) {
+				SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " %s email_address_sender = '%s' OR email_address_recipient = '%s'", and ? "AND" : "WHERE", p->key_value, p->key_value);
 				and = true;
 			}
 			p = p->next;
@@ -7444,12 +7506,12 @@ INTERNAL_FUNC int emstorage_mail_search_start(emstorage_search_filter_t* search,
 	}
 	
 	if (sorting)
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " ORDER BY date_time");
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " ORDER BY date_time");
 
 	EM_DEBUG_LOG("sql_query_string [%s]", sql_query_string);
 
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -7498,7 +7560,7 @@ INTERNAL_FUNC int emstorage_mail_search_result(int search_handle, emstorage_mail
 {
 	EM_DEBUG_FUNC_BEGIN("search_handle[%d], type[%d], data[%p], transaction[%d], err_code[%p]", search_handle, type, data, transaction, err_code);
 
-	if (search_handle < 0 || !data) {
+	if (search_handle == 0 || !data) {
 		EM_DEBUG_EXCEPTION(" search_handle[%d], type[%d], data[%p]", search_handle, type, data);
 		
 		if (err_code != NULL)
@@ -7644,7 +7706,7 @@ INTERNAL_FUNC int emstorage_mail_search_end(int search_handle, int transaction, 
 	int error = EMAIL_ERROR_NONE;
 	int rc, ret = false;
 	
-	if (search_handle < 0)  {
+	if (search_handle == 0)  {
 		EM_DEBUG_EXCEPTION(" search_handle[%d]", search_handle);
 		error = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -7737,7 +7799,7 @@ INTERNAL_FUNC int emstorage_change_mail(int mail_id, emstorage_mail_tbl_t* mail,
 		, mail_id);
 
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 	
@@ -7967,11 +8029,11 @@ INTERNAL_FUNC int emstorage_set_field_of_mails_with_integer_value(int account_id
 	for(i = 0; i < mail_ids_count; i++) 
 		cur_mail_id_string += SNPRINTF_OFFSET(mail_id_string_buffer, cur_mail_id_string, mail_id_string_buffer_length, "%d,", mail_ids[i]);
 
-	if(strlen(mail_id_string_buffer) > 1)
-		mail_id_string_buffer[strlen(mail_id_string_buffer) - 1] = NULL_CHAR;
+	if(EM_SAFE_STRLEN(mail_id_string_buffer) > 1)
+		mail_id_string_buffer[EM_SAFE_STRLEN(mail_id_string_buffer) - 1] = NULL_CHAR;
 
 	/* Generating notification parameter string */
-	parameter_string = em_malloc(mail_id_string_buffer_length + strlen(field_name) + 2);
+	parameter_string = em_malloc(mail_id_string_buffer_length + EM_SAFE_STRLEN(field_name) + 2);
 
 	if(!parameter_string) {
 		EM_DEBUG_EXCEPTION("em_malloc failed");
@@ -8064,7 +8126,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 				, mail_id);
 
 			
-			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 			EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 				("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 			 i = 0;
@@ -8113,7 +8175,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 
 				EM_DEBUG_LOG("Query [%s]", sql_query_string);
 				
-				EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+				EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 				EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 					("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -8143,7 +8205,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 			EM_DEBUG_LOG("Query [%s]", sql_query_string);
  
 			
-			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 			EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 				("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -8167,7 +8229,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 			EM_DEBUG_LOG("Query [%s]", sql_query_string);
  
 			
-			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 			EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 				("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 			break;
@@ -8182,7 +8244,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 			EM_DEBUG_LOG("Query [%s]", sql_query_string);
  
 			
-			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 			EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 				("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 			break;
@@ -8226,7 +8288,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 				, mail_id);
  
 			
-			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 			EM_DEBUG_LOG(" before sqlite3_prepare hStmt = %p", hStmt);
 			EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 				("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -8275,7 +8337,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 				, (int)now
 				, mail_id);
 
-			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 			EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 				("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 			break;
@@ -8291,7 +8353,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
  
 			hStmt = NULL;
 			
-			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 			EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 				("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 			i = 0;
@@ -8308,7 +8370,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
  
 			hStmt = NULL;
 			
-			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 			EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 				("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 			i = 0;
@@ -8326,7 +8388,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 
 				hStmt = NULL;
 				
-				EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+				EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 				EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 					("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 				i = 0;
@@ -8350,7 +8412,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 			, mail_id);
 
 			
-			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 			EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 				("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 			 i = 0;
@@ -8375,7 +8437,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 				, mail_id);
 
 
-			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 			EM_DEBUG_LOG(" before sqlite3_prepare hStmt = %p", hStmt);
 			EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 				("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -8616,7 +8678,7 @@ INTERNAL_FUNC int emstorage_add_mail(emstorage_mail_tbl_t *mail_tbl_data, int ge
 		", ?" /*  smime_type */
 		")");
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -8732,7 +8794,7 @@ INTERNAL_FUNC int emstorage_move_multiple_mails_on_db(int input_source_account_i
 	for(i = 0; i < number_of_mails; i++) 		
 		cur_conditional_clause += SNPRINTF_OFFSET(conditional_clause, cur_conditional_clause, QUERY_SIZE, "%d,", mail_ids[i]);
 
-	conditional_clause[strlen(conditional_clause) - 1] = ')';
+	conditional_clause[EM_SAFE_STRLEN(conditional_clause) - 1] = ')';
 
 	EMSTORAGE_START_WRITE_TRANSACTION(transaction, error);
 
@@ -8772,7 +8834,9 @@ INTERNAL_FUNC int emstorage_move_multiple_mails_on_db(int input_source_account_i
 	for(i = 0; i < number_of_mails; i++) 		
 		cur_conditional_clause += SNPRINTF_OFFSET(conditional_clause, cur_conditional_clause, QUERY_SIZE, "%d,", mail_ids[i]);
 
-	conditional_clause[strlen(conditional_clause) - 1] = ')';
+	/* prevent 34415 */
+	char *last_comma = rindex(conditional_clause, ',');
+	last_comma = ")"; /* replace , with ) */
 
 	memset(sql_query_string, 0x00, QUERY_SIZE);
 	SNPRINTF(sql_query_string, QUERY_SIZE, "UPDATE mail_read_mail_uid_tbl SET mailbox_name = '%s', mailbox_id = %d, account_id = %d %s", target_mailbox_name, input_mailbox_id, target_account_id, conditional_clause);
@@ -8861,7 +8925,9 @@ INTERNAL_FUNC int emstorage_delete_multiple_mails(int mail_ids[], int number_of_
 	for(i = 0; i < number_of_mails; i++) 		
 		cur_sql_query_string += SNPRINTF_OFFSET(sql_query_string, cur_sql_query_string, QUERY_SIZE, "%d,", mail_ids[i]);
 
-	sql_query_string[strlen(sql_query_string) - 1] = ')';
+	/* prevent 34414 */
+	char *last_comma = rindex(sql_query_string, ',');
+	last_comma = ")"; /* replace , with ) */
 	
 	EM_DEBUG_LOG("Query [%s]", sql_query_string);
 
@@ -9129,7 +9195,7 @@ INTERNAL_FUNC int emstorage_get_attachment_list(int input_mail_id, int input_tra
 	SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT * FROM mail_attachment_tbl WHERE mail_id = %d ORDER BY attachment_id", input_mail_id);
 	EM_DEBUG_LOG("sql_query_string [%s]", sql_query_string);
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; }, ("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
 	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_step(hStmt), rc);
@@ -9204,7 +9270,7 @@ INTERNAL_FUNC int emstorage_get_attachment(int attachment_id, emstorage_attachme
 
 	sqlite3_stmt* hStmt = NULL;
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_LOG(" before sqlite3_prepare hStmt = %p", hStmt);
 	
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -9297,7 +9363,7 @@ INTERNAL_FUNC int emstorage_get_attachment_nth(int mail_id, int nth, emstorage_a
 	
 	DB_STMT hStmt = NULL;
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -9319,9 +9385,9 @@ INTERNAL_FUNC int emstorage_get_attachment_nth(int mail_id, int nth, emstorage_a
 	}
 
 	p_data_tbl->attachment_id = sqlite3_column_int(hStmt, ATTACHMENT_ID_IDX_IN_MAIL_ATTACHMENT_TBL);
-	if ((p = (char *)sqlite3_column_text(hStmt, ATTACHMENT_NAME_IDX_IN_MAIL_ATTACHMENT_TBL)) && (int)strlen(p))
+	if ((p = (char *)sqlite3_column_text(hStmt, ATTACHMENT_NAME_IDX_IN_MAIL_ATTACHMENT_TBL)) && (int)EM_SAFE_STRLEN(p))
 		p_data_tbl->attachment_name = cpy_str(p);
-	if ((p = (char *)sqlite3_column_text(hStmt, ATTACHMENT_PATH_IDX_IN_MAIL_ATTACHMENT_TBL)) && (int)strlen(p))
+	if ((p = (char *)sqlite3_column_text(hStmt, ATTACHMENT_PATH_IDX_IN_MAIL_ATTACHMENT_TBL)) && (int)EM_SAFE_STRLEN(p))
 		p_data_tbl->attachment_path = cpy_str(p);
 	p_data_tbl->attachment_size = sqlite3_column_int(hStmt, ATTACHMENT_SIZE_IDX_IN_MAIL_ATTACHMENT_TBL);
 	p_data_tbl->mail_id = sqlite3_column_int(hStmt, MAIL_ID_IDX_IN_MAIL_ATTACHMENT_TBL);
@@ -9331,11 +9397,11 @@ INTERNAL_FUNC int emstorage_get_attachment_nth(int mail_id, int nth, emstorage_a
 	p_data_tbl->attachment_drm_type = sqlite3_column_int(hStmt, ATTACHMENT_DRM_TYPE_IDX_IN_MAIL_ATTACHMENT_TBL);
 	p_data_tbl->attachment_drm_method = sqlite3_column_int(hStmt, ATTACHMENT_DRM_METHOD_IDX_IN_MAIL_ATTACHMENT_TBL);
 	p_data_tbl->attachment_inline_content_status = sqlite3_column_int(hStmt, ATTACHMENT_INLINE_CONTENT_STATUS_IDX_IN_MAIL_ATTACHMENT_TBL);
-	if ((p = (char *)sqlite3_column_text(hStmt, ATTACHMENT_MIME_TYPE_IDX_IN_MAIL_ATTACHMENT_TBL)) && (int)strlen(p))
+	if ((p = (char *)sqlite3_column_text(hStmt, ATTACHMENT_MIME_TYPE_IDX_IN_MAIL_ATTACHMENT_TBL)) && (int)EM_SAFE_STRLEN(p))
 		p_data_tbl->attachment_mime_type = cpy_str(p);
 #ifdef __ATTACHMENT_OPTI__
 		p_data_tbl->encoding = sqlite3_column_int(hStmt, ENCODING_IDX_IN_MAIL_ATTACHMENT_TBL);
-		if ((p = (char *)sqlite3_column_text(hStmt, SECTION_IDX_IN_MAIL_ATTACHMENT_TBL)) && (int)strlen(p))
+		if ((p = (char *)sqlite3_column_text(hStmt, SECTION_IDX_IN_MAIL_ATTACHMENT_TBL)) && (int)EM_SAFE_STRLEN(p))
 			p_data_tbl->section= cpy_str(p);
 #endif	
  	ret = true;
@@ -9343,8 +9409,6 @@ INTERNAL_FUNC int emstorage_get_attachment_nth(int mail_id, int nth, emstorage_a
 FINISH_OFF:
 	if (ret == true)
 		*attachment_tbl = p_data_tbl;
-	else if (p_data_tbl != NULL)
-		emstorage_free_attachment(&p_data_tbl, 1, NULL);
 
 	if (hStmt != NULL)  {
 		EM_DEBUG_LOG("before sqlite3_finalize hStmt = %p", hStmt);
@@ -9399,7 +9463,7 @@ INTERNAL_FUNC int emstorage_change_attachment_field(int mail_id, email_mail_chan
 			SNPRINTF(sql_query_string, sizeof(sql_query_string),
 				"UPDATE mail_attachment_tbl SET mailbox_id = ? WHERE mail_id = %d", mail_id);
 
-			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 			EM_DEBUG_LOG(" Before sqlite3_prepare hStmt = %p", hStmt);
 			EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 			("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -9426,7 +9490,7 @@ INTERNAL_FUNC int emstorage_change_attachment_field(int mail_id, email_mail_chan
 				, attachment->attachment_id);
  
 			
-			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+			EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 			EM_DEBUG_LOG(" Before sqlite3_prepare hStmt = %p", hStmt);
 			EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 			("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -9649,7 +9713,7 @@ INTERNAL_FUNC int emstorage_add_attachment(emstorage_attachment_tbl_t* attachmen
 		")");
 	
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 	
@@ -9750,7 +9814,7 @@ INTERNAL_FUNC int emstorage_update_attachment(emstorage_attachment_tbl_t* attach
 		" WHERE attachment_id = ?;");
 	
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -9854,19 +9918,19 @@ FINISH_OFF:
 INTERNAL_FUNC int emstorage_delete_all_attachments_of_mail(int mail_id, int transaction, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("mail_id[%d], transaction[%d], err_code[%p]", mail_id, transaction, err_code);
+	int rc, ret = false;
+	int error = EMAIL_ERROR_NONE;
+	char sql_query_string[QUERY_SIZE] = {0, };
+	sqlite3 *local_db_handle = NULL;
 
-	if (mail_id < 0)  {
+	if (mail_id <= 0)  {
 		EM_DEBUG_EXCEPTION("mail_id[%d]", mail_id);
 		if (err_code != NULL)
 			*err_code = EMAIL_ERROR_INVALID_PARAM;
 		return false;
 	}
 
-	int rc, ret = false;
-	int error = EMAIL_ERROR_NONE;
-	char sql_query_string[QUERY_SIZE] = {0, };
-
-	sqlite3 *local_db_handle = emstorage_get_db_connection();
+	local_db_handle = emstorage_get_db_connection();
 
 	EMSTORAGE_START_WRITE_TRANSACTION(transaction, error);
 
@@ -9904,10 +9968,10 @@ INTERNAL_FUNC int emstorage_delete_attachment_all_on_db(int account_id, char *ma
 	SNPRINTF(sql_query_string, sizeof(sql_query_string), "DELETE FROM mail_attachment_tbl");
 	
 	if (account_id != ALL_ACCOUNT) /*  '0' means all account */
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " WHERE account_id = %d", account_id);
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " WHERE account_id = %d", account_id);
 
 	if (mailbox) 	/*  NULL means all mailbox_name */
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " %s mailbox_name = '%s'", account_id != ALL_ACCOUNT ? "AND" : "WHERE", mailbox);
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " %s mailbox_name = '%s'", account_id != ALL_ACCOUNT ? "AND" : "WHERE", mailbox);
 	
 	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
 	EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -10178,13 +10242,13 @@ INTERNAL_FUNC int emstorage_get_save_name(int account_id, int mail_id, int atch_
 	}
 
 	sprintf(name_buf, "%s", MAILHOME);
-	sprintf(name_buf+strlen(name_buf), 	"%s%d", DIR_SEPERATOR, account_id);
+	sprintf(name_buf+EM_SAFE_STRLEN(name_buf), 	"%s%d", DIR_SEPERATOR, account_id);
 	
 	if (mail_id > 0)
-		sprintf(name_buf+strlen(name_buf), 	"%s%d", DIR_SEPERATOR, mail_id);
+		sprintf(name_buf+EM_SAFE_STRLEN(name_buf), 	"%s%d", DIR_SEPERATOR, mail_id);
 
 	if (atch_id > 0)
-		sprintf(name_buf+strlen(name_buf), 	"%s%d", DIR_SEPERATOR, atch_id);
+		sprintf(name_buf+EM_SAFE_STRLEN(name_buf), 	"%s%d", DIR_SEPERATOR, atch_id);
 
 	if (fname) {
 		temp_file = EM_SAFE_STRDUP(fname);
@@ -10203,7 +10267,7 @@ INTERNAL_FUNC int emstorage_get_save_name(int account_id, int mail_id, int atch_
 	
 	if (fname) {
 		EM_DEBUG_LOG(">>>>> fname [ %s ]", fname);
-		sprintf(name_buf+strlen(name_buf), 	"%s%s", DIR_SEPERATOR, fname);
+		sprintf(name_buf+EM_SAFE_STRLEN(name_buf), 	"%s%s", DIR_SEPERATOR, fname);
 	}
 		
 
@@ -10233,20 +10297,20 @@ INTERNAL_FUNC int emstorage_get_dele_name(int account_id, int mail_id, int atch_
 		return false;
 	}
 
-	sprintf(name_buf+strlen(name_buf), 	"%s%s%d", MAILHOME, DIR_SEPERATOR, account_id);
+	sprintf(name_buf+EM_SAFE_STRLEN(name_buf), 	"%s%s%d", MAILHOME, DIR_SEPERATOR, account_id);
 	
 	if (mail_id > 0)
-		sprintf(name_buf+strlen(name_buf), 	"%s%d", DIR_SEPERATOR, mail_id);
+		sprintf(name_buf+EM_SAFE_STRLEN(name_buf), 	"%s%d", DIR_SEPERATOR, mail_id);
 	else
 		goto FINISH_OFF;
 	
 	if (atch_id > 0)
-		sprintf(name_buf+strlen(name_buf), 	"%s%d", DIR_SEPERATOR, atch_id);
+		sprintf(name_buf+EM_SAFE_STRLEN(name_buf), 	"%s%d", DIR_SEPERATOR, atch_id);
 	else
 		goto FINISH_OFF;
 
 FINISH_OFF:
-	sprintf(name_buf+strlen(name_buf), 	".DELE");
+	sprintf(name_buf+EM_SAFE_STRLEN(name_buf), 	".DELE");
 
 	EM_DEBUG_FUNC_END();
 	return true;
@@ -10288,7 +10352,7 @@ INTERNAL_FUNC int emstorage_create_dir(int account_id, int mail_id, int atch_id,
 			goto FINISH_OFF;
 		}
 
-		SNPRINTF(buf+strlen(buf), sizeof(buf), "%s%d", DIR_SEPERATOR, mail_id);
+		SNPRINTF(buf+EM_SAFE_STRLEN(buf), sizeof(buf), "%s%d", DIR_SEPERATOR, mail_id);
 		
 		if (stat(buf, &sbuf) == 0) {
 			if ((sbuf.st_mode & S_IFMT) != S_IFDIR)  {
@@ -10316,7 +10380,7 @@ INTERNAL_FUNC int emstorage_create_dir(int account_id, int mail_id, int atch_id,
 			goto FINISH_OFF;
 		}
 
-		SNPRINTF(buf+strlen(buf), sizeof(buf)-(strlen(buf)+1), "%s%d", DIR_SEPERATOR, atch_id);
+		SNPRINTF(buf+EM_SAFE_STRLEN(buf), sizeof(buf)-(EM_SAFE_STRLEN(buf)+1), "%s%d", DIR_SEPERATOR, atch_id);
 		
 		if (stat(buf, &sbuf) == 0) {
 			if ((sbuf.st_mode & S_IFMT) != S_IFDIR)  {
@@ -10386,13 +10450,13 @@ INTERNAL_FUNC int emstorage_copy_file(char *src_file, char *dst_file, int sync_s
 	}
 
 	if (buf) {
-		if (!(fp_src = open(src_file, O_RDONLY))) {
+		if ((fp_src = open(src_file, O_RDONLY))<0) { /*prevent 24474*/
 			EM_DEBUG_EXCEPTION(">>>> Source Fail open %s Failed [ %d ] - Error [ %s ]", src_file, errno, strerror(errno));
 			error = EMAIL_ERROR_SYSTEM_FAILURE;
 			goto FINISH_OFF;				
 		}
 
-		if (!(fp_dst = open(dst_file, O_CREAT | O_WRONLY, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH))) {
+		if ((fp_dst = open(dst_file, O_CREAT | O_WRONLY, S_IRUSR|S_IWUSR|S_IRGRP|S_IROTH))<0) { /*prevent 24474*/
 			EM_DEBUG_EXCEPTION(">>>> Destination Fail open %s Failed [ %d ] - Error [ %s ]", dst_file, errno, strerror(errno));
 			error = EMAIL_ERROR_SYSTEM_FAILURE;
 			goto FINISH_OFF;				
@@ -10414,10 +10478,10 @@ INTERNAL_FUNC int emstorage_copy_file(char *src_file, char *dst_file, int sync_s
 	ret = true;
 	
 FINISH_OFF:
-	if (fp_src)
+	if (fp_src>0) /*prevent 24474*/
 		close(fp_src);			
 	
-	if (fp_dst) {
+	if (fp_dst>0) { /*prevent 24474*/
 		if (sync_status) {
 			EM_DEBUG_LOG("Before fsync");
 			fsync(fp_dst);
@@ -10545,13 +10609,13 @@ INTERNAL_FUNC int emstorage_add_content_type(char *file_path, char *char_set, in
 				  *   2. If not based on the character set, Append it in File
 				  **/
 
-				low_char_set = calloc(1, strlen(char_set) + strlen(" \" /></head>") +1);
+				low_char_set = calloc(1, EM_SAFE_STRLEN(char_set) + strlen(" \" /></head>") +1); /*prevent 34359*/
 				
-				strncat(low_char_set, char_set, strlen(char_set));
+				strncat(low_char_set, char_set, EM_SAFE_STRLEN(char_set));
 				
 				EM_DEBUG_LOG(">>>> CHAR SET [ %s ] ", low_char_set);
 				
-				strncat(low_char_set, " \" /></head>", strlen(" \" /></head>"));
+				strncat(low_char_set, " \" /></head>", strlen(" \" /></head>")); /*prevent 34359*/
 					
 				EM_DEBUG_LOG(">>> CHARSET [ %s ] ", low_char_set);
 
@@ -10565,18 +10629,18 @@ INTERNAL_FUNC int emstorage_add_content_type(char *file_path, char *char_set, in
 					if (fp_src !=NULL) {
 						fclose(fp_src);fp_src = NULL;
 					}
-				data_count_to_written = strlen(low_char_set)+strlen(CONTENT_DATA)+1;
+				data_count_to_written = EM_SAFE_STRLEN(low_char_set)+strlen(CONTENT_DATA)+1; /*prevent 34359*/
 					EM_DEBUG_LOG(">>>>emstorage_add_content_type 4 ");
 				buf1 = (char *)calloc(1, data_count_to_written);
 					EM_DEBUG_LOG(">>>>emstorage_add_content_type 5 ");
 
 					if (buf1) {
 						EM_DEBUG_LOG(">>>>emstorage_add_content_type 6 ");
-					 	strncat(buf1, CONTENT_DATA, strlen(CONTENT_DATA));
+					 	strncat(buf1, CONTENT_DATA, strlen(CONTENT_DATA)); /*prevent 34359*/
 
 						EM_DEBUG_LOG(">>>>> BUF 1 [ %s ] ", buf1);
 
-						strncat(buf1, low_char_set, strlen(low_char_set));
+						strncat(buf1, low_char_set, EM_SAFE_STRLEN(low_char_set));
 
 						EM_DEBUG_LOG(">>>> HTML TAG DATA  [ %s ] ", buf1);
 
@@ -10796,7 +10860,7 @@ INTERNAL_FUNC int emstorage_delete_dir(char *src_dir, int *err_code)
 	}
 
 	while ((dp=readdir(dirp)))  {
-		if (strncmp(dp->d_name, ".", strlen(".")) == 0 || strncmp(dp->d_name, "..", strlen("..")) == 0)
+		if (strncmp(dp->d_name, ".", 1) == 0 || strncmp(dp->d_name, "..", 2) == 0) /* prevent 34360 */
 			continue;
 		
 		SNPRINTF(buf, sizeof(buf), "%s/%s", src_dir, dp->d_name);
@@ -10957,7 +11021,7 @@ int emstorage_get_latest_unread_mailid(int account_id, int *mail_id, int *err_co
 	else
 		SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT mail_id FROM mail_tbl WHERE account_id = %d AND flags_seen_field = 0 ORDER BY mail_id DESC", account_id);
 		
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_LOG("  sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -11123,7 +11187,7 @@ FINISH_OFF:
 	else
 		*total_usage = 0;
 
- 	fclose(fp);
+ 	if(fp) fclose(fp); /* prevent 32730 */
 
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
 	return ret;
@@ -11194,7 +11258,7 @@ INTERNAL_FUNC int emstorage_test(int mail_id, int account_id, char *full_address
 	EMSTORAGE_START_WRITE_TRANSACTION(transaction, error);
  
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -11318,15 +11382,15 @@ INTERNAL_FUNC int emstorage_get_thread_id_of_thread_mails(emstorage_mail_tbl_t *
 		goto FINISH_OFF;
 	}
 
-	if (strlen(stripped_subject) < 2) {
+	if (EM_SAFE_STRLEN(stripped_subject) < 2) {
 		result_thread_id = -1;
 		goto FINISH_OFF;
 	}
 	
-	EM_DEBUG_LOG("em_find_pos_stripped_subject_for_thread_view returns[len = %d] = %s", strlen(stripped_subject), stripped_subject);
+	EM_DEBUG_LOG("em_find_pos_stripped_subject_for_thread_view returns[len = %d] = %s", EM_SAFE_STRLEN(stripped_subject), stripped_subject);
 	
 	if (account_id > 0) 	{
-		query_size_account = 3 + strlen(sql_format_account);
+		query_size_account = 3 + EM_SAFE_STRLEN(sql_format_account);
 		sql_account = malloc(query_size_account);
 		if (sql_account == NULL) {
 			EM_DEBUG_EXCEPTION("malloc for sql_account  is failed %d", query_size_account);
@@ -11336,6 +11400,7 @@ INTERNAL_FUNC int emstorage_get_thread_id_of_thread_mails(emstorage_mail_tbl_t *
 		snprintf(sql_account, query_size_account, sql_format_account, account_id);
 	}
 	
+	/* prevent 34362 */
 	query_size = strlen(sql_format) + strlen(stripped_subject) + 50 + query_size_account + strlen(sql_format_order_by); /*  + query_size_mailbox; */
 	
 	sql_query_string = malloc(query_size);
@@ -11462,35 +11527,35 @@ INTERNAL_FUNC int emstorage_get_sender_list(int account_id, const char *mailbox_
 
 	/*  mailbox_name */
 	if (mailbox_name)
-		SNPRINTF(sql_query_string + strlen(sql_query_string), QUERY_SIZE-(strlen(sql_query_string)+1), " WHERE UPPER(mailbox_name) = UPPER('%s') ", mailbox_name);
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), QUERY_SIZE-(EM_SAFE_STRLEN(sql_query_string)+1), " WHERE UPPER(mailbox_name) = UPPER('%s') ", mailbox_name);
 	else	/*  NULL  means all mailbox_name. but except for trash(3), spambox(5), all emails(for GMail, 7) */
-		SNPRINTF(sql_query_string + strlen(sql_query_string), QUERY_SIZE-(strlen(sql_query_string)+1), " WHERE mailbox_type not in (3, 5, 7, 8) ");
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), QUERY_SIZE-(EM_SAFE_STRLEN(sql_query_string)+1), " WHERE mailbox_type not in (3, 5, 7, 8) ");
 
 	/*  account id */
 	/*  '0' (ALL_ACCOUNT) means all account */
 	if (account_id > ALL_ACCOUNT)
-		SNPRINTF(sql_query_string + strlen(sql_query_string), QUERY_SIZE-(strlen(sql_query_string)+1), " AND account_id = %d ", account_id);
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), QUERY_SIZE-(EM_SAFE_STRLEN(sql_query_string)+1), " AND account_id = %d ", account_id);
 
 	if (search_value) {
 		switch (search_type) {
 			case EMAIL_SEARCH_FILTER_SUBJECT:
-				SNPRINTF(sql_query_string + strlen(sql_query_string), QUERY_SIZE-(strlen(sql_query_string)+1),
+				SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), QUERY_SIZE-(EM_SAFE_STRLEN(sql_query_string)+1),
 					" AND (UPPER(subject) LIKE UPPER(\'%%%%%s%%%%\')) ", search_value);
 				break;
 			case EMAIL_SEARCH_FILTER_SENDER:
-				SNPRINTF(sql_query_string + strlen(sql_query_string), QUERY_SIZE-(strlen(sql_query_string)+1),
+				SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), QUERY_SIZE-(EM_SAFE_STRLEN(sql_query_string)+1),
 					" AND  ((UPPER(full_address_from) LIKE UPPER(\'%%%%%s%%%%\')) "
 					") ", search_value);
 				break;
 			case EMAIL_SEARCH_FILTER_RECIPIENT:
-				SNPRINTF(sql_query_string + strlen(sql_query_string), QUERY_SIZE-(strlen(sql_query_string)+1),
+				SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), QUERY_SIZE-(EM_SAFE_STRLEN(sql_query_string)+1),
 					" AND ((UPPER(full_address_to) LIKE UPPER(\'%%%%%s%%%%\')) "	
 					"	OR (UPPER(full_address_cc) LIKE UPPER(\'%%%%%s%%%%\')) "
 					"	OR (UPPER(full_address_bcc) LIKE UPPER(\'%%%%%s%%%%\')) "
 					") ", search_value, search_value, search_value);
 				break;
 			case EMAIL_SEARCH_FILTER_ALL:
-				SNPRINTF(sql_query_string + strlen(sql_query_string), QUERY_SIZE-(strlen(sql_query_string)+1),
+				SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), QUERY_SIZE-(EM_SAFE_STRLEN(sql_query_string)+1),
 					" AND (UPPER(subject) LIKE UPPER(\'%%%%%s%%%%\') "
 					" 	OR (((UPPER(full_address_from) LIKE UPPER(\'%%%%%s%%%%\')) "
 					"			OR (UPPER(full_address_to) LIKE UPPER(\'%%%%%s%%%%\')) "
@@ -11505,7 +11570,7 @@ INTERNAL_FUNC int emstorage_get_sender_list(int account_id, const char *mailbox_
 
 
 	/*  sorting option is not available now. The order of sender list is ascending order by display name */
-	SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1),
+	SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1),
 		"GROUP BY email_address_sender "
 		"ORDER BY UPPER(alias_sender) ");
 
@@ -11546,8 +11611,6 @@ FINISH_OFF:
 		*sender_count = count;
 		EM_DEBUG_LOG(">>>> COUNT : %d >>", count);
 	}
-	else if (p_sender_list != NULL)
-		emstorage_free_sender_list(&p_sender_list, count);
 		
 	_DISCONNECT_DB;
 	
@@ -11696,7 +11759,7 @@ INTERNAL_FUNC int emstorage_add_pbd_activity(email_event_partial_body_thd* local
 		EM_DEBUG_LOG(" MAILBOX ID [ %d ]", local_activity->mailbox_id);
 	
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -11793,7 +11856,7 @@ INTERNAL_FUNC int emstorage_get_pbd_mailbox_list(int account_id, int **mailbox_l
 	EM_DEBUG_LOG(" Query [%s]", sql_query_string);
 	
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 
 	EM_DEBUG_LOG(" Bbefore sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -11900,7 +11963,7 @@ INTERNAL_FUNC int emstorage_get_pbd_account_list(int **account_list, int *count,
 	EM_DEBUG_LOG("Query [%s]", sql_query_string);
 	
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 
 	EM_DEBUG_LOG("Before sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -12010,7 +12073,7 @@ INTERNAL_FUNC int emstorage_get_pbd_activity_data(int account_id, int input_mail
 	EM_DEBUG_LOG("Query [%s]", sql_query_string);
 
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 
 	EM_DEBUG_LOG(" Bbefore sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -12163,7 +12226,7 @@ INTERNAL_FUNC int emstorage_get_mailbox_pbd_activity_count(int account_id, int i
 	EM_DEBUG_LOG(" Query [%s]", sql_query_string);
 
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_LOG("before sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -12229,7 +12292,7 @@ INTERNAL_FUNC int emstorage_get_pbd_activity_count(int *activity_count, int tran
 	EM_DEBUG_LOG(" Query [%s]", sql_query_string);
 
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_LOG("  before sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -12657,7 +12720,7 @@ INTERNAL_FUNC int emstorage_filter_mails_by_rule(int account_id, int dest_mailbo
 	
 	EM_DEBUG_LOG("rule->value [%s]", rule->value);
 
-	where_pararaph_length = strlen(rule->value) + 100;
+	where_pararaph_length = EM_SAFE_STRLEN(rule->value) + 100;
 	where_pararaph = malloc(sizeof(char) * where_pararaph_length);
 
 	if (where_pararaph == NULL) {
@@ -12688,6 +12751,7 @@ INTERNAL_FUNC int emstorage_filter_mails_by_rule(int account_id, int dest_mailbo
 		goto FINISH_OFF;
 	}
 	
+	/* prevent 34361 */
 	if (strlen(sql_query_string) + strlen(where_pararaph) < QUERY_SIZE)
 		strcat(sql_query_string, where_pararaph);
 
@@ -12715,7 +12779,8 @@ INTERNAL_FUNC int emstorage_filter_mails_by_rule(int account_id, int dest_mailbo
 
 		SNPRINTF(sql_query_string, sizeof(sql_query_string), "UPDATE mail_tbl SET mailbox_id = %d, mailbox_type = 5 ", dest_mailbox_id);
 
-		if (strlen(sql_query_string) + strlen(where_pararaph) < QUERY_SIZE)
+		/* prevent 34361 */
+		if(strlen(sql_query_string) + strlen(where_pararaph) < QUERY_SIZE)
 		strcat(sql_query_string, where_pararaph);
 
 		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
@@ -12796,9 +12861,9 @@ INTERNAL_FUNC int emstorage_set_mail_slot_size(int account_id, int mailbox_id, i
 	}
 
 	if (new_slot_size == 0)
-		SNPRINTF(where_pararaph + strlen(where_pararaph), where_pararaph_length - strlen(where_pararaph), " %s total_mail_count_on_server > mail_slot_size ", (and ? "AND" : "WHERE"));
+		SNPRINTF(where_pararaph + EM_SAFE_STRLEN(where_pararaph), where_pararaph_length - EM_SAFE_STRLEN(where_pararaph), " %s total_mail_count_on_server > mail_slot_size ", (and ? "AND" : "WHERE"));
 
-	if (strlen(sql_query_string) + strlen(where_pararaph) < QUERY_SIZE)
+	if (strlen(sql_query_string) + EM_SAFE_STRLEN(where_pararaph) < QUERY_SIZE) /* prevent 34363 */
 		strcat(sql_query_string, where_pararaph);
 	else {
 		EM_DEBUG_EXCEPTION("Query buffer overflowed !!!");
@@ -12873,7 +12938,7 @@ INTERNAL_FUNC int emstorage_add_meeting_request(int account_id, int input_mailbo
 		", ?"		/*  daylight_bias */
 		" )");
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	if (rc != SQLITE_OK)  {
 		EM_DEBUG_LOG(" before sqlite3_prepare hStmt = %p", hStmt);
 		EM_DEBUG_EXCEPTION("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle));
@@ -12981,7 +13046,7 @@ INTERNAL_FUNC int emstorage_get_meeting_request(int mail_id, email_meeting_reque
 	EM_DEBUG_LOG("sql : %s ", sql_query_string);
 
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -13118,7 +13183,7 @@ INTERNAL_FUNC int emstorage_update_meeting_request(email_meeting_request_t* meet
 	
 	EM_DEBUG_LOG("SQL(%s)", sql_query_string);
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 /*
@@ -13209,15 +13274,15 @@ INTERNAL_FUNC int emstorage_delete_meeting_request(int account_id, int mail_id, 
 	SNPRINTF(sql_query_string, sizeof(sql_query_string), "DELETE FROM mail_meeting_tbl ");
 
 	if (account_id != ALL_ACCOUNT) {		/*  NOT '0' means a specific account. '0' means all account */
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " WHERE account_id = %d", account_id);
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " WHERE account_id = %d", account_id);
 		and = true;
 	}
 	if (mail_id > 0) {	
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " %s mail_id = %d", (and ? "AND" : "WHERE"), mail_id);
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " %s mail_id = %d", (and ? "AND" : "WHERE"), mail_id);
 		and = true;
 	}
 	if (input_mailbox_id > 0) {		/*  0 means all mailbox_id */
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1), " %s mailbox_id = '%d'",  (and ? "AND" : "WHERE"), input_mailbox_id);
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " %s mailbox_id = '%d'",  (and ? "AND" : "WHERE"), input_mailbox_id);
 	}
 	
 	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
@@ -13514,7 +13579,7 @@ INTERNAL_FUNC int emstorage_add_activity(emstorage_activity_tbl_t* local_activit
 	EM_DEBUG_LOG(">>>> SQL STMT [ %s ] ", sql_query_string);
 	
 	
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -13642,19 +13707,19 @@ INTERNAL_FUNC int emstorage_get_activity(int account_id, int activityid, emstora
 
 
 		EM_DEBUG_LOG("result[%d] - %s ", col_index, result[col_index]);
-		if (result[col_index] && strlen(result[col_index])>0)
+		if (result[col_index] && EM_SAFE_STRLEN(result[col_index])>0)
 			p_activity_tbl[i].server_mailid = EM_SAFE_STRDUP(result[col_index++]);
 		else
 			col_index++;
 
 		EM_DEBUG_LOG("result[%d] - %s ", col_index, result[col_index]);
-		if (result[col_index] && strlen(result[col_index])>0)
+		if (result[col_index] && EM_SAFE_STRLEN(result[col_index])>0)
 			p_activity_tbl[i].src_mbox = EM_SAFE_STRDUP(result[col_index++]);
 		else
 			col_index++;		
 
 		EM_DEBUG_LOG("result[%d] - %s ", col_index, result[col_index]);
-		if (result[col_index] && strlen(result[col_index])>0)
+		if (result[col_index] && EM_SAFE_STRLEN(result[col_index])>0)
 			p_activity_tbl[i].dest_mbox = EM_SAFE_STRDUP(result[col_index++]);
 		else
 			col_index++;
@@ -13874,14 +13939,14 @@ INTERNAL_FUNC int emstorage_delete_local_activity(emstorage_activity_tbl_t* loca
 	EM_DEBUG_LOG(">>> Query [ %s ] ", sql_query_string);
 
 	if (local_activity->account_id) {
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1),
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1),
 		" WHERE account_id = %d ", local_activity->account_id);
 		query_and = 1;
 		query_where = 1;
 	}
 
 	if (local_activity->server_mailid) {
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1),
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1),
 		" %s %s server_mailid = '%s' ", query_where? "": "WHERE", query_and? "AND":"", local_activity->server_mailid);
 		query_and = 1;
 		query_where = 1;
@@ -13891,7 +13956,7 @@ INTERNAL_FUNC int emstorage_delete_local_activity(emstorage_activity_tbl_t* loca
 	if (local_activity->mail_id) {
 		EM_DEBUG_LOG(">>>> MAIL ID [ %d ] , ACTIVITY TYPE [%d ]", local_activity->mail_id, local_activity->activity_type);
 		
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1),
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1),
 		" %s %s mail_id = %d  ", query_where? "": "WHERE", query_and? "AND":"", local_activity->mail_id);
 		
 		query_and = 1;
@@ -13900,12 +13965,12 @@ INTERNAL_FUNC int emstorage_delete_local_activity(emstorage_activity_tbl_t* loca
 	}
 
 	if (local_activity->activity_type > 0) {
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1),
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1),
 		" %s %s activity_type = %d ", query_where? "": "WHERE", query_and? "AND" : "" , local_activity->activity_type);
 	}
 
 	if (local_activity->activity_id > 0) {
-		SNPRINTF(sql_query_string + strlen(sql_query_string), sizeof(sql_query_string)-(strlen(sql_query_string)+1),
+		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1),
 		" %s %s activity_id = %d ", query_where? "": "WHERE", query_and? "AND" : "" , local_activity->activity_id);
 
 	}	
@@ -14142,7 +14207,7 @@ static int _get_key_value_string_for_list_filter_rule(email_list_filter_rule_t *
 		break;
 	}
 
-	if(ret == EMAIL_ERROR_NONE && strlen(key_value_string) > 0) {
+	if(ret == EMAIL_ERROR_NONE && EM_SAFE_STRLEN(key_value_string) > 0) {
 		*output_key_value_string = strdup(key_value_string);
 	}
 
@@ -14203,8 +14268,8 @@ static int _make_filter_rule_string(email_list_filter_rule_t *input_list_filter_
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
-	length_field_name = strlen(temp_field_name_string);
-	length_value      = strlen(temp_key_value_string);
+	length_field_name = EM_SAFE_STRLEN(temp_field_name_string);
+	length_value      = EM_SAFE_STRLEN(temp_key_value_string);
 
 	switch(input_list_filter_rule->target_attribute) {
 	case EMAIL_MAIL_ATTRIBUTE_MAILBOX_NAME            :
@@ -14225,8 +14290,8 @@ static int _make_filter_rule_string(email_list_filter_rule_t *input_list_filter_
 	}
 
 	if(is_alpha == 1 && input_list_filter_rule->case_sensitivity == false) {
-		length_field_name += strlen("UPPER() ");
-		length_value      += strlen("UPPER() ");
+		length_field_name += EM_SAFE_STRLEN("UPPER() ");
+		length_value      += EM_SAFE_STRLEN("UPPER() ");
 		mod_field_name_string = em_malloc(sizeof(char) * length_field_name);
 		mod_value_string      = em_malloc(sizeof(char) * length_value);
 		SNPRINTF(mod_field_name_string, length_field_name, "UPPER(%s)", temp_field_name_string);
@@ -14369,7 +14434,7 @@ INTERNAL_FUNC int emstorage_write_conditional_clause_for_getting_mail_list(email
 				goto FINISH_OFF;
 			}
 
-			if(strlen(conditional_clause_string) + strlen(result_string_for_a_item) >= QUERY_SIZE) {
+			if(strlen(conditional_clause_string) + EM_SAFE_STRLEN(result_string_for_a_item) >= QUERY_SIZE) { /* prevent 34364 */
 				EM_DEBUG_EXCEPTION("Query is too long");
 				ret = EMAIL_ERROR_DATA_TOO_LONG;
 				goto FINISH_OFF;
@@ -14503,8 +14568,8 @@ INTERNAL_FUNC int emstorage_add_certificate(emstorage_certificate_tbl_t *certifi
 		") ");
 
 
-	/*  rc = sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL); */
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	/*  rc = sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL); */
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -14528,7 +14593,7 @@ INTERNAL_FUNC int emstorage_add_certificate(emstorage_certificate_tbl_t *certifi
 	EM_DEBUG_DB_EXEC((rc != SQLITE_ROW && rc != SQLITE_DONE), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("sqlite3_step fail:%d, errmsg = %s.", rc, sqlite3_errmsg(local_db_handle)));
 #ifdef __FEATURE_SUPPORT_PRIVATE_CERTIFICATE__
-	if (ssm_write_buffer(certificate->password, strlen(certificate->password), cert_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
+	if (ssm_write_buffer(certificate->password, EM_SAFE_STRLEN(certificate->password), cert_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
 		EM_DEBUG_EXCEPTION("ssm_write_buffer failed - Private certificate password : [%s]", cert_password_file_name);
 		error = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
@@ -14643,8 +14708,8 @@ INTERNAL_FUNC int emstorage_get_certificate_list(int *select_num, emstorage_cert
 	EM_DEBUG_LOG("count = %d", rc);
 	SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT * FROM mail_certificate_tbl ORDER BY account_id");
 
-	/*  rc = sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL);   */
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	/*  rc = sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL);   */
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 
 	EM_DEBUG_LOG("After sqlite3_prepare_v2 hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -14768,7 +14833,7 @@ INTERNAL_FUNC int emstorage_get_certificate_by_email_address(char *email_address
 
 	/*  Make query string */
 	SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT ");
-	sql_len = strlen(sql_query_string);
+	sql_len = EM_SAFE_STRLEN(sql_query_string);
 		
 	/*  dummy value, FROM WHERE clause */
 	SNPRINTF(sql_query_string + sql_len, sizeof(sql_query_string) - sql_len, "* FROM mail_certificate_tbl WHERE email_address = '%s'", email_address);
@@ -14777,7 +14842,7 @@ INTERNAL_FUNC int emstorage_get_certificate_by_email_address(char *email_address
 	EM_DEBUG_LOG("query = [%s]", sql_query_string);
 
 	/*  execute a sql and count rows */
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 	
@@ -14832,10 +14897,7 @@ INTERNAL_FUNC int emstorage_get_certificate_by_email_address(char *email_address
 FINISH_OFF:
 	if (ret == true)
 		*certificate = p_data_tbl;
-	else {
-		if (p_data_tbl)
-			emstorage_free_certificate((emstorage_certificate_tbl_t **)&p_data_tbl, 1, NULL);
-	}
+
 	if (hStmt != NULL)  {
 		rc = sqlite3_finalize(hStmt);
 		if (rc != SQLITE_OK)  {
@@ -14880,7 +14942,7 @@ INTERNAL_FUNC int emstorage_get_certificate_by_index(int index, emstorage_certif
 
 	/*  Make query string */
 	SNPRINTF(sql_query_string, sizeof(sql_query_string), "SELECT ");
-	sql_len = strlen(sql_query_string);
+	sql_len = EM_SAFE_STRLEN(sql_query_string);
 		
 	/*  dummy value, FROM WHERE clause */
 	SNPRINTF(sql_query_string + sql_len, sizeof(sql_query_string) - sql_len, "* FROM mail_certificate_tbl WHERE certificate_id = %d", index);
@@ -14889,7 +14951,7 @@ INTERNAL_FUNC int emstorage_get_certificate_by_index(int index, emstorage_certif
 	EM_DEBUG_LOG("query = [%s]", sql_query_string);
 
 	/*  execute a sql and count rows */
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 	
@@ -14945,10 +15007,7 @@ INTERNAL_FUNC int emstorage_get_certificate_by_index(int index, emstorage_certif
 FINISH_OFF:
 	if (ret == true)
 		*certificate = p_data_tbl;
-	else {
-		if (p_data_tbl)
-			emstorage_free_certificate((emstorage_certificate_tbl_t **)&p_data_tbl, 1, NULL);
-	}
+
 	if (hStmt != NULL)  {
 		rc = sqlite3_finalize(hStmt);
 		if (rc != SQLITE_OK)  {
@@ -15080,7 +15139,7 @@ INTERNAL_FUNC int emstorage_update_certificate(int certificate_id, emstorage_cer
 		", password = ?"
 		" WHERE certificate_id = ?");
         
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_LOG("After sqlite3_prepare hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -15120,7 +15179,7 @@ INTERNAL_FUNC int emstorage_update_certificate(int certificate_id, emstorage_cer
 	}		
 
 	/*  save passwords to the secure storage */
-	if (ssm_write_buffer(certificate->password, strlen(certificate->password), cert_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
+	if (ssm_write_buffer(certificate->password, EM_SAFE_STRLEN(certificate->password), cert_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
 		EM_DEBUG_EXCEPTION("ssm_write_buffer failed - Private certificate password : [%s]", cert_password_file_name);
 		error = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
@@ -15205,7 +15264,7 @@ INTERNAL_FUNC int emstorage_add_task(email_task_type_t input_task_type, email_ta
 		"  , ? "  /*   date_time */
 		") ");
 
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {err = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
@@ -15354,7 +15413,7 @@ INTERNAL_FUNC int emstorage_query_task(const char *input_conditional_clause, con
 	SNPRINTF_OFFSET(sql_query_string, cur_query, QUERY_SIZE, "SELECT %s FROM mail_task_tbl %s %s", field_list, input_conditional_clause, input_ordering_clause);
 	EM_DEBUG_LOG("emstorage_query_mail_list : query[%s].", sql_query_string);
 
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, strlen(sql_query_string), &hStmt, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 
 	EM_DEBUG_LOG("After sqlite3_prepare_v2 hStmt = %p", hStmt);
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {err = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },

@@ -58,7 +58,8 @@ extern "C"
 /*****************************************************************************/
 
 #define MAILBOX_NAME_LENGTH               256
-#define MAX_EMAIL_ADDRESS_LENGTH          320                                    /*  64(user name) + 1(@) + 255(host name */
+#define MAX_EMAIL_ADDRESS_LENGTH          254                                    /* RFC5322, RFC3696 */
+#define MAX_USER_NAME_LENGTH              64
 #define MAX_DATETIME_STRING_LENGTH        20
 #define MAX_PREVIEW_TEXT_LENGTH           512
 #define STRING_LENGTH_FOR_DISPLAY         100
@@ -176,6 +177,7 @@ enum {
 	_EMAIL_API_UPDATE_MAIL                               = 0x01100018,
 	_EMAIL_API_ADD_READ_RECEIPT                          = 0x01100019,
 	_EMAIL_API_EXPUNGE_MAILS_DELETED_FLAGGED             = 0x0110001A,
+	_EMAIL_API_UPDATE_MAIL_ATTRIBUTE                     = 0x0110001B,
 
 	/* Thread */
 	_EMAIL_API_MOVE_THREAD_TO_MAILBOX                    = 0x01110000,
@@ -269,6 +271,7 @@ typedef enum
 	NOTI_MAILBOX_ADD                         = 40000,
 	NOTI_MAILBOX_DELETE                      = 40001,
 	NOTI_MAILBOX_UPDATE                      = 40002,
+	NOTI_MAILBOX_FIELD_UPDATE                = 40003,
 
 	NOTI_MAILBOX_RENAME                      = 40010,
 	NOTI_MAILBOX_RENAME_FAIL                 = 40011,
@@ -369,7 +372,7 @@ typedef enum
 typedef enum
 {
 	EMAIL_BIND_TYPE_DISABLE          = 0,          /**< Specifies the bind type for Disabled account.*/
-	EMAIL_BIND_TYPE_EM_CORE          = 1,          /**< Specifies the bind type for Callia.*/
+	EMAIL_BIND_TYPE_EM_CORE          = 1,          /**< Specifies the bind type for email-service .*/
 } email_account_bind_t DEPRECATED;
 
 /**
@@ -717,7 +720,7 @@ typedef enum
 	EMAIL_EVENT_DELETE_MAIL_ALL                 =  8,          /*  delete all mails (network unused) */
 	EMAIL_EVENT_SYNC_MAIL_FLAG_TO_SERVER        =  9,          /*  sync mail flag to server */
 	EMAIL_EVENT_SYNC_FLAGS_FIELD_TO_SERVER      = 10,          /*  sync a field of flags to server */
-	EMAIL_EVENT_SAVE_MAIL                       = 11,          /*  Deprecated */
+	EMAIL_EVENT_SAVE_MAIL                       = 11,          /*  add mail on server */
 	EMAIL_EVENT_MOVE_MAIL                       = 12,          /*  move mails to specific mailbox on server */
 	EMAIL_EVENT_CREATE_MAILBOX                  = 13,
 	EMAIL_EVENT_UPDATE_MAILBOX                  = 14,
@@ -1202,14 +1205,14 @@ typedef struct
 	int                          incoming_server_requires_apop;            /**< APOP authentication */
 
 	/* S/MIME Options */
-	email_smime_type             smime_type;                               /**< Sepeifies the smime type 0=Normal 1=Clear signed 2=encrypted 3=Signed + encrypted */
-	char                        *certificate_path;                         /**< Sepeifies the certificate path of private*/
-	email_cipher_type            cipher_type;                              /**< Sepeifies the encryption algorithm*/
-	email_digest_type            digest_type;                              /**< Sepeifies the digest algorithm*/
+	email_smime_type             smime_type;                               /**< Specifies the smime type 0=Normal 1=Clear signed 2=encrypted 3=Signed + encrypted */
+	char                        *certificate_path;                         /**< Specifies the certificate path of private*/
+	email_cipher_type            cipher_type;                              /**< Specifies the encryption algorithm*/
+	email_digest_type            digest_type;                              /**< Specifies the digest algorithm*/
 } email_account_t;
 
 /**
- * This structure is used to save the information of certificiate
+ * This structure is used to save the information of certificate
  */
 
 typedef struct 
@@ -1295,19 +1298,19 @@ typedef struct
 	char                  flags_draft_field;       /**< Specifies the draft flags*/
 	char                  flags_forwarded_field;   /**< Specifies the forwarded flags*/
 	int                   DRM_status;              /**< Has the mail DRM content? (1 : true, 0 : false) */
-	email_mail_priority_t priority;                /**< Specifies the priority of the mail.*/ /* email_mail_priority_t */
-	email_mail_status_t   save_status;             /**< Specifies the save status*/ /* email_mail_status_t */
+	email_mail_priority_t priority;                /**< Specifies the priority of the mail.*/
+	email_mail_status_t   save_status;             /**< Specifies the save status*/
 	int                   lock_status;             /**< Specifies the mail is locked*/
-	email_mail_report_t   report_status;           /**< Specifies the Mail Report.*/ /* email_mail_report_t */
+	email_mail_report_t   report_status;           /**< Specifies the Mail Report.*/
 	int                   attachment_count;        /**< Specifies the attachment count. */
 	int                   inline_content_count;    /**< Specifies the inline content count. */
 	int                   thread_id;               /**< Specifies the thread id for thread view. */
 	int                   thread_item_count;       /**< Specifies the item count of specific thread. */
 	char                 *preview_text;            /**< Specifies the preview body. */
-	email_mail_type_t     meeting_request_status;  /**< Specifies the status of meeting request. */ /* email_mail_type_t */
+	email_mail_type_t     meeting_request_status;  /**< Specifies the status of meeting request. */
 	int                   message_class;           /**< Specifies the class of message for EAS. */ /* email_message_class */
-	email_digest_type     digest_type;             /**< Specifies the digest algorithm*/ /* email_digest_type */
-	email_smime_type      smime_type;              /**< Specifies the SMIME type. */ /* email_smime_type */
+	email_digest_type     digest_type;             /**< Specifies the digest algorithm*/
+	email_smime_type      smime_type;              /**< Specifies the SMIME type. */
 } email_mail_data_t;
 
 /**
@@ -1385,7 +1388,7 @@ typedef struct
 {
 	unsigned int  priority         : 3; /**< Specifies the mail priority.
                                            The value is greater than or equal to EMAIL_MAIL_PRIORITY_HIGH.
-                                           The value is less than or eqult to EMAIL_MAIL_PRIORITY_LOW.*/
+                                           The value is less than or equal to EMAIL_MAIL_PRIORITY_LOW.*/
 	unsigned int  status           : 4; /**< Specifies the mail status.
 	                                       The value is a value of enumeration email_mail_status_t.*/
 	unsigned int  noti             : 1; /**< Specifies the notified mail.*/
@@ -1436,7 +1439,7 @@ typedef struct
 } email_meeting_request_t;
 
 /**
- * This structure is used to save the informatioin of sender list with unread/total mail counts
+ * This structure is used to save the information of sender list with unread/total mail counts
  */
 typedef struct
 {
@@ -1464,6 +1467,7 @@ typedef struct
 	int                   mail_slot_size;             /**< Specifies how many mails can be stored in local mailbox.*/
 	int                   no_select;                  /**< Specifies the 'no_select' attribute from xlist.*/
 	time_t                last_sync_time;
+	int                   deleted_flag;               /**< Specifies whether mailbox is deleted.*/
 } email_mailbox_t;
 
 typedef struct
@@ -1486,8 +1490,8 @@ typedef struct
 typedef struct
 {
 	int	address_type;		/* type of mail (sender : 0, recipient : 1)*/
-	int     address_count;  /*  The number of email addresse */
-	char  **address_list;   /*  strings of email addresse */
+	int     address_count;  /*  The number of email addresses */
+	char  **address_list;   /*  strings of email addresses */
 } email_email_address_list_t;
 
 
@@ -1517,16 +1521,16 @@ typedef enum {
 	EMAIL_CASE_INSENSITIVE                        = 1,
 } email_list_filter_case_sensitivity_t;
 
+typedef union {
+	int                                    integer_type_value;
+	char                                  *string_type_value;
+	time_t                                 datetime_type_value;
+} email_mail_attribute_value_t;
+
 typedef struct {
 	email_list_filter_rule_type_t          rule_type;
 	email_mail_attribute_type              target_attribute;
-
-	union {
-		int                                integer_type_value;
-		char                              *string_type_value;
-		time_t                             datetime_type_value;
-	} key_value;
-
+	email_mail_attribute_value_t           key_value;
 	email_list_filter_case_sensitivity_t   case_sensitivity;
 } email_list_filter_rule_t;
 
@@ -1590,6 +1594,8 @@ typedef enum
 	ACTIVE_SYNC_NOTI_ADD_MAILBOX,                         /*  a notification to add mailbox */
 	ACTIVE_SYNC_NOTI_RENAME_MAILBOX,                      /*  a notification to rename mailbox */
 	ACTIVE_SYNC_NOTI_DELETE_MAILBOX,                      /*  a notification to delete mailbox */
+	ACTIVE_SYNC_NOTI_CANCEL_SENDING_MAIL,                 /*  a notification to cancel a sending mail */
+	ACTIVE_SYNC_NOTI_DELETE_MAILBOX_EX,                   /*  a notification to delete multiple mailboxes */
 }	eactivesync_noti_t;
 
 typedef union
@@ -1709,6 +1715,20 @@ typedef union
 		int                     mailbox_id;
 	} delete_mailbox;
 
+	struct _cancel_sending_mail
+	{
+		int                     mail_id;
+	} cancel_sending_mail;
+
+	struct _delete_mailbox_ex
+	{
+		int                     handle;
+		int                     account_id;
+		int                    *mailbox_id_array;
+		int                     mailbox_id_count;
+		int                     on_server;
+	} delete_mailbox_ex;
+
 } ASNotiData;
 
 /*  types for noti string */
@@ -1759,6 +1779,7 @@ typedef enum {
 	EMAIL_ASYNC_TASK_DELETE_MAILBOX                                  = 62020,
 	EMAIL_ASYNC_TASK_RENAME_MAILBOX                                  = 62030,
 	EMAIL_ASYNC_TASK_DOWNLOAD_IMAP_MAILBOX_LIST                      = 62040,
+	EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX                               = 62050,
 
 	/* Async tasks for mail - from 63000 */
 	EMAIL_ASYNC_TASK_ADD_MAIL                                        = 63010,

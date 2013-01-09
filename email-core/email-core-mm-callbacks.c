@@ -153,7 +153,7 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 	else
 		p[count].mailbox_name  = cpystr(enc_path);
 
-	EM_DEBUG_LOG("mm_list mailbox name is %s ", p[count].mailbox_name);
+	EM_DEBUG_LOG("mailbox name [%s] mailbox_type [%d] no_select [%d]", p[count].mailbox_name, p[count].mailbox_type, p[count].no_select);
 
 	p[count].alias = emcore_get_alias_of_mailbox((const char *)enc_path);
 	p[count].local = 0;
@@ -236,12 +236,12 @@ INTERNAL_FUNC void mm_login(NETMBX *mb, char *user, char *pwd, long trial)
 
 	password = EM_SAFE_STRDUP(ref_account->incoming_server_password);
 
-	if (username && password && strlen(username) > 0 && strlen(password) > 0) {
+	if(EM_SAFE_STRLEN(username) > 0 && EM_SAFE_STRLEN(password) > 0) { /*prevent 34355*/
 		strcpy(user, username);
 		strcpy(pwd, password);
 	}
 	else
-		EM_DEBUG_EXCEPTION("User Information is NULL || strlen is 0 ");
+		EM_DEBUG_EXCEPTION("User Information is NULL || EM_SAFE_STRLEN is 0 ");
 		
 	EM_SAFE_FREE(username);
 	EM_SAFE_FREE(password);
@@ -259,7 +259,6 @@ INTERNAL_FUNC void mm_dlog(char *string)
 
 INTERNAL_FUNC void mm_log(char *string, long errflg)
 {
-	/* EM_DEBUG_FUNC_BEGIN(); */
 	
 	switch ((short)errflg)  {
 		case NIL:
@@ -293,20 +292,6 @@ INTERNAL_FUNC void mm_log(char *string, long errflg)
 				mm_get_error(string, &session->error);
 				EM_DEBUG_EXCEPTION("IMAP_TOOLKIT_LOG ERROR [%d]", session->error);
 			}
-			
-			/*  Handling exceptional case of connection failures.  */
-			/*
-			if (string) {
-				if (strstr(string, "15 minute") != 0) {
-					if (session)
-						session->error = EMAIL_ERROR_LOGIN_ALLOWED_EVERY_15_MINS;
-				}
-				else if (strstr(string, "Too many login failures") == 0) {
-					if (session)
-						session->error = EMAIL_ERROR_TOO_MANY_LOGIN_FAILURE;
-				}
-			}
-			*/
 			
 			break;
 		}
@@ -426,6 +411,8 @@ INTERNAL_FUNC void mm_get_error(char *string, int *err_code)
 		*err_code = EMAIL_ERROR_INVALID_SERVER;
 	else if (strstr(string, "SELECT failed"))
 		*err_code = EMAIL_ERROR_MAILBOX_NOT_FOUND;
+	else if (strstr(string, "15 minute"))
+		*err_code = EMAIL_ERROR_LOGIN_ALLOWED_EVERY_15_MINS;
 	else
 		*err_code = EMAIL_ERROR_UNKNOWN;
 }
@@ -435,10 +422,12 @@ INTERNAL_FUNC void mm_imap_id (char **id_string)
 {
 	EM_DEBUG_FUNC_BEGIN("id_string [%p]", id_string);
 
+	int   err = EMAIL_ERROR_NONE;
+	/*
 	char *result_string = NULL;
 	char *tag_string = "ID (\"os\" \"" IMAP_ID_OS "\" \"os-version\" \"" IMAP_ID_OS_VERSION "\" \"vendor\" \"" IMAP_ID_VENDOR "\" \"device\" \"" IMAP_ID_DEVICE_NAME "\" \"AGUID\" \"" IMAP_ID_AGUID "\" \"ACLID\" \"" IMAP_ID_ACLID "\"";
 	int   tag_length = 0;
-	int   err = EMAIL_ERROR_NONE;
+	*/
 
 	if (id_string == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
@@ -449,7 +438,7 @@ INTERNAL_FUNC void mm_imap_id (char **id_string)
 	*id_string = NULL;
 
 	/*
-	tag_length = strlen(tag_string);
+	tag_length = EM_SAFE_STRLEN(tag_string);
 	result_string = EM_SAFE_STRDUP(tag_string);
 
 	if(result_string == NULL) {

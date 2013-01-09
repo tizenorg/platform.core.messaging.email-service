@@ -154,7 +154,6 @@ typedef struct
 	char                 *mailbox_name;
 	email_mailbox_type_e  mailbox_type;
 	char                 *alias;
-	int                   sync_with_server_yn;        /*  whether mailbox is a sync IMAP mailbox */
 	int                   modifiable_yn;              /*  whether mailbox is able to be deleted/modified */
 	int                   unread_count;               /*  Removed. 16-Dec-2010, count unread mails at the moment it is required. not store in the DB */
 	int                   total_mail_count_on_local;  /*  Specifies the total number of mails in the mailbox in the local DB. count unread mails at the moment it is required. not store in the DB */
@@ -163,6 +162,7 @@ typedef struct
 	int                   mail_slot_size;
 	int                   no_select;
 	time_t                last_sync_time;             /*  The last synchronization time */
+	int                   deleted_flag;               /*  whether mailbox is deleted */
 } emstorage_mailbox_tbl_t;
 
 /* mail_read_uid_tbl table entity */
@@ -599,6 +599,8 @@ INTERNAL_FUNC int emstorage_update_mailbox_type(int account_id, int local_yn, ch
  * return  :
  */
 INTERNAL_FUNC int emstorage_set_local_mailbox(int input_mailbox_id, int input_is_local_mailbox, int transaction);
+
+INTERNAL_FUNC int emstorage_set_field_of_mailbox_with_integer_value(int input_account_id, int *input_mailbox_id_array, int input_mailbox_id_count, char *input_field_name, int input_value, int transaction);
 
 /*
  * emstorage_add_mailbox

@@ -67,6 +67,7 @@ INTERNAL_FUNC int  emcore_get_mailbox_list(int account_id, email_mailbox_t **mai
 INTERNAL_FUNC int  emcore_get_mail_count(email_mailbox_t *mailbox, int *total, int *unseen, int *err_code);
 INTERNAL_FUNC int  emcore_create_mailbox(email_mailbox_t *new_mailbox, int on_server, int *err_code);
 INTERNAL_FUNC int  emcore_delete_mailbox(int input_mailbox_id, int on_server, int *err_code);
+INTERNAL_FUNC int  emcore_delete_mailbox_ex(int input_account_id, int *input_mailbox_id_array, int input_mailbox_id_count, int input_on_server);
 INTERNAL_FUNC int  emcore_delete_mailbox_all(email_mailbox_t *mailbox, int *err_code);
 INTERNAL_FUNC int  emcore_update_mailbox(email_mailbox_t *old_mailbox, email_mailbox_t *new_mailbox, int *err_code);
 INTERNAL_FUNC int  emcore_save_local_activity_sync(int account_id, int *err_code);

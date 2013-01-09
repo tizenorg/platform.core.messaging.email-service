@@ -89,9 +89,6 @@ FINISH_OFF:
 	return ret;
 }
 
-
-
-
 INTERNAL_FUNC int emdaemon_get_mailbox_list(int account_id, email_mailbox_t** mailbox_list, int* count, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], mailbox_list[%p], count[%p], err_code[%p]", account_id, mailbox_list, count, err_code);

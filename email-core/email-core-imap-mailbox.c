@@ -256,11 +256,11 @@ static int emcore_get_mailbox_connection_path(int account_id, char *mailbox_name
 		return 0;
 	}
 
-	path_len = strlen(ref_account->incoming_server_address) +
-                          (mailbox_name ? strlen(mailbox_name) : 0) + 50;
+	path_len = EM_SAFE_STRLEN(ref_account->incoming_server_address) +
+                          (mailbox_name ? EM_SAFE_STRLEN(mailbox_name) : 0) + 50;
 
-    *path = em_malloc(path_len);/* strlen(ref_account->incoming_server_address) + */
-                          /* (mailbox_name ? strlen(mailbox_name) : 0) + 20); */
+    *path = em_malloc(path_len);/* EM_SAFE_STRLEN(ref_account->incoming_server_address) + */
+                          /* (mailbox_name ? EM_SAFE_STRLEN(mailbox_name) : 0) + 20); */
     if (!*path)
     	return 0;
 	memset(*path, 0x00, path_len);
@@ -274,20 +274,20 @@ static int emcore_get_mailbox_connection_path(int account_id, char *mailbox_name
     }
 
     /* 2. set tls option if security connection */
-/*     if (ref_account->incoming_server_secure_connection) strncat(*path + 1, "/tls", path_len-(strlen(*path)-1)); */
+/*     if (ref_account->incoming_server_secure_connection) strncat(*path + 1, "/tls", path_len-(EM_SAFE_STRLEN(*path)-1)); */
 	if (ref_account->incoming_server_secure_connection & 0x01) {
-		strncat(*path + 1, "/ssl", path_len-(strlen(*path)-1));
+		strncat(*path + 1, "/ssl", path_len-(EM_SAFE_STRLEN(*path)-1));
 	}
 	if (ref_account->incoming_server_secure_connection & 0x02)
-		strncat(*path + 1, "/tls", path_len-(strlen(*path)-1));
+		strncat(*path + 1, "/tls", path_len-(EM_SAFE_STRLEN(*path)-1));
 	else
-		strncat(*path + 1, "/notls", path_len-(strlen(*path)-1));
+		strncat(*path + 1, "/notls", path_len-(EM_SAFE_STRLEN(*path)-1));
 
     /*  3. re-format mailbox name (ex:"{mai.test.com:143/imap} or {mai.test.com:143/imap/tls}"} */
-    strncat(*path + 1, "}", path_len-strlen(*path)-1);
+    strncat(*path + 1, "}", path_len-EM_SAFE_STRLEN(*path)-1);
     **path = '{';
 
-    if (mailbox_name) strncat(*path, mailbox_name, path_len-strlen(*path)-1);
+    if (mailbox_name) strncat(*path, mailbox_name, path_len-EM_SAFE_STRLEN(*path)-1);
 
     return 1;
 }
@@ -425,7 +425,7 @@ INTERNAL_FUNC int emcore_sync_mailbox_list(int account_id, char *mailbox_name, i
 				mailbox_tbl.mailbox_id = 0;
 				mailbox_tbl.local_yn = 1; 
 				mailbox_tbl.mailbox_type = counter;
-				mailbox_tbl.sync_with_server_yn =  0;
+				mailbox_tbl.deleted_flag =  0;
 				mailbox_tbl.modifiable_yn = 1; 
 				mailbox_tbl.total_mail_count_on_server = 0;
 				emcore_get_default_mail_slot_count(&mailbox_tbl.mail_slot_size, NULL);
@@ -568,9 +568,9 @@ int emcore_download_mailbox_list(void *mail_stream,
     /*  reference (ex : "{mail.test.com}", "{mail.test.com}inbox") */
 	if (mailbox_name)  {
 		char *s = NULL;
-		reference = em_malloc(strlen(stream->original_mailbox) + strlen(mailbox_name) + 1);
+		reference = em_malloc(EM_SAFE_STRLEN(stream->original_mailbox) + strlen(mailbox_name) + 1); /*prevent 34352*/
 		if (reference) {
-			strncpy(reference, stream->original_mailbox, (size_t)strlen(stream->original_mailbox));
+			strncpy(reference, stream->original_mailbox, (size_t)EM_SAFE_STRLEN(stream->original_mailbox));
 			if ((s = strchr(reference, '}')))
 				*(++s) = '\0';
 			strcat(reference, mailbox_name);
@@ -720,7 +720,7 @@ INTERNAL_FUNC int emcore_set_sync_imap_mailbox(email_internal_mailbox_t *mailbox
 				}
 				
 				/* select the mailbox and get its UID */
-				if (!imap_local || !imap_local->netstream || !net_sout(imap_local->netstream, cmd, (int)strlen(cmd))) {
+				if (!imap_local || !imap_local->netstream || !net_sout(imap_local->netstream, cmd, (int)EM_SAFE_STRLEN(cmd))) {
   					EM_DEBUG_EXCEPTION("network error - failed to IDLE on Mailbox [%s]", mailbox->mailbox_name);
 					/*
 					err = EMAIL_ERROR_CONNECTION_BROKEN;
@@ -752,7 +752,7 @@ INTERNAL_FUNC int emcore_set_sync_imap_mailbox(email_internal_mailbox_t *mailbox
 					EM_DEBUG_LINE;
 					/* check if OK or BAD response comes. */
 					/* if response is OK the try getting UID list. */
-					if (!strncmp((char *)imap_local->reply.key, "OK", strlen("OK")))  {
+					if (!strncmp((char *)imap_local->reply.key, "OK", EM_SAFE_STRLEN("OK")))  {
 						EM_DEBUG_LOG(">>>>>>>>>>Select success on %s mailbox", mailbox->mailbox_name);
 						if (!imap4_mailbox_get_uids(stream, &uid_list, &err)) {
 							EM_DEBUG_EXCEPTION("imap4_mailbox_get_uids failed - %d", err);
@@ -806,7 +806,7 @@ INTERNAL_FUNC int emcore_set_sync_imap_mailbox(email_internal_mailbox_t *mailbox
 						mailbox->alias = emcore_get_alias_of_mailbox((const char *)mailbox->mailbox_name);
 					
 					mailbox_tbl.alias = mailbox->alias;
-					mailbox_tbl.sync_with_server_yn  = 1;
+					mailbox_tbl.deleted_flag  = 1;
 					mailbox_tbl.modifiable_yn = 1;
 					mailbox_tbl.total_mail_count_on_server = 0;
 					
@@ -823,6 +823,7 @@ INTERNAL_FUNC int emcore_set_sync_imap_mailbox(email_internal_mailbox_t *mailbox
 					mailbox_tbl.mailbox_id     = mailbox->mailbox_id;
 					mailbox_tbl.account_id     = mailbox->account_id;
 					mailbox_tbl.local_yn       = 0;
+					mailbox_tbl.deleted_flag   = 0;
 					mailbox_tbl.mailbox_type   = mailbox->mailbox_type;
 					mailbox_tbl.mailbox_name   = mailbox->mailbox_name;
 					mailbox_tbl.mail_slot_size = mailbox->mail_slot_size;
@@ -836,7 +837,6 @@ INTERNAL_FUNC int emcore_set_sync_imap_mailbox(email_internal_mailbox_t *mailbox
 						EM_DEBUG_LOG("mailbox->alias [%s] ", mailbox->alias);
 
 						mailbox_tbl.alias = mailbox->alias;
-						mailbox_tbl.sync_with_server_yn = 1;
 						mailbox_tbl.modifiable_yn = 1; 
 						mailbox_tbl.total_mail_count_on_server = 0;
 							
@@ -981,7 +981,7 @@ INTERNAL_FUNC int emcore_delete_imap_mailbox(int input_mailbox_id, int *err_code
     }
 
     /* connect mail server */
-    if (!emcore_connect_to_remote_mailbox(ref_account->account_id, 0, (void **)&tmp_stream, &err)) {
+    if (!emcore_connect_to_remote_mailbox(mailbox_tbl->account_id, 0, (void **)&tmp_stream, &err)) {
     	EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
         goto FINISH_OFF;
     }
@@ -1005,12 +1005,6 @@ INTERNAL_FUNC int emcore_delete_imap_mailbox(int input_mailbox_id, int *err_code
 	stream = NULL;
 
     EM_SAFE_FREE(long_enc_path);
-
-    /* if deleted imap mailbox is synchronous mailbox, delete db imap mailbox from db */
-    if (!emstorage_delete_mailbox(ref_account->account_id, 0, input_mailbox_id, true, &err)) {
-		EM_DEBUG_EXCEPTION("emstorage_delete_mailbox failed [%d]", err);
-        goto FINISH_OFF;
-    }
 
     ret = true;
 

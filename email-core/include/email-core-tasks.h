@@ -66,7 +66,20 @@ typedef struct
 } task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT;
 
 DECLARE_CONVERTER_FOR_TASK_PARAMETER(EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT);
-void* task_handler_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT(void *param);
+INTERNAL_FUNC void* task_handler_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT(void *param);
+
+/*-------------------------------------------------------------------------------------------*/
+/* to handle EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX */
+typedef struct
+{
+	int  account_id;
+	int  mailbox_id_count;
+	int *mailbox_id_array;
+	int  on_server;
+} task_parameter_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX;
+
+DECLARE_CONVERTER_FOR_TASK_PARAMETER(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX);
+INTERNAL_FUNC void* task_handler_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX(void *input_param);
 /*-------------------------------------------------------------------------------------------*/
 
 #endif /* EMAIL_CORE_TASKS_H_ */

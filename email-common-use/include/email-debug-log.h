@@ -55,9 +55,9 @@ extern "C"
 
 #define LOG_TAG "EMAIL_SERVICE"
 
-#define	EM_DEBUG_LOG(format, arg...)	SLOGD(format, ##arg)
-#define	EM_DEBUG_EXCEPTION(format, arg...)	SLOGE("[EXCEPTION!] " format "\n", ##arg)
-
+#define	EM_DEBUG_LOG(format, arg...)        SLOGD(format, ##arg)
+#define	EM_DEBUG_EXCEPTION(format, arg...)  SLOGE("[EXCEPTION!] " format "\n", ##arg)
+ 
 #ifdef  _DEBUG_MIME_PARSE_
 #define EM_DEBUG_LOG_MIME(format, arg...)   EM_DEBUG_LOG(format, ##arg)
 #else   /*  _DEBUG_MIME_PARSE */

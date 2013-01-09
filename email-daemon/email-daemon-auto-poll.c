@@ -318,7 +318,6 @@ static int _emdaemon_create_alarm(int alarm_interval, alarm_id_t *p_alarm_id)
 
 	/* 	alarm_info_t alarm_info = {0};	 */
 	int a_nErrorCode = 0;
-	int retval =0;
 		
 	if((alarm_interval <= 0) || !p_alarm_id) {
 		EM_DEBUG_EXCEPTION("Invalid param ");
@@ -336,23 +335,22 @@ static int _emdaemon_create_alarm(int alarm_interval, alarm_id_t *p_alarm_id)
 	/* error_code = vconf_get_int(DBG_MID_MSGPORTING_NORMAL, &timeFormat); */
 
 	a_nErrorCode = alarmmgr_init(AUTO_POLL_DESTINATION);
-	EM_DEBUG_LOG("ErrorCode :%d, Return Value:%d ",a_nErrorCode,retval);
-
-	if(!retval)
+	if (a_nErrorCode != ALARMMGR_RESULT_SUCCESS) {
+		EM_DEBUG_EXCEPTION("alarmmgr_init failed : ErrorCode[%d]",a_nErrorCode);
 		return false;
+	}
 	
 	a_nErrorCode = alarmmgr_set_cb(emdaemon_alarm_polling_cb, NULL);
-	EM_DEBUG_LOG("ErrorCode :%d, Return Value:%d ",a_nErrorCode,retval);
-
-	if(!retval)
-		return false;	
+	if (a_nErrorCode != ALARMMGR_RESULT_SUCCESS) {
+		EM_DEBUG_EXCEPTION("alarmmgr_set_cb : ErrorCode[%d]",a_nErrorCode);
+		return false;
+	}
 
 	error_code = alarmmgr_add_alarm(ALARM_TYPE_VOLATILE, alarm_interval * 60 /*(sec)*/, ALARM_REPEAT_MODE_ONCE, AUTO_POLL_DESTINATION, p_alarm_id);
-	
-	EM_DEBUG_LOG("ErrorCode :%d,Return Value :%d ",error_code,retval);
-
-	if(!retval)
-		return false;	
+	if (a_nErrorCode != ALARMMGR_RESULT_SUCCESS) {
+		EM_DEBUG_EXCEPTION("alarmmgr_add_alarm : ErrorCode[%d]",a_nErrorCode);
+		return false;
+	}
 
 	return true;
 }

@@ -241,6 +241,7 @@ INTERNAL_FUNC int em_convert_mailbox_to_mailbox_tbl(email_mailbox_t *mailbox, em
 	mailbox_tbl->mail_slot_size             = mailbox->mail_slot_size;
 	mailbox_tbl->no_select                  = mailbox->no_select;
 	mailbox_tbl->last_sync_time             = mailbox->last_sync_time;
+	mailbox_tbl->deleted_flag               = mailbox->deleted_flag;
 
 	EM_DEBUG_FUNC_END();
 	return ret;
@@ -263,6 +264,7 @@ INTERNAL_FUNC int em_convert_mailbox_tbl_to_mailbox(emstorage_mailbox_tbl_t *mai
 	mailbox->mail_slot_size             = mailbox_tbl->mail_slot_size;
 	mailbox->no_select                  = mailbox_tbl->no_select;
 	mailbox->last_sync_time             = mailbox_tbl->last_sync_time;
+	mailbox->deleted_flag               = mailbox_tbl->deleted_flag;
 
 	EM_DEBUG_FUNC_END();
 	return ret;
