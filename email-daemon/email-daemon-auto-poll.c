@@ -326,8 +326,6 @@ static int _emdaemon_create_alarm(int alarm_interval, alarm_id_t *p_alarm_id)
 	
 	/* 	time_t current_time = {0}; */
 	/* 	struct tm current_tm = {0};	 */
-	int error_code = 0;
-
 	/* Fill alarm info */	
 	/* 	int			timeFormat = 0; */ /*0 means 12hrs , 1 means 24hrs*/
 
@@ -346,7 +344,7 @@ static int _emdaemon_create_alarm(int alarm_interval, alarm_id_t *p_alarm_id)
 		return false;
 	}
 
-	error_code = alarmmgr_add_alarm(ALARM_TYPE_VOLATILE, alarm_interval * 60 /*(sec)*/, ALARM_REPEAT_MODE_ONCE, AUTO_POLL_DESTINATION, p_alarm_id);
+	a_nErrorCode = alarmmgr_add_alarm(ALARM_TYPE_VOLATILE, alarm_interval * 60 /*(sec)*/, ALARM_REPEAT_MODE_ONCE, AUTO_POLL_DESTINATION, p_alarm_id); /*prevent 23154*/
 	if (a_nErrorCode != ALARMMGR_RESULT_SUCCESS) {
 		EM_DEBUG_EXCEPTION("alarmmgr_add_alarm : ErrorCode[%d]",a_nErrorCode);
 		return false;
