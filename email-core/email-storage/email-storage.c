@@ -1470,51 +1470,55 @@ INTERNAL_FUNC int em_db_open(sqlite3 **sqlite_handle, int *err_code)
 
 	EM_DEBUG_LOG("*sqlite_handle[%p]", *sqlite_handle);
 
-	if (NULL == *sqlite_handle)  {
-		/*  db open */
-		EM_DEBUG_LOG("Open DB");
-		EMSTORAGE_PROTECTED_FUNC_CALL(db_util_open(EMAIL_SERVICE_DB_FILE_PATH, sqlite_handle, DB_UTIL_REGISTER_HOOK_METHOD), rc);
-		if (SQLITE_OK != rc) {
-			EM_DEBUG_EXCEPTION("db_util_open fail:%d -%s", rc, sqlite3_errmsg(*sqlite_handle));
-			error = EMAIL_ERROR_DB_FAILURE;
-			db_util_close(*sqlite_handle); 
-			*sqlite_handle = NULL; 
-
-			if (SQLITE_CORRUPT == rc) /* SQLITE_CORRUPT : The database disk image is malformed */ {/* Recovery DB file */ 
-				EM_DEBUG_LOG("The database disk image is malformed. Trying to remove and create database disk image and directories");
-				if (!_recovery_from_malformed_db_file(&error)) {
-					EM_DEBUG_EXCEPTION("_recovery_from_malformed_db_file failed [%d]", error);
-					goto FINISH_OFF;
-				}
-				
-				EM_DEBUG_LOG("Open DB again");
-				EMSTORAGE_PROTECTED_FUNC_CALL(db_util_open(EMAIL_SERVICE_DB_FILE_PATH, sqlite_handle, DB_UTIL_REGISTER_HOOK_METHOD), rc);
-				if (SQLITE_OK != rc) {
-					EM_DEBUG_EXCEPTION("db_util_open fail:%d -%s", rc, sqlite3_errmsg(*sqlite_handle));
-					error = EMAIL_ERROR_DB_FAILURE;
-					db_util_close(*sqlite_handle); 
-					*sqlite_handle = NULL; 
-				}
-			}
-			else
-				goto FINISH_OFF;	
-		}
-		EM_DEBUG_LOG(">>>>> DB Handle : *sqlite_handle[%p]", *sqlite_handle);
-
-		/* register busy handler */
-		EM_DEBUG_LOG(">>>>> Register busy handler.....");
-		rc = sqlite3_busy_handler(*sqlite_handle, _callback_sqlite_busy_handler, NULL);  /*  Busy Handler registration, NULL is a parameter which will be passed to handler */
-		if (SQLITE_OK != rc) {
-			EM_DEBUG_EXCEPTION("sqlite3_busy_handler fail:%d -%s", rc, sqlite3_errmsg(*sqlite_handle));
-			error = EMAIL_ERROR_DB_FAILURE;
-			db_util_close(*sqlite_handle); 
-			*sqlite_handle = NULL; 
-			goto FINISH_OFF;		
-		}
-	}
-	else {
+	if (*sqlite_handle)  { /*prevent 33351*/
 		EM_DEBUG_LOG(">>>>> DB Already Opened......");
+		if (err_code != NULL)
+			*err_code = error;
+		return true;
 	}
+
+	/*  db open */
+	EM_DEBUG_LOG("Open DB");
+	EMSTORAGE_PROTECTED_FUNC_CALL(db_util_open(EMAIL_SERVICE_DB_FILE_PATH, sqlite_handle, DB_UTIL_REGISTER_HOOK_METHOD), rc);
+	if (SQLITE_OK != rc) {
+		EM_DEBUG_EXCEPTION("db_util_open fail:%d -%s", rc, sqlite3_errmsg(*sqlite_handle));
+		error = EMAIL_ERROR_DB_FAILURE;
+		db_util_close(*sqlite_handle);
+		*sqlite_handle = NULL;
+
+		if (SQLITE_CORRUPT == rc) /* SQLITE_CORRUPT : The database disk image is malformed */ {/* Recovery DB file */
+			EM_DEBUG_LOG("The database disk image is malformed. Trying to remove and create database disk image and directories");
+			if (!_recovery_from_malformed_db_file(&error)) {
+				EM_DEBUG_EXCEPTION("_recovery_from_malformed_db_file failed [%d]", error);
+				goto FINISH_OFF;
+			}
+
+			EM_DEBUG_LOG("Open DB again");
+			EMSTORAGE_PROTECTED_FUNC_CALL(db_util_open(EMAIL_SERVICE_DB_FILE_PATH, sqlite_handle, DB_UTIL_REGISTER_HOOK_METHOD), rc);
+			if (SQLITE_OK != rc) {
+				EM_DEBUG_EXCEPTION("db_util_open fail:%d -%s", rc, sqlite3_errmsg(*sqlite_handle));
+				error = EMAIL_ERROR_DB_FAILURE;
+				db_util_close(*sqlite_handle);
+				*sqlite_handle = NULL;
+				goto FINISH_OFF; /*prevent 33351*/
+			}
+		}
+		else
+			goto FINISH_OFF;
+	}
+	EM_DEBUG_LOG(">>>>> DB Handle : *sqlite_handle[%p]", *sqlite_handle);
+
+	/* register busy handler */
+	EM_DEBUG_LOG(">>>>> Register busy handler.....");
+	rc = sqlite3_busy_handler(*sqlite_handle, _callback_sqlite_busy_handler, NULL);  /*  Busy Handler registration, NULL is a parameter which will be passed to handler */
+	if (SQLITE_OK != rc) {
+		EM_DEBUG_EXCEPTION("sqlite3_busy_handler fail:%d -%s", rc, sqlite3_errmsg(*sqlite_handle));
+		error = EMAIL_ERROR_DB_FAILURE;
+		db_util_close(*sqlite_handle);
+		*sqlite_handle = NULL;
+		goto FINISH_OFF;
+	}
+
 	
 	ret = true;
 	

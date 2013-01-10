@@ -517,6 +517,7 @@ void* thread_func_to_delete_mail(void *thread_argument)
 
 FINISH_OFF:	
 	/* emcore_free_event(event_data); */ /* all of members will be freed after using in each event handler */
+	EM_SAFE_FREE(event_data->event_param_data_3); /*prevent 33692*/
 	EM_SAFE_FREE(event_data);
 
 	EM_DEBUG_FUNC_END();
@@ -711,7 +712,7 @@ void* thread_func_to_move_mail(void *thread_argument)
 	char *dst_mailbox_name = NULL;
 	int dst_mailbox_id = 0;
 
-	dst_mailbox_name   = (char*)event_data->event_param_data_1;
+/*	dst_mailbox_name   = (char*)event_data->event_param_data_1; */ /*prevent 33693*/
 	mail_ids           = (int*)event_data->event_param_data_3;
 	mail_ids_count     = event_data->event_param_data_4;
 	dst_mailbox_id	   = event_data->event_param_data_5;
