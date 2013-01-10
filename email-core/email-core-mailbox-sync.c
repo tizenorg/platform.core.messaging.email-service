@@ -123,7 +123,7 @@ int pop3_mail_calc_rfc822_size(MAILSTREAM *stream, int msgno, int *size, int *er
 	if (*response == '+') {		/*  "+ OK" */
 		char *p = NULL;
 		
-		if (!(p = strchr(response + EM_SAFE_STRLEN("+OK "), ' '))) {
+		if (!(p = strchr(response + strlen("+OK "), ' '))) {
 			err = EMAIL_ERROR_INVALID_RESPONSE;
 			goto FINISH_OFF;
 		}
@@ -217,7 +217,7 @@ int imap4_mail_calc_rfc822_size(MAILSTREAM *stream, int msgno, int *size, int *e
 					continue;
 				}
 				
-				s = t + EM_SAFE_STRLEN("FETCH (RFC822.SIZE ");
+				s = t + strlen("FETCH (RFC822.SIZE ");
 				
 				if (!(t = strchr(s, ' '))) {
 					err = EMAIL_ERROR_INVALID_RESPONSE;
@@ -433,14 +433,14 @@ int imap4_mailbox_get_uids(MAILSTREAM *stream, emcore_uid_list** uid_list, int *
 		
 		if ((p = strstr(response, " FETCH ("))) { 
 			if (!strstr(p, "\\Deleted")) {	/*  undeleted only */
-				*p = '\0'; p  += EM_SAFE_STRLEN(" FETCH ");
+				*p = '\0'; p  += strlen(" FETCH ");
 				
 				seen = strstr(p, "\\Seen") ? 1  :  0;
 				draft = strstr(p, "\\Draft") ? 1  :  0;
 				forwarded = strstr(p, "$Forwarded") ? 1  :  0;
 				
 				if ((p = strstr(p, "UID "))) {
-					s = p + EM_SAFE_STRLEN("UID ");
+					s = p + strlen("UID ");
 					
 					while (isdigit(*s))
 						s++;
@@ -453,8 +453,8 @@ int imap4_mailbox_get_uids(MAILSTREAM *stream, emcore_uid_list** uid_list, int *
 						goto FINISH_OFF;
 					}
 					
-					uid_elem->msgno = atoi(response + EM_SAFE_STRLEN("* "));
-					uid_elem->uid = EM_SAFE_STRDUP(p + EM_SAFE_STRLEN("UID "));
+					uid_elem->msgno = atoi(response + strlen("* "));
+					uid_elem->uid = EM_SAFE_STRDUP(p + strlen("UID "));
 					uid_elem->flag.seen = seen;
 					uid_elem->flag.draft = draft;
 					uid_elem->flag.forwarded = forwarded;
@@ -498,40 +498,40 @@ static char *__em_get_month_in_string(int month)
 
 	switch (month){
 	    case 0:
-			mon = EM_SAFE_STRDUP("jan");
+			mon = strdup("jan");
 	    	break;
 	    case 1:
-			mon = EM_SAFE_STRDUP("feb");
+			mon = strdup("feb");
 	    	break;
 	    case 2:
-			mon = EM_SAFE_STRDUP("mar");
+			mon = strdup("mar");
 	    	break;
 	    case 3:
-			mon = EM_SAFE_STRDUP("apr");
+			mon = strdup("apr");
 	    	break;
 	    case 4:
-			mon = EM_SAFE_STRDUP("may");
+			mon = strdup("may");
 	    	break;
 	    case 5:
-			mon = EM_SAFE_STRDUP("jun");
+			mon = strdup("jun");
 	    	break;
 	    case 6:
-			mon = EM_SAFE_STRDUP("jul");
+			mon = strdup("jul");
 	    	break;
 	    case 7:
-			mon = EM_SAFE_STRDUP("aug");
+			mon = strdup("aug");
 	    	break;
 	    case 8:
-			mon = EM_SAFE_STRDUP("sep");
+			mon = strdup("sep");
 	    	break;
 	    case 9:
-			mon = EM_SAFE_STRDUP("oct");
+			mon = strdup("oct");
 	    	break;
 	    case 10:
-			mon = EM_SAFE_STRDUP("nov");
+			mon = strdup("nov");
 	    	break;
 	    case 11:
-			mon = EM_SAFE_STRDUP("dec");
+			mon = strdup("dec");
 	    	break;
 	}
 	return mon;
@@ -641,7 +641,7 @@ int imap4_mailbox_get_uids_by_timestamp(MAILSTREAM *stream, emcore_uid_list** ui
 		}
 
 		if ((p = strstr(response, " SEARCH "))){
-		    *p = '\0'; p  += EM_SAFE_STRLEN(" SEARCH ");
+		    *p = '\0'; p  += strlen(" SEARCH ");
 
 		    result = strtok(p, delims);
 
@@ -2099,7 +2099,7 @@ int emcore_download_uid_all(email_internal_mailbox_t *mailbox, emcore_uid_list**
 			/*  parse uid */
 			s  = strstr(++t, "UID ");
 			if (s) {
-				s  += EM_SAFE_STRLEN("UID ");
+				s  += strlen("UID ");
 				t  = strchr(s, ')');
 				
 				if (!t) {
@@ -2696,22 +2696,19 @@ static int emcore_parse_bodystructure(void *stream, IMAPPARSEDREPLY *reply_from_
 	char *uid_string = NULL;
 	char *bodystructure_start = NULL;
 	char *bodystructure_string = NULL;
-	char *modified_bodystructure_string = NULL;
 	char *bodystructure_uid_start = NULL;
 	BODY *p_body = NULL;
 	struct _m_content_info *p_cnt_info = NULL;
 
 	/* Get the body strcuture string */
 	bodystructure_start = strstr(bodystructure, "BODYSTRUCTURE (") + strlen("BODYSTRUCTURE");
-
-	bodystructure_string = EM_SAFE_STRDUP(bodystructure_start);
-
-	modified_bodystructure_string = em_replace_string(bodystructure_string, "\r\n", " ");
-	if (modified_bodystructure_string != NULL) {
-		EM_DEBUG_LOG("modified_bodystrcutre_string:[%s]", modified_bodystructure_string);
-		EM_SAFE_STRNCPY(bodystructure_string, modified_bodystructure_string, EM_SAFE_STRLEN(modified_bodystructure_string));
-		EM_SAFE_FREE(modified_bodystructure_string);
+	if (bodystructure_start == NULL) {
+		EM_DEBUG_EXCEPTION("Invalid bodystructure");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
 	}
+
+	bodystructure_string = strdup(bodystructure_start);
 
 	/* Get the UID */
 	bodystructure_uid_start = strcasestr(bodystructure, "UID ") + strlen("UID ");
@@ -2954,9 +2951,9 @@ static int emcore_parse_html_part_for_partial_body(char *start_header, char *bou
 
 		if (iEncodingHeader == 1){
 			enc_type = ENCOTHER;
-			if (strncasecmp(Encoding, "base64", EM_SAFE_STRLEN("base64")) == 0)
+			if (strncasecmp(Encoding, "base64", strlen("base64")) == 0)
 				enc_type = ENCBASE64;
-			else if (strncasecmp(Encoding, "quoted-printable", EM_SAFE_STRLEN("quoted-printable")) == 0)
+			else if (strncasecmp(Encoding, "quoted-printable", strlen("quoted-printable")) == 0)
 				enc_type = ENCQUOTEDPRINTABLE;
 	
 			EM_DEBUG_LOG("enc_type [%d]", enc_type);
@@ -2970,16 +2967,16 @@ static int emcore_parse_html_part_for_partial_body(char *start_header, char *bou
 			if (temp_enc1)
 				start_header = temp_enc1;
 
-			start_header += EM_SAFE_STRLEN("Content-Transfer-Encoding:");
+			start_header += strlen("Content-Transfer-Encoding:");
 			start_header = em_skip_whitespace_without_strdup(start_header);
 
 			if (!start_header)
 				EM_DEBUG_EXCEPTION(" Invalid parsing ");
 			else{
 				enc_type = ENCOTHER;
-				if (strncasecmp(start_header, "base64", EM_SAFE_STRLEN("base64")) == 0)
+				if (strncasecmp(start_header, "base64", strlen("base64")) == 0)
 					enc_type = ENCBASE64;
-				else if (strncasecmp(start_header, "quoted-printable", EM_SAFE_STRLEN("quoted-printable")) == 0)
+				else if (strncasecmp(start_header, "quoted-printable", strlen("quoted-printable")) == 0)
 					enc_type = ENCQUOTEDPRINTABLE;
 
 				EM_DEBUG_LOG("enc_type [%d]", enc_type);
@@ -3082,9 +3079,9 @@ static int emcore_parse_plain_part_for_partial_body(char *header_start_string, c
 
 			if (iEncodingHeader == 1){
 				enc_type = ENCOTHER;
-				if (strncasecmp(Encoding, "base64", EM_SAFE_STRLEN("base64")) == 0)
+				if (strncasecmp(Encoding, "base64", strlen("base64")) == 0)
 					enc_type = ENCBASE64;
-				else if (strncasecmp(Encoding, "quoted-printable", EM_SAFE_STRLEN("quoted-printable")) == 0)
+				else if (strncasecmp(Encoding, "quoted-printable", strlen("quoted-printable")) == 0)
 					enc_type = ENCQUOTEDPRINTABLE;
 		
 				EM_DEBUG_LOG("enc_type [%d]", enc_type);
@@ -3098,16 +3095,16 @@ static int emcore_parse_plain_part_for_partial_body(char *header_start_string, c
 				if (temp_enc1)
 					start_header = temp_enc1;
 
-				start_header += EM_SAFE_STRLEN("Content-Transfer-Encoding:");
+				start_header += strlen("Content-Transfer-Encoding:");
 				start_header = em_skip_whitespace_without_strdup(start_header);
 
 				if (!start_header)
 					EM_DEBUG_EXCEPTION(" Invalid parsing ");
 				else{
 					enc_type = ENCOTHER;
-					if (strncasecmp(start_header, "base64", EM_SAFE_STRLEN("base64")) == 0)
+					if (strncasecmp(start_header, "base64", strlen("base64")) == 0)
 						enc_type = ENCBASE64;
-					else if (strncasecmp(start_header, "quoted-printable", EM_SAFE_STRLEN("quoted-printable")) == 0)
+					else if (strncasecmp(start_header, "quoted-printable", strlen("quoted-printable")) == 0)
 						enc_type = ENCQUOTEDPRINTABLE;
 			
 					EM_DEBUG_LOG("enc_type [%d]", enc_type);
@@ -3304,16 +3301,16 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 					if (temp_enc1)
 						start_header = temp_enc1;
 
-					start_header  += EM_SAFE_STRLEN("Content-Transfer-Encoding:");
+					start_header  += strlen("Content-Transfer-Encoding:");
 					start_header = em_skip_whitespace_without_strdup(start_header);
 					
 					if (!start_header)
 						EM_DEBUG_EXCEPTION(" Invalid parsing ");
 					else{
 						enc_type = ENCOTHER;
-						if (strncasecmp(start_header, "base64", EM_SAFE_STRLEN("base64")) == 0)
+						if (strncasecmp(start_header, "base64", strlen("base64")) == 0)
 							enc_type = ENCBASE64;
-						else if (strncasecmp(start_header, "quoted-printable", EM_SAFE_STRLEN("quoted-printable")) == 0)
+						else if (strncasecmp(start_header, "quoted-printable", strlen("quoted-printable")) == 0)
 							enc_type = ENCQUOTEDPRINTABLE;
 
 						EM_DEBUG_LOG("enc_type [%d]", enc_type);
@@ -3795,12 +3792,12 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 				if (EM_SAFE_STRLEN(cnt_info->text.plain_charset) < MAX_CHARSET_VALUE)
 					memcpy(html_body, cnt_info->text.plain_charset, EM_SAFE_STRLEN(cnt_info->text.plain_charset));
 				else
-					memcpy(html_body, "UTF-8", EM_SAFE_STRLEN("UTF-8"));
+					memcpy(html_body, "UTF-8", strlen("UTF-8"));
 			}
 			if (html_body[0]  != NULL_CHAR)
 				strcat(html_body, HTML_EXTENSION_STRING);
 			else
-				memcpy(html_body, "UTF-8.htm", EM_SAFE_STRLEN("UTF-8.htm"));
+				memcpy(html_body, "UTF-8.htm", strlen("UTF-8.htm"));
 
 			if (!emstorage_create_dir(pbd_event[temp_count].account_id, mail->mail_id, 0, &err))
 				EM_DEBUG_EXCEPTION("emstorage_create_dir failed [%d]", err);
@@ -4068,8 +4065,8 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 			if (0 == strncmp(pline + EM_SAFE_STRLEN(tag) + 1, "OK", 2)) {
 				ret_reply->line = (unsigned char*)EM_SAFE_STRDUP(tag);
 				ret_reply->tag  = (unsigned char*)EM_SAFE_STRDUP(tag);
-				ret_reply->key  = (unsigned char*)EM_SAFE_STRDUP("OK");
-				ret_reply->text = (unsigned char*)EM_SAFE_STRDUP("Success");
+				ret_reply->key  = (unsigned char*)strdup("OK");
+				ret_reply->text = (unsigned char*)strdup("Success");
 				EM_SAFE_FREE(pline);	
 				break;
 			}
@@ -4077,8 +4074,8 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 				EM_DEBUG_EXCEPTION("Tagged Response not OK. IMAP4 Response -> [%s]", pline);	
 				ret_reply->line = (unsigned char*)EM_SAFE_STRDUP(tag);
 				ret_reply->tag  = (unsigned char*)EM_SAFE_STRDUP(tag);
-				ret_reply->key  = (unsigned char*)EM_SAFE_STRDUP("NO");
-				ret_reply->text = (unsigned char*)EM_SAFE_STRDUP("Fail");
+				ret_reply->key  = (unsigned char*)strdup("NO");
+				ret_reply->text = (unsigned char*)strdup("Fail");
 
 				goto FINISH_OFF;
 				

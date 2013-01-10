@@ -159,7 +159,7 @@ static char *emcore_replace_inline_image_path_with_content_id(char *source_strin
 					EM_SAFE_STRNCPY(content_id_buffer, cur_body->id + 1, CONTENT_ID_BUFFER_SIZE - 1); /*  Removing <, > */
 					/* prevent 34413 */
 					char *last_bracket = rindex(content_id_buffer, '>');
-					last_bracket = NULL_CHAR;
+					*last_bracket = NULL_CHAR;
 
 					/* if (emcore_get_attribute_value_of_body_part(cur_body->parameter, "name", file_name_buffer, CONTENT_ID_BUFFER_SIZE, false, &err)) { */
 					if (emcore_get_attribute_value_of_body_part(cur_body->parameter, "name", file_name_buffer, CONTENT_ID_BUFFER_SIZE, true, &err)) {
@@ -909,11 +909,11 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 			}
 			
 			if ((ext = strrchr(attachment_data_list[i].attachment_name, '.'))) {	
-				if (!strncmp(ext, ".vcs", EM_SAFE_STRLEN(".vcs")))
+				if (!strncmp(ext, ".vcs", strlen(".vcs")))
 					remove(attachment_data_list[i].attachment_path);
-				else if (!strncmp(ext, ".vcf", EM_SAFE_STRLEN(".vcf")))
+				else if (!strncmp(ext, ".vcf", strlen(".vcf")))
 					remove(attachment_data_list[i].attachment_path);
-				else if (!strncmp(ext, ".vnt", EM_SAFE_STRLEN(".vnt")))
+				else if (!strncmp(ext, ".vnt", strlen(".vnt")))
 					remove(attachment_data_list[i].attachment_path);
 			}
 		}
@@ -2276,7 +2276,7 @@ static int attach_part(BODY *body, const unsigned char *data, int data_len, char
 		last_part->body.disposition.parameter = last_param;
 		
 		if (is_inline)
-			last_part->body.disposition.type = EM_SAFE_STRDUP("inline");
+			last_part->body.disposition.type = strdup("inline");
 	}
 	else  {   
 		/*  text body (plain/html) */
@@ -2539,7 +2539,7 @@ static char *emcore_encode_rfc2047_text(char *utf8_text, int *err_code)
 	if (len > 0)
 		return g_strdup_printf("=?UTF-8?B?%s?=", g_base64_encode((const guchar  *)utf8_text, len));
 	else
-		return EM_SAFE_STRDUP("");
+		return strdup("");
 }
 
 static void emcore_encode_rfc2047_address(ADDRESS *address, int *err_code)
@@ -2848,7 +2848,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_
 		if (input_mail_tbl_data->smime_type == EMAIL_SMIME_NONE) {
 
 			root_body->type               = TYPEMULTIPART;
-			root_body->subtype            = EM_SAFE_STRDUP("MIXED");
+			root_body->subtype            = strdup("MIXED");
 
 			mail_free_body_parameter(&param);
 			param = NULL;
@@ -2857,7 +2857,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_
 			PARAMETER *protocol_param     = mail_newbody_parameter();
 		
 			root_body->type               = TYPEMULTIPART;
-			root_body->subtype            = EM_SAFE_STRDUP("SIGNED");
+			root_body->subtype            = strdup("SIGNED");
 			
 			param->attribute       = cpystr("micalg");
 			switch (input_mail_tbl_data->digest_type) {
@@ -2887,7 +2887,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_
 		} else {
 	
 			root_body->type    = TYPEAPPLICATION;
-			root_body->subtype = EM_SAFE_STRDUP("PKCS7-MIME");
+			root_body->subtype = strdup("PKCS7-MIME");
 			
 			param->attribute = cpystr("name");
 			param->value = cpystr("smime.p7m");
@@ -2997,7 +2997,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_
 			text_body->sparep = NULL;
 
 		if (input_mail_tbl_data->file_path_html != NULL && input_mail_tbl_data->file_path_html[0] != '\0')
-			text_body->subtype = EM_SAFE_STRDUP("html");
+			text_body->subtype = strdup("html");
 		if (text_body->sparep)
 			text_body->size.bytes = EM_SAFE_STRLEN(text_body->sparep);
 		else
@@ -3294,7 +3294,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file(email_mail_data_t *input_mail_tbl_data
 		}
 		
 		root_body->type               = TYPEMULTIPART;
-		root_body->subtype            = EM_SAFE_STRDUP("MIXED");
+		root_body->subtype            = strdup("MIXED");
 		root_body->contents.text.data = NULL;
 		root_body->contents.text.size = 0;
 		root_body->size.bytes         = 0;
@@ -3382,7 +3382,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file(email_mail_data_t *input_mail_tbl_data
 			text_body->sparep = NULL;
 		
 		if (input_mail_tbl_data->file_path_html != NULL && input_mail_tbl_data->file_path_html[0] != '\0')
-			text_body->subtype = EM_SAFE_STRDUP("html");
+			text_body->subtype = strdup("html");
 		if (text_body->sparep)
 			text_body->size.bytes = EM_SAFE_STRLEN(text_body->sparep);
 		else
@@ -3554,7 +3554,7 @@ static int emcore_get_report_mail_body(ENVELOPE *envelope, BODY **multipart_body
 	/*  change mail header */
 	
 	/*  set content-type to multipart/report */
-	m_body->subtype = EM_SAFE_STRDUP("report");
+	m_body->subtype = strdup("report");
 	
 	/*  set report-type parameter in content-type */
 	param = em_malloc(sizeof(PARAMETER));
@@ -3564,8 +3564,8 @@ static int emcore_get_report_mail_body(ENVELOPE *envelope, BODY **multipart_body
 		goto FINISH_OFF;
 	}
 	
-	param->attribute  = EM_SAFE_STRDUP("report-type");
-	param->value      = EM_SAFE_STRDUP("disposition-notification");
+	param->attribute  = strdup("report-type");
+	param->value      = strdup("disposition-notification");
 	param->next       = m_body->parameter;
 	
 	m_body->parameter = param;
@@ -3580,7 +3580,7 @@ static int emcore_get_report_mail_body(ENVELOPE *envelope, BODY **multipart_body
 	
 	EM_SAFE_FREE(p_body->subtype);
 	
-	p_body->subtype = EM_SAFE_STRDUP("disposition-notification");
+	p_body->subtype = strdup("disposition-notification");
 	
 	/*  set parameter */
 	mail_free_body_parameter(&p_body->parameter);
@@ -3588,7 +3588,7 @@ static int emcore_get_report_mail_body(ENVELOPE *envelope, BODY **multipart_body
 	
 	EM_SAFE_FREE(p_body->disposition.type);
 	
-	p_body->disposition.type = EM_SAFE_STRDUP("inline");
+	p_body->disposition.type = strdup("inline");
 	
 	ret = true;
 	

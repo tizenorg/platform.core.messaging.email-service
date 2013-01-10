@@ -7485,19 +7485,19 @@ INTERNAL_FUNC int emstorage_mail_search_start(emstorage_search_filter_t* search,
 	while (p)  {
 
 		if (p->key_type) {
-			if (!strncmp(p->key_type, "subject", EM_SAFE_STRLEN("subject"))) {
+			if (!strncmp(p->key_type, "subject", strlen("subject"))) {
 				SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " %s subject LIKE '%%%%%s%%%%'", and ? "AND" : "WHERE", p->key_value);
 				and = true;
 			}
-			else if (!strncmp(p->key_type, "full_address_from", EM_SAFE_STRLEN("full_address_from"))) {
+			else if (!strncmp(p->key_type, "full_address_from", strlen("full_address_from"))) {
 				SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " %s full_address_from LIKE '%%%%%s%%%%'", and ? "AND" : "WHERE", p->key_value);
 				and = true;
 			}
-			else if (!strncmp(p->key_type, "full_address_to", EM_SAFE_STRLEN("full_address_to"))) {
+			else if (!strncmp(p->key_type, "full_address_to", strlen("full_address_to"))) {
 				SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " %s full_address_to LIKE '%%%%%s%%%%'", and ? "AND" : "WHERE", p->key_value);
 				and = true;
 			}
-			else if (!strncmp(p->key_type, "email_address", EM_SAFE_STRLEN("email_address"))) {
+			else if (!strncmp(p->key_type, "email_address", strlen("email_address"))) {
 				SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " %s email_address_sender = '%s' OR email_address_recipient = '%s'", and ? "AND" : "WHERE", p->key_value, p->key_value);
 				and = true;
 			}
@@ -8836,7 +8836,7 @@ INTERNAL_FUNC int emstorage_move_multiple_mails_on_db(int input_source_account_i
 
 	/* prevent 34415 */
 	char *last_comma = rindex(conditional_clause, ',');
-	last_comma = ")"; /* replace , with ) */
+	*last_comma = ')'; /* replace , with ) */
 
 	memset(sql_query_string, 0x00, QUERY_SIZE);
 	SNPRINTF(sql_query_string, QUERY_SIZE, "UPDATE mail_read_mail_uid_tbl SET mailbox_name = '%s', mailbox_id = %d, account_id = %d %s", target_mailbox_name, input_mailbox_id, target_account_id, conditional_clause);
@@ -8927,7 +8927,7 @@ INTERNAL_FUNC int emstorage_delete_multiple_mails(int mail_ids[], int number_of_
 
 	/* prevent 34414 */
 	char *last_comma = rindex(sql_query_string, ',');
-	last_comma = ")"; /* replace , with ) */
+	*last_comma = ')'; /* replace , with ) */
 	
 	EM_DEBUG_LOG("Query [%s]", sql_query_string);
 
@@ -14290,8 +14290,8 @@ static int _make_filter_rule_string(email_list_filter_rule_t *input_list_filter_
 	}
 
 	if(is_alpha == 1 && input_list_filter_rule->case_sensitivity == false) {
-		length_field_name += EM_SAFE_STRLEN("UPPER() ");
-		length_value      += EM_SAFE_STRLEN("UPPER() ");
+		length_field_name += strlen("UPPER() ");
+		length_value      += strlen("UPPER() ");
 		mod_field_name_string = em_malloc(sizeof(char) * length_field_name);
 		mod_value_string      = em_malloc(sizeof(char) * length_value);
 		SNPRINTF(mod_field_name_string, length_field_name, "UPPER(%s)", temp_field_name_string);

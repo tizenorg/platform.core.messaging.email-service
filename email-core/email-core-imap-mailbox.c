@@ -752,7 +752,7 @@ INTERNAL_FUNC int emcore_set_sync_imap_mailbox(email_internal_mailbox_t *mailbox
 					EM_DEBUG_LINE;
 					/* check if OK or BAD response comes. */
 					/* if response is OK the try getting UID list. */
-					if (!strncmp((char *)imap_local->reply.key, "OK", EM_SAFE_STRLEN("OK")))  {
+					if (!strncmp((char *)imap_local->reply.key, "OK", strlen("OK")))  {
 						EM_DEBUG_LOG(">>>>>>>>>>Select success on %s mailbox", mailbox->mailbox_name);
 						if (!imap4_mailbox_get_uids(stream, &uid_list, &err)) {
 							EM_DEBUG_EXCEPTION("imap4_mailbox_get_uids failed - %d", err);

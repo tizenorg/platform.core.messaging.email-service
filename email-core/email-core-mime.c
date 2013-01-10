@@ -847,8 +847,8 @@ int emcore_mime_parse_body(void *stream, int is_file, struct _m_mesg *mmsg, stru
 				EM_DEBUG_LOG(">>>> charset [%s]", charset);
 				
 				if (mmsg->header && mmsg->header->part_header && strstr((t = emcore_mime_get_header_value(mmsg->header->part_header, CONTENT_TYPE, err_code)) ? t  :  "", "HTML")) {
-					if (!charset || !strncmp(charset, "X-UNKNOWN", EM_SAFE_STRLEN("X-UNKNOWN")))
-						cnt_info->text.plain_charset = EM_SAFE_STRDUP("UTF-8");
+					if (!charset || !strncmp(charset, "X-UNKNOWN", strlen("X-UNKNOWN")))
+						cnt_info->text.plain_charset = strdup("UTF-8");
 					else
 						cnt_info->text.plain_charset = EM_SAFE_STRDUP(charset);
 
@@ -861,8 +861,8 @@ int emcore_mime_parse_body(void *stream, int is_file, struct _m_mesg *mmsg, stru
 				}
 				else if (mmsg->header) {
 				
-					if (!charset || !strncmp(charset, "X-UNKNOWN", EM_SAFE_STRLEN("X-UNKNOWN")))
-						cnt_info->text.plain_charset = EM_SAFE_STRDUP("UTF-8");
+					if (!charset || !strncmp(charset, "X-UNKNOWN", strlen("X-UNKNOWN")))
+						cnt_info->text.plain_charset = strdup("UTF-8");
 					else
 						cnt_info->text.plain_charset = EM_SAFE_STRDUP(charset);
 					
@@ -1129,8 +1129,8 @@ int emcore_mime_parse_part(void *stream, int is_file, struct _m_part_header *par
 							char *charset = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_CHARSET, err_code);
 							EM_DEBUG_LOG(" charset [%s]", charset);
 							
-							if (!charset || !strncmp(charset, "X-UNKNOWN", EM_SAFE_STRLEN("X-UNKNOWN")))
-								cnt_info->text.plain_charset = EM_SAFE_STRDUP("UTF-8");
+							if (!charset || !strncmp(charset, "X-UNKNOWN", strlen("X-UNKNOWN")))
+								cnt_info->text.plain_charset = strdup("UTF-8");
 							else
 								cnt_info->text.plain_charset = EM_SAFE_STRDUP(charset);
 							
@@ -1294,31 +1294,31 @@ int emcore_mime_set_rfc822_header_value(struct _rfc822header **header, char *nam
 
 	em_upper_string(name);
 
-	if (strncmp(name, "RETURN-PATH", EM_SAFE_STRLEN("RETURN-PATH")) == 0)
+	if (strncmp(name, "RETURN-PATH", strlen("RETURN-PATH")) == 0)
 		p = &(*header)->return_path;/*  Return-Rat */
-	else if (strncmp(name, "RECEIVED", EM_SAFE_STRLEN("RECEIVED")) == 0)
+	else if (strncmp(name, "RECEIVED", strlen("RECEIVED")) == 0)
 		p = &(*header)->received;	/*  Receive */
-	else if (strncmp(name, "REPLY-TO", EM_SAFE_STRLEN("REPLY-TO")) == 0)
+	else if (strncmp(name, "REPLY-TO", strlen("REPLY-TO")) == 0)
 		p = &(*header)->reply_to;	/*  Reply-T */
-	else if (strncmp(name, "DATE", EM_SAFE_STRLEN("DATE")) == 0)
+	else if (strncmp(name, "DATE", strlen("DATE")) == 0)
 		p = &(*header)->date;		/*  Dat */
-	else if (strncmp(name, "FROM", EM_SAFE_STRLEN("FROM")) == 0)
+	else if (strncmp(name, "FROM", strlen("FROM")) == 0)
 		p = &(*header)->from;		/*  Fro */
-	else if (strncmp(name, "SUBJECT", EM_SAFE_STRLEN("SUBJECT")) == 0)
+	else if (strncmp(name, "SUBJECT", strlen("SUBJECT")) == 0)
 		p = &(*header)->subject;	/*  Subjec */
-	else if (strncmp(name, "SENDER", EM_SAFE_STRLEN("SENDER")) == 0)
+	else if (strncmp(name, "SENDER", strlen("SENDER")) == 0)
 		p = &(*header)->sender;		/*  Sende */
-	else if (strncmp(name, "TO", EM_SAFE_STRLEN("TO")) == 0)
+	else if (strncmp(name, "TO", strlen("TO")) == 0)
 		p = &(*header)->to;			/*  T */
-	else if (strncmp(name, "CC", EM_SAFE_STRLEN("CC")) == 0)
+	else if (strncmp(name, "CC", strlen("CC")) == 0)
 		p = &(*header)->cc;			/*  C */
-	else if (strncmp(name, "BCC", EM_SAFE_STRLEN("BCC")) == 0)
+	else if (strncmp(name, "BCC", strlen("BCC")) == 0)
 		p = &(*header)->bcc;		/*  Bc */
-	else if (strncmp(name, "X-PRIORITY", EM_SAFE_STRLEN("X-PRIORITY")) == 0)
+	else if (strncmp(name, "X-PRIORITY", strlen("X-PRIORITY")) == 0)
 		p = &(*header)->priority;	/*  Prorit */
-	else if (strncmp(name, "X-MSMAIL-PRIORITY", EM_SAFE_STRLEN("X-MSMAIL-PRIORITY")) == 0)
+	else if (strncmp(name, "X-MSMAIL-PRIORITY", strlen("X-MSMAIL-PRIORITY")) == 0)
 		p = &(*header)->ms_priority;/*  Prorit */
-	else if (strncmp(name, "DISPOSITION-NOTIFICATION-TO", EM_SAFE_STRLEN("DISPOSITION-NOTIFICATION-TO")) == 0)
+	else if (strncmp(name, "DISPOSITION-NOTIFICATION-TO", strlen("DISPOSITION-NOTIFICATION-TO")) == 0)
 		p = &(*header)->dsp_noti_to;/*  Disposition-Notification-T */
 	else {
 		return false;
@@ -1371,7 +1371,7 @@ int emcore_mime_set_part_header_value(struct _m_part_header **header, char *name
 	}
 
 	if (name) {
-		if (strncmp(name, "CONTENT-TYPE", EM_SAFE_STRLEN("CONTENT-TYPE")) == 0)  {
+		if (strncmp(name, "CONTENT-TYPE", strlen("CONTENT-TYPE")) == 0)  {
 			p_val = strtok(value, ";");
 			
 			if (p_val)  {
@@ -1423,15 +1423,15 @@ int emcore_mime_set_part_header_value(struct _m_part_header **header, char *name
 				}
 			}
 		}
-		else if (strncmp(name, "CONTENT-TRANSFER-ENCODING", EM_SAFE_STRLEN("CONTENT-TRANSFER-ENCODING")) == 0)  {
+		else if (strncmp(name, "CONTENT-TRANSFER-ENCODING", strlen("CONTENT-TRANSFER-ENCODING")) == 0)  {
 			em_upper_string(value);
 			(*header)->encoding = EM_SAFE_STRDUP(value);
 		} 
-		else if (strncmp(name, "CONTENT-DESCRPTION", EM_SAFE_STRLEN("CONTENT-DESCRPTION")) == 0)  {
+		else if (strncmp(name, "CONTENT-DESCRPTION", strlen("CONTENT-DESCRPTION")) == 0)  {
 			em_upper_string(value);
 			(*header)->desc = EM_SAFE_STRDUP(value);
 		} 
-		else if (strncmp(name, "CONTENT-DISPOSITION", EM_SAFE_STRLEN("CONTENT-DISPOSITION")) == 0)  {
+		else if (strncmp(name, "CONTENT-DISPOSITION", strlen("CONTENT-DISPOSITION")) == 0)  {
 			p_val = strtok(value, ";");
 			
 			if (p_val)  {
@@ -1451,7 +1451,7 @@ int emcore_mime_set_part_header_value(struct _m_part_header **header, char *name
 				}
 			} 
 		} 
-		else if (strncmp(name, "CONTENT-ID", EM_SAFE_STRLEN("CONTENT-ID")) == 0)  {
+		else if (strncmp(name, "CONTENT-ID", strlen("CONTENT-ID")) == 0)  {
 			size_t len = 0;
 			len = EM_SAFE_STRLEN(value);
 			/* em_upper_string(value) */
@@ -1466,7 +1466,7 @@ int emcore_mime_set_part_header_value(struct _m_part_header **header, char *name
 			
 			(*header)->content_id = EM_SAFE_STRDUP(value);
 		}
-		else if (strncmp(name, "CONTENT-LOCATION", EM_SAFE_STRLEN("CONTENT-LOCATION")) == 0) 
+		else if (strncmp(name, "CONTENT-LOCATION", strlen("CONTENT-LOCATION")) == 0) 
 			(*header)->content_location = EM_SAFE_STRDUP(value);
 	}	
 	EM_DEBUG_FUNC_END();
@@ -1522,7 +1522,7 @@ int emcore_mime_get_param_from_str(char *str, struct _parameter **param, int *er
 		if ((p = strchr(p_val, '\"')))
 			*p = '\0';
 		
-		if (strncmp(p_name, "BOUNDARY", EM_SAFE_STRLEN("BOUNDARY")) != 0 && !strstr(p_name, "NAME"))
+		if (strncmp(p_name, "BOUNDARY", strlen("BOUNDARY")) != 0 && !strstr(p_name, "NAME"))
 			em_upper_string(p_val);
 		
 		/*  = ? ENCODING_TYPE ? B(Q) ? ENCODED_STRING ? */
@@ -2505,7 +2505,7 @@ static int emcore_write_response_into_file(char *filename, char *write_mode, cha
 
 							EM_DEBUG_LOG("Inline body_inline_id [%s]  ", body_inline_id);
 
-							if ((param || param1) && 0 == strncmp(body_inline_id , decoded_content_id + EM_SAFE_STRLEN("cid:"), EM_SAFE_STRLEN(body_inline_id))) {
+							if ((param || param1) && 0 == strncmp(body_inline_id , decoded_content_id + strlen("cid:"), EM_SAFE_STRLEN(body_inline_id))) {
 								EM_DEBUG_LOG(" Inline CID Found ");
 
 								memset(save_file_name, 0x00, MAX_PATH);
@@ -2516,7 +2516,7 @@ static int emcore_write_response_into_file(char *filename, char *write_mode, cha
 
 								if (EM_SAFE_STRLEN(save_file_name) > 0) { 
 									/*  Content ID will be replaced with its file name in html */
-									memcpy(html_cid_path, decoded_content_id , EM_SAFE_STRLEN("cid:") + EM_SAFE_STRLEN(body_inline_id));
+									memcpy(html_cid_path, decoded_content_id , strlen("cid:") + EM_SAFE_STRLEN(body_inline_id));
 
 									EM_DEBUG_LOG("Replacing %s with %s ", html_cid_path, save_file_name);
 									if ((decoded_temp = em_replace_string(decoded, html_cid_path, save_file_name))) {
@@ -2710,7 +2710,7 @@ static int imap_mail_write_body_to_file(MAILSTREAM *stream, int account_id, int 
 				
 			if ((p = strstr(response, "BODY[")) /* || (p = strstr(s + 1, "BODY["))*/) {
 				server_response_yn = 1;
-				p += EM_SAFE_STRLEN("BODY[");
+				p += strlen("BODY[");
 				s = p;
 				
 				while (*s != ']')
@@ -2724,7 +2724,7 @@ static int imap_mail_write_body_to_file(MAILSTREAM *stream, int account_id, int 
 				}
 				
 				if ((p = strstr(s+1, " {")))  { 
-					p += EM_SAFE_STRLEN(" {");
+					p += strlen(" {");
 					s = p;
 					
 					while (isdigit(*s))
@@ -2737,7 +2737,7 @@ static int imap_mail_write_body_to_file(MAILSTREAM *stream, int account_id, int 
 				else {	/*  no body length is replied */
 					if ((p = strstr(s+1, " \""))) {	/*  seek the termination of double quot */
 						char *t = NULL;
-						p += EM_SAFE_STRLEN(" \"");
+						p += strlen(" \"");
 						if ((t = strstr(p, "\""))) {
 							body_size = t - p;
 							*t = '\0';
@@ -3485,7 +3485,7 @@ static int emcore_get_file_pointer(BODY *body, bool input_check_duplicated_file_
 				strcat(output_file_name_string, HTML_EXTENSION_STRING);
 			}
 			else {
-				memcpy(output_file_name_string, "UTF-8.htm", EM_SAFE_STRLEN("UTF-8.htm"));
+				memcpy(output_file_name_string, "UTF-8.htm", strlen("UTF-8.htm"));
 			}
 			cnt_info->text.html = EM_SAFE_STRDUP(output_file_name_string);
 		}
@@ -3498,7 +3498,7 @@ static int emcore_get_file_pointer(BODY *body, bool input_check_duplicated_file_
 				memcpy(output_file_name_string, cnt_info->text.plain_charset, EM_SAFE_STRLEN(cnt_info->text.plain_charset));
 			}
 			else
-				memcpy(output_file_name_string, "UTF-8", EM_SAFE_STRLEN("UTF-8"));
+				memcpy(output_file_name_string, "UTF-8", strlen("UTF-8"));
 			
 			cnt_info->text.plain = EM_SAFE_STRDUP(output_file_name_string);
 		}
@@ -3627,7 +3627,7 @@ static int emcore_get_section_body_size(char *response, char *section, int *body
 	int size = 0;
 	if ((p = strstr(response, "BODY[")) /* || (p = strstr(s + 1, "BODY["))*/) {
 				
-				p += EM_SAFE_STRLEN("BODY[");
+				p += strlen("BODY[");
 				s = p;
 				
 				while (*s != ']')
@@ -3643,7 +3643,7 @@ static int emcore_get_section_body_size(char *response, char *section, int *body
 		}*/
 		p = strstr(s+1, " {");		
 		if (p)  {
-			p += EM_SAFE_STRLEN(" {");
+			p += strlen(" {");
 			s = p;
 			
 			while (isdigit(*s))
@@ -4045,7 +4045,7 @@ static int emcore_get_body_part_imap(MAILSTREAM *stream, int account_id, int mai
 		EM_SAFE_FREE(decoded_filename);
 		EM_DEBUG_LOG("body->location [%s]", body->location);
 	} 
-	else if (is_pbd && (strncmp(body->subtype, "RFC822", EM_SAFE_STRLEN("RFC822")) == 0) && (cnt_info->grab_type == 0 || (cnt_info->grab_type & GRAB_TYPE_ATTACHMENT))) {
+	else if (is_pbd && (strncmp(body->subtype, "RFC822", strlen("RFC822")) == 0) && (cnt_info->grab_type == 0 || (cnt_info->grab_type & GRAB_TYPE_ATTACHMENT))) {
 		EM_DEBUG_LOG("Beause subtype is RFC822. This is ttachment");
 		is_attachment = 1;
 

@@ -409,7 +409,7 @@ static int _emcore_check_host(char *host)
 {
 	if (!host)
 		return 0;
-	return strncmp(host, ".SYNTAX-ERROR.", EM_SAFE_STRLEN(".SYNTAX-ERROR."));
+	return strncmp(host, ".SYNTAX-ERROR.", strlen(".SYNTAX-ERROR."));
 }
 
 

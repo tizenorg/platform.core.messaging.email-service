@@ -273,7 +273,7 @@ void* emcore_imap_idle_run(void* thread_user_data)
 
 	/* For testing - mailbox_num and mailbox_list are hardcoded here */
 	mailbox_num     = 1;
-	mailbox_list[0] = EM_SAFE_STRDUP("INBOX");
+	mailbox_list[0] = strdup("INBOX");
 
 	/* make a list of mailboxes IDLING */
 	for (counter = 0; counter < mailbox_num; counter++){

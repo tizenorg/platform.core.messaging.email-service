@@ -96,7 +96,7 @@ INTERNAL_FUNC email_account_t* emcore_get_account_reference(int account_id)
 		while (*p)  {
 			if ((*p)->account->account_id == account_id) {
 				result_account = ((*p)->account);
-				break;
+				goto FINISH_OFF;
 			}
 			p = &(*p)->next;
 		}
@@ -107,12 +107,14 @@ INTERNAL_FUNC email_account_t* emcore_get_account_reference(int account_id)
 			while (*p)  {
 				if ((*p)->account->account_id == account_id) {
 					result_account = ((*p)->account);
-					break;
+					goto FINISH_OFF;
 				}
 				p = &(*p)->next;
 			}
 		}
 	}
+
+FINISH_OFF:
 
 	EM_DEBUG_FUNC_END("[%p]", result_account);
 	return result_account;

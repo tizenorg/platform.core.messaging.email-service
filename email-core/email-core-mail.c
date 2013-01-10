@@ -1391,7 +1391,7 @@ int emcore_get_mail_contact_info_with_update(email_mail_contact_info_t *contact_
 	
 	while (addr != NULL)  {
 		if (addr->mailbox && addr->host) {	
-			if (!strncmp(addr->mailbox , "UNEXPECTED_DATA_AFTER_ADDRESS", EM_SAFE_STRLEN("UNEXPECTED_DATA_AFTER_ADDRESS")) || !strncmp(addr->mailbox , "INVALID_ADDRESS", EM_SAFE_STRLEN("INVALID_ADDRESS")) || !strncmp(addr->host , ".SYNTAX-ERROR.", EM_SAFE_STRLEN(".SYNTAX-ERROR.")))
+			if (!strncmp(addr->mailbox , "UNEXPECTED_DATA_AFTER_ADDRESS", strlen("UNEXPECTED_DATA_AFTER_ADDRESS")) || !strncmp(addr->mailbox , "INVALID_ADDRESS", strlen("INVALID_ADDRESS")) || !strncmp(addr->host , ".SYNTAX-ERROR.", strlen(".SYNTAX-ERROR.")))
 	       	{
 				EM_DEBUG_LOG("Invalid address ");
 				addr = addr->next;
@@ -3135,7 +3135,7 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 			strcat(html_body, HTML_EXTENSION_STRING);
 		}
 		else {
-			memcpy(html_body, "UTF-8.htm", EM_SAFE_STRLEN("UTF-8.htm"));
+			memcpy(html_body, "UTF-8.htm", strlen("UTF-8.htm"));
 		}
 		if (!emstorage_get_save_name(account_id, mail_id, 0, html_body, buf, &err))  {
 			EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
@@ -5410,7 +5410,7 @@ int emcore_mail_cmd_read_mail_pop3(void *stream, int msgno, int limited_size, in
 		if (*response == '+')  {		/*  "+ OK" */
 			char *p = NULL;
 
-			if (!(p = strchr(response + EM_SAFE_STRLEN("+OK "), ' ')))  {
+			if (!(p = strchr(response + strlen("+OK "), ' ')))  {
 				err = EMAIL_ERROR_INVALID_RESPONSE;
 				goto FINISH_OFF;
 			}
