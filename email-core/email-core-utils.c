@@ -1177,7 +1177,7 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 
 	local_preview_buffer_length = input_preview_buffer_length * 2;
 
-	if ( input_html_path != NULL) {
+	if ( input_html_path ) { /*prevent 26249*/
 		/*	get preview text from html file */
 		if( (err = em_get_encoding_type_from_file_path(input_html_path, &encoding_type)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("em_get_encoding_type_from_file_path failed [%s]", err);
@@ -1204,19 +1204,23 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 
 		byte_read = fread(local_preview_text, sizeof(char), st_buf.st_size, fp_html);
 
-		if (ferror(fp_html)) {
-			EM_DEBUG_EXCEPTION("fread failed [%s]", input_html_path);
-			err = EMAIL_ERROR_SYSTEM_FAILURE;
-			goto FINISH_OFF;
+		if(byte_read <= 0) { /*prevent 26249*/
+			EM_SAFE_FREE(local_preview_text);
+			if (ferror(fp_html)) {
+				EM_DEBUG_EXCEPTION("fread failed [%s]", input_html_path);
+				err = EMAIL_ERROR_SYSTEM_FAILURE;
+				goto FINISH_OFF;
+			}
 		}
-
-		if ( (err = emcore_strip_HTML(local_preview_text)) != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("emcore_strip failed");
-			goto FINISH_OFF;
+		else {
+			if ( (err = emcore_strip_HTML(local_preview_text)) != EMAIL_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("emcore_strip failed");
+				goto FINISH_OFF;
+			}
 		}
 	}
 
-	if ( (local_preview_text == NULL || (local_preview_text && EM_SAFE_STRLEN(local_preview_text) == 0) ) && input_plain_path != NULL) {
+	if ( !local_preview_text && input_plain_path) { /*prevent 26249*/
 		/*  get preview text from plain text file */
 		if( (err = em_get_encoding_type_from_file_path(input_plain_path, &encoding_type)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("em_get_encoding_type_from_file_path failed [%s]", err);
@@ -1236,9 +1240,13 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 
 		byte_read = fread(local_preview_text, sizeof(char), local_preview_buffer_length - 1, fp_plain);
 
-		if (ferror(fp_plain)) {
-			EM_DEBUG_EXCEPTION("fread failed [%s]", input_plain_path);
-			err = EMAIL_ERROR_SYSTEM_FAILURE;
+		if(byte_read <=0) { /*prevent 26249*/
+			EM_SAFE_FREE(local_preview_text);
+			err = EMAIL_ERROR_NULL_VALUE;
+			if (ferror(fp_plain)) {
+				EM_DEBUG_EXCEPTION("fread failed [%s]", input_plain_path);
+				err = EMAIL_ERROR_SYSTEM_FAILURE;
+			}
 			goto FINISH_OFF;
 		}
 

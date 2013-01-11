@@ -1861,7 +1861,7 @@ int event_handler_EMAIL_EVENT_MOVE_MAIL(int account_id, int *mail_ids, int mail_
 
 	ret = true;
 FINISH_OFF:
-
+	EM_SAFE_FREE(mail_ids); /*prevent 33693*/
 	if (error)
 		*error = err;
 
@@ -2361,7 +2361,7 @@ void* thread_func_branch_command(void *arg)
 
 					case EMAIL_EVENT_MOVE_MAIL:
 						event_handler_EMAIL_EVENT_MOVE_MAIL(event_data.account_id, (int  *)event_data.event_param_data_3, event_data.event_param_data_4, event_data.event_param_data_5, event_data.event_param_data_8, handle_to_be_published, &err);
-						EM_SAFE_FREE(event_data.event_param_data_3);
+						event_data.event_param_data_3 = NULL; /*prevent 33693*/
 						break;
 
 					case EMAIL_EVENT_VALIDATE_ACCOUNT:

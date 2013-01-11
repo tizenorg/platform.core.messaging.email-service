@@ -3419,6 +3419,12 @@ static int emcore_parse_body_for_imap(char *body_str, int body_size, struct _m_c
 		return err;
 	}
 
+	if (!output_text_plain || !output_text_html || !output_image_data) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		return err;
+	}
+
 	int dec_len = 0;
 	int no_alternative_part_flag = 0;
 	int no_html = 0;
@@ -3557,14 +3563,9 @@ FINISH_OFF:
 		if (image_data)
 			emcore_free_email_image_data(&image_data, IMAGE_DISPLAY_PARTIAL_BODY_COUNT);
 	} else {
-		if (output_text_plain)
-			*output_text_plain = text_plain;
-
-		if (output_text_html)
-			*output_text_html = text_html;
-
-		if (output_image_data)
-			*output_image_data = image_data;
+		*output_text_plain = text_plain;
+		*output_text_html = text_html;
+		*output_image_data = image_data;
 	}
 
 	EM_DEBUG_FUNC_END("err : [%d]", err);
@@ -3809,7 +3810,13 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 				EM_DEBUG_EXCEPTION("emstorage_create_file failed [%d]", err);
 
 			mail->file_path_html = EM_SAFE_STRDUP(buf); 
-					
+
+			/* free the plain, html, image data */
+			EM_SAFE_FREE(text_plain);
+			EM_SAFE_FREE(text_html);
+			if (image_data)
+				emcore_free_email_image_data(&image_data, IMAGE_DISPLAY_PARTIAL_BODY_COUNT);
+				
 		}
 
 		mail->body_download_status = (total_mail_size - total_attachment_size < input_download_size) ? 1 : 2;

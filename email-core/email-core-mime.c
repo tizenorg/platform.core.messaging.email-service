@@ -2493,7 +2493,7 @@ static int emcore_write_response_into_file(char *filename, char *write_mode, cha
 
 						memset(body_inline_id, 0x00, 512);
 
-						if (body_inline && body_inline->id && EM_SAFE_STRLEN(body_inline->id) > 0) {
+						if (body_inline->id && EM_SAFE_STRLEN(body_inline->id) > 0) { /*prevent 27454*/
 							EM_DEBUG_LOG("body_inline->id - %s", body_inline->id);
 							EM_DEBUG_LOG("param - %p param1 - %p", param, param1);
 							decoded_content_id = strstr(decoded, "cid:");
