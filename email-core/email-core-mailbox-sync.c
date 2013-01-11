@@ -3484,7 +3484,9 @@ static int emcore_parse_body_for_imap(char *body_str, int body_size, struct _m_c
 				} else {
 					EM_DEBUG_LOG(" Content-type: multipart/alternative ");
 					boundary_start = strstr(temp_alternative_plain_header, "--") + strlen("--");
+					if(!boundary_start) goto FINISH_OFF; /*prevent 37946 */
 					boundary_end = strcasestr(boundary_start, "Content-type:");
+					if(!boundary_end) goto FINISH_OFF; /*prevent 37946 */
 					
 					boundary_string = em_malloc(boundary_end - boundary_start);
 					if (boundary_string == NULL) {
@@ -3501,7 +3503,9 @@ static int emcore_parse_body_for_imap(char *body_str, int body_size, struct _m_c
 
 		if (no_alternative_part_flag) {
 			boundary_start = strstr(p_body_str, "--") + strlen("--");
+			if(!boundary_start) goto FINISH_OFF; /*prevent 37946 */
 			boundary_end = strcasestr(boundary_start, "Content-type:");
+			if(!boundary_end) goto FINISH_OFF; /*prevent 37946 */
 			
 			boundary_string = em_malloc(boundary_end - boundary_start);
 			if (boundary_string == NULL) {
@@ -3513,7 +3517,7 @@ static int emcore_parse_body_for_imap(char *body_str, int body_size, struct _m_c
 			memcpy(boundary_string, boundary_start, boundary_end - boundary_start);
 		}
 
-		if (boundary_string != NULL) {
+		if (boundary_string && boundary_end) { /*prevent 37946 */
 			EM_DEBUG_LOG("boundary_string : [%s]", boundary_string); 
 
 			if (((start_header = (char *)strcasestr(boundary_end, "Content-Type: text/html"))  != NULL) && (no_html  != 1) &&(((char *)strcasestr(boundary_end, "Content-Type: message/rfc822")) == NULL) &&

@@ -150,6 +150,7 @@ static char *emcore_replace_inline_image_path_with_content_id(char *source_strin
 
 	while (cur_part) {
 		cur_body = &(cur_part->body);
+		result_string = NULL; /*prevent 37865*/
 		if (cur_body) {
 			EM_DEBUG_LOG("Has body. id[%s]", cur_body->disposition.type);
 			if (cur_body->disposition.type && cur_body->disposition.type[0] == 'i') {   /*  Is inline content? */

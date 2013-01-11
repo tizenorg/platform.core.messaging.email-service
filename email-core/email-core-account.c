@@ -1166,15 +1166,13 @@ INTERNAL_FUNC int emcore_update_sync_status_of_account(int input_account_id, ema
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_set_operator [%d], input_sync_status [%d]", input_account_id, input_set_operator, input_sync_status);
 	int err = EMAIL_ERROR_NONE;
-	emstorage_account_tbl_t *account_tbl_data = NULL;
+
 
 
 	if (!emstorage_update_sync_status_of_account(input_account_id, input_set_operator, input_sync_status, true, &err))
 		EM_DEBUG_EXCEPTION("emstorage_update_sync_status_of_account failed [%d]", err);
 
 
-	if (account_tbl_data)
-		emstorage_free_account(&account_tbl_data, 1, NULL);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;

@@ -198,7 +198,7 @@ INTERNAL_FUNC char* em_skip_whitespace_without_strdup(char *source_string)
 	return source_string + i;
 }
 
-
+/*refactoring required*/
 INTERNAL_FUNC char* em_replace_all_string(char *source_string, char *old_string, char *new_string)
 {
 	EM_DEBUG_FUNC_BEGIN();

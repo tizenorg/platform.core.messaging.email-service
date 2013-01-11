@@ -3148,7 +3148,7 @@ static int emcore_get_body_part_imap_full(MAILSTREAM *stream, int msg_uid, int a
 					param = param->next;
 				}
 			}
-			else if (body->id || body->location || body->disposition.type) {
+			else if (body->subtype && (body->id || body->location || body->disposition.type)) { /*prevent 23712*/ /*refactoring : body->subtype*/
 
 				if (emcore_get_file_pointer(body, false, filename, cnt_info , &err)<0) {
 					EM_DEBUG_EXCEPTION("emcore_get_file_pointer failed [%d]", err);
@@ -5465,6 +5465,11 @@ int emcore_decode_body_text_from_file(FILE *stream, char *boundary_str, int enco
 	}
 
 	start_location = ftell(stream);
+	if(start_location < 0 ) { /*prevent 35555*/
+		error = EMAIL_ERROR_INVALID_PARAM;
+		EM_DEBUG_EXCEPTION("ftell failed : %s", EM_STRERROR(errno));
+		goto FINISH_OFF;
+	}
 
 	while (TRUE) {
 		if (!emcore_get_line_from_file(stream, buf, MIME_LINE_LEN, &error)) {
@@ -5492,6 +5497,11 @@ int emcore_decode_body_text_from_file(FILE *stream, char *boundary_str, int enco
 	}
 
 	end_location = ftell(stream);
+	if(end_location < 0 ) { /*prevent 35555*/
+		error = EMAIL_ERROR_INVALID_PARAM;
+		EM_DEBUG_EXCEPTION("ftell failed : %s", EM_STRERROR(errno));
+		goto FINISH_OFF;
+	}
 
 	if (partial_body)
 		p_size = end_location - start_location;
@@ -5517,12 +5527,11 @@ int emcore_decode_body_text_from_file(FILE *stream, char *boundary_str, int enco
 
 		if (is_text) {
 			modified_body = em_replace_all_string(body, "cid:", "");
-			if (modified_body)
-				modified_body_size = EM_SAFE_STRLEN(modified_body);
+			modified_body_size = EM_SAFE_STRLEN(modified_body); /*prevent 35585 */
 		}
 
 		if (modified_body == NULL) {
-			modified_body      = body;
+			modified_body      = strdup(body); /*prevent 35585 */
 			modified_body_size = dec_len;
 		}
 
@@ -5542,6 +5551,7 @@ int emcore_decode_body_text_from_file(FILE *stream, char *boundary_str, int enco
 FINISH_OFF:
 
 	EM_SAFE_FREE(modified_body);
+	EM_SAFE_FREE(body); /*prevent 35585 */
 	return error;
 }
 
@@ -5627,7 +5637,7 @@ int emcore_decode_body_text_from_sock(void *stream, char *boundary_str, int enco
 			}
 
 			if (result_buffer == NULL) {
-				result_buffer      = buf;
+				result_buffer      = strdup(buf); /*prevent 35499*/
 				result_buffer_size = dec_len;
 			}
 
@@ -5648,22 +5658,20 @@ int emcore_decode_body_text_from_sock(void *stream, char *boundary_str, int enco
 					(*holder)[sz + EM_SAFE_STRLEN(result_buffer) + 1] = NULL_CHAR;
 			} else if (mode == SAVE_TYPE_FILE)  {	/*  save content to file */
 				if (write(fd, result_buffer, result_buffer_size) != result_buffer_size)  {
-					if (is_text && (result_buffer != buf))
-						EM_SAFE_FREE(result_buffer);
 					EM_DEBUG_EXCEPTION("write failed");
 					error = EMAIL_ERROR_SYSTEM_FAILURE;
 					goto FINISH_OFF; 
 				}
 			}
 
-			if (is_text && (result_buffer != buf))
-				EM_SAFE_FREE(result_buffer);	
-			result_buffer = NULL;
+			EM_SAFE_FREE(result_buffer);	
 		}
 		sz += dec_len;
 	}
 
 FINISH_OFF:
+
+	EM_SAFE_FREE(result_buffer); /*prevent 35499*/
 
 	if (error == EMAIL_ERROR_NONE) {
 		if (size)
