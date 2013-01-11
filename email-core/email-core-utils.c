@@ -2249,11 +2249,12 @@ INTERNAL_FUNC int emcore_search_string_from_file(char *file_path, char *search_s
 	EM_DEBUG_FUNC_BEGIN("file_path : [%s], search_string : [%s]", file_path, search_string);
 	int error = EMAIL_ERROR_NONE;
 	int file_size = 0;
-	int p_result = 1;
+	int p_result = false;
 	FILE *fp = NULL;
 	char *buf = NULL;
+	char *stripped = NULL;
 
-	if (search_string == NULL || file_path == NULL) {
+	if (!search_string || !file_path || !result) {
 		EM_DEBUG_EXCEPTION("Invalid parameter");
 		error = EMAIL_ERROR_INVALID_PARAM;
 		return error;
@@ -2284,21 +2285,22 @@ INTERNAL_FUNC int emcore_search_string_from_file(char *file_path, char *search_s
 		goto FINISH_OFF;
 	}
 
-	buf = em_replace_all_string(buf, CRLF_STRING, "");
-	if (!strstr(buf, search_string)) {
-		EM_DEBUG_LOG("Not found string");
-		p_result = 0;
-	}
+	/*prevent 35586*/
+	stripped = em_replace_all_string(buf, CRLF_STRING, "");
+	if (strstr(stripped, search_string))
+		p_result = true;
 
 FINISH_OFF:
+	if(!p_result)
+		EM_DEBUG_LOG("Search string[%s] not found",search_string);
 
-	if (result)
-		*result = p_result;
+	*result = p_result;
 	
 	if (fp)
 		fclose(fp);
 
 	EM_SAFE_FREE(buf);	
+	EM_SAFE_FREE(stripped);  /*prevent 35586*/
 
 	EM_DEBUG_FUNC_END("error:[%d]", error);
 	return error;
