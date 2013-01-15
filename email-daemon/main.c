@@ -869,8 +869,8 @@ void stb_get_rule(HIPC_API a_hAPI)
 
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, local_rule_stream, size))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
-		EM_SAFE_FREE( local_rule_stream );
 
+		EM_SAFE_FREE( local_rule_stream );
 		emcore_free_rule(rule);
 		EM_SAFE_FREE(rule);
 	}
@@ -1129,6 +1129,7 @@ void stb_add_mail(HIPC_API a_hAPI)
 	}
 
 	/* attachment */
+	if (result_mail_data.attachment_count > 0) {
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
 	EM_DEBUG_LOG("email_attachment_data_t buffer_size[%d]", buffer_size);
 
@@ -1142,6 +1143,7 @@ void stb_add_mail(HIPC_API a_hAPI)
 			EM_DEBUG_EXCEPTION("em_convert_byte_stream_to_attachment_data failed");
 			err = EMAIL_ERROR_ON_PARSING;
 			goto FINISH_OFF;
+			}
 		}
 	}
 

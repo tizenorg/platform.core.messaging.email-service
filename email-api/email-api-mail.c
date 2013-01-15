@@ -93,12 +93,11 @@ EXPORT_API int email_add_mail(email_mail_data_t *input_mail_data, email_attachme
 		/* email_attachment_data_t */
 		attachment_data_list_stream = em_convert_attachment_data_to_byte_stream(input_attachment_data_list, input_attachment_count, &size);
 
-		if(!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, attachment_data_list_stream, size)) {
+		if((size > 0) && !emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, attachment_data_list_stream, size)) {
 			EM_DEBUG_EXCEPTION("emipc_add_dynamic_parameter failed");
 			err = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
 		}
-
 
 		/*  email_meeting_request_t */
 		if ( input_mail_data->meeting_request_status != EMAIL_MAIL_TYPE_NORMAL ) {

@@ -2568,7 +2568,6 @@ static int emcore_make_envelope_from_mail(emstorage_mail_tbl_t *input_mail_tbl_d
 	int       error                   = EMAIL_ERROR_NONE;
 	int       is_incomplete           = 0;
 	char     *pAdd                    = NULL;
-	char     *outgoing_server_address = NULL;
 	ENVELOPE *envelope                = NULL;
 	email_account_t *ref_account      = NULL;
 
@@ -2584,21 +2583,6 @@ static int emcore_make_envelope_from_mail(emstorage_mail_tbl_t *input_mail_tbl_d
 		goto FINISH_OFF;
 	}
 
-	if (input_mail_tbl_data->account_id <= 0) {
-		error = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF;
-	}
-
-	ref_account = emcore_get_account_reference(input_mail_tbl_data->account_id);
-
-	if (!ref_account)  {
-		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", input_mail_tbl_data->account_id);
-		error = EMAIL_ERROR_INVALID_ACCOUNT;
-		goto FINISH_OFF;
-	}
-
-	outgoing_server_address = EM_SAFE_STRDUP(ref_account->outgoing_server_address);
-
 	if (!(envelope = mail_newenvelope()))  {
 		EM_DEBUG_EXCEPTION("mail_newenvelope failed...");
 		error = EMAIL_ERROR_OUT_OF_MEMORY;
@@ -2607,7 +2591,14 @@ static int emcore_make_envelope_from_mail(emstorage_mail_tbl_t *input_mail_tbl_d
 
 	is_incomplete = input_mail_tbl_data->flags_draft_field || (input_mail_tbl_data->save_status == EMAIL_MAIL_STATUS_SENDING);
 
-	if (is_incomplete)  {
+	if (is_incomplete && (input_mail_tbl_data->account_id > 0))  {
+		ref_account = emcore_get_account_reference(input_mail_tbl_data->account_id);
+		if (!ref_account)  {
+			EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", input_mail_tbl_data->account_id);
+			error = EMAIL_ERROR_INVALID_ACCOUNT;
+			goto FINISH_OFF;
+		}
+
 		if (ref_account->user_email_address && ref_account->user_email_address[0] != '\0')  {
 			char *p = cpystr(ref_account->user_email_address);
 
@@ -2623,7 +2614,7 @@ static int emcore_make_envelope_from_mail(emstorage_mail_tbl_t *input_mail_tbl_d
 				char *temp_address_string = NULL ;
 				em_skip_whitespace(input_mail_tbl_data->full_address_from , &temp_address_string);
 				EM_DEBUG_LOG("address[temp_address_string][%s]", temp_address_string);
-				rfc822_parse_adrlist(&envelope->from, temp_address_string, outgoing_server_address);
+				rfc822_parse_adrlist(&envelope->from, temp_address_string, NULL);
 				EM_SAFE_FREE(temp_address_string);
 				temp_address_string = NULL ;
 			}
@@ -2685,14 +2676,14 @@ static int emcore_make_envelope_from_mail(emstorage_mail_tbl_t *input_mail_tbl_d
 		em_skip_whitespace(input_mail_tbl_data->full_address_from , &pAdd);
 		EM_DEBUG_LOG("address[pAdd][%s]", pAdd);
 
-		rfc822_parse_adrlist(&envelope->from, pAdd, outgoing_server_address);
+		rfc822_parse_adrlist(&envelope->from, pAdd, NULL);
 		EM_SAFE_FREE(pAdd);
 		pAdd = NULL;
 
 		em_skip_whitespace(input_mail_tbl_data->full_address_return , &pAdd);
 		EM_DEBUG_LOG("address[pAdd][%s]", pAdd);
 
-		rfc822_parse_adrlist(&envelope->return_path, pAdd, outgoing_server_address);
+		rfc822_parse_adrlist(&envelope->return_path, pAdd, NULL);
 		EM_SAFE_FREE(pAdd);
 		pAdd = NULL;
 	}
@@ -2725,7 +2716,7 @@ static int emcore_make_envelope_from_mail(emstorage_mail_tbl_t *input_mail_tbl_d
 	em_skip_whitespace(input_mail_tbl_data->full_address_to , &pAdd);
 	EM_DEBUG_LOG("address[pAdd][%s]", pAdd);
 
-	rfc822_parse_adrlist(&envelope->to, pAdd, outgoing_server_address);
+	rfc822_parse_adrlist(&envelope->to, pAdd, NULL);
 	EM_SAFE_FREE(pAdd);
 	pAdd = NULL ;
 
@@ -2733,12 +2724,12 @@ static int emcore_make_envelope_from_mail(emstorage_mail_tbl_t *input_mail_tbl_d
 	em_skip_whitespace(input_mail_tbl_data->full_address_cc , &pAdd);
 	EM_DEBUG_LOG("address[pAdd][%s]", pAdd);
 
-	rfc822_parse_adrlist(&envelope->cc, pAdd, outgoing_server_address);
+	rfc822_parse_adrlist(&envelope->cc, pAdd, NULL);
 	EM_SAFE_FREE(pAdd);
 		pAdd = NULL ;
 
 	em_skip_whitespace(input_mail_tbl_data->full_address_bcc , &pAdd);
-	rfc822_parse_adrlist(&envelope->bcc, pAdd, outgoing_server_address);
+	rfc822_parse_adrlist(&envelope->bcc, pAdd, NULL);
 	EM_SAFE_FREE(pAdd);
 		pAdd = NULL ;
 
@@ -2777,9 +2768,6 @@ FINISH_OFF:
 		mail_free_envelope(&envelope);
 		*output_envelope = NULL;
 	}
-
-	if (outgoing_server_address)
-		EM_SAFE_FREE(outgoing_server_address);
 
 	EM_DEBUG_FUNC_END("error [%d]", error);
 	return error;
