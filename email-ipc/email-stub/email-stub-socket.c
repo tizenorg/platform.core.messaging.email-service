@@ -163,7 +163,12 @@ EXPORT_API void emipc_wait_for_ipc_request()
 						EM_DEBUG_LOG("====================================================================");
 						EM_DEBUG_LOG("[IPCLib]Stub Socket Recv [Socket ID = %d], [recv_len = %d]", event_fd, recv_len);
 						EM_DEBUG_LOG("====================================================================");
+
+						/* IPC request stream is at least 16byte */
+						if (recv_len >= sizeof(long) * eSTREAM_DATA) {
 						emipc_create_task((unsigned char *)sz_buf, event_fd);
+						} else
+							EM_DEBUG_LOG("[IPCLib] Stream size is less than default size");
 					} else if( recv_len == 0 ) {
 						EM_DEBUG_LOG("[IPCLib] Client closed connection [%d]", event_fd);
 						epoll_ctl(epfd, EPOLL_CTL_DEL, event_fd, events);

@@ -1912,7 +1912,7 @@ INTERNAL_FUNC int emstorage_create_table(emstorage_create_db_type_t type, int *e
 		
 		EM_DEBUG_LOG("CREATE TABLE mail_account_tbl");
 		
-		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_ACCOUNT_TBL], sizeof(sql_query_string));
+		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_ACCOUNT_TBL], sizeof(sql_query_string)-1); /*prevent 21984*/
 
 		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
 		EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; }, ("SQL(%s) exec fail:%d -%s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -1948,7 +1948,7 @@ INTERNAL_FUNC int emstorage_create_table(emstorage_create_db_type_t type, int *e
 
 		EM_DEBUG_LOG("CREATE TABLE mail_box_tbl");
 		
-		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_BOX_TBL], sizeof(sql_query_string));
+		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_BOX_TBL], sizeof(sql_query_string)-1); /*prevent 21984*/
 		
 		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
 		EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -1985,7 +1985,7 @@ INTERNAL_FUNC int emstorage_create_table(emstorage_create_db_type_t type, int *e
 		
 		EM_DEBUG_LOG("CREATE TABLE mail_read_mail_uid_tbl");
 		
-		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_READ_MAIL_UID_TBL], sizeof(sql_query_string));
+		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_READ_MAIL_UID_TBL], sizeof(sql_query_string)-1); /*prevent 21984*/
 		
 		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
 		EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -2022,7 +2022,7 @@ INTERNAL_FUNC int emstorage_create_table(emstorage_create_db_type_t type, int *e
 
 		EM_DEBUG_LOG("CREATE TABLE mail_rule_tbl");
 		
-		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_RULE_TBL], sizeof(sql_query_string));
+		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_RULE_TBL], sizeof(sql_query_string)-1); /*prevent 21984*/
 		
 		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
 		EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -2050,7 +2050,7 @@ INTERNAL_FUNC int emstorage_create_table(emstorage_create_db_type_t type, int *e
 			("SQL(BEGIN EXCLUSIVE) exec fail:%d -%s", rc, sqlite3_errmsg(local_db_handle)));
 		EM_DEBUG_LOG("CREATE TABLE mail_tbl");
 		
-		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_TBL], sizeof(sql_query_string));
+		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_TBL], sizeof(sql_query_string)-1); /*prevent 21984*/
 		
 		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
 		EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -2099,7 +2099,7 @@ INTERNAL_FUNC int emstorage_create_table(emstorage_create_db_type_t type, int *e
 			("SQL(BEGIN EXCLUSIVE) exec fail:%d -%s", rc, sqlite3_errmsg(local_db_handle)));
 		EM_DEBUG_LOG("CREATE TABLE mail_attachment_tbl");
 		
-		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_ATTACHMENT_TBL], sizeof(sql_query_string));
+		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_ATTACHMENT_TBL], sizeof(sql_query_string)-1); /*prevent 21984*/
 		
 		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
 		EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -2136,7 +2136,7 @@ INTERNAL_FUNC int emstorage_create_table(emstorage_create_db_type_t type, int *e
 
 		EM_DEBUG_LOG("CREATE TABLE mail_partial_body_activity_tbl");
 		
-		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_PARTIAL_BODY_ACTIVITY_TBL], sizeof(sql_query_string));
+		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_PARTIAL_BODY_ACTIVITY_TBL], sizeof(sql_query_string)-1); /*prevent 21984*/
 		
 		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
 		EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -2166,7 +2166,7 @@ INTERNAL_FUNC int emstorage_create_table(emstorage_create_db_type_t type, int *e
 		
 		EM_DEBUG_LOG("CREATE TABLE mail_meeting_tbl");
 		
-		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_MEETING_TBL], sizeof(sql_query_string));
+		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_MEETING_TBL], sizeof(sql_query_string)-1); /*prevent 21984*/
 		
 		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
 		EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -2230,7 +2230,7 @@ INTERNAL_FUNC int emstorage_create_table(emstorage_create_db_type_t type, int *e
 
 		EM_DEBUG_LOG("CREATE TABLE mail_certificate_tbl");
 
-		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_CERTIFICATE_TBL], sizeof(sql_query_string));
+		EM_SAFE_STRNCPY(sql_query_string, create_table_query[CREATE_TABLE_MAIL_CERTIFICATE_TBL], sizeof(sql_query_string)-1); /*prevent 21984*/
 
 		EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
 		EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; }, ("SQL(%s) exec fail:%d -%s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));

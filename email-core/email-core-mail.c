@@ -2847,7 +2847,7 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 	struct attachment_info *ai = NULL;
 	struct _m_content_info *cnt_info = NULL;
 	void *tmp_stream = NULL;
-	char *s_uid = NULL, *server_mbox = NULL, buf[512];
+	char *s_uid = NULL, buf[512];
 	int msgno = 0, attachment_num = 1, local_attachment_count = 0, local_inline_content_count = 0;
 	int iActualSize = 0;
 	char html_body[MAX_PATH] = {0, };
@@ -2856,7 +2856,6 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 #ifdef CHANGE_HTML_BODY_TO_ATTACHMENT
 	int html_changed = 0;
 #endif
-	int mailbox_id = 0;
 
 	if (mail_id < 1)  {
 		EM_DEBUG_EXCEPTION("mail_stream[%p], account_id[%d], mail_id[%d], verbose[%d], with_attach[%d]", mail_stream, account_id, mail_id, verbose, with_attach);
@@ -2888,19 +2887,12 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 		goto FINISH_OFF;
 	}
 	
-	account_id                        = mail->account_id;
-	s_uid                             = mail->server_mail_id;
-	server_mbox                       = mail->server_mailbox_name;
-	mail->server_mail_id              = NULL;
-    mail->server_mailbox_name         = NULL;
+	s_uid                             = EM_SAFE_STRDUP(mail->server_mail_id);
 
 	attachment.account_id             = mail->account_id;
 	attachment.mail_id                = mail->mail_id;
 	attachment.mailbox_id             = mail->mailbox_id;
 	attachment.attachment_save_status = 0;
-	mailbox_id 						  = mail->mailbox_id;
-	emstorage_free_mail(&mail, 1, NULL);
-	mail = NULL;
 	
 	if (!(ref_account = emcore_get_account_reference(account_id)))   {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
@@ -2912,7 +2904,7 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 
 	/*  open mail server. */
 	if (!mail_stream)  {
-		if (!emcore_connect_to_remote_mailbox(account_id, mailbox_id, (void **)&tmp_stream, &err) || !tmp_stream)  {
+		if (!emcore_connect_to_remote_mailbox(account_id, mail->mailbox_id, (void **)&tmp_stream, &err) || !tmp_stream)  {
 			EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
 			status = EMAIL_DOWNLOAD_CONNECTION_FAIL;
 			goto FINISH_OFF;
@@ -2921,9 +2913,6 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 	}
 	else
 		stream = (MAILSTREAM *)mail_stream;
-	
-	free(server_mbox);
-	server_mbox = NULL;
 	
 	FINISH_OFF_IF_CANCELED;
 	
@@ -2954,8 +2943,6 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 			err = EMAIL_ERROR_MAIL_NOT_FOUND_ON_SERVER;
 			goto FINISH_OFF;
 		}
-
-		free(s_uid); s_uid = NULL;
 
 		if (!emcore_check_thread_status())  {
 			err = EMAIL_ERROR_CANCELLED;
@@ -3000,8 +2987,6 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 			cnt_info->grab_type = GRAB_TYPE_TEXT;
 
 		int uid = atoi(s_uid);
-
-		free(s_uid); s_uid = NULL;
 
 		/*  set sparep(member of BODY) memory free function  */
 		mail_parameters(stream, SET_FREEBODYSPAREP, emcore_free_body_sharep);
@@ -3095,12 +3080,6 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 		FINISH_OFF_IF_CANCELED;
 	}
 
-
-	if (false == emstorage_get_mail_by_id(mail_id, &mail, true, &err)) {
-		EM_DEBUG_EXCEPTION(" emstorage_get_mail_by_id failed [%d]", err);
-		goto FINISH_OFF;
-	}
-
 	if (cnt_info->text.plain)  {
 		EM_DEBUG_LOG("cnt_info->text.plain [%s]", cnt_info->text.plain);
 
@@ -3153,6 +3132,11 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
  		mail->body_download_status = EMAIL_BODY_DOWNLOAD_STATUS_PARTIALLY_DOWNLOADED;
 	else
 		mail->body_download_status = EMAIL_BODY_DOWNLOAD_STATUS_FULLY_DOWNLOADED;
+	
+	/* Update local_preview_text */
+	if ((err = emcore_get_preview_text_from_file(mail->file_path_plain, mail->file_path_html, MAX_PREVIEW_TEXT_LENGTH, &(mail->preview_text))) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_get_preview_text_from_file failedi : [%d]", err);
+	}
 	
 #ifdef CHANGE_HTML_BODY_TO_ATTACHMENT
 	if (html_changed) mail->flag2 = 1;
@@ -3389,7 +3373,6 @@ FINISH_OFF:
 		emcore_free_content_info(cnt_info);
 	if (mail)
 		emstorage_free_mail(&mail, 1, NULL);
-	EM_SAFE_FREE(server_mbox);
 	EM_SAFE_FREE(s_uid);
 	EM_SAFE_FREE(mailbox_name);
 

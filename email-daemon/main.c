@@ -860,11 +860,17 @@ void stb_get_rule(HIPC_API a_hAPI)
 	/* insert a rule if there exists a rule */
 	if ( rule ) {
 		local_rule_stream = em_convert_rule_to_byte_stream(rule, &size);
-		EM_NULL_CHECK_FOR_VOID(local_rule_stream);
+		if(!local_rule_stream) { /*prevent 26265*/
+			EM_DEBUG_EXCEPTION("em_convert_rule_to_byte_stream failed");
+			emcore_free_rule(rule);
+			EM_SAFE_FREE(rule);
+			return;
+		}
+
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, local_rule_stream, size))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
-		EM_SAFE_FREE( local_rule_stream );
 
+		EM_SAFE_FREE( local_rule_stream );
 		emcore_free_rule(rule);
 		EM_SAFE_FREE(rule);
 	}
@@ -1123,6 +1129,7 @@ void stb_add_mail(HIPC_API a_hAPI)
 	}
 
 	/* attachment */
+	if (result_mail_data.attachment_count > 0) {
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
 	EM_DEBUG_LOG("email_attachment_data_t buffer_size[%d]", buffer_size);
 
@@ -1136,6 +1143,7 @@ void stb_add_mail(HIPC_API a_hAPI)
 			EM_DEBUG_EXCEPTION("em_convert_byte_stream_to_attachment_data failed");
 			err = EMAIL_ERROR_ON_PARSING;
 			goto FINISH_OFF;
+			}
 		}
 	}
 
@@ -1592,7 +1600,10 @@ void stb_get_attachment(HIPC_API a_hAPI)
 		EM_DEBUG_LOG("emdaemon_get_attachment - Success");
 		/* attachment */
 		attachment_stream = em_convert_attachment_data_to_byte_stream(attachment, 1, &size);
-
+		if(!attachment_stream) { /*prevent 26263*/
+			emcore_free_attachment_data(&attachment, 1, &err);
+			return;
+		}
 		EM_NULL_CHECK_FOR_VOID(attachment_stream);
 
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, attachment_stream, size))
@@ -2486,6 +2497,10 @@ void stb_write_mime_file(HIPC_API a_hAPI)
 		input_attachment_tbl_data[i].attachment_mime_type = EM_SAFE_STRDUP(result_attachment_data[i].attachment_mime_type);
 	}
 
+	if ((err = em_verify_email_address_of_mail_tbl(input_mail_tbl_data, false)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("em_verify_email_address_of_mail_tbl failed : [%d]", err);
+		goto FINISH_OFF;
+	}
 
 	if (!emcore_make_rfc822_file_from_mail(input_mail_tbl_data, input_attachment_tbl_data, result_attachment_data_count, NULL, &file_path, NULL, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_make_rfc822_file_from_mail failed");

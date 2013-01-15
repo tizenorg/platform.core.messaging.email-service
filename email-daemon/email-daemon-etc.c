@@ -289,7 +289,7 @@ static char *_make_criteria_to_search_filter(email_search_filter_t *search_filte
 			err = EMAIL_ERROR_INVALID_PARAM;
 			goto FINISH_OFF;
 		}
-
+		EM_SAFE_FREE(time_string); /*prevent 26258*/
 	}
 
 FINISH_OFF:
