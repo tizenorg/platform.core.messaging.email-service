@@ -2210,7 +2210,6 @@ static int attach_part(BODY *body, const unsigned char *data, int data_len, char
 			}
 			snprintf(encoded_file_name, EM_SAFE_STRLEN(result_file_name) + 15, "=?UTF-8?B?%s?=", result_file_name);
 			EM_DEBUG_LOG("encoded_file_name [%s]", encoded_file_name);
-			EM_SAFE_FREE(result_file_name);
 		}
 
 		extension = em_get_extension_from_file_path(filename, NULL);
@@ -2389,6 +2388,7 @@ static int attach_part(BODY *body, const unsigned char *data, int data_len, char
 	
 FINISH_OFF: 
 	EM_SAFE_FREE(encoded_file_name);
+	EM_SAFE_FREE(result_file_name); /*prevent 26242*/
 	EM_SAFE_FREE(base64_file_name);	
 	if (err_code != NULL)
 		*err_code = error;

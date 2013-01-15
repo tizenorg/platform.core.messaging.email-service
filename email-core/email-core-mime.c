@@ -2224,42 +2224,16 @@ PARTLIST* emcore_get_body_full(MAILSTREAM *stream, int msg_uid, BODY *body, stru
 			if (body->id || body->location || body->disposition.type) {
 
 				char filename[512] = {0, };
+				struct attachment_info *current_ai = NULL;
 				struct attachment_info *ai = NULL;
-				struct attachment_info *prev_ai = NULL;
-				struct attachment_info *next_ai = NULL;
-				int i = 0;
 				
 				if (emcore_get_file_pointer(body, true, filename, cnt_info, (int*)NULL) < 0)
 					EM_DEBUG_EXCEPTION("emcore_get_file_pointer failed");
 				else {
 					/* To form list of attachment info - Attachment list followed by inline attachment list */
-					prev_ai = NULL;
-					next_ai = NULL;
-					ai      = cnt_info->file;
-					
-					EM_DEBUG_LOG("ai - %p", ai);
+					current_ai = cnt_info->file;
 
-					if (ai != NULL) {
-						/* if ((body->id) || (body->location) */
-						if ((body->id) || (body->location) || ((body->disposition.type != NULL) && ((body->disposition.type[0] == 'i') || (body->disposition.type[0] == 'I')))) {
-							/* For Inline content append to the end */
-							for (i = 1; ai; ai = ai->next)
-								i++;
-						}
-						else {
-							/* For attachment - search till Inline content found and insert before inline */
-							for (i = 1; ai; ai = ai->next) {
-								if (ai->type == 1)  {
-									/* Means inline image */
-									EM_DEBUG_LOG("Found Inline Content ");
-									next_ai = ai;
-									break;
-								}
-								i++;
-								prev_ai = ai;
-							}
-						}
-					}
+					EM_DEBUG_LOG("current_ai - %p", current_ai);
 
 					ai = em_malloc(sizeof(struct attachment_info));
 					if (ai == NULL)  {
@@ -2268,7 +2242,6 @@ PARTLIST* emcore_get_body_full(MAILSTREAM *stream, int msg_uid, BODY *body, stru
 							*err_code = EMAIL_ERROR_OUT_OF_MEMORY;
 						return NULL;				
 					}
-					cnt_info->file = ai;
 
 					if ((body->id) || (body->location) || ((body->disposition.type != NULL) && ((body->disposition.type[0] == 'i') || (body->disposition.type[0] == 'I'))))
 						ai->type = 1; /* inline contents */
@@ -2301,22 +2274,17 @@ PARTLIST* emcore_get_body_full(MAILSTREAM *stream, int msg_uid, BODY *body, stru
 							cnt_info->grab_type = cnt_info->grab_type | GRAB_TYPE_ATTACHMENT;
 					} 
 				
-					if (ai->type != 1 && next_ai != NULL) {
-						/* Means next_ai points to the inline attachment info structure */
-						if (prev_ai == NULL) {
-							/* First node is inline attachment */
-							ai->next = next_ai;
+					if (current_ai == NULL) {
 							cnt_info->file = ai;
-						}
-						else {
-							prev_ai->next = ai;
-							ai->next = next_ai;
-						}
+					} else {
+						while(current_ai->next != NULL)
+							current_ai = current_ai->next;
+
+						current_ai->next = ai;
 					}
 				}
 			}
 							
-			
 			/* if (cnt_info->grab_type == GRAB_TYPE_ATTACHMENT */
 			if (cnt_info->grab_type & GRAB_TYPE_ATTACHMENT) {
 				if (((body->disposition.type != NULL) && ((body->disposition.type[0] == 'a') || (body->disposition.type[0] == 'A'))) && (cnt_info->file != NULL)) {
@@ -2457,7 +2425,13 @@ static int emcore_write_response_into_file(char *filename, char *write_mode, cha
 	
 		default:  {
 			unsigned char *orignal = (unsigned char *)g_strdup_printf("%s\r\n", encoded);
-			memcpy(decoded = malloc(encoded_len + 3), orignal, encoded_len + 3);
+			decoded = em_malloc(encoded_len + 3); /*prevent 28347*/
+			if(!decoded) {
+				EM_DEBUG_EXCEPTION("em_malloc failed");
+				error = EMAIL_ERROR_OUT_OF_MEMORY;
+				goto FINISH_OFF;
+			}
+			memcpy(decoded, orignal, encoded_len + 3);
 			decoded_len = encoded_len + 2;
 			g_free(orignal);
 		}
@@ -2470,9 +2444,8 @@ static int emcore_write_response_into_file(char *filename, char *write_mode, cha
 
 		if (!(fp = fopen(filename, write_mode)))  {
 			EM_DEBUG_EXCEPTION("fopen failed - %s", filename);
-			error = EMAIL_ERROR_SYSTEM_FAILURE;
-			EM_SAFE_FREE(decoded);
-			return false;
+			error = EMAIL_ERROR_SYSTEM_FAILURE; /*prevent 28347*/
+			goto FINISH_OFF;
 		}
 
 		if (subtype && subtype[0] == 'H')  {

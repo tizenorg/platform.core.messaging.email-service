@@ -112,7 +112,10 @@ EXPORT_API bool emipc_create_task(unsigned char *task_stream, int response_chann
 		EM_DEBUG_EXCEPTION("Malloc failed.");
 		ret = false;
 	} else {
-		emipc_parse_stream_email_task(task, task_stream, response_channel);
+		if (!emipc_parse_stream_email_task(task, task_stream, response_channel)) {
+			EM_DEBUG_EXCEPTION("emipc_parse_stream_email_task failed");
+			return false;
+		}
 		
 		EM_DEBUG_LOG("[IPCLib] ======================================================");
 		EM_DEBUG_LOG("[IPCLib] Register new task : %p", task);

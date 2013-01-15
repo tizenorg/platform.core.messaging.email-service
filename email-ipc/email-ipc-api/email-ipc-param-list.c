@@ -22,6 +22,7 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include <malloc.h>
 
 #include "email-ipc-build.h"
 #include "email-ipc-param-list.h"
@@ -77,23 +78,41 @@ EXPORT_API bool emipc_parse_stream_of_param_list(emipc_param_list *param_list, v
 		return false;
 	}
 
+	int stream_len = malloc_usable_size(stream);
+	int remain_len = stream_len - (sizeof(long) * eSTREAM_DATA);
+	EM_DEBUG_LOG("Allocated stream size : %dbyte", stream_len);
+
 	unsigned char* cur = ((unsigned char*)stream) + sizeof(int)*eSTREAM_DATA;
 
 	int i = 0;
 	/* stream is composed of data type which is encoded into length and data field */
 	int len = 0;
 	for(i = 0; i < parameter_count; i++) {
+
+		if (remain_len < sizeof(int)) {
+			EM_DEBUG_EXCEPTION("Not enough remain stream_len[%d]", remain_len);
+			return false;
+		}
+
 		/* reading length */
 		memcpy(&len, cur, sizeof(int));
 
 		/* moving from length field to data field */
 		cur += sizeof(int);
+		remain_len -= sizeof(int);
+
+		if (remain_len > 0 && len > 0 && remain_len >= len)
 		emipc_add_param_to_param_list(param_list, (void*)cur, len);
+		else {
+			EM_DEBUG_EXCEPTION("data_len[%d] is not in the boundary of remain stream_len", len);
+			return false;
+		}
 
 		EM_DEBUG_LOG("Parsing stream : element %d is %dbyte long ", i, len);
 
 		/*  move to next parameter	 */
 		cur += len;
+		remain_len -= len;
 	}
 
 	EM_DEBUG_FUNC_END();

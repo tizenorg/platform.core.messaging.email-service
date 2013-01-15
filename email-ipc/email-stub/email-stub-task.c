@@ -58,7 +58,10 @@ EXPORT_API bool emipc_parse_stream_email_task(emipc_email_task *task, void *stre
 	memset(task->api_info, 0x00, sizeof(emipc_email_api_info));
 	
 	if (task->api_info) {
-		emipc_deserialize_api_info(task->api_info, ePARAMETER_IN, stream);
+		if (!emipc_deserialize_api_info(task->api_info, ePARAMETER_IN, stream)) {
+			EM_DEBUG_EXCEPTION("emipc_deserialize_api_info failed");
+			return false;
+		}
 		task->api_info->response_id = response_id;
 		return true;
 	}
