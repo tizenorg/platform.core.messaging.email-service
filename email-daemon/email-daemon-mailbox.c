@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 *
@@ -174,9 +174,9 @@ INTERNAL_FUNC int emdaemon_add_mailbox(email_mailbox_t* new_mailbox, int on_serv
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-	
+
 	email_account_t* ref_account = emdaemon_get_account_reference(new_mailbox->account_id);
-	
+
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emdaemon_get_account_reference failed [%d]", new_mailbox->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -227,15 +227,15 @@ INTERNAL_FUNC int emdaemon_update_mailbox(email_mailbox_t* old_mailbox, email_ma
 	/*  default variable */
 	int ret = false;;
 	int err = EMAIL_ERROR_NONE;
-	
-	if (!old_mailbox || old_mailbox->account_id <= 0 || !old_mailbox->mailbox_name 
+
+	if (!old_mailbox || old_mailbox->account_id <= 0 || !old_mailbox->mailbox_name
 		|| !new_mailbox || new_mailbox->account_id <= 0 || !new_mailbox->mailbox_name)  {
 		EM_DEBUG_EXCEPTION("INVALID PARAM");
 		if (old_mailbox != NULL)
 			EM_DEBUG_EXCEPTION("old_mailbox->account_id[%d], old_mailbox->mailbox_name[%p]", old_mailbox->account_id, old_mailbox->mailbox_name);
 		if (new_mailbox != NULL)
 			EM_DEBUG_EXCEPTION("new_mailbox->account_id[%d], new_mailbox->mailbox_name[%p]", new_mailbox->account_id, new_mailbox->mailbox_name);
-		
+
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
@@ -327,12 +327,12 @@ FINISH_OFF:
 INTERNAL_FUNC int emdaemon_delete_mailbox(int input_mailbox_id, int on_server, int *handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("input_mailbox_id[%d], err_code[%p]", input_mailbox_id, err_code);
-	
+
 	/*  default variable */
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 	emstorage_mailbox_tbl_t *mailbox_tbl = NULL;
-	
+
 	if ((err = emstorage_get_mailbox_by_id(input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE || !mailbox_tbl) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed. [%d]", err);
 		goto FINISH_OFF;
@@ -344,9 +344,9 @@ INTERNAL_FUNC int emdaemon_delete_mailbox(int input_mailbox_id, int on_server, i
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-	
+
 	email_account_t* ref_account = emdaemon_get_account_reference(mailbox_tbl->account_id);
-	
+
 
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emdaemon_get_account_reference failed [%d]", mailbox_tbl->account_id);
@@ -433,14 +433,14 @@ FINISH_OFF:
 INTERNAL_FUNC int emdaemon_sync_header(int input_account_id, int input_mailbox_id, int *handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id[%d], input_mailbox_id[%d], handle[%p], err_code[%p]", input_account_id, input_mailbox_id, handle, err_code);
-	
+
 	/*  default variable */
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	
+
 	email_event_t event_data;
 	email_account_t* ref_account = NULL;
-	
+
 	memset(&event_data, 0x00, sizeof(email_event_t));
 
 	if (input_mailbox_id < 0) {
@@ -457,14 +457,14 @@ INTERNAL_FUNC int emdaemon_sync_header(int input_account_id, int input_mailbox_i
 		/* In case of Mailbox NULL, we need to set arg as EMAIL_SYNC_ALL_MAILBOX */
 		if (input_mailbox_id == 0)
 			event_data.event_param_data_4 = EMAIL_SYNC_ALL_MAILBOX;
-		
+
 		if (!emcore_insert_event(&event_data, (int*)handle, &err))   {
 			EM_DEBUG_EXCEPTION("emcore_insert_event falied [%d]", err);
 			goto FINISH_OFF;
 		}
 	}
 	else {
-	
+
 		if (!(ref_account = emdaemon_get_account_reference(input_account_id))) {
 			EM_DEBUG_EXCEPTION("emdaemon_get_account_reference failed [%d]", input_account_id);
 			err = EMAIL_ERROR_INVALID_ACCOUNT;

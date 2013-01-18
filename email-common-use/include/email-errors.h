@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 *
@@ -41,6 +41,7 @@
 #define EMAIL_ERROR_INVALID_RESPONSE                    -1013    /*  unexpected network response was given. - Invalid server response */
 #define EMAIL_ERROR_NO_RECIPIENT                        -1062    /*  no recipients information was found */
 #define EMAIL_ERROR_INVALID_FILE_PATH                   -4101    /*  invalid file path was given */
+#define EMAIL_ERROR_INVALID_REFERENCE_MAIL              -4102    /*  invalid reference mail was given */
 
 /* Error codes for missing data */
 #define EMAIL_ERROR_ACCOUNT_NOT_FOUND                   -1014    /*  no matched account was found */
@@ -137,6 +138,8 @@
 #define EMAIL_ERROR_IMAP4_CREATE_FAILURE                -1210    /* Failed to run the command 'Create' on IMAP server */
 #define EMAIL_ERROR_IMAP4_DELETE_FAILURE                -1211    /* Failed to run the command 'Delete' on IMAP server */
 #define EMAIL_ERROR_IMAP4_RENAME_FAILURE                -1212    /* Failed to run the command 'Rename' on IMAP server */
+
+#define EMAIL_ERROR_INVALID_ATTACHMENT_SAVE_NAME        -1301
 
 /* Error codes for certificate */
 #define EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE            -3001    /*  Cannot load the certificate */

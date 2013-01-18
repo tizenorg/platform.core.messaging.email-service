@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 * 
@@ -45,6 +45,7 @@ extern "C"
 
 /* ----------------------------------------------------------------------------- */
 /*  Feature definitions */
+#define __FEATURE_USING_ACCOUNT_SVC__
 #define __FEATURE_BACKUP_ACCOUNT__
 #define __FEATURE_MOVE_TO_OUTBOX_FIRST__
 /*  #define __FEATURE_PARTIAL_BODY_FOR_POP3__ */
@@ -67,6 +68,7 @@ extern "C"
 #define __FEATURE_PROGRESS_IN_OUTBOX__
 /*  #define __FEATURE_USE_SHARED_MUTEX_FOR_PROTECTED_FUNC_CALL__ */
 /*  #define __FEATURE_IMAP_IDLE__ */
+
 
 /* ----------------------------------------------------------------------------- */
 /*  Macro */
@@ -117,7 +119,7 @@ extern "C"
 
 #define SHM_FILE_FOR_DB_LOCK                "/.email_shm_db_lock"
 
-#define NATIVE_EMAIL_APPLICATION_PKG        "org.tizen.email"
+#define NATIVE_EMAIL_APPLICATION_PKG        "com.samsung.email"
 
 #define IMAP_ID_OS                          "TIZEN"
 #define IMAP_ID_OS_VERSION                  "2.0b"
@@ -187,11 +189,11 @@ typedef pthread_t thread_t;
 
 #define SMTP_RESPONSE_OK		        250
 #define SMTP_RESPONSE_READY		        354
+#define SMTP_RESPONSE_CONNECTION_BROKEN 421
 #define SMTP_RESPONSE_WANT_AUTH		    505
 #define SMTP_RESPONSE_WANT_AUTH2	    530
 #define SMTP_RESPONSE_UNAVAIL		    550
 
-#define VCONF_KEY_DEFAULT_SLOT_SIZE     "db/private/email-service/slot_size"
 #define VCONF_KEY_LATEST_MAIL_ID        "db/private/email-service/latest_mail_id"
 #define VCONF_KEY_DEFAULT_ACCOUNT_ID    "db/private/email-service/default_account_id"
 #define VCONF_KEY_NOTI_PRIVATE_ID       "db/private/email-service/noti_private_id"

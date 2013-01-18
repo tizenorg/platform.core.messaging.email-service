@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 *
@@ -207,14 +207,14 @@ INTERNAL_FUNC char* em_replace_all_string(char *source_string, char *old_string,
 	int i = 0, count = 0;
 	int old_str_length = 0;
 	int new_str_length = 0;
-	
+
 	EM_IF_NULL_RETURN_VALUE(source_string, NULL);
 	EM_IF_NULL_RETURN_VALUE(old_string, NULL);
 	EM_IF_NULL_RETURN_VALUE(new_string, NULL);
 
 	old_str_length = EM_SAFE_STRLEN(old_string);
 	new_str_length = EM_SAFE_STRLEN(new_string);
-	
+
 	if (old_str_length != new_str_length) {
 		for (i = 0; source_string[i] != '\0';) {
 			if (memcmp(&source_string[i], old_string, old_str_length) == 0) {
@@ -229,7 +229,7 @@ INTERNAL_FUNC char* em_replace_all_string(char *source_string, char *old_string,
 	}
 
 	result_buffer = (char *)malloc(i + 1 + count*(new_str_length-old_str_length));
-	if (result_buffer == NULL) 
+	if (result_buffer == NULL)
 		return NULL;
 
 	p = result_buffer;
@@ -243,7 +243,7 @@ INTERNAL_FUNC char* em_replace_all_string(char *source_string, char *old_string,
 		}
 	}
 	*p = '\0';
-	
+
 	EM_DEBUG_FUNC_END("result_buffer : %s", result_buffer);
 	return result_buffer;
 }
@@ -536,7 +536,7 @@ INTERNAL_FUNC int em_get_content_type_from_extension_string(const char *extensio
 		}
 		i++;
 	}
-	
+
 	switch (i) {
 	case EXTENSION_JPEG:
 	case EXTENSION_JPG:
@@ -1094,6 +1094,11 @@ INTERNAL_FUNC int em_send_notification_to_active_sync_engine(int subType, ASNoti
 			for(i = 0; i <data->delete_mailbox_ex.mailbox_id_count; i++)
 				dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->delete_mailbox_ex.mailbox_id_array[i]), DBUS_TYPE_INVALID);
 			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox_ex.handle), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_SEND_MAIL_WITH_DOWNLOADING_OF_ORIGINAL_MAIL:
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail_with_downloading_attachment_of_original_mail.handle), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail_with_downloading_attachment_of_original_mail.mail_id), DBUS_TYPE_INVALID);
 			break;
 
 		default:

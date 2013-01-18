@@ -1,10 +1,10 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -55,15 +55,15 @@
 #include "email-core-mail.h"
 #include "email-core-event.h"
 #include "email-core-mailbox.h"
-#include "email-core-account.h" 
-#include "email-core-mailbox-sync.h" 
+#include "email-core-account.h"
+#include "email-core-mailbox-sync.h"
 #include "email-core-mime.h"
-#include "email-core-sound.h" 
+#include "email-core-sound.h"
 #include "email-core-signal.h"
 #include "email-utilities.h"
 #include "email-convert.h"
 
-#define LED_TIMEOUT_SECS          12 
+#define LED_TIMEOUT_SECS          12
 #define G_DISPLAY_LENGTH          256
 
 #define DIR_SEPERATOR_CH          '/'
@@ -78,11 +78,11 @@
 #define EMAIL_CH_SQUARE_BRACKET_E ']'
 #define EMAIL_CH_SPACE            ' '
 #define EMAIL_NOTI_ICON_PATH      EMAILPATH"/res/image/Q02_Notification_email.png"
-#define VCONF_KEY_UNREAD_MAIL_COUNT "db/badge/org.tizen.email"
+#define VCONF_KEY_UNREAD_MAIL_COUNT "db/badge/com.samsung.email"
 
 typedef struct  _em_transaction_info_type_t {
 	int mail_id;
-	int	handle;	
+	int	handle;
 	struct _em_transaction_info_type_t *next;
 
 } em_transaction_info_type_t;
@@ -116,47 +116,47 @@ int emcore_get_long_encoded_path_with_account_info(email_account_t *account, cha
 {
 	EM_PROFILE_BEGIN(emCorelongEncodedpath);
 	EM_DEBUG_FUNC_BEGIN("account[%p], path[%s], delimiter[%d], long_enc_path[%p], err_code[%p]", account, path, delimiter, long_enc_path, err_code);
-	
+
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
 	char *p = NULL;
-	
+
 	size_t long_enc_path_len = 0;
-	
+
 	if (path == NULL || (path && strncmp(path, ENCODED_PATH_SMTP, EM_SAFE_STRLEN(ENCODED_PATH_SMTP)) != 0)) {		/*  imap or pop3 */
 		EM_DEBUG_LOG("account->incoming_server_address[%p]", account->incoming_server_address);
 		EM_DEBUG_LOG("account->incoming_server_address[%s]", account->incoming_server_address);
-		
+
 		if (!account->incoming_server_address) {
 			EM_DEBUG_EXCEPTION("account->incoming_server_address is null");
 			error = EMAIL_ERROR_INVALID_ACCOUNT;
 			goto FINISH_OFF;
 		}
-	
+
 		long_enc_path_len = EM_SAFE_STRLEN(account->incoming_server_address) + EM_SAFE_STRLEN(path) + 64; /*prevent 34357*/
-		
+
 		*long_enc_path = em_malloc(long_enc_path_len);
 		if (!*long_enc_path)  {
 			EM_DEBUG_EXCEPTION("malloc failed...");
 			error = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
 		}
-		
+
 		p = *long_enc_path;
-		
+
 		/*  ex:"{mai.test.com:143/imap} or {mai.test.com:143/imap/tls}my-mailbox" */
 
 		SNPRINTF(p, long_enc_path_len, "{%s:%d/%s/user=%d",
 			account->incoming_server_address,
 			account->incoming_server_port_number,
 			account->incoming_server_type == EMAIL_SERVER_TYPE_POP3 ? "pop3" : "imap", account->account_id);
-		
+
 		if (account->incoming_server_secure_connection & 0x01)  {
 			strncat(p, "/ssl", long_enc_path_len-(EM_SAFE_STRLEN(p)+1));
 			/* strcat(p, "/tryssl"); */
 		}
 
-		/* Currently, receiving servers doesn't require tls. 
+		/* Currently, receiving servers doesn't require tls.
 		if (account->incoming_server_secure_connection & 0x02)
 			strncat(p, "/tls", long_enc_path_len-(EM_SAFE_STRLEN(p)+1));
 		else
@@ -171,28 +171,28 @@ int emcore_get_long_encoded_path_with_account_info(email_account_t *account, cha
 	}
 	else  {		/*  smtp */
 		long_enc_path_len = EM_SAFE_STRLEN(account->outgoing_server_address) + 64;
-		
+
 		*long_enc_path = em_malloc(EM_SAFE_STRLEN(account->outgoing_server_address) + 64);
 		if (!*long_enc_path) {
 			EM_DEBUG_EXCEPTION("\t malloc failed...\n");
-			
+
 			error = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
 		}
-		
+
 		p = *long_enc_path;
-		
+
 		/*  ex:"mail.test.com:25/smtp" */
 
 		SNPRINTF(p, long_enc_path_len, "%s:%d/%s",
 			account->outgoing_server_address,
 			account->outgoing_server_port_number,
 			"smtp");
-		
+
 		if (account->outgoing_server_need_authentication) {
 			SNPRINTF(p + EM_SAFE_STRLEN(p), long_enc_path_len-(EM_SAFE_STRLEN(p)), "/user=%d", account->account_id);
 		}
-		
+
 		if (account->outgoing_server_secure_connection & 0x01) {
 			strncat(p, "/ssl", long_enc_path_len-(EM_SAFE_STRLEN(p)+1));
 			/* strcat(p, "/tryssl"); */
@@ -205,29 +205,29 @@ int emcore_get_long_encoded_path_with_account_info(email_account_t *account, cha
 
 	if (path == NULL || (path && strncmp(path, ENCODED_PATH_SMTP, EM_SAFE_STRLEN(ENCODED_PATH_SMTP)) != 0)) {
 		strncat(p, "}", long_enc_path_len-(EM_SAFE_STRLEN(p)+1));
-		
+
 		if (path != NULL) {
 			char *enc_name = NULL;
-			
+
 			if (!emcore_get_encoded_mailbox_name(path, &enc_name, &error))  {
 				EM_DEBUG_EXCEPTION("emcore_get_encoded_mailbox_name failed - %d", error);
 				*long_enc_path = NULL;
 				goto FINISH_OFF;
 			}
-			
+
 			if (enc_name)  {
 				strncat(p, enc_name, long_enc_path_len-(EM_SAFE_STRLEN(p)+1));
 				EM_SAFE_FREE(enc_name);
 			}
 		}
 	}
-	
+
 	ret = true;
-	
+
 FINISH_OFF:
 	if (ret != true)
 		EM_SAFE_FREE(p);
-	
+
 	if (err_code != NULL)
 		*err_code = error;
 	EM_PROFILE_END(emCorelongEncodedpath);
@@ -238,10 +238,10 @@ int emcore_get_long_encoded_path(int account_id, char *path, int delimiter, char
 {
 	EM_PROFILE_BEGIN(emCorelongEncodedpath);
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], delimiter[%d], long_enc_path[%p], err_code[%p]", account_id, delimiter, long_enc_path, err_code);
-	
+
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
-	
+
 	email_account_t *ref_account = emcore_get_account_reference(account_id);
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
@@ -255,7 +255,7 @@ int emcore_get_long_encoded_path(int account_id, char *path, int delimiter, char
 	}
 
 	ret = true;
-	
+
 FINISH_OFF:
 	if (err_code != NULL)
 		*err_code = error;
@@ -266,14 +266,14 @@ FINISH_OFF:
 int emcore_get_encoded_mailbox_name(char *name, char **enc_name, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("name[%s], enc_name[%p], err_code[%p]", name, enc_name, err_code);
-	
+
 	if (!name || !enc_name)  {
 		if (err_code != NULL)
 			*err_code = EMAIL_ERROR_INVALID_PARAM;
 		EM_DEBUG_FUNC_END();
 		return false;
 	}
-	
+
 	/* encoding mailbox name (Charset->UTF8->UTF7) */
 
 	*enc_name = em_malloc(EM_SAFE_STRLEN(name)+1);
@@ -284,9 +284,9 @@ int emcore_get_encoded_mailbox_name(char *name, char **enc_name, int *err_code)
 		EM_DEBUG_FUNC_END();
 		return false;
 	}
-	
+
 	strcpy(*enc_name, name);
-	
+
 	if (err_code != NULL)
 		*err_code = EMAIL_ERROR_NONE;
 
@@ -297,37 +297,37 @@ int emcore_get_encoded_mailbox_name(char *name, char **enc_name, int *err_code)
 int emcore_get_temp_file_name(char **filename, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("filename[%p], err_code[%p]", filename, err_code);
-	
+
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
-	
+
 	if (filename == NULL) {
 		EM_DEBUG_EXCEPTION("\t filename[%p]\n", filename);
 		error = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-	
+
 	char tempname[512] = {0x00, };
 	struct timeval tv;
-	
+
 
 	gettimeofday(&tv, NULL);
 	srand(tv.tv_usec);
 
 	/* Create Directory If deleted by user*/
 	emstorage_create_dir_if_delete();
-	
+
 	SNPRINTF(tempname, sizeof(tempname), "%s%c%d", MAILTEMP, DIR_SEPERATOR_CH, rand());
-	
+
 	char *p = EM_SAFE_STRDUP(tempname);
 	if (p == NULL) {
 		EM_DEBUG_EXCEPTION("\t strdup failed...\n");
 		error = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}
-	
+
 	*filename = p;
-	
+
 	ret = true;
 
 FINISH_OFF:
@@ -340,28 +340,28 @@ FINISH_OFF:
 int emcore_get_file_name(char *path, char **filename, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("path[%s], filename[%p], err_code[%p]", path, filename, err_code);
-	
+
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
-	
+
 	if (!path || !filename) {
 		EM_DEBUG_EXCEPTION("path[%p], filename[%p]", path, filename);
-		
+
 		error = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-	
+
 	int i = (int)EM_SAFE_STRLEN(path);
-	
+
 	/*  get filename */
 	for (; i >= 0; i--)
 		if (path[i] == DIR_SEPERATOR_CH)
 			break;
-	
+
 	*filename = path + i + 1;
-	
+
 	ret = true;
-	
+
 FINISH_OFF:
 		if (err_code != NULL)
 		*err_code = error;
@@ -372,30 +372,30 @@ FINISH_OFF:
 int emcore_get_file_size(char *path, int *size, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("path[%s], size[%p], err_code[%p]", path, size, err_code);
-	
+
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
-	
+
 	if ((path == NULL) || (size == NULL)) {
 		EM_DEBUG_EXCEPTION("\t path[%p], size[%p]\n", path, size);
-		
+
 		error = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-	
+
 	struct stat st_buf;
-	
+
 	if (stat(path, &st_buf) < 0)  {
 		EM_DEBUG_EXCEPTION("\t stat failed - %s\n", path);
-		
+
 		error = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
-	
+
 	*size = st_buf.st_size;
-	
+
 	ret = true;
-	
+
 FINISH_OFF:
 	if (err_code != NULL)
 		*err_code = error;
@@ -417,10 +417,10 @@ static int _emcore_check_host(char *host)
 int emcore_get_address_count(char *addr_str, int *count, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("addr_str[%s], count[%p], err_code[%p]", addr_str, count, err_code);
-	
+
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
-	
+
 	ADDRESS *addr = NULL;
 	ADDRESS *p_addr = NULL;
 	int i = 0, j;
@@ -432,30 +432,30 @@ int emcore_get_address_count(char *addr_str, int *count, int *err_code)
 		error = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-	
+
 	if (addr_str != NULL)  {
 		em_skip_whitespace(addr_str, &p);
 		EM_DEBUG_LOG("em_skip_whitespace[p][%s]", p);
 
 
-		for (i = 0, j = EM_SAFE_STRLEN(p); i < j; i++) 
+		for (i = 0, j = EM_SAFE_STRLEN(p); i < j; i++)
 			if (p[i] == ';') p[i] = ',';
 		rfc822_parse_adrlist(&addr, p, NULL);
 		EM_SAFE_FREE(p);
 
-	
+
 		for (p_addr = addr, i = 0; p_addr; p_addr = p_addr->next, i++)  {
-			if (p_addr->mailbox && p_addr->host) {	
+			if (p_addr->mailbox && p_addr->host) {
 				if (!strncmp(p_addr->mailbox, "UNEXPECTED_DATA_AFTER_ADDRESS", strlen("UNEXPECTED_DATA_AFTER_ADDRESS"))
 				|| !strncmp(p_addr->mailbox, "INVALID_ADDRESS", strlen("INVALID_ADDRESS"))
 				|| !strncmp(p_addr->host, ".SYNTAX-ERROR.", strlen(".SYNTAX-ERROR."))) { /*prevent 34356*/
 					EM_DEBUG_LOG("Invalid address ");
 					continue;
 				}
-			}			
+			}
 			if ((!p_addr->mailbox) || (_emcore_check_host(p_addr->host) == 0)) {
 				EM_DEBUG_EXCEPTION("\t invalid address : mailbox[%s], host[%s]\n", p_addr->mailbox, p_addr->host);
-				
+
 				error = EMAIL_ERROR_INVALID_ADDRESS;
 				/* goto FINISH_OFF; */
 			}
@@ -465,11 +465,11 @@ int emcore_get_address_count(char *addr_str, int *count, int *err_code)
 	*count = i;
 	if (error != EMAIL_ERROR_INVALID_ADDRESS)
 	ret = true;
-	
+
 FINISH_OFF:
-	if (addr) 
+	if (addr)
 		mail_free_address(&addr);
-	
+
 	if (err_code != NULL)
 		*err_code = error;
 	EM_DEBUG_FUNC_END();
@@ -495,11 +495,11 @@ INTERNAL_FUNC int emcore_set_network_error(int err_code)
 int emcore_get_empty_session(email_session_t **session)
 {
 	EM_DEBUG_FUNC_BEGIN("session[%p]", session);
-	
+
 	/*  lock()... */
-	
+
 	int i;
-	
+
 	for (i = 0; i < SESSION_MAX; i++)  {
 		if (!g_session_list[i].status)  {
 			memset(g_session_list+i, 0x00, sizeof(email_session_t));
@@ -508,9 +508,9 @@ int emcore_get_empty_session(email_session_t **session)
 			break;
 		}
 	}
-	
+
 	/*  unlock()... */
-	
+
 	if (session != NULL)
 		*session = (i != SESSION_MAX) ? &g_session_list[i] : NULL;
 	EM_DEBUG_FUNC_END();
@@ -520,7 +520,7 @@ int emcore_get_empty_session(email_session_t **session)
 int emcore_clear_session(email_session_t *session)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	
+
 	if (session)
 		memset(session, 0x00, sizeof(email_session_t));
 	EM_DEBUG_FUNC_END();
@@ -530,18 +530,18 @@ int emcore_clear_session(email_session_t *session)
 int emcore_get_current_session(email_session_t **session)
 {
 	EM_DEBUG_FUNC_BEGIN("session[%p]", session);
-	
+
 	int i;
-	
+
 	for (i = 0; i < SESSION_MAX; i++)  {
 		if (g_session_list[i].tid == GPOINTER_TO_INT(THREAD_SELF())) {
 			if (session)
 				*session = g_session_list + i;
-			
+
 			break;
 		}
 	}
-	
+
 	if (session)
 		*session = (i != SESSION_MAX) ? g_session_list + i : NULL;
 	EM_DEBUG_FUNC_END();
@@ -576,7 +576,7 @@ int emcore_get_mail_count_by_query(int account_id, int priority_sender, int *tot
 
 		/* Make query for searching unread mail */
 		if (account_id != ALL_ACCOUNT) {
-			filter_count = (rule_count * 2) + 3;				
+			filter_count = (rule_count * 2) + 3;
 		} else {
 			filter_count = (rule_count * 2) + 1;                              // 1 is unseen field.
 		}
@@ -621,7 +621,7 @@ int emcore_get_mail_count_by_query(int account_id, int priority_sender, int *tot
 			EM_DEBUG_EXCEPTION("emstorage_write_conditional_clause_for_getting_mail_list failed[%d]", err);
 			goto FINISH_OFF;
 		}
-		
+
 		EM_DEBUG_LOG("conditional_clause_string[%s]", conditional_clause_string);
 
 		/* Search the mail of priority sender in DB */
@@ -651,7 +651,7 @@ FINISH_OFF:
 
 	if (total_mail)
 		*total_mail = total_count;
-	
+
 	if (unread_mail)
 		*unread_mail = unread_count;
 
@@ -664,14 +664,14 @@ FINISH_OFF:
 int emcore_display_unread_in_badge()
 {
 	EM_DEBUG_FUNC_BEGIN();
-	
+
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 	int total_unread_count = 0;
 	int total_mail_count = 0;
 	int badge_ticker = 0;
 	int priority_sender = 0;
-	
+
 
 	/* Get the Global noti ticker */
 	if (vconf_get_bool(VCONFKEY_TICKER_NOTI_BADGE_EMAIL, &badge_ticker) != 0) {
@@ -714,21 +714,21 @@ int emcore_display_unread_in_badge()
 	badge_error_e badge_err = BADGE_ERROR_NONE;
 	bool exist;
 
-	if((badge_err = badge_is_existing("org.tizen.email", &exist)) != BADGE_ERROR_NONE) {
+	if((badge_err = badge_is_existing("com.samsung.email", &exist)) != BADGE_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("badge_is_existing failed [%d]", badge_err);
 		err = EMAIL_ERROR_BADGE_API_FAILED;
 		goto FINISH_OFF;
 	}
 	if (!exist) {
 		/* create badge */
-		if((badge_err = badge_create("org.tizen.email", "/usr/bin/email-service")) != BADGE_ERROR_NONE) {
+		if((badge_err = badge_create("com.samsung.email", "/usr/bin/email-service")) != BADGE_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("badge_create failed [%d]", badge_err);
 			err = EMAIL_ERROR_BADGE_API_FAILED;
 			goto FINISH_OFF;
 		}
 	}
 
-	if((badge_err = badge_set_count("org.tizen.email", total_unread_count)) != BADGE_ERROR_NONE) {
+	if((badge_err = badge_set_count("com.samsung.email", total_unread_count)) != BADGE_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("badge_set_count failed [%d]", badge_err);
 		err = EMAIL_ERROR_BADGE_API_FAILED;
 		goto FINISH_OFF;
@@ -861,7 +861,7 @@ static int emcore_add_notification(int account_id, int mail_id, email_action_t a
 	int err = EMAIL_ERROR_NONE;
 
 	EM_DEBUG_FUNC_END("ret [%d]", err);
-	return err;	
+	return err;
 }
 
 INTERNAL_FUNC int emcore_show_user_message(int id, email_action_t action, int error)
@@ -881,7 +881,7 @@ INTERNAL_FUNC int emcore_show_user_message(int id, email_action_t action, int er
 			EM_DEBUG_LOG("Invalid mail_id");
 			return false;
 		}
-		
+
 		if (!emstorage_get_mail_by_id(id, &mail_table_data, true, NULL)) {
 			EM_DEBUG_LOG("Mail not found");
 			return false;
@@ -898,25 +898,25 @@ INTERNAL_FUNC int emcore_show_user_message(int id, email_action_t action, int er
 
 		if (!emstorage_free_mail(&mail_table_data, 1, NULL))
 			EM_DEBUG_EXCEPTION("emstorage_free_mail Failed");
-		
+
 		ret = true;
 	}
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
 	return ret;
 }
-	
+
 
 /* storage space handling - 210709 */
 int emcore_get_storage_status(void)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int storage_status = 0, nError = 0;
-	
+
 	g_type_init();
 
-#ifdef STORAGE_STATUS	
+#ifdef STORAGE_STATUS
 	nError = vconf_get_int(PS_KEY_SYSTEM_STORAGE_MOVI_STATUS,
-							&storage_status);	
+							&storage_status);
 #endif /*  STORAGE_STATUS */
 
 	if (nError == -1) {
@@ -924,17 +924,17 @@ int emcore_get_storage_status(void)
 		return false;
 	}
 	EM_DEBUG_FUNC_END();
-	return storage_status; 
+	return storage_status;
 }
 
 int emcore_is_storage_full(int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	
+
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	struct statfs buf = {0}; 
-	
+	struct statfs buf = {0};
+
 	if (statfs(DATA_PATH, &buf) == -1) {
 		EM_DEBUG_EXCEPTION("statfs(\"%s\") failed - %d", DATA_PATH, errno);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -947,10 +947,10 @@ int emcore_is_storage_full(int *err_code)
 		if (i_free < EMAIL_LIMITATION_FREE_SPACE)
 			err = EMAIL_ERROR_MAIL_MEMORY_FULL;
 	}
-	
+
 	if (err == EMAIL_ERROR_MAIL_MEMORY_FULL)
 		ret = true;
-	
+
 FINISH_OFF:
 	if (err_code != NULL)
 		*err_code = err;
@@ -966,20 +966,20 @@ int emcore_calc_mail_size(email_mail_data_t *input_mail_data, email_attachment_d
 	int                    mail_size = 0; /*  size of the plain text body and attachments */
 	int                    err       = EMAIL_ERROR_NONE;
 	int                    i         = 0;
-	
-	if (!input_mail_data || (input_attachment_count && !input_attachment_data_list) || (!input_attachment_count &&input_attachment_data_list) || !output_size)  {	
+
+	if (!input_mail_data || (input_attachment_count && !input_attachment_data_list) || (!input_attachment_count &&input_attachment_data_list) || !output_size)  {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-	
+
 	if (input_mail_data->file_path_plain != NULL) {
 		if (stat(input_mail_data->file_path_plain, &st_buf) < 0)  {
 			EM_DEBUG_EXCEPTION("input_mail_data->file_path_plain : stat(\"%s\") failed...", input_mail_data->file_path_plain);
 			err = EMAIL_ERROR_INVALID_MAIL;
 			goto FINISH_OFF;
 		}
-		
+
 		mail_size += st_buf.st_size;
 
 	}
@@ -990,10 +990,10 @@ int emcore_calc_mail_size(email_mail_data_t *input_mail_data, email_attachment_d
 			err = EMAIL_ERROR_INVALID_MAIL;
 			goto FINISH_OFF;
 		}
-		
+
 		mail_size += st_buf.st_size;
 	}
-	
+
 	for(i = 0; i < input_attachment_count; i++)  {
 		if (stat(input_attachment_data_list[i].attachment_path, &st_buf) < 0)  {
 			EM_DEBUG_EXCEPTION("stat(\"%s\") failed...", input_attachment_data_list[i].attachment_path);
@@ -1004,9 +1004,9 @@ int emcore_calc_mail_size(email_mail_data_t *input_mail_data, email_attachment_d
 	}
 
 	*output_size = mail_size;
-	
+
 FINISH_OFF:
-	
+
 	EM_DEBUG_FUNC_END("mail_size [%d]", mail_size);
 	return err;
 }
@@ -1022,11 +1022,11 @@ char *emcore_get_alias_of_mailbox(const char *mailbox_path)
 	gchar **token_list = NULL;
 	gchar *mailbox = NULL, *name = NULL;
 	char *converted_name;
-	
-	
+
+
 	mailbox = g_strdup(mailbox_path);
 	token_list = g_strsplit_set(mailbox, "/", -1);
-	
+
 	if (mailbox)
 		g_free(mailbox);
 
@@ -1040,7 +1040,7 @@ char *emcore_get_alias_of_mailbox(const char *mailbox_path)
 	g_strfreev(token_list);
 
 	converted_name = emcore_convert_mutf7_to_utf8(name);
-	
+
 	if (name)
 		g_free(name);
 
@@ -1065,7 +1065,7 @@ static int emcore_get_first_address(const char *full_address, char **alias, char
 	char *address_start = NULL;
 	char *address_end = NULL;
 	char *first_address = NULL;
-	
+
 	if (full_address){
 		s = (char *)strchr((char *)full_address, ';');
 		if (s == NULL)
@@ -1075,7 +1075,7 @@ static int emcore_get_first_address(const char *full_address, char **alias, char
 
 		/*  get alias */
 		*alias = NULL;
-		if ((alias_start = (char *)strchr((char *)first_address, '\"'))){	
+		if ((alias_start = (char *)strchr((char *)first_address, '\"'))){
 			alias_start++;
 			alias_cursor = alias_start;
 			while ((alias_cursor = (char *)strchr((char *)(alias_cursor), '\"'))){
@@ -1085,7 +1085,7 @@ static int emcore_get_first_address(const char *full_address, char **alias, char
 					break;
 			}
 			if (alias_end)	{	/*  there is "alias" */
-				*alias = strndup(alias_start, alias_end - alias_start);	
+				*alias = strndup(alias_start, alias_end - alias_start);
 				EM_DEBUG_LOG("alias [%s]", *alias);
 			}
 		}
@@ -1096,7 +1096,7 @@ static int emcore_get_first_address(const char *full_address, char **alias, char
 			s = first_address;
 		else
 			s = alias_end+1;
-		if ((address_start = (char *)strchr((char  *)s, '<'))){	
+		if ((address_start = (char *)strchr((char  *)s, '<'))){
 			address_start++;
 			if ((address_end = (char *)strchr((char  *)address_start, '>')))
 				*address = strndup(address_start, address_end - address_start);	/*  (alias) <(addr)>  ... */
@@ -1108,9 +1108,9 @@ static int emcore_get_first_address(const char *full_address, char **alias, char
 	}
 
 	EM_SAFE_FREE(first_address);
-	EM_DEBUG_FUNC_END();	
+	EM_DEBUG_FUNC_END();
 	return true;
-}		
+}
 
 void emcore_fill_address_information_of_mail_tbl(emstorage_mail_tbl_t *mail_data)
 {
@@ -1140,7 +1140,7 @@ void emcore_fill_address_information_of_mail_tbl(emstorage_mail_tbl_t *mail_data
 		recipient = mail_data->full_address_cc;
 	else if (mail_data->full_address_bcc != NULL)
 		recipient = mail_data->full_address_bcc;
-	
+
 	if (emcore_get_first_address(recipient, &first_alias, &first_address) == true) {
 		if (first_alias == NULL)
 			mail_data->alias_recipient = EM_SAFE_STRDUP(first_address);
@@ -1149,14 +1149,14 @@ void emcore_fill_address_information_of_mail_tbl(emstorage_mail_tbl_t *mail_data
 
 		mail_data->email_address_recipient = first_address;
 	}
-	EM_DEBUG_FUNC_END();	
+	EM_DEBUG_FUNC_END();
 }
 
 
 int emcore_get_preview_text_from_file(const char *input_plain_path, const char *input_html_path, int input_preview_buffer_length, char **output_preview_buffer)
 {
 	EM_DEBUG_FUNC_BEGIN("input_plain_path[%p], input_html_path[%p], input_preview_buffer_length [%d], output_preview_buffer[%p]", input_plain_path, input_html_path, input_preview_buffer_length, output_preview_buffer);
-	
+
 	int          err = EMAIL_ERROR_NONE;
 	unsigned int byte_read = 0;
 	unsigned int byte_written = 0;
@@ -1249,7 +1249,6 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 			}
 			goto FINISH_OFF;
 		}
-
 		reg_replace(local_preview_text, CR_STRING, " ");
 		reg_replace(local_preview_text, LF_STRING, " ");
 		reg_replace(local_preview_text, TAB_STRING, " ");
@@ -1270,7 +1269,7 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 					EM_DEBUG_EXCEPTION("g_convert failed");
 					goto FINISH_OFF;
 				}
-				
+
 				EM_DEBUG_LOG("Extract the preview text, again");
 
 				utf8_encoded_string = (char *)g_convert(local_preview_text, byte_read, "UTF-8", encoding_type, &byte_read, &byte_written, &glib_error);
@@ -1279,7 +1278,7 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 					goto FINISH_OFF;
 				}
 
-			}	
+			}
 			EM_SAFE_FREE(local_preview_text);
 			local_preview_text = utf8_encoded_string;
 		}
@@ -1292,7 +1291,7 @@ FINISH_OFF:
 
 	EM_SAFE_FREE(local_preview_text);
 	EM_SAFE_FREE(encoding_type);
-	
+
 	if (fp_html != NULL)
 		fclose(fp_html);
 
@@ -1314,7 +1313,7 @@ INTERNAL_FUNC int emcore_add_transaction_info(int mail_id, int handle , int *err
 
 	EM_DEBUG_LOG("g_transaction_info_list[%p]", g_transaction_info_list);
 	pTransinfo = g_transaction_info_list ;
-	
+
 	if (!(pTemp = em_malloc(sizeof(em_transaction_info_type_t))))  {
 		EM_DEBUG_EXCEPTION("malloc failed...");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
@@ -1322,7 +1321,7 @@ INTERNAL_FUNC int emcore_add_transaction_info(int mail_id, int handle , int *err
 	}
 	pTemp->mail_id = mail_id ;
 	pTemp->handle = handle;
-		
+
 	if (!pTransinfo) {
 		pTransinfo = pTemp ;
 		g_transaction_info_list = pTransinfo ;
@@ -1333,13 +1332,13 @@ INTERNAL_FUNC int emcore_add_transaction_info(int mail_id, int handle , int *err
 		pTransinfo->next = pTemp;
 	}
 	ret = true ;
-	
+
 FINISH_OFF:
 
 	if (err_code)
 		*err_code = err;
 	EM_DEBUG_FUNC_END("g_transaction_info_list[%p]", g_transaction_info_list);
-	return ret;	
+	return ret;
 }
 
 INTERNAL_FUNC int emcore_get_handle_by_mailId_from_transaction_info(int mail_id, int *pHandle)
@@ -1348,7 +1347,7 @@ INTERNAL_FUNC int emcore_get_handle_by_mailId_from_transaction_info(int mail_id,
 
 	int ret = false;
 	em_transaction_info_type_t  *pTransinfo = NULL ;
-	
+
 	if (g_transaction_info_list == NULL) {
 		EM_DEBUG_EXCEPTION("g_transaction_info_list NULL");
 		return false;
@@ -1404,7 +1403,7 @@ INTERNAL_FUNC int emcore_delete_transaction_info_by_mailId(int mail_id )
 		}
 		else {
 			pTransinfo = pTransinfo->next ;
-		}	
+		}
 
 	}while (pTransinfo);
 	EM_DEBUG_FUNC_END();
@@ -1417,16 +1416,16 @@ INTERNAL_FUNC int emcore_delete_transaction_info_by_mailId(int mail_id )
 int reg_replace (char *input_source_text, char *input_old_pattern_string, char *input_new_string)
 {
 	EM_DEBUG_FUNC_BEGIN("input_source_text [%p], input_old_pattern_string [%p], input_new_string [%p]", input_source_text, input_old_pattern_string, input_new_string);
-	int         error_code = EMAIL_ERROR_NONE; 
+	int         error_code = EMAIL_ERROR_NONE;
 	char       *pos = NULL;
 	int         so, n, nmatch, source_text_length, n_count = 1;
-	regmatch_t *pmatch = NULL; 
+	regmatch_t *pmatch = NULL;
 	regex_t     reg_pattern;
 
 	if(!input_source_text || !input_old_pattern_string || !input_new_string) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		error_code = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF;		
+		goto FINISH_OFF;
 	}
 
 	source_text_length = EM_SAFE_STRLEN(input_source_text);
@@ -1440,26 +1439,26 @@ int reg_replace (char *input_source_text, char *input_old_pattern_string, char *
 	if(nmatch < 1) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_DATA");
 		error_code = EMAIL_ERROR_INVALID_DATA;
-		goto FINISH_OFF;		
+		goto FINISH_OFF;
 	}
-	
+
 	pmatch = (regmatch_t*)em_malloc(sizeof(regmatch_t) * nmatch);
 
 	if(pmatch == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		error_code = EMAIL_ERROR_OUT_OF_MEMORY;
-		goto FINISH_OFF;		
+		goto FINISH_OFF;
 	}
-	
+
 	for (pos = input_new_string; *pos ; pos++) {
 		if (*pos == '\\' && *(pos + 1) > '0' && *(pos + 1) <= '9') {
-		
+
 			so = pmatch[*(pos + 1) - 48].rm_so;
 			n  = pmatch[*(pos + 1) - 48].rm_eo - so;
 
 			EM_DEBUG_LOG("so [%d], n [%d]", so, n);
-			
-			if (so < 0 || EM_SAFE_STRLEN (input_new_string) + n - 1 > source_text_length) 
+
+			if (so < 0 || EM_SAFE_STRLEN (input_new_string) + n - 1 > source_text_length)
 				break;
 
 			memmove (pos + n, pos + 2, EM_SAFE_STRLEN (pos) - 1);
@@ -1467,7 +1466,7 @@ int reg_replace (char *input_source_text, char *input_old_pattern_string, char *
 			pos = pos + n - 2;
 		}
 	}
-	
+
 	for (pos = input_source_text; !regexec (&reg_pattern, pos, 1, pmatch, 0);) {
 		n = pmatch[0].rm_eo - pmatch[0].rm_so;
 		pos += pmatch[0].rm_so;
@@ -1477,12 +1476,12 @@ int reg_replace (char *input_source_text, char *input_old_pattern_string, char *
 		pos += EM_SAFE_STRLEN (input_new_string);
 		n_count++;
 	}
-	
+
 FINISH_OFF:
 
 	EM_SAFE_FREE(pmatch);
 	regfree (&reg_pattern);
-	
+
 	EM_DEBUG_FUNC_END("error_code [%d]", error_code);
 	return error_code;
 }
@@ -1493,7 +1492,7 @@ int emcore_strip_HTML(char *source_string)
 	EM_DEBUG_FUNC_BEGIN("source_string [%p]", source_string);
 
 	int result = EMAIL_ERROR_NONE;
-	
+
 	reg_replace(source_string, CR_STRING, " ");
 	reg_replace(source_string, LF_STRING, " ");
 	reg_replace(source_string, "<head[^>]*>", "<head>"); /*  "<()*head([^>])*>", "<head>" */
@@ -1599,7 +1598,7 @@ int emcore_update_notification_for_unread_mail(int account_id)
 	int i, account_count = 0;
 	int err = EMAIL_ERROR_NONE;
 	emstorage_account_tbl_t *p_account_tbl = NULL;
-	
+
 	if (!emstorage_get_account_list(&account_count, &p_account_tbl, true, false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [%d]", err);
 		goto FINISH_OFF;
@@ -1638,7 +1637,7 @@ INTERNAL_FUNC int emcore_finalize_sync(int account_id, int *error)
 		if (!emcore_update_notification_for_unread_mail(ALL_ACCOUNT))
 			EM_DEBUG_EXCEPTION("emcore_update_notification_for_unread_mail failed");
 
-		if (!emcore_display_unread_in_badge()) 
+		if (!emcore_display_unread_in_badge())
 			EM_DEBUG_EXCEPTION("emcore_display_unread_in_badge failed");
 
 		emcore_start_alert();
@@ -1656,7 +1655,7 @@ INTERNAL_FUNC int emcore_clear_all_notifications()
 	int account_count = 0, i;
 	emstorage_account_tbl_t *account_list;
 	int error_code = EMAIL_ERROR_NONE;
-	
+
 	if(!emstorage_get_account_list(&account_count, &account_list, true, false, &error_code)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_account_list failed");
 		goto FINISH_OFF;
@@ -1683,7 +1682,7 @@ INTERNAL_FUNC int emcore_delete_notification_by_account(int account_id)
 	int error_code = EMAIL_ERROR_NONE;
 	int private_id = 0;
 	char vconf_private_id[MAX_PATH] = {0, };
-	
+
 	SNPRINTF(vconf_private_id, sizeof(vconf_private_id), "%s/%d", VCONF_KEY_NOTI_PRIVATE_ID, account_id);
 	if (vconf_get_int(vconf_private_id, &private_id) != 0) {
 		EM_DEBUG_EXCEPTION("vconf_get_int failed");
@@ -1701,14 +1700,14 @@ INTERNAL_FUNC int emcore_delete_notification_by_account(int account_id)
  *@author 					h.gahlaut@samsung.com
  * @param[in] id_set			Specifies the array of mail_id and corresponding server_mail_id sorted by server_mail_ids in ascending order
  * @param[in] id_set_count		Specifies the no. of cells in id_set array i.e. no. of sets of mail_ids and server_mail_ids
- * @param[in] range_len		Specifies the maximum length of string of range allowed. 
+ * @param[in] range_len		Specifies the maximum length of string of range allowed.
  * @param[out] uid_range_set	Returns the uid_ranges formed in the form of a linked list with head stored in uid_range_set pointer
  * @param[out] err_code		Returns the error code.
- * @remarks 					An example of a uid_range formed is 2:6,8,10,14:15,89, 
+ * @remarks 					An example of a uid_range formed is 2:6,8,10,14:15,89,
  *							While using it the caller should remove the ending, (comma)
  * @return This function returns true on success or false on failure.
  */
- 
+
 INTERNAL_FUNC int emcore_convert_to_uid_range_set(email_id_set_t *id_set, int id_set_count, email_uid_range_set **uid_range_set, int range_len, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -1726,8 +1725,8 @@ INTERNAL_FUNC int emcore_convert_to_uid_range_set(email_id_set_t *id_set, int id
 	unsigned long current_uid = 0;
 	unsigned long first_uid = 0;
 	unsigned long last_uid = 0;
-	const int max_subset_string_size = MAX_SUBSET_STRING_SIZE;			
-	char subset_string[MAX_SUBSET_STRING_SIZE] = {0,}; 	
+	const int max_subset_string_size = MAX_SUBSET_STRING_SIZE;
+	char subset_string[MAX_SUBSET_STRING_SIZE] = {0,};
 	email_uid_range_set *current_node = NULL;	/* current_node denotes the current node under processing in the linked list of uid_range_set that is to be formed*/
 
 	if (range_len < (max_subset_string_size + 1))		/* 1 for ending NULL character */ {
@@ -1735,16 +1734,16 @@ INTERNAL_FUNC int emcore_convert_to_uid_range_set(email_id_set_t *id_set, int id
 		error = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-	
+
 	EM_DEBUG_LOG("id set count[%d] range_len[%d]", id_set_count, range_len);
-	
+
 	do {
 		first_uid = last_uid = current_uid = id_set[i].server_mail_id;
 		/* Start subset string by putting first server mail id in it from id_set*/
 		memset(subset_string, 0x00, max_subset_string_size);
 		SNPRINTF(subset_string, max_subset_string_size, "%lu", first_uid);
 		++i;
-		
+
 		/* Check if only one server mail id was left in id_set */
 		if (i >= id_set_count) {
 			/* No more server mail id left in id_set */
@@ -1760,24 +1759,24 @@ INTERNAL_FUNC int emcore_convert_to_uid_range_set(email_id_set_t *id_set, int id
 				current_uid = id_set[i].server_mail_id;
 				if (current_uid == (last_uid + 1)) {
 					last_uid = current_uid;
-					++i;			
+					++i;
 				}
-				else {	
+				else {
 					memset(subset_string, 0x00, max_subset_string_size);
 					if (first_uid != last_uid)	/* Form subset string by first_uid:last_uid */
 						SNPRINTF(subset_string, max_subset_string_size, "%lu:%lu", first_uid, last_uid);
 					else	/* Form subset string by first_uid */
 						SNPRINTF(subset_string, max_subset_string_size, "%lu", first_uid);
-					
+
 					if (false == emcore_append_subset_string_to_uid_range(subset_string, &current_node, uid_range_set, range_len, first_uid, last_uid)) {
 						EM_DEBUG_EXCEPTION("emcore_append_subset_string_to_uid_range failed");
 						goto FINISH_OFF;
 					}
 					/* To Start formation of new subset string break out of inner loop */
-					break;					
+					break;
 				}
-				
-			} while (i < id_set_count);		
+
+			} while (i < id_set_count);
 
 			/* Flow comes here in two cases :
 			1. id_set ended and has continuous numbers at end of id_set so form subset string by first_uid:last_uid . in this  case last_uid == current_uid
@@ -1785,10 +1784,10 @@ INTERNAL_FUNC int emcore_convert_to_uid_range_set(email_id_set_t *id_set, int id
 
 			if (last_uid == current_uid) {
 				/* Case 1 */
-				
+
 				memset(subset_string, 0x00, max_subset_string_size);
 				SNPRINTF(subset_string, max_subset_string_size, "%lu:%lu", first_uid, last_uid);
-			
+
 				if (false == emcore_append_subset_string_to_uid_range(subset_string, &current_node, uid_range_set, range_len, first_uid, last_uid)) {
 					EM_DEBUG_EXCEPTION("emcore_append_subset_string_to_uid_range failed");
 					goto FINISH_OFF;
@@ -1797,36 +1796,36 @@ INTERNAL_FUNC int emcore_convert_to_uid_range_set(email_id_set_t *id_set, int id
 			else {
 				/* Case 2: Do Nothing */
 			}
-				
-		}		
+
+		}
 	} while (i < id_set_count);
 
 	ret = true;
-	
+
 FINISH_OFF:
 	if (NULL != err_code)
 		*err_code = error;
 	EM_DEBUG_FUNC_END();
 	return ret;
-	
-}  
+
+}
 
 /**
  * @fn emcore_append_subset_string_to_uid_range(char *subset_string, email_uid_range_set **uid_range_set, int range_len, unsigned long luid, unsigned long huid)
- * Appends the subset_string to uid range if the uid range has not exceeded maximum length(range_len), otherwise creates a new node in linked list of uid range set 
+ * Appends the subset_string to uid range if the uid range has not exceeded maximum length(range_len), otherwise creates a new node in linked list of uid range set
  * and stores the subset_string in its uid_range. Also sets the lowest and highest uids for the corresponsing uid_range
- * 
+ *
  * @author					h.gahlaut@samsung.com
  * @param[in] subset_string	Specifies the subset string to be appended. A subset string can be like X:Y or X where X and Y are uids.
- * @param[in] range_len		Specifies the maximum length of range string allowed. 
+ * @param[in] range_len		Specifies the maximum length of range string allowed.
  * @param[in] luid			Specifies the lowest uid in subset string
  * @param[in] huid			Specifies the highest uid in subset string
  * @param[out] uid_range_set	Returns the uid_ranges formed in the form of a linked list with head stored in uid_range_set pointer
  * @param[out] err_code		Returns the error code.
- * @remarks 										
+ * @remarks
  * @return This function returns true on success or false on failure.
  */
- 
+
 int emcore_append_subset_string_to_uid_range(char *subset_string, email_uid_range_set **current_node_adr, email_uid_range_set **uid_range_set, int range_len, unsigned long luid, unsigned long huid)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -1838,10 +1837,10 @@ int emcore_append_subset_string_to_uid_range(char *subset_string, email_uid_rang
 		if (NULL == current_node) {
 			EM_DEBUG_EXCEPTION("em_malloc failed");
 			return false;
-		}	
+		}
 
 		current_node->uid_range = (char *)em_malloc(range_len);
-			
+
 		if (NULL == current_node->uid_range) {
 			EM_DEBUG_EXCEPTION("em_malloc failed");
 			EM_SAFE_FREE(current_node);
@@ -1854,8 +1853,8 @@ int emcore_append_subset_string_to_uid_range(char *subset_string, email_uid_rang
 		current_node->highest_uid = huid;
 		(*uid_range_set) = current_node;
 
-		(*current_node_adr) = current_node; 
-		
+		(*current_node_adr) = current_node;
+
 	}
 	else {
 		/* Apart from first call to this function flow will always come here */
@@ -1880,7 +1879,7 @@ int emcore_append_subset_string_to_uid_range(char *subset_string, email_uid_rang
 			}
 
 			/* Allocate uid_range of new node */
-		
+
 			new_node->uid_range =  (char *)em_malloc(range_len);
 
 			if (NULL == new_node->uid_range) {
@@ -1896,7 +1895,7 @@ int emcore_append_subset_string_to_uid_range(char *subset_string, email_uid_rang
 
 			current_node->next = new_node;
 
-			(*current_node_adr) = new_node;	
+			(*current_node_adr) = new_node;
 		}
 	}
 	EM_DEBUG_FUNC_END();
@@ -1905,14 +1904,14 @@ int emcore_append_subset_string_to_uid_range(char *subset_string, email_uid_rang
 
 /**
  * void emcore_free_uid_range_set(email_uid_range_set **uid_range_head)
- * Frees the linked list of uid ranges 
+ * Frees the linked list of uid ranges
  *
  * @author 					h.gahlaut@samsung.com
- * @param[in] uid_range_head	Head pointer of linked list of uid ranges		
- * @remarks 									
+ * @param[in] uid_range_head	Head pointer of linked list of uid ranges
+ * @remarks
  * @return This function does not return anything.
  */
- 
+
 INTERNAL_FUNC
 void emcore_free_uid_range_set(email_uid_range_set **uid_range_set)
 {
@@ -1920,10 +1919,10 @@ void emcore_free_uid_range_set(email_uid_range_set **uid_range_set)
 
 	email_uid_range_set *current_node = NULL;
 	email_uid_range_set *uid_range_head = NULL;
-	
+
 	current_node = uid_range_head = (*uid_range_set);	/* Make the current node and head ptr point to starting of  uid_range_set */
 
-	while (current_node) {		
+	while (current_node) {
 		uid_range_head = current_node->next;		/* Move the head ptr to next node*/
 
 		EM_SAFE_FREE(current_node->uid_range);
@@ -1939,11 +1938,11 @@ void emcore_free_uid_range_set(email_uid_range_set **uid_range_set)
 
 /**
  * @fn emcore_form_comma_separated_strings(int numbers[], int num_count, int max_string_len, char *** strings, int *string_count, int *err_code)
- * Forms comma separated strings of a give max_string_len from an array of numbers 
- * 
+ * Forms comma separated strings of a give max_string_len from an array of numbers
+ *
  * @author 					h.gahlaut@samsung.com
  * @param[in] numbers			Specifies the array of numbers to be converted into comma separated strings.
- * @param[in] num_count		Specifies the count of numbers in numbers array. 
+ * @param[in] num_count		Specifies the count of numbers in numbers array.
  * @param[in] max_string_len	Specifies the maximum length of comma separated strings that are to be formed.
  * @param[out] strings			Returns the base address of a double dimension array which stores the strings.
  * @param[out] string_count		Returns the number of strings formed.
@@ -1987,23 +1986,23 @@ INTERNAL_FUNC int emcore_form_comma_separated_strings(int numbers[], int num_cou
 		EM_DEBUG_EXCEPTION("em_malloc failed ");
 		goto FINISH_OFF;
 	}
-	
+
 	string_list[num_of_strings] = em_malloc(max_string_len);
-	
+
 	if (NULL == string_list[num_of_strings]) {
 		EM_DEBUG_EXCEPTION("em_malloc failed ");
 		goto FINISH_OFF;
 	}
-	
+
 	++num_of_strings;
 	space_in_buffer = max_string_len;
-	
+
 	for (j = 0; j < num_count;++j) {
 		memset(num, 0x00, MAX_INTEGER_LENGTH + 1);
 		SNPRINTF(num, MAX_INTEGER_LENGTH + 1, "%d", numbers[j]);
 
 		num_len = EM_SAFE_STRLEN(num);
-		
+
 		len_of_string_formed = EM_SAFE_STRLEN(string_list[num_of_strings - 1]);
 
 		space_in_buffer = max_string_len - len_of_string_formed ;
@@ -2012,11 +2011,11 @@ INTERNAL_FUNC int emcore_form_comma_separated_strings(int numbers[], int num_cou
 			SNPRINTF(string_list[num_of_strings - 1] + len_of_string_formed, max_string_len, "%d,", numbers[j]);
 		}
 		else {	/*  Removing comma at end of string  */
-			string_list[num_of_strings - 1][len_of_string_formed-1] = '\0';		
+			string_list[num_of_strings - 1][len_of_string_formed-1] = '\0';
 			char **temp = NULL;
 			temp = (char **)realloc(string_list, sizeof(char *) * (num_of_strings + 1));	/*  Allocate new buffer to store a pointer to a new string */
 
-			if (NULL == temp) {	
+			if (NULL == temp) {
 				EM_DEBUG_EXCEPTION("realloc failed");
 				goto FINISH_OFF;
 			}
@@ -2038,7 +2037,7 @@ INTERNAL_FUNC int emcore_form_comma_separated_strings(int numbers[], int num_cou
 
 	/*  Removing comma at end of string  */
 	len_of_string_formed = EM_SAFE_STRLEN(string_list[num_of_strings - 1]);
-	string_list[num_of_strings - 1][len_of_string_formed-1] = '\0';	
+	string_list[num_of_strings - 1][len_of_string_formed-1] = '\0';
 	ret = true;
 
 FINISH_OFF:
@@ -2052,7 +2051,7 @@ FINISH_OFF:
 		*strings = string_list;
 		*string_count = num_of_strings;
 	}
-	
+
 
 	if (NULL != err_code)
 		*err_code = error;
@@ -2062,12 +2061,12 @@ FINISH_OFF:
 }
 /**
  * @fn emcore_free_comma_separated_strings(char *** string_list, int *string_count)
- * Frees the double dimensional array of strings. 
+ * Frees the double dimensional array of strings.
  *
  * @author 					h.gahlaut@samsung.com
  * @param[in] uid_range_head	Address of base address of double dimensional array of strings.
  * @param[in] string_count		Address of variable holding the count of strings.
- * @remarks 									
+ * @remarks
  * @return This function does not return anything.
  */
 INTERNAL_FUNC void emcore_free_comma_separated_strings(char *** string_list, int *string_count)
@@ -2085,7 +2084,7 @@ INTERNAL_FUNC void emcore_free_comma_separated_strings(char *** string_list, int
 			for (i = 0; i < count; ++i)
 				EM_SAFE_FREE(str_list[i]);
 		}
-		
+
 		EM_SAFE_FREE(str_list);
 		*string_list = NULL;	/*  This makes the pointer to be freed as NULL in calling function and saves it from being a dangling pointer for sometime in calling function */
 		*string_count = 0;
@@ -2111,7 +2110,7 @@ int emcore_make_attachment_file_name_with_extension(char *source_file_name, char
 		err  = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-				
+
 	strncpy(attachment_file_name, source_file_name, MAX_PATH);
 	extcheck = strchr(attachment_file_name, '.');
 
@@ -2143,13 +2142,13 @@ FINISH_OFF:
 INTERNAL_FUNC int emcore_add_activity(emstorage_activity_tbl_t *new_activity, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	
+
 	EM_DEBUG_LOG("\t new_activity[%p], err_code[%p]", new_activity, err_code);
 
 	/*  default variable */
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	
+
 	if (!new_activity) {
 		EM_DEBUG_LOG("\t new_activity[%p]\n", new_activity);
 		err = EMAIL_ERROR_INVALID_PARAM;
@@ -2157,74 +2156,74 @@ INTERNAL_FUNC int emcore_add_activity(emstorage_activity_tbl_t *new_activity, in
 	}
 	if (!emstorage_add_activity(new_activity, false, &err)) {
 		EM_DEBUG_LOG("\t emstorage_add_activity falied - %d\n", err);
-		
+
 		goto FINISH_OFF;
 	}
 	ret = true;
-	
+
 FINISH_OFF:
 	if (err_code)
 		*err_code = err;
-	
+
 	return ret;
 }
 
 INTERNAL_FUNC int emcore_delete_activity(emstorage_activity_tbl_t *activity, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	
+
 	EM_DEBUG_LOG("\t new_activity[%p], err_code[%p]", activity, err_code);
-	
+
 	/*  default variable */
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 	if (!activity) {
 		EM_DEBUG_LOG("\t new_activity[%p]\n", activity);
-		
+
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 	if (!emstorage_delete_local_activity(activity, true, &err)) {
 		EM_DEBUG_LOG("\t emstorage_delete_local_activity falied - %d\n", err);
-		
+
 		goto FINISH_OFF;
 	}
 	ret = true;
-	
+
 FINISH_OFF:
 	if (err_code)
 		*err_code = err;
-	
+
 	return ret;
 }
 
 INTERNAL_FUNC int emcore_get_next_activity_id(int *activity_id, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	
+
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 
 	if (NULL == activity_id)
    	{
 		EM_DEBUG_EXCEPTION("\t activity_id[%p]", activity_id);
-		
+
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-	
+
 	if (false == emstorage_get_next_activity_id(activity_id, &err)) {
 		EM_DEBUG_LOG("\t emstorage_get_next_activity_id failed - %d\n", err);
 		goto FINISH_OFF;
 	}
-	
+
 	ret = true;
-	
+
 	FINISH_OFF:
 	if (NULL != err_code) {
 		*err_code = err;
 	}
-	
+
 	return ret;
 
 }
@@ -2295,11 +2294,11 @@ FINISH_OFF:
 		EM_DEBUG_LOG("Search string[%s] not found",search_string);
 
 	*result = p_result;
-	
+
 	if (fp)
 		fclose(fp);
 
-	EM_SAFE_FREE(buf);	
+	EM_SAFE_FREE(buf);
 	EM_SAFE_FREE(stripped);  /*prevent 35586*/
 
 	EM_DEBUG_FUNC_END("error:[%d]", error);

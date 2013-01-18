@@ -1,14 +1,11 @@
+
 [Unit]
 Description=Start the Email service
-After=xorg.target
 
 [Service]
 ExecStart=/usr/bin/email-service
 Nice=5
-OOMScoreAdjust=-100
-Restart=always
-RestartSec=2
-
+OOMScoreAdjust=100
 
 [Install]
 WantedBy=tizen-middleware.target

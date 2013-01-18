@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 *
@@ -1576,26 +1576,27 @@ typedef struct {
 
 typedef enum
 {
-	ACTIVE_SYNC_NOTI_SEND_MAIL,                           /*  a sending notification to ASE (active sync engine */
-	ACTIVE_SYNC_NOTI_SEND_SAVED,                          /*  a sending notification to ASE (active sync engine), All saved mails should be sent */
-	ACTIVE_SYNC_NOTI_SEND_REPORT,                         /*  a sending notification to ASE (active sync engine), report should be sen */
-	ACTIVE_SYNC_NOTI_SYNC_HEADER,                         /*  a sync header - download mails from server. */
-                                                          /*  It is depended on account/s flag1 field whether it excutes downloading header only or downloading header + body */
-                                                          /*  downloading option : 0 is subject only, 1 is text body, 2 is normal */
-	ACTIVE_SYNC_NOTI_DOWNLOAD_BODY,                       /*  a downloading body notification to AS */
-	ACTIVE_SYNC_NOTI_DOWNLOAD_ATTACHMENT,                 /*  a downloading attachment notification to AS */
-	ACTIVE_SYNC_NOTI_VALIDATE_ACCOUNT,                    /*  a account validating notification to AS */
-	ACTIVE_SYNC_NOTI_CANCEL_JOB,                          /*  a cancling job notification to AS */
-	ACTIVE_SYNC_NOTI_SEARCH_ON_SERVER,                    /*  a searching on server notification to AS */
-	ACTIVE_SYNC_NOTI_CLEAR_RESULT_OF_SEARCH_ON_SERVER,    /*  a notification for clearing result of search on server to AS */
-	ACTIVE_SYNC_NOTI_EXPUNGE_MAILS_DELETED_FLAGGED,       /*  a notification to expunge deleted flagged mails */
-	ACTIVE_SYNC_NOTI_RESOLVE_RECIPIENT,                   /*  a notification to get the resolve recipients */
-	ACTIVE_SYNC_NOTI_VALIDATE_CERTIFICATE,                /*  a notification to validate certificate */
-	ACTIVE_SYNC_NOTI_ADD_MAILBOX,                         /*  a notification to add mailbox */
-	ACTIVE_SYNC_NOTI_RENAME_MAILBOX,                      /*  a notification to rename mailbox */
-	ACTIVE_SYNC_NOTI_DELETE_MAILBOX,                      /*  a notification to delete mailbox */
-	ACTIVE_SYNC_NOTI_CANCEL_SENDING_MAIL,                 /*  a notification to cancel a sending mail */
-	ACTIVE_SYNC_NOTI_DELETE_MAILBOX_EX,                   /*  a notification to delete multiple mailboxes */
+	ACTIVE_SYNC_NOTI_SEND_MAIL,                                   /*  a sending notification to ASE (active sync engine */
+	ACTIVE_SYNC_NOTI_SEND_SAVED,                                  /*  a sending notification to ASE (active sync engine), All saved mails should be sent */
+	ACTIVE_SYNC_NOTI_SEND_REPORT,                                 /*  a sending notification to ASE (active sync engine), report should be sen */
+	ACTIVE_SYNC_NOTI_SYNC_HEADER,                                 /*  a sync header - download mails from server. */
+                                                                  /*  It is depended on account/s flag1 field whether it excutes downloading header only or downloading header + body */
+                                                                  /*  downloading option : 0 is subject only, 1 is text body, 2 is normal */
+	ACTIVE_SYNC_NOTI_DOWNLOAD_BODY,                               /*  a downloading body notification to AS */
+	ACTIVE_SYNC_NOTI_DOWNLOAD_ATTACHMENT,                         /*  a downloading attachment notification to AS */
+	ACTIVE_SYNC_NOTI_VALIDATE_ACCOUNT,                            /*  a account validating notification to AS */
+	ACTIVE_SYNC_NOTI_CANCEL_JOB,                                  /*  a cancling job notification to AS */
+	ACTIVE_SYNC_NOTI_SEARCH_ON_SERVER,                            /*  a searching on server notification to AS */
+	ACTIVE_SYNC_NOTI_CLEAR_RESULT_OF_SEARCH_ON_SERVER,            /*  a notification for clearing result of search on server to AS */
+	ACTIVE_SYNC_NOTI_EXPUNGE_MAILS_DELETED_FLAGGED,               /*  a notification to expunge deleted flagged mails */
+	ACTIVE_SYNC_NOTI_RESOLVE_RECIPIENT,                           /*  a notification to get the resolve recipients */
+	ACTIVE_SYNC_NOTI_VALIDATE_CERTIFICATE,                        /*  a notification to validate certificate */
+	ACTIVE_SYNC_NOTI_ADD_MAILBOX,                                 /*  a notification to add mailbox */
+	ACTIVE_SYNC_NOTI_RENAME_MAILBOX,                              /*  a notification to rename mailbox */
+	ACTIVE_SYNC_NOTI_DELETE_MAILBOX,                              /*  a notification to delete mailbox */
+	ACTIVE_SYNC_NOTI_CANCEL_SENDING_MAIL,                         /*  a notification to cancel a sending mail */
+	ACTIVE_SYNC_NOTI_DELETE_MAILBOX_EX,                           /*  a notification to delete multiple mailboxes */
+	ACTIVE_SYNC_NOTI_SEND_MAIL_WITH_DOWNLOADING_OF_ORIGINAL_MAIL, /*  a notification to send a mail with downloading attachment of original mail */
 }	eactivesync_noti_t;
 
 typedef union
@@ -1729,6 +1730,11 @@ typedef union
 		int                     on_server;
 	} delete_mailbox_ex;
 
+	struct _send_mail_with_downloading_attachment_of_original_mail
+	{
+		int                     handle;
+		int                     mail_id;
+	} send_mail_with_downloading_attachment_of_original_mail;
 } ASNotiData;
 
 /*  types for noti string */
@@ -1741,26 +1747,26 @@ typedef enum
 typedef enum {
 	/* Sync tasks */
 	/* Sync tasks for account - from 11000 */
-	EMAIL_SYNC_TASK_ADD_ACCOUNT                                      = 11010,
-	EMAIL_SYNC_TASK_DELETE_ACCOUNT                                   = 11020,
-	EMAIL_SYNC_TASK_UPDATE_ACCOUNT                                   = 11030,
-	EMAIL_SYNC_TASK_GET_ACCOUNT                                      = 11040,
-	EMAIL_SYNC_TASK_GET_ACCOUNT_LIST                                 = 11050,
-	EMAIL_SYNC_TASK_BACKUP_ACCOUNTS                                  = 11060,
-	EMAIL_SYNC_TASK_RESTORE_ACCOUNTS                                 = 11070,
-	EMAIL_SYNC_TASK_GET_PASSWORD_LENGTH_OF_ACCOUNT                   = 11090,
+	EMAIL_SYNC_TASK_ADD_ACCOUNT                                             = 11010,
+	EMAIL_SYNC_TASK_DELETE_ACCOUNT                                          = 11020,
+	EMAIL_SYNC_TASK_UPDATE_ACCOUNT                                          = 11030,
+	EMAIL_SYNC_TASK_GET_ACCOUNT                                             = 11040,
+	EMAIL_SYNC_TASK_GET_ACCOUNT_LIST                                        = 11050,
+	EMAIL_SYNC_TASK_BACKUP_ACCOUNTS                                         = 11060,
+	EMAIL_SYNC_TASK_RESTORE_ACCOUNTS                                        = 11070,
+	EMAIL_SYNC_TASK_GET_PASSWORD_LENGTH_OF_ACCOUNT                          = 11090,
 
 	/* Sync tasks for mailbox - from 12000 */
-	EMAIL_SYNC_TASK_GET_MAILBOX_COUNT                                = 12010,
-	EMAIL_SYNC_TASK_GET_MAILBOX_LIST                                 = 12020,
-	EMAIL_SYNC_TASK_GET_SUB_MAILBOX_LIST                             = 12030,
-	EMAIL_SYNC_TASK_SET_MAIL_SLOT_SIZE                               = 12040,
-	EMAIL_SYNC_TASK_SET_MAILBOX_TYPE                                 = 12050,
-	EMAIL_SYNC_TASK_SET_LOCAL_MAILBOX                                = 12060,
+	EMAIL_SYNC_TASK_GET_MAILBOX_COUNT                                       = 12010,
+	EMAIL_SYNC_TASK_GET_MAILBOX_LIST                                        = 12020,
+	EMAIL_SYNC_TASK_GET_SUB_MAILBOX_LIST                                    = 12030,
+	EMAIL_SYNC_TASK_SET_MAIL_SLOT_SIZE                                      = 12040,
+	EMAIL_SYNC_TASK_SET_MAILBOX_TYPE                                        = 12050,
+	EMAIL_SYNC_TASK_SET_LOCAL_MAILBOX                                       = 12060,
 
 	/* Sync tasks for mail - from 13000 */
-	EMAIL_SYNC_GET_ATTACHMENT                                        = 13010,
-	EMAIL_SYNC_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER                 = 13020,
+	EMAIL_SYNC_GET_ATTACHMENT                                               = 13010,
+	EMAIL_SYNC_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER                        = 13020,
 
 	/* Sync tasks for mail thread - from 14000 */
 
@@ -1769,47 +1775,48 @@ typedef enum {
 	/* Sync tasks for etc - from 16000 */
 
 	/* Async tasks */
-	EMAIL_ASYNC_TASK_BOUNDARY                                        = 60000,
+	EMAIL_ASYNC_TASK_BOUNDARY                                               = 60000,
 	/* Async tasks for account - from 61000 */
-	EMAIL_ASYNC_TASK_VALIDATE_ACCOUNT                                = 61010,
-	EMAIL_ASYNC_TASK_ADD_ACCOUNT_WITH_VALIDATION                     = 61020,
+	EMAIL_ASYNC_TASK_VALIDATE_ACCOUNT                                       = 61010,
+	EMAIL_ASYNC_TASK_ADD_ACCOUNT_WITH_VALIDATION                            = 61020,
 
 	/* Async tasks for mailbox - from 62000 */
-	EMAIL_ASYNC_TASK_ADD_MAILBOX                                     = 62010,
-	EMAIL_ASYNC_TASK_DELETE_MAILBOX                                  = 62020,
-	EMAIL_ASYNC_TASK_RENAME_MAILBOX                                  = 62030,
-	EMAIL_ASYNC_TASK_DOWNLOAD_IMAP_MAILBOX_LIST                      = 62040,
-	EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX                               = 62050,
+	EMAIL_ASYNC_TASK_ADD_MAILBOX                                            = 62010,
+	EMAIL_ASYNC_TASK_DELETE_MAILBOX                                         = 62020,
+	EMAIL_ASYNC_TASK_RENAME_MAILBOX                                         = 62030,
+	EMAIL_ASYNC_TASK_DOWNLOAD_IMAP_MAILBOX_LIST                             = 62040,
+	EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX                                      = 62050,
 
 	/* Async tasks for mail - from 63000 */
-	EMAIL_ASYNC_TASK_ADD_MAIL                                        = 63010,
-	EMAIL_ASYNC_TASK_ADD_READ_RECEIPT                                = 63020,
+	EMAIL_ASYNC_TASK_ADD_MAIL                                               = 63010,
+	EMAIL_ASYNC_TASK_ADD_READ_RECEIPT                                       = 63020,
 
-	EMAIL_ASYNC_TASK_UPDATE_MAIL                                     = 63030,
+	EMAIL_ASYNC_TASK_UPDATE_MAIL                                            = 63030,
 
-	EMAIL_ASYNC_TASK_DELETE_MAIL                                     = 63040,
-	EMAIL_ASYNC_TASK_DELETE_ALL_MAIL                                 = 63050,
-	EMAIL_ASYNC_TASK_EXPUNGE_MAILS_DELETED_FLAGGED                   = 63060,
+	EMAIL_ASYNC_TASK_DELETE_MAIL                                            = 63040,
+	EMAIL_ASYNC_TASK_DELETE_ALL_MAIL                                        = 63050,
+	EMAIL_ASYNC_TASK_EXPUNGE_MAILS_DELETED_FLAGGED                          = 63060,
 
-	EMAIL_ASYNC_TASK_MOVE_MAIL                                       = 63070,
-	EMAIL_ASYNC_TASK_MOVE_ALL_MAIL                                   = 63080,
-	EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT        = 63090,
+	EMAIL_ASYNC_TASK_MOVE_MAIL                                              = 63070,
+	EMAIL_ASYNC_TASK_MOVE_ALL_MAIL                                          = 63080,
+	EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT               = 63090,
 
-	EMAIL_ASYNC_TASK_SET_FLAGS_FIELD                                 = 63100,
+	EMAIL_ASYNC_TASK_SET_FLAGS_FIELD                                        = 63300,
 
-	EMAIL_ASYNC_TASK_DOWNLOAD_MAIL_LIST                              = 63110,
-	EMAIL_ASYNC_TASK_DOWNLOAD_BODY                                   = 63120,
-	EMAIL_ASYNC_TASK_DOWNLOAD_ATTACHMENT                             = 63130,
+	EMAIL_ASYNC_TASK_DOWNLOAD_MAIL_LIST                                     = 63400,
+	EMAIL_ASYNC_TASK_DOWNLOAD_BODY                                          = 63410,
+	EMAIL_ASYNC_TASK_DOWNLOAD_ATTACHMENT                                    = 63420,
 
-	EMAIL_ASYNC_TASK_SEND_MAIL                                       = 63140,
-	EMAIL_ASYNC_TASK_SEND_SAVED                                      = 63150,
+	EMAIL_ASYNC_TASK_SEND_MAIL                                              = 63500,
+	EMAIL_ASYNC_TASK_SEND_SAVED                                             = 63510,
+	EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL = 63520,
 
-	EMAIL_ASYNC_TASK_SEARCH_MAIL_ON_SERVER                           = 63160,
+	EMAIL_ASYNC_TASK_SEARCH_MAIL_ON_SERVER                                  = 63600,
 
 	/* Async tasks for mail thread - from 64000 */
-	EMAIL_ASYNC_TASK_MOVE_THREAD_TO_MAILBOX                          = 64010,
-	EMAIL_ASYNC_TASK_DELETE_THREAD                                   = 64020,
-	EMAIL_ASYNC_TASK_MODIFY_SEEN_FLAG_OF_THREAD                      = 64030,
+	EMAIL_ASYNC_TASK_MOVE_THREAD_TO_MAILBOX                                 = 64010,
+	EMAIL_ASYNC_TASK_DELETE_THREAD                                          = 64020,
+	EMAIL_ASYNC_TASK_MODIFY_SEEN_FLAG_OF_THREAD                             = 64030,
 
 	/* Async tasks for rule - from 65000 */
 

@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 * 
@@ -200,6 +200,7 @@ INTERNAL_FUNC int   emcore_sync_seen_flag_with_server(int mail_ids[], int num, i
 INTERNAL_FUNC int   emcore_set_flags_field(int account_id, int mail_ids[], int num, email_flags_field_type field_type, int value, int *err_code);
 INTERNAL_FUNC char* emcore_convert_mutf7_to_utf8(char *mailbox_name); 
 INTERNAL_FUNC int   emcore_convert_string_to_structure(const char *encoded_string, void **struct_var, email_convert_struct_type_e type);
+INTERNAL_FUNC int   emcore_save_mail_file(int account_id, int mail_id, int attachment_id, char *src_file_path, char *file_name, char *full_path, int *err_code);
 
 #ifdef __FEATURE_BULK_DELETE_MOVE_UPDATE_REQUEST_OPTI__
 INTERNAL_FUNC int   emcore_sync_flags_field_with_server(int mail_ids[], int num, email_flags_field_type field_type, int value, int *err_code);

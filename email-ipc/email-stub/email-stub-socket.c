@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 * 
@@ -166,7 +166,7 @@ EXPORT_API void emipc_wait_for_ipc_request()
 
 						/* IPC request stream is at least 16byte */
 						if (recv_len >= sizeof(long) * eSTREAM_DATA) {
-						emipc_create_task((unsigned char *)sz_buf, event_fd);
+							emipc_create_task((unsigned char *)sz_buf, event_fd);
 						} else
 							EM_DEBUG_LOG("[IPCLib] Stream size is less than default size");
 					} else if( recv_len == 0 ) {

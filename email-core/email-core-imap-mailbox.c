@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 * 
@@ -50,39 +50,30 @@
 
 #include "email-debug-log.h"
 
-INTERNAL_FUNC int emcore_get_default_mail_slot_count(int *output_count, int *err_code)
+INTERNAL_FUNC int emcore_get_default_mail_slot_count(int input_account_id, int *output_count)
 {	
-	EM_DEBUG_FUNC_BEGIN();
-	EM_DEBUG_LOG("output_count[%p], err_code[%p]", output_count, err_code);
+	EM_DEBUG_FUNC_BEGIN("input_account_id [%d] output_count[%p]", input_account_id, output_count);
 
 	int err = EMAIL_ERROR_NONE;
-	int mail_slot_count;
-	int ret = false, ret2;
+	int default_mail_slot_count = 25;
+	email_account_t *account_ref = NULL;
 
 	if (output_count == NULL) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
-	ret2 = vconf_get_int(VCONF_KEY_DEFAULT_SLOT_SIZE, &mail_slot_count);
-
-	if (ret2 < 0) {
-		EM_DEBUG_EXCEPTION("vconf_get_int() Failed(%d)", ret2);
-      	mail_slot_count = 100;
-	}
-
-	ret = true;
+	account_ref = emcore_get_account_reference(input_account_id);
+	if (account_ref)
+		default_mail_slot_count = account_ref->default_mail_slot_size;
 
 FINISH_OFF: 
 	
 	if (output_count)
-		*output_count = mail_slot_count;
+		*output_count = default_mail_slot_count;
 
-	if (err_code)
-		*err_code = err;
-
-	return ret;
-	
+	EM_DEBUG_FUNC_END("err[%d]", err);
+	return err;
 }
 
 
@@ -387,7 +378,7 @@ INTERNAL_FUNC int emcore_sync_mailbox_list(int account_id, char *mailbox_name, i
 		}
 		if (mailbox_list[i].mailbox_name) {
 			EM_DEBUG_LOG("mailbox name - %s", mailbox_list[i].mailbox_name);
-			emcore_get_default_mail_slot_count(&(mailbox_list[i].mail_slot_size), NULL);
+			mailbox_list[i].mail_slot_size = ref_account->default_mail_slot_size;
 
 			if(mailbox_list[i].mailbox_type == EMAIL_MAILBOX_TYPE_NONE)
 				emcore_bind_mailbox_type(mailbox_list + i);
@@ -428,7 +419,7 @@ INTERNAL_FUNC int emcore_sync_mailbox_list(int account_id, char *mailbox_name, i
 				mailbox_tbl.deleted_flag =  0;
 				mailbox_tbl.modifiable_yn = 1; 
 				mailbox_tbl.total_mail_count_on_server = 0;
-				emcore_get_default_mail_slot_count(&mailbox_tbl.mail_slot_size, NULL);
+				mailbox_tbl.mail_slot_size = ref_account->default_mail_slot_size;
 				
 				switch (counter) {
 					case EMAIL_MAILBOX_TYPE_SENTBOX:

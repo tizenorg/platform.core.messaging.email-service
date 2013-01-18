@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 * 
@@ -71,7 +71,7 @@ INTERNAL_FUNC int emcore_move_mailbox_on_imap_server(int input_account_id, char 
 INTERNAL_FUNC int emcore_set_sync_imap_mailbox(email_internal_mailbox_t *mailbox, int synchronous, int *err_code);
 INTERNAL_FUNC int emcore_set_mail_slot_size(int account_id, int mailbox_id, int new_slot_size, int *err_code);
 INTERNAL_FUNC int emcore_remove_overflowed_mails(emstorage_mailbox_tbl_t *intput_mailbox_tbl, int *err_code);	
-INTERNAL_FUNC int emcore_get_default_mail_slot_count(int *output_count, int *err_code);
+INTERNAL_FUNC int emcore_get_default_mail_slot_count(int input_account_id, int *output_count);
 
 #ifdef __cplusplus
 }

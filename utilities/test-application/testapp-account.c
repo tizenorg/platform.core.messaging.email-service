@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 * 
@@ -112,7 +112,7 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 	memcpy( account->user_data, (void*) &data, data_length );
 	account->user_data_length              = data_length;
 	account->options.priority              = 3;
-	account->options.keep_local_copy       = 0;
+	account->options.keep_local_copy       = 1;
 	account->options.req_delivery_receipt  = 0;
 	account->options.req_read_receipt      = 0;
 	account->options.download_limit        = 0;

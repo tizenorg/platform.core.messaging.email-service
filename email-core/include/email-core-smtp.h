@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 * 
@@ -45,6 +45,8 @@ extern "C"
 INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mail_id, int *err_code);
 
 INTERNAL_FUNC int emcore_send_saved_mail(int account_id, char *mailbox, int *err_code);
+
+INTERNAL_FUNC int emcore_send_mail_with_downloading_attachment_of_original_mail(int input_mail_id);
 
 INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_mail_tbl_data, emstorage_attachment_tbl_t *input_attachment_tbl_t, int input_attachment_count, ENVELOPE **env, char **file_path, email_option_t *sending_option, int *err_code);
 

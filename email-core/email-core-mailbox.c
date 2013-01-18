@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 * 
@@ -380,7 +380,7 @@ INTERNAL_FUNC int emcore_create_mailbox(email_mailbox_t *new_mailbox, int on_ser
 	local_mailbox.unread_count = 0;
 	local_mailbox.total_mail_count_on_local = 0;
 	local_mailbox.total_mail_count_on_server = 0;
-	emcore_get_default_mail_slot_count(&local_mailbox.mail_slot_size, NULL);
+	emcore_get_default_mail_slot_count(local_mailbox.account_id, &local_mailbox.mail_slot_size);
 
 	if (strncmp(new_mailbox->mailbox_name, EMAIL_INBOX_NAME, EM_SAFE_STRLEN(EMAIL_INBOX_NAME))    == 0 || 
 		strncmp(new_mailbox->mailbox_name, EMAIL_DRAFTBOX_NAME, EM_SAFE_STRLEN(EMAIL_DRAFTBOX_NAME)) == 0 ||

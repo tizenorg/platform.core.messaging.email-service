@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 *
@@ -50,6 +50,11 @@
 #include "email-core-mailbox.h"
 #include "email-core-signal.h"
 #include "email-core-imap-mailbox.h"
+
+#ifdef __FEATURE_USING_ACCOUNT_SVC__
+#include "account.h"
+#include "account-types.h"
+#endif /*  __FEATURE_USING_ACCOUNT_SVC__ */
 
 char *g_default_mbox_alias[MAILBOX_COUNT] =
 {
@@ -329,6 +334,23 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 
 #endif
 
+#ifdef __FEATURE_USING_ACCOUNT_SVC__
+	{
+		int error_code;
+		email_account_t *account_to_be_deleted;
+
+		account_to_be_deleted = emcore_get_account_reference(account_id);
+		if (account_to_be_deleted && account_to_be_deleted->incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
+			EM_DEBUG_LOG("Calling account_svc_delete with account_svc_id[%d]", account_to_be_deleted->account_svc_id);
+			error_code = account_connect();
+			EM_DEBUG_LOG("account_connect returns [%d]", error_code);
+			error_code = account_delete_from_db_by_id(account_to_be_deleted->account_svc_id);
+			EM_DEBUG_LOG("account_delete_from_db_by_id returns [%d]", error_code);
+			error_code = account_disconnect();
+			EM_DEBUG_LOG("account_disconnect returns [%d]", error_code);
+		}
+	}
+#endif
 	if (emcore_cancel_all_threads_of_an_account(account_id) < EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("There are some remaining jobs. I couldn't stop them.");
 		err = EMAIL_ERROR_CANNOT_STOP_THREAD;
@@ -456,6 +478,59 @@ INTERNAL_FUNC int emcore_create_account(email_account_t *account, int *err_code)
 		}
 	}
 
+#ifdef __FEATURE_USING_ACCOUNT_SVC__
+	if (account->incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
+		int account_svc_id = 0;
+		int error_code;
+		account_h account_handle = NULL;
+
+		error_code = account_connect();
+		if(error_code != ACCOUNT_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("account_connect failed [%d]", error_code);
+			err = error_code;
+			goto FINISH_OFF;
+		}
+
+		error_code = account_create(&account_handle);
+		if(error_code != ACCOUNT_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("account_create failed [%d]", error_code);
+			err = error_code;
+			account_disconnect();
+			goto FINISH_OFF;
+		}
+
+		account_set_user_name(account_handle, account->incoming_server_user_name);
+		account_set_domain_name(account_handle, account->account_name); 
+		account_set_email_address(account_handle,  account->user_email_address);
+		account_set_source(account_handle, "SLP EMAIL");
+		account_set_package_name(account_handle, "email-setting-efl");
+		/* account_set_capability(account_handle , ACCOUNT_CAPABILITY_EMAIL, ACCOUNT_CAPABILITY_ENABLED); OLD API */
+		account_set_capability(account_handle , ACCOUNT_SUPPORTS_CAPABILITY_EMAIL , ACCOUNT_CAPABILITY_ENABLED);
+		account_set_sync_support(account_handle, ACCOUNT_SYNC_STATUS_IDLE); /* This means "The account is supporting 'sync' and initialized as idle status" */
+		if (account->logo_icon_path)
+			account_set_icon_path(account_handle, account->logo_icon_path);
+		error_code = account_insert_to_db(account_handle, &account_svc_id); 
+
+		if (error_code != ACCOUNT_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("account_insert_to_db failed [%d]", error_code);
+			err = error_code;
+			if (account_handle)
+				account_destroy(account_handle);
+
+			account_disconnect();
+			goto FINISH_OFF;
+		}
+
+		account->account_svc_id = account_svc_id;
+			
+		EM_DEBUG_LOG("account_insert_to_db succeed");
+
+		if (account_handle)
+			account_destroy(account_handle);
+		account_disconnect();
+	}
+#endif  /*  __FEATURE_USING_ACCOUNT_SVC__ */
+
 	temp_account_tbl = em_malloc(sizeof(emstorage_account_tbl_t));
 	if (!temp_account_tbl) {
 		EM_DEBUG_EXCEPTION("allocation failed [%d]", err);
@@ -484,7 +559,7 @@ INTERNAL_FUNC int emcore_create_account(email_account_t *account, int *err_code)
 				local_mailbox.local = EMAIL_MAILBOX_FROM_LOCAL;
 			}
 			local_mailbox.alias = g_default_mbox_alias[i];
-			emcore_get_default_mail_slot_count(&local_mailbox.mail_slot_size, NULL);
+			local_mailbox.mail_slot_size = temp_account_tbl->default_mail_slot_size;
 
 			if (!emcore_create_mailbox(&local_mailbox, 0, &err))  {
 				EM_DEBUG_EXCEPTION("emcore_create failed - %d", err);
@@ -1007,10 +1082,13 @@ FINISH_OFF:
 
 #endif /*  __FEATURE_BACKUP_ACCOUNT_ */
 
+
+
 INTERNAL_FUNC int emcore_query_server_info(const char* domain_name, email_server_info_t **result_server_info)
 {
 	EM_DEBUG_FUNC_BEGIN("domain_name [%s], result_server_info [%p]", domain_name, result_server_info);
 	int ret_code = EMAIL_ERROR_NONE;
+
 	EM_DEBUG_FUNC_END("ret_code [%d]", ret_code);
 	return ret_code;
 }
@@ -1167,12 +1245,40 @@ INTERNAL_FUNC int emcore_update_sync_status_of_account(int input_account_id, ema
 	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_set_operator [%d], input_sync_status [%d]", input_account_id, input_set_operator, input_sync_status);
 	int err = EMAIL_ERROR_NONE;
 
+#ifdef __FEATURE_USING_ACCOUNT_SVC__
+	int err_from_account_svc = 0;
+	emstorage_account_tbl_t *account_tbl_data = NULL;
+	if (input_account_id != ALL_ACCOUNT && (input_sync_status == SYNC_STATUS_SYNCING)) {
+		if (!emstorage_get_account_by_id(input_account_id, EMAIL_ACC_GET_OPT_DEFAULT | EMAIL_ACC_GET_OPT_OPTIONS, &account_tbl_data, true, &err)) {
+			EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed [%d]", err);
+			goto FINISH_OFF;
+		}
 
+		err_from_account_svc = account_connect();
+		EM_DEBUG_LOG("account_connect returns [%d]", err_from_account_svc);
+
+		EM_DEBUG_LOG("account_tbl_data->account_svc_id [%d]", account_tbl_data->account_svc_id);
+
+		if (input_set_operator == SET_TYPE_SET)
+			err_from_account_svc = account_update_sync_status_by_id(account_tbl_data->account_svc_id, ACCOUNT_SYNC_STATUS_RUNNING);
+		else if(input_set_operator == SET_TYPE_MINUS)
+			err_from_account_svc = account_update_sync_status_by_id(account_tbl_data->account_svc_id, ACCOUNT_SYNC_STATUS_IDLE);
+
+		EM_DEBUG_LOG("account_update_sync_status_by_id returns [%d]", err_from_account_svc);
+
+		err_from_account_svc = account_disconnect();
+		EM_DEBUG_LOG("account_disconnect returns [%d]", err_from_account_svc);
+	}
+#endif /* __FEATURE_USING_ACCOUNT_SVC__ */
 
 	if (!emstorage_update_sync_status_of_account(input_account_id, input_set_operator, input_sync_status, true, &err))
 		EM_DEBUG_EXCEPTION("emstorage_update_sync_status_of_account failed [%d]", err);
 
-
+#ifdef __FEATURE_USING_ACCOUNT_SVC__
+FINISH_OFF:
+	if (account_tbl_data)
+		emstorage_free_account(&account_tbl_data, 1, NULL);
+#endif /* __FEATURE_USING_ACCOUNT_SVC__ */
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
