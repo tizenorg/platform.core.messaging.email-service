@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 *
@@ -81,5 +81,13 @@ typedef struct
 DECLARE_CONVERTER_FOR_TASK_PARAMETER(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX);
 INTERNAL_FUNC void* task_handler_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX(void *input_param);
 /*-------------------------------------------------------------------------------------------*/
+/* to handle EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL */
+typedef struct
+{
+	int  mail_id;
+} task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL;
 
+DECLARE_CONVERTER_FOR_TASK_PARAMETER(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL);
+INTERNAL_FUNC void* task_handler_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL(void *input_param);
+/*-------------------------------------------------------------------------------------------*/
 #endif /* EMAIL_CORE_TASKS_H_ */

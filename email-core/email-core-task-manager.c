@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 *
@@ -223,12 +223,12 @@ INTERNAL_FUNC int emcore_init_task_handler_array()
 	EM_DEBUG_FUNC_BEGIN();
 
 	if (_task_handler_array == NULL) {
-
 		_task_handler_array      = NULL;
 		_task_handler_array_size = 0;
 
 		REGISTER_TASK_BINDER(EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT);
 		REGISTER_TASK_BINDER(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX);
+		REGISTER_TASK_BINDER(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL);
 	}
 
 	EM_DEBUG_FUNC_END();

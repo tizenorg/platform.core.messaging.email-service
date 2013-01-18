@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 * 
@@ -26,6 +26,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <wait.h>
 
 /* open header */
 #include <glib.h>
@@ -44,7 +45,8 @@
 #include "email-core-utils.h"
 #include "email-core-mime.h"
 
-#define MAIL_TEMP_BODY "/tmp/mail.txt"
+#define MAIL_TEMP_BODY "/tmp/utf8"
+#define HTML_TEMP_BODY "/tmp/utf8.htm"
 
 /*
 static void testapp_test_print_sorting_menu()
@@ -614,7 +616,7 @@ static gboolean testapp_test_get_mail_list_ex()
 	sorting_rule_list[0].target_attribute                              = EMAIL_MAIL_ATTRIBUTE_DATE_TIME;
 	sorting_rule_list[0].sort_order                                    = EMAIL_SORT_ORDER_DESCEND;
 
-	err = email_get_mail_list_ex(filter_list, filter_rule_count, sorting_rule_list, sorting_rule_count, -1, -1, &result_mail_list, &result_mail_count);
+	err = email_get_mail_list_ex(filter_list, filter_rule_count, sorting_rule_list, sorting_rule_count, 0, 10, &result_mail_list, &result_mail_count);
 
 	if(err == EMAIL_ERROR_NONE) {
 		testapp_print("email_get_mail_list_ex succeed.\n");
@@ -1081,6 +1083,177 @@ static gboolean testapp_test_move_mails_to_mailbox_of_another_account()
 	testapp_print("\nemail_move_mails_to_mailbox_of_another_account returns [%d], tast_id [%d] \n", err, task_id);
 	return 0;
 }
+
+static gboolean	copy_file(char *input_source_path, char *input_dest_path)
+{
+    int childExitStatus;
+    pid_t pid;
+    int status;
+    if (!input_source_path || !input_dest_path) {
+        return FALSE;
+    }
+    testapp_print("copy_file started\n");
+
+    pid = fork();
+
+    if (pid == 0) {
+    	testapp_print("Copying file [%s] [%s]\n", input_source_path, input_dest_path);
+        execl("/bin/cp", "/bin/cp", input_source_path, input_dest_path, (char *)0);
+    }
+    else {
+    	testapp_print("Wating child process\n");
+        pid_t ws = waitpid( pid, &childExitStatus, WNOHANG);
+        if (ws == -1)
+        { /* error - handle as you wish */
+        	testapp_print("waitpid returns error\n");
+        }
+
+        if( WIFEXITED(childExitStatus)) /* exit code in childExitStatus */
+        {
+            status = WEXITSTATUS(childExitStatus); /* zero is normal exit */
+            testapp_print("WEXITSTATUS\n");
+            /* handle non-zero as you wish */
+        }
+        else if (WIFSIGNALED(childExitStatus)) /* killed */
+        {
+        	testapp_print("WIFSIGNALED\n");
+        }
+        else if (WIFSTOPPED(childExitStatus)) /* stopped */
+        {
+        	testapp_print("WIFSTOPPED\n");
+        }
+    }
+    testapp_print("copy_file finished\n");
+    return TRUE;
+}
+
+
+static gboolean	testapp_test_send_mail_with_downloading_attachment_of_original_mail()
+{
+	int err = EMAIL_ERROR_NONE;
+	int original_mail_id = 0;
+	int result_from_scanf = 0;
+	int original_attachment_count = 0;
+	int i = 0;
+	int handle = 0;
+	char *plain_text_path = MAIL_TEMP_BODY;
+	char *html_file_path = HTML_TEMP_BODY;
+	char new_subject[4086] = { 0, };
+/*	FILE *body_file; */
+	email_mail_data_t *original_mail_data = NULL;
+	email_mailbox_t *outbox = NULL;
+	email_attachment_data_t *original_attachment_array = NULL;
+
+	testapp_print("\n > Enter original mail id: ");
+	result_from_scanf = scanf("%d", &original_mail_id);
+
+	/* Get original mail */
+	if((err = email_get_mail_data(original_mail_id, &original_mail_data)) != EMAIL_ERROR_NONE || !original_mail_data) {
+		testapp_print("email_get_mail_data failed [%d]\n", err);
+		return FALSE;
+	}
+
+	/* Get attachment of original mail */
+	if((err = email_get_attachment_data_list(original_mail_id, &original_attachment_array, &original_attachment_count)) != EMAIL_ERROR_NONE || !original_attachment_array) {
+		testapp_print("email_get_attachment_data_list failed [%d]\n", err);
+		return FALSE;
+	}
+
+	/* Remove attachment file path */
+	for(i = 0; i < original_attachment_count; i++) {
+		original_attachment_array[i].save_status = 0;
+		if(original_attachment_array[i].attachment_path)
+			free(original_attachment_array[i].attachment_path);
+		original_attachment_array[i].attachment_path = NULL;
+	}
+
+	/* Set reference mail id */
+	original_mail_data->reference_mail_id = original_mail_data->mail_id;
+	original_mail_data->body_download_status = 1;
+
+	/* Set from address */
+	if(!original_mail_data->full_address_from) {
+		original_mail_data->full_address_from = strdup("<abc@abc.com>");
+	}
+
+	/* Rewrite subject */
+	if(original_mail_data->subject) {
+		snprintf(new_subject, 4086, "Fw:%s", original_mail_data->subject);
+		free(original_mail_data->subject);
+		original_mail_data->subject = NULL;
+	}
+	else {
+		snprintf(new_subject, 4086, "Forward test");
+	}
+
+	original_mail_data->subject = strdup(new_subject);
+
+	/* Set mailbox information */
+	if((err = email_get_mailbox_by_mailbox_type(original_mail_data->account_id, EMAIL_MAILBOX_TYPE_OUTBOX, &outbox)) != EMAIL_ERROR_NONE || !outbox) {
+		testapp_print("email_get_mailbox_by_mailbox_type failed [%d]\n", err);
+		return FALSE;
+	}
+	original_mail_data->mailbox_id = outbox->mailbox_id;
+	original_mail_data->mailbox_type = outbox->mailbox_type;
+
+	/* Copy body text */
+	if(original_mail_data->file_path_html) {
+		copy_file(original_mail_data->file_path_html, html_file_path);
+		/*execl("/bin/cp", "/bin/cp", original_mail_data->file_path_html, html_file_path, (char *)0); */
+		free(original_mail_data->file_path_html);
+		original_mail_data->file_path_html = strdup(html_file_path);
+	}
+
+	if(original_mail_data->file_path_plain) {
+		copy_file(original_mail_data->file_path_plain, plain_text_path);
+		/*execl("/bin/cp", "/bin/cp", original_mail_data->file_path_plain, plain_text_path, (char *)0);*/
+		free(original_mail_data->file_path_plain);
+		original_mail_data->file_path_plain = strdup(plain_text_path);
+	}
+
+
+	/*
+	body_file = fopen(body_file_path, "w");
+
+	testapp_print("\n body_file [%p]\n", body_file);
+
+	if(body_file == NULL) {
+		testapp_print("\n fopen [%s]failed\n", body_file_path);
+		return FALSE;
+	}
+
+	for(i = 0; i < 100; i++)
+		fprintf(body_file, "Mail sending Test. [%d]\n", i);
+
+	fflush(body_file);
+	fclose(body_file);
+	*/
+
+	/* Add mail */
+	if((err = email_add_mail(original_mail_data, original_attachment_array, original_attachment_count, NULL, false)) != EMAIL_ERROR_NONE) {
+		testapp_print("email_get_attachment_data_list failed [%d]\n", err);
+		return FALSE;
+	}
+
+	/* Send mail */
+	if((err = email_send_mail_with_downloading_attachment_of_original_mail(original_mail_data->mail_id, &handle)) != EMAIL_ERROR_NONE) {
+		testapp_print("email_send_mail_with_downloading_attachment_of_original_mail failed [%d]\n", err);
+		return FALSE;
+	}
+
+	if(original_mail_data)
+		email_free_mail_data(&original_mail_data, 1);
+
+	if(outbox)
+		email_free_mailbox(&outbox, 1);
+
+	if(original_attachment_array)
+		email_free_attachment_data(&original_attachment_array, original_attachment_count);
+
+	return TRUE;
+}
+
+
 
 static gboolean	testapp_test_set_flags_field ()
 {
@@ -1876,6 +2049,9 @@ static gboolean testapp_test_interpret_command (int menu_number)
 			break;
 		case 10:
 			testapp_test_move_mails_to_mailbox_of_another_account();
+			break;
+		case 11:
+			testapp_test_send_mail_with_downloading_attachment_of_original_mail();
 			break;
 		case 14:
 			testapp_test_delete();

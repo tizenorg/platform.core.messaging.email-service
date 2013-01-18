@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 * 
@@ -99,6 +99,7 @@ void testapp_show_menu (eEMAIL_MENU menu)
 			testapp_print ("8.  Delete attachment\n");
 			testapp_print ("9.  Mail Count \n");
 			testapp_print ("10. Move mails to another account\n");
+			testapp_print ("11. Send mail with downloading attachment of original mail\n");
 			testapp_print ("14. Delete a mail \n");
 			testapp_print ("16. Download mail body\n");
 			testapp_print ("17. Download an attachment\n");

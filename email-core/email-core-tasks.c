@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 *
@@ -244,6 +244,82 @@ FINISH_OFF:
 }
 
 INTERNAL_FUNC void* task_handler_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX(void *input_param)
+{
+	return NULL;
+}
+/*-------------------------------------------------------------------------------------------*/
+/* to handle EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL */
+#define task_parameter_format_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL "i"
+
+INTERNAL_FUNC int email_encode_task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL(void *input_task_parameter_struct, char **output_byte_stream, int *output_stream_size)
+{
+	EM_DEBUG_FUNC_BEGIN("input_task_parameter_struct [%p] output_byte_stream [%p] output_stream_size [%p]", input_task_parameter_struct, output_byte_stream, output_stream_size);
+
+	int err = EMAIL_ERROR_NONE;
+	task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL *task_parameter = input_task_parameter_struct;
+	tpl_node *tn = NULL;
+	void  *result_data = NULL;
+	size_t result_data_length = 0;
+
+	if (task_parameter == NULL || output_byte_stream == NULL || output_stream_size == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	tn = tpl_map(task_parameter_format_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL
+			, &task_parameter->mail_id);
+	tpl_pack(tn, 0);
+	tpl_dump(tn, TPL_MEM, &result_data, &result_data_length);
+	tpl_free(tn);
+
+	*output_byte_stream = result_data;
+	*output_stream_size = result_data_length;
+
+FINISH_OFF:
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return EMAIL_ERROR_NONE;
+}
+
+INTERNAL_FUNC int email_decode_task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL(char *input_byte_stream, int input_stream_size, void **output_task_parameter_struct)
+{
+	EM_DEBUG_FUNC_BEGIN("input_byte_stream [%p] input_stream_size [%d] output_task_parameter_struct [%p]", input_byte_stream, input_stream_size, output_task_parameter_struct);
+	int err = EMAIL_ERROR_NONE;
+	tpl_node *tn = NULL;
+	task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL *task_parameter = NULL;
+
+	if (input_byte_stream == NULL || input_stream_size == 0 || output_task_parameter_struct == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	task_parameter = em_malloc(sizeof(task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL));
+
+	if(task_parameter == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	tn = tpl_map(task_parameter_format_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL
+				, &task_parameter->mail_id);
+	tpl_load(tn, TPL_MEM, input_byte_stream, input_stream_size);
+	tpl_unpack(tn, 0);
+
+	*output_task_parameter_struct = task_parameter;
+
+FINISH_OFF:
+
+	if(tn)
+		tpl_free(tn);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return EMAIL_ERROR_NONE;
+}
+
+INTERNAL_FUNC void* task_handler_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL(void *input_param)
 {
 	return NULL;
 }

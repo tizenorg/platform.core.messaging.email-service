@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 * 
@@ -2307,8 +2307,8 @@ INTERNAL_FUNC int emcore_download_attachment(int account_id, int mail_id, int nt
 
 	int err = EMAIL_ERROR_NONE;
 
-	if (mail_id < 1 || !nth)  {
-		EM_DEBUG_EXCEPTION("mail_id[%d], nth[%d]",  mail_id, nth);
+	if (mail_id < 1)  {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 
 		if (err_code != NULL)
@@ -2469,14 +2469,12 @@ INTERNAL_FUNC int emcore_download_attachment(int account_id, int mail_id, int nt
 
 		/*  select target attachment information. */
 		for (ai = cnt_info->file ; ai; ai = ai->next) {
-			if (ai->name)
-				EM_DEBUG_LOG("[in loop] %s, %d",  ai->name, cnt_info->file_no);
-
+			EM_DEBUG_LOG("[in loop] name[%s] save[%s] no[%d]", ai->save, ai->name, cnt_info->file_no);
 			if (--cnt_info->file_no == 0)
 				break;
 		}
 
-		EM_DEBUG_LOG("cnt_info->file_no = %d, ai = %p", cnt_info->file_no, ai);
+		EM_DEBUG_LOG("selected cnt_info->file_no = %d, ai = %p", cnt_info->file_no, ai);
 		
 		if (cnt_info->file_no == 0 && ai) {
 			/*  rename temporary file to real file. */
@@ -2492,7 +2490,7 @@ INTERNAL_FUNC int emcore_download_attachment(int account_id, int mail_id, int nt
 
 			if (!emstorage_move_file(ai->save, buf, false, &err))  {
 				EM_DEBUG_EXCEPTION("emstorage_move_file failed [%d]", err);
-
+				err = EMAIL_ERROR_INVALID_ATTACHMENT_SAVE_NAME;
 				goto FINISH_OFF;
 			}
 
@@ -2827,7 +2825,6 @@ INTERNAL_FUNC int emcore_download_attachment_bulk(int account_id, int mail_id, i
 }
 #endif
 
-
 INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, int account_id, int mail_id, int verbose, int with_attach, int limited_size, int event_handle , int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("mail_stream[%p], account_id[%d], mail_id[%d], verbose[%d], with_attach[%d], event_handle [ %d ] ", mail_stream, account_id, mail_id, verbose, with_attach, event_handle);
@@ -3132,7 +3129,7 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
  		mail->body_download_status = EMAIL_BODY_DOWNLOAD_STATUS_PARTIALLY_DOWNLOADED;
 	else
 		mail->body_download_status = EMAIL_BODY_DOWNLOAD_STATUS_FULLY_DOWNLOADED;
-	
+
 	/* Update local_preview_text */
 	if ((err = emcore_get_preview_text_from_file(mail->file_path_plain, mail->file_path_html, MAX_PREVIEW_TEXT_LENGTH, &(mail->preview_text))) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_get_preview_text_from_file failedi : [%d]", err);
@@ -5033,7 +5030,7 @@ FINISH_OFF:
 	return err;
 }
 
-static int emcore_save_mail_file(int account_id, int mail_id, int attachment_id, char *src_file_path, char *file_name, char *full_path, int *err_code)
+INTERNAL_FUNC int emcore_save_mail_file(int account_id, int mail_id, int attachment_id, char *src_file_path, char *file_name, char *full_path, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], mail_id[%d], attachment_id[%d] , file_name[%p] , full_path[%p] , err_code[%p]", account_id, mail_id, attachment_id, file_name, full_path, err_code);
 
@@ -5058,7 +5055,6 @@ static int emcore_save_mail_file(int account_id, int mail_id, int attachment_id,
 	if (strcmp(src_file_path, full_path) != 0)  {
 		if (!emstorage_copy_file(src_file_path, full_path, false, &err))  {
 			EM_DEBUG_EXCEPTION("emstorage_copy_file failed [%d]", err);
-
 			goto FINISH_OFF;
 		}
 	}

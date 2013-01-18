@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2000 - 2011 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 *
@@ -870,7 +870,7 @@ void stb_get_rule(HIPC_API a_hAPI)
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, local_rule_stream, size))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
 
-		EM_SAFE_FREE( local_rule_stream );
+		EM_SAFE_FREE(local_rule_stream);
 		emcore_free_rule(rule);
 		EM_SAFE_FREE(rule);
 	}
@@ -1130,19 +1130,19 @@ void stb_add_mail(HIPC_API a_hAPI)
 
 	/* attachment */
 	if (result_mail_data.attachment_count > 0) {
-	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
-	EM_DEBUG_LOG("email_attachment_data_t buffer_size[%d]", buffer_size);
+		buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
+		EM_DEBUG_LOG("email_attachment_data_t buffer_size[%d]", buffer_size);
 
-	if(buffer_size > 0)	 {
-		char *stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index);
-		em_convert_byte_stream_to_attachment_data(stream, buffer_size, &result_attachment_data, &result_attachment_data_count);
+		if(buffer_size > 0)	 {
+			char *stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index);
+			em_convert_byte_stream_to_attachment_data(stream, buffer_size, &result_attachment_data, &result_attachment_data_count);
 
-		EM_DEBUG_LOG("result_attachment_data_count[%d]", result_attachment_data_count);
+			EM_DEBUG_LOG("result_attachment_data_count[%d]", result_attachment_data_count);
 
-		if(result_attachment_data_count && !result_attachment_data) {
-			EM_DEBUG_EXCEPTION("em_convert_byte_stream_to_attachment_data failed");
-			err = EMAIL_ERROR_ON_PARSING;
-			goto FINISH_OFF;
+			if(result_attachment_data_count && !result_attachment_data) {
+				EM_DEBUG_EXCEPTION("em_convert_byte_stream_to_attachment_data failed");
+				err = EMAIL_ERROR_ON_PARSING;
+				goto FINISH_OFF;
 			}
 		}
 	}
@@ -2697,7 +2697,6 @@ void* thread_func_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX(void *input_param)
 	EM_DEBUG_FUNC_BEGIN("input_param [%p]", input_param);
 	int err = EMAIL_ERROR_NONE;
 	int err_for_signal = EMAIL_ERROR_NONE;
-	int i = 0;
 	int task_id = THREAD_SELF();
 	task_parameter_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX *task_param = input_param;
 
@@ -2709,9 +2708,6 @@ void* thread_func_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX(void *input_param)
 		EM_DEBUG_EXCEPTION("emcore_delete_mailbox_ex failed[%d]", err);
 		goto FINISH_OFF;
 	}
-	/* Send progress signal */
-	if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, task_id, EMAIL_TASK_STATUS_IN_PROGRESS, i, task_param->mailbox_id_count)) != EMAIL_ERROR_NONE)
-		EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
 
 FINISH_OFF:
 	/* Send finish signal */
@@ -2761,6 +2757,92 @@ void stb_delete_mailbox_ex(HIPC_API a_hAPI)
 	}
 
 	THREAD_CREATE(task_id, thread_func_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, (void*)decoded_parameter, thread_error);
+
+	if(thread_error != 0) {
+		EM_DEBUG_EXCEPTION("THREAD_CREATE failed [%d]", thread_error);
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	THREAD_DETACH(task_id);
+
+FINISH_OFF:
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &task_id, sizeof(int)))
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+
+	if (!emipc_execute_stub_api(a_hAPI))
+		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+}
+
+void* thread_func_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL(void *input_param)
+{
+	EM_DEBUG_FUNC_BEGIN("input_param [%p]", input_param);
+	int err = EMAIL_ERROR_NONE;
+	int err_for_signal = EMAIL_ERROR_NONE;
+	int task_id = THREAD_SELF();
+	task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL *task_param = input_param;
+
+	/* Send start signal */
+	if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, task_id, EMAIL_TASK_STATUS_STARTED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
+		EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
+
+	if((err = emcore_send_mail_with_downloading_attachment_of_original_mail(task_param->mail_id)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_send_mail_with_downloading_attachment_of_original_mail failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+FINISH_OFF:
+	/* Send finish signal */
+	if(err == EMAIL_ERROR_NONE) {
+		if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, task_id, EMAIL_TASK_STATUS_FINISHED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
+			EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
+	}
+	else {
+		if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, task_id, EMAIL_TASK_STATUS_FAILED, err, 0)) != EMAIL_ERROR_NONE)
+			EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
+	}
+
+	/* Free task parameter */
+	EM_SAFE_FREE(task_param);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return SUCCESS;
+}
+
+void stb_send_mail_with_downloading_attachment_of_original_mail(HIPC_API a_hAPI)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int param_index = 0;
+	int err = EMAIL_ERROR_NONE;
+	int task_parameter_length = 0;
+	int thread_error = 0;
+	thread_t task_id;
+	char *task_parameter = NULL;
+	task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL *decoded_parameter = NULL;
+
+	/* task_parameter_length */;
+	task_parameter_length = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
+
+	if(task_parameter_length <= 0) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM : task_parameter_length [%d]", task_parameter_length);
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	/* task_parameter */
+	task_parameter = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
+
+	if((err = email_decode_task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL(task_parameter, task_parameter_length, (void**)&decoded_parameter)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("email_decode_task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT failed[%d]", err);
+		goto FINISH_OFF;
+	}
+
+	THREAD_CREATE(task_id, thread_func_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, (void*)decoded_parameter, thread_error);
 
 	if(thread_error != 0) {
 		EM_DEBUG_EXCEPTION("THREAD_CREATE failed [%d]", thread_error);
@@ -3039,6 +3121,10 @@ void stb_API_mapper(HIPC_API a_hAPI)
 
 		case EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX :
 			stb_delete_mailbox_ex(a_hAPI);
+			break;
+
+		case EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL :
+			stb_send_mail_with_downloading_attachment_of_original_mail(a_hAPI);
 			break;
 	}
 	EM_DEBUG_FUNC_END();

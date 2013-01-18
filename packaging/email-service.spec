@@ -1,6 +1,6 @@
 Name:       email-service
 Summary:    E-mail Framework Middleware package
-Version:    0.10.20
+Version:    0.10.79
 Release:    1
 Group:      System/Libraries
 License:    TBD
@@ -41,11 +41,11 @@ BuildRequires:  pkgconfig(libcurl)
 BuildRequires:  pkgconfig(libxml-2.0)
 BuildRequires:  pkgconfig(gconf-2.0)
 BuildRequires:  pkgconfig(cert-svc)
+BuildRequires:  pkgconfig(mdm)
 BuildRequires:  pkgconfig(badge)
 BuildRequires:  pkgconfig(feedback)
 
 
-BuildRoot:  %{_tmppath}/%{name}-%{version}-build
 
 %description
 E-mail Framework Middleware Library/Binary package
@@ -71,35 +71,19 @@ export LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--rpath=%{_prefix}/lib -Wl,
 
 cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
 
-# Call make instruction with smp support
-#make %{?jobs:-j%jobs}
-make
+make %{?_smp_mflags}
 
 %install
+mkdir -p %{buildroot}/usr/share/license
 %make_install
 
 mkdir -p %{buildroot}%{_libdir}/systemd/user/tizen-middleware.target.wants
 install -m 0644 %SOURCE1 %{buildroot}%{_libdir}/systemd/user/
 ln -sf ../email.service %{buildroot}%{_libdir}/systemd/user/tizen-middleware.target.wants/
 
-# FIXME: remove initscripts after systemd is ready
-mkdir -p %{buildroot}%{_sysconfdir}/rc.d/init.d
-cat << EOF > %{buildroot}%{_sysconfdir}/rc.d/init.d/email-service
-#!/bin/sh
-/usr/bin/email-service &
-EOF
-
-mkdir -p %{buildroot}%{_sysconfdir}/rc.d/rc3.d
-mkdir -p %{buildroot}%{_sysconfdir}/rc.d/rc5.d
-ln -sf ../init.d/email-service %{buildroot}%{_sysconfdir}/rc.d/rc3.d/S70email-service
-ln -sf ../init.d/email-service %{buildroot}%{_sysconfdir}/rc.d/rc5.d/S70email-service
-
-%clean
-rm -rf %{buildroot}
 
 %post
 /sbin/ldconfig
-
 
 #################################################################
 # Add preset account information
@@ -440,9 +424,6 @@ systemctl daemon-reload
 %files
 %manifest email-service.manifest
 %exclude /usr/bin/email-test-app
-%attr(0755,root,root) %{_sysconfdir}/rc.d/init.d/email-service
-%{_sysconfdir}/rc.d/rc3.d/S70email-service
-%{_sysconfdir}/rc.d/rc5.d/S70email-service
 %{_bindir}/email-service
 /opt/usr/data/email/res/*
 %{_libdir}/lib*.so.*
