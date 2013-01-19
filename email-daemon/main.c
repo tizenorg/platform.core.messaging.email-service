@@ -1145,9 +1145,10 @@ void stb_add_mail(HIPC_API a_hAPI)
 				goto FINISH_OFF;
 			}
 		}
+
+		param_index++;
 	}
 
-	param_index++;
 
 	/* meeting request */
 	EM_DEBUG_LOG("email_meeting_request_t");
@@ -1223,23 +1224,24 @@ void stb_update_mail(HIPC_API a_hAPI)
 		em_convert_byte_stream_to_mail_data(stream, buffer_size, &result_mail_data);
 	}
 
-	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
+	if (result_mail_data.attachment_count > 0) {
+		buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
+		EM_DEBUG_LOG("email_attachment_data_t buffer_size[%d]", buffer_size);
 
-	EM_DEBUG_LOG("email_attachment_data_t buffer_size[%d]", buffer_size);
+		if(buffer_size > 0) {
+			char *stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index);
+			em_convert_byte_stream_to_attachment_data(stream, buffer_size, &result_attachment_data, &result_attachment_data_count);
 
-	if(buffer_size > 0)	 {
-		char *stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index);
-		em_convert_byte_stream_to_attachment_data(stream, buffer_size, &result_attachment_data, &result_attachment_data_count);
+			EM_DEBUG_LOG("result_attachment_data_count[%d]", result_attachment_data_count);
 
-		EM_DEBUG_LOG("result_attachment_data_count[%d]", result_attachment_data_count);
-
-		if(result_attachment_data_count && !result_attachment_data) {
-			EM_DEBUG_EXCEPTION("em_convert_byte_stream_to_attachment_data failed");
-			err = EMAIL_ERROR_ON_PARSING;
-			goto FINISH_OFF;
+			if(result_attachment_data_count && !result_attachment_data) {
+				EM_DEBUG_EXCEPTION("em_convert_byte_stream_to_attachment_data failed");
+				err = EMAIL_ERROR_ON_PARSING;
+				goto FINISH_OFF;
+			}
 		}
+		param_index++;
 	}
-	param_index++;
 
 	EM_DEBUG_LOG("email_meeting_request_t");
 
@@ -2443,23 +2445,26 @@ void stb_write_mime_file(HIPC_API a_hAPI)
 	}
 
 	/* attachment */
-	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
-	EM_DEBUG_LOG("email_attachment_data_t buffer_size[%d]", buffer_size);
+	if (result_mail_data.attachment_count > 0) {
+		buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
+		EM_DEBUG_LOG("email_attachment_data_t buffer_size[%d]", buffer_size);
 
-	if(buffer_size > 0)	 {
-		char *stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index);
-		em_convert_byte_stream_to_attachment_data(stream, buffer_size, &result_attachment_data, &result_attachment_data_count);
+		if(buffer_size > 0) {
+			char *stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index);
+			em_convert_byte_stream_to_attachment_data(stream, buffer_size, &result_attachment_data, &result_attachment_data_count);
 
-		EM_DEBUG_LOG("result_attachment_data_count[%d]", result_attachment_data_count);
+			EM_DEBUG_LOG("result_attachment_data_count[%d]", result_attachment_data_count);
 
-		if(result_attachment_data_count && !result_attachment_data) {
-			EM_DEBUG_EXCEPTION("em_convert_byte_stream_to_attachment_data failed");
-			err = EMAIL_ERROR_ON_PARSING;
-			goto FINISH_OFF;
+			if(result_attachment_data_count && !result_attachment_data) {
+				EM_DEBUG_EXCEPTION("em_convert_byte_stream_to_attachment_data failed");
+				err = EMAIL_ERROR_ON_PARSING;
+				goto FINISH_OFF;
+			}
 		}
+
+		param_index++;
 	}
 
-	param_index++;
 	
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
 	if (buffer_size > 0) {

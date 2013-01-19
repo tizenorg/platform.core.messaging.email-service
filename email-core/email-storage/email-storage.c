@@ -8176,14 +8176,13 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 					, mail_id);
 					move_flag = 1;
 
-
+				emstorage_free_mailbox(&mailbox_tbl, 1, NULL); /*prevent 26251*/
 				EM_DEBUG_LOG("Query [%s]", sql_query_string);
 
 				EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
 				EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 					("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
-				emstorage_free_mailbox(&mailbox_tbl, 1, NULL);
 			}
 			break;
 

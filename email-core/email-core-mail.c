@@ -2983,7 +2983,7 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 		else
 			cnt_info->grab_type = GRAB_TYPE_TEXT;
 
-		int uid = atoi(s_uid);
+		int uid = s_uid? atoi(s_uid):0; /*prevent 39118*/
 
 		/*  set sparep(member of BODY) memory free function  */
 		mail_parameters(stream, SET_FREEBODYSPAREP, emcore_free_body_sharep);
