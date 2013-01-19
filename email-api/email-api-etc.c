@@ -130,7 +130,7 @@ EXPORT_API int email_write_mime_file(email_mail_data_t *input_mail_data, email_a
 	}
 
 	attachment_data_list_stream = em_convert_attachment_data_to_byte_stream(input_attachment_data, input_attachment_count, &size);
-	if (!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, attachment_data_list_stream, size)) {
+	if ((size > 0) && !emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, attachment_data_list_stream, size)) {
 		EM_DEBUG_EXCEPTION("emipc_add_dynamic_parameter failed");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;

@@ -40,6 +40,7 @@
 #include "email-core-utils.h"
 #include "email-core-mail.h"
 #include "email-core-smtp.h"
+#include "email-core-account.h"
 #include "email-core-task-manager.h"
 #include "email-storage.h"
 #include "email-utilities.h"
@@ -189,23 +190,46 @@ EXPORT_API int email_add_read_receipt(int input_read_mail_id, int *output_receip
 }
 
 
-
+#define TMP_BODY_PATH "/tmp/UTF-8"
 int email_create_db_full()
 {
 	int mailbox_index, mail_index, mailbox_count, mail_slot_size;
+	int account_id = 0;
 	emstorage_mail_tbl_t mail_table_data = {0};
 	email_mailbox_t *mailbox_list = NULL;
 	int err = EMAIL_ERROR_NONE;
+	int i = 0;
+	FILE *body_file = NULL;
 
 	if ( (err = email_open_db()) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("email_open_db failed [%d]", err);
 		return err;
 	}
 
+	if ((err = emcore_load_default_account_id(&account_id)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_load_default_account_id failed : [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	body_file = fopen(TMP_BODY_PATH, "w");
+	if (body_file == NULL) {
+		EM_DEBUG_EXCEPTION("fopen failed");
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	for (i = 0; i < 10; i++)
+		fprintf(body_file, "Dummy test. [line:%d]\n", i);
+
+
+	fflush(body_file);
+
 	mail_table_data.subject = (char*) em_malloc(50); 
 	mail_table_data.full_address_from = strdup("<dummy_from@nowhere.com>");
 	mail_table_data.full_address_to = strdup("<dummy_to@nowhere.com>");
-	mail_table_data.account_id =1;
+	mail_table_data.account_id = account_id;
+	mail_table_data.file_path_plain = strdup(TMP_BODY_PATH);
+	mail_table_data.body_download_status = 1;
 
 	if( (err = email_get_mailbox_list_ex(1, -1, 0, &mailbox_list, &mailbox_count)) < EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("email_get_mailbox_list_ex failed [%d]", err);
@@ -230,6 +254,8 @@ FINISH_OFF:
 	if ( (err = email_close_db()) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("email_close_db failed [%d]", err);
 	}	
+
+	fclose(body_file);
 	
 	if(mailbox_list)
 		email_free_mailbox(&mailbox_list, mailbox_count);
@@ -287,15 +313,14 @@ EXPORT_API int email_update_mail(email_mail_data_t *input_mail_data, email_attac
 		
 		/* email_attachment_data_t */
 		attachment_data_list_stream = em_convert_attachment_data_to_byte_stream(input_attachment_data_list, input_attachment_count, &size);
-
-		if(!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, attachment_data_list_stream, size)) {
+		if ((size > 0) && !emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, attachment_data_list_stream, size)) {
 			EM_DEBUG_EXCEPTION("emipc_add_dynamic_parameter failed");
 			err = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
 		}
 
 		/*  email_meeting_request_t */
-		if ( input_mail_data->meeting_request_status != EMAIL_MAIL_TYPE_NORMAL ) {
+		if (input_mail_data->meeting_request_status != EMAIL_MAIL_TYPE_NORMAL) {
 			meeting_request_stream = em_convert_meeting_req_to_byte_stream(input_meeting_request, &size);
 
 			if(!meeting_request_stream) {

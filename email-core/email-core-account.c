@@ -632,8 +632,10 @@ INTERNAL_FUNC int emcore_init_account_reference()
 			/* memset(accounts + i, 0x00, sizeof(email_account_t)) */
 			
 			*p = (email_account_list_t*) em_malloc(sizeof(email_account_list_t));
-			if (!(*p))  {	
+			if (!(*p))  {	/*prevent 26223*/
 				EM_DEBUG_EXCEPTION("malloc failed...");
+				emcore_free_account(account);
+				EM_SAFE_FREE(account);
 				err = EMAIL_ERROR_OUT_OF_MEMORY;
 				goto FINISH_OFF;
 			}
