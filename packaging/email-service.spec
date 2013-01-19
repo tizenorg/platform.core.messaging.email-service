@@ -41,7 +41,6 @@ BuildRequires:  pkgconfig(libcurl)
 BuildRequires:  pkgconfig(libxml-2.0)
 BuildRequires:  pkgconfig(gconf-2.0)
 BuildRequires:  pkgconfig(cert-svc)
-BuildRequires:  pkgconfig(mdm)
 BuildRequires:  pkgconfig(badge)
 BuildRequires:  pkgconfig(feedback)
 
