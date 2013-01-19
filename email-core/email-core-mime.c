@@ -5183,6 +5183,7 @@ INTERNAL_FUNC int emcore_parse_mime_file_to_mail(char *eml_file_path, email_mail
 
 	if (!emcore_mime_parse_header(eml_fp, is_file, &mmsg->rfc822header, &mmsg->header, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_mime_parse_header failed : [%d]", err);
+		err = EMAIL_ERROR_INVALID_DATA;
 		goto FINISH_OFF;
 	}
 
@@ -5194,6 +5195,7 @@ INTERNAL_FUNC int emcore_parse_mime_file_to_mail(char *eml_file_path, email_mail
 
 	if (!emcore_mime_parse_body(eml_fp, is_file, mmsg, cnt_info, NULL, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_mime_parse_body failed : [%d]", err);
+		err = EMAIL_ERROR_INVALID_DATA;
 		goto FINISH_OFF;
 	}
 
