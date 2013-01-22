@@ -86,6 +86,10 @@ email_mailbox_type_e g_default_mbox_type[MAILBOX_COUNT] =
 	EMAIL_MAILBOX_TYPE_SPAMBOX,
 };
 
+static email_account_list_t *g_account_list = NULL;
+static int g_account_num = 0;
+static pthread_mutex_t _account_ref_lock = PTHREAD_MUTEX_INITIALIZER;
+
 INTERNAL_FUNC email_account_t* emcore_get_account_reference(int account_id)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d]", account_id);
@@ -97,30 +101,37 @@ INTERNAL_FUNC email_account_t* emcore_get_account_reference(int account_id)
 		return result_account;
 	}
 	else if (account_id > 0)  {
+		ENTER_CRITICAL_SECTION(_account_ref_lock);
 		p = &g_account_list;
 		while (*p)  {
 			if ((*p)->account->account_id == account_id) {
-				result_account = ((*p)->account);
-				goto FINISH_OFF;
+				emcore_duplicate_account((*p)->account, &result_account, NULL);
+				break;
 			}
 			p = &(*p)->next;
 		}
+		LEAVE_CRITICAL_SECTION(_account_ref_lock);
+
+		if (result_account)
+			goto FINISH_OFF;
 
 		/*  refresh and check once again */
-		if (emcore_refresh_account_reference() == true) {
+		emcore_init_account_reference();
+		ENTER_CRITICAL_SECTION(_account_ref_lock);
+		if (g_account_num > 0 && g_account_list) {
 			p = &g_account_list;
 			while (*p)  {
 				if ((*p)->account->account_id == account_id) {
-					result_account = ((*p)->account);
-					goto FINISH_OFF;
+					emcore_duplicate_account((*p)->account, &result_account, NULL);
+					break;
 				}
 				p = &(*p)->next;
 			}
 		}
+		LEAVE_CRITICAL_SECTION(_account_ref_lock);
 	}
 
 FINISH_OFF:
-
 	EM_DEBUG_FUNC_END("[%p]", result_account);
 	return result_account;
 }
@@ -288,6 +299,11 @@ INTERNAL_FUNC int emcore_validate_account(int account_id, int *err_code)
 
 FINISH_OFF:
 
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code)
 		*err_code = err;
 
@@ -349,6 +365,11 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 			error_code = account_disconnect();
 			EM_DEBUG_LOG("account_disconnect returns [%d]", error_code);
 		}
+
+		if (account_to_be_deleted) {
+			emcore_free_account(account_to_be_deleted);
+			EM_SAFE_FREE(account_to_be_deleted);
+		}
 	}
 #endif
 	if (emcore_cancel_all_threads_of_an_account(account_id) < EMAIL_ERROR_NONE) {
@@ -394,8 +415,7 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 
 	emcore_display_unread_in_badge();
 	emcore_delete_notification_by_account(account_id);
-	emcore_refresh_account_reference();
-
+	emcore_init_account_reference();
 
 	ret = true;
 
@@ -611,52 +631,48 @@ INTERNAL_FUNC int emcore_init_account_reference()
 	int count = 0;		
 	int i = 0;
 	
-	if (!g_account_retrieved)  {
-		count = 1000;
-		if (!emstorage_get_account_list(&count, &account_tbl_array, true, true, &err))  {
-			EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [%d]", err);
+	/* free account reference if any */
+	emcore_free_account_reference();
+
+	if (!emstorage_get_account_list(&count, &account_tbl_array, true, true, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	for (p = &account_list, i = 0; i < count; i++) {
+		account = em_malloc(sizeof(email_account_t));
+		if (!account) {
+			EM_DEBUG_EXCEPTION("malloc failed...");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
 		}
 		
-		for (p = &account_list, i = 0; i < count; i++)  {
-			account = em_malloc(sizeof(email_account_t));
-			if (!account)  {	
-				EM_DEBUG_EXCEPTION("malloc failed...");
-				err = EMAIL_ERROR_OUT_OF_MEMORY;
-				goto FINISH_OFF;
-			}
-			
-			em_convert_account_tbl_to_account(account_tbl_array + i, account);
+		em_convert_account_tbl_to_account(account_tbl_array + i, account);
 
-			/* memcpy(account, accounts + i, sizeof(email_account_t)) */
-			/* memset(accounts + i, 0x00, sizeof(email_account_t)) */
-			
-			*p = (email_account_list_t*) em_malloc(sizeof(email_account_list_t));
-			if (!(*p))  {	/*prevent 26223*/
-				EM_DEBUG_EXCEPTION("malloc failed...");
-				emcore_free_account(account);
-				EM_SAFE_FREE(account);
-				err = EMAIL_ERROR_OUT_OF_MEMORY;
-				goto FINISH_OFF;
-			}
-			
-			
-			(*p)->account = account;
-			
-			p = &(*p)->next;
+		*p = (email_account_list_t*) em_malloc(sizeof(email_account_list_t));
+		if (!(*p)) {
+			EM_DEBUG_EXCEPTION("malloc failed...");
+			emcore_free_account(account);
+			EM_SAFE_FREE(account);
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
 		}
-		if (g_account_num)
-			emcore_free_account_reference();
-		g_account_retrieved = 1;
-		g_account_num = count;
-		g_account_list = account_list;
+
+		(*p)->account = account;
+
+		p = &(*p)->next;
 	}
-	
+
+	ENTER_CRITICAL_SECTION(_account_ref_lock);
+	g_account_num = count;
+	g_account_list = account_list;
+	LEAVE_CRITICAL_SECTION(_account_ref_lock);
+
 FINISH_OFF: 
 	if (account_tbl_array)
 		emstorage_free_account(&account_tbl_array, count, NULL);
 	
-	if (err != EMAIL_ERROR_NONE)  {
+	if (err != EMAIL_ERROR_NONE && account_list && i > 0) {
 		g_account_list = account_list;
 		emcore_free_account_reference();
 	}
@@ -665,32 +681,14 @@ FINISH_OFF:
 	return err;
 }
 
-INTERNAL_FUNC int emcore_refresh_account_reference()
-{
-	EM_DEBUG_FUNC_BEGIN();
-	
-	if (g_account_retrieved && g_account_num)
-		emcore_free_account_reference();
-	
-	g_account_retrieved = 0;
-	g_account_num = 0;
-	g_account_list = NULL;
-	
-	if (emcore_init_account_reference() != EMAIL_ERROR_NONE)  {
-		EM_DEBUG_EXCEPTION("emcore_init_account_reference failed...");
-		return false;
-	}
-	EM_DEBUG_FUNC_END();
-	return true;
-}
-
 INTERNAL_FUNC int emcore_free_account_reference()
 {
 	EM_DEBUG_FUNC_BEGIN();
-	
+	ENTER_CRITICAL_SECTION(_account_ref_lock);
+
 	email_account_list_t *p = g_account_list;
 	email_account_list_t *p_next = NULL;
-	while (p)  {
+	while (p) {
 		emcore_free_account(p->account);
 		EM_SAFE_FREE(p->account);
 		
@@ -699,9 +697,10 @@ INTERNAL_FUNC int emcore_free_account_reference()
 		p = p_next;
 	}
 
-	g_account_retrieved = 0;
 	g_account_num = 0;
 	g_account_list = NULL;
+
+	LEAVE_CRITICAL_SECTION(_account_ref_lock);
 	EM_DEBUG_FUNC_END();
 	return true;
 }
@@ -768,6 +767,64 @@ INTERNAL_FUNC void emcore_free_account(email_account_t *account)
 }
 
 
+INTERNAL_FUNC void emcore_duplicate_account(const email_account_t *account, email_account_t **account_dup, int *err_code)
+{
+	EM_DEBUG_FUNC_BEGIN("account[%p]", account);
+	int err = EMAIL_ERROR_NONE;
+	int ret = false;
+	email_account_t *temp_account = NULL;
+
+	if(!account) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	*account_dup = em_malloc(sizeof(email_account_t));
+	if (!*account_dup) {
+		EM_DEBUG_EXCEPTION("malloc failed...");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	memcpy(*account_dup, account , sizeof(email_account_t));
+	temp_account = *account_dup;
+
+	temp_account->account_name                             = EM_SAFE_STRDUP(account->account_name);
+	temp_account->incoming_server_address                  = EM_SAFE_STRDUP(account->incoming_server_address);
+	temp_account->user_email_address                       = EM_SAFE_STRDUP(account->user_email_address);
+	temp_account->incoming_server_user_name                = EM_SAFE_STRDUP(account->incoming_server_user_name);
+	temp_account->incoming_server_password                 = EM_SAFE_STRDUP(account->incoming_server_password);
+	temp_account->outgoing_server_address                  = EM_SAFE_STRDUP(account->outgoing_server_address);
+	temp_account->outgoing_server_user_name                = EM_SAFE_STRDUP(account->outgoing_server_user_name);
+	temp_account->outgoing_server_password                 = EM_SAFE_STRDUP(account->outgoing_server_password);
+	temp_account->user_display_name                        = EM_SAFE_STRDUP(account->user_display_name);
+	temp_account->reply_to_address                         = EM_SAFE_STRDUP(account->reply_to_address);
+	temp_account->return_address                           = EM_SAFE_STRDUP(account->return_address);
+	temp_account->logo_icon_path                           = EM_SAFE_STRDUP(account->logo_icon_path);
+	temp_account->user_data                                = em_memdup(account->user_data, account->user_data_length);
+	temp_account->options.display_name_from                = EM_SAFE_STRDUP(account->options.display_name_from);
+	temp_account->options.signature                        = EM_SAFE_STRDUP(account->options.signature);
+	temp_account->certificate_path                         = EM_SAFE_STRDUP(account->certificate_path);
+
+	ret = true;
+
+FINISH_OFF:
+
+	if (!ret) {
+		if (account_dup && *account_dup)
+			EM_SAFE_FREE(*account_dup);
+
+		*account_dup = NULL;
+	}
+
+	if (err_code != NULL)
+		*err_code = err;
+
+	return;
+	EM_DEBUG_FUNC_END();
+}
+
 INTERNAL_FUNC int emcore_get_account_reference_list(email_account_t **account_list, int *count, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_list[%p], count[%p], err_code[%p]", account_list, count, err_code);
@@ -776,6 +833,8 @@ INTERNAL_FUNC int emcore_get_account_reference_list(email_account_t **account_li
 	int err = EMAIL_ERROR_NONE;
 	email_account_t *accountRef;
 	email_account_list_t *p;
+
+	ENTER_CRITICAL_SECTION(_account_ref_lock);
 
 	if (!account_list || !count)  {
 		EM_DEBUG_EXCEPTION("account_list[%p], count[%p]", account_list, count);
@@ -789,13 +848,13 @@ INTERNAL_FUNC int emcore_get_account_reference_list(email_account_t **account_li
 		countOfAccounts++;
 		p = p->next;
 	}
-	
+
 	EM_DEBUG_LOG("Result count[%d]", countOfAccounts);
 	*count = countOfAccounts;
 
 	if (countOfAccounts > 0) {
 		*account_list = malloc(sizeof(email_account_t) * countOfAccounts);
-		if (!*account_list)  {		
+		if (!*account_list)  {
 			EM_DEBUG_LOG("malloc failed...");
 			err = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
@@ -806,28 +865,25 @@ INTERNAL_FUNC int emcore_get_account_reference_list(email_account_t **account_li
 	for (i = 0; i < countOfAccounts; i++)  {
 		accountRef = (*account_list) + i;
 		memcpy(accountRef, p->account , sizeof(email_account_t));
-		p = p->next;
-	}
-
-	for (i = 0; i < countOfAccounts; i++)  {
-		accountRef = (*account_list) + i;
 		EM_DEBUG_LOG("Result account id[%d], name[%s]", accountRef->account_id, accountRef->account_name);
+		p = p->next;
 	}
 
 	ret = true;
 
-FINISH_OFF: 
+FINISH_OFF:
 	if (ret == false) {
-		if (account_list) /*  Warn! this is not *account_list. Just account_list */
+		if (account_list && *account_list)
 			EM_SAFE_FREE(*account_list);
 	}
+
+	LEAVE_CRITICAL_SECTION(_account_ref_lock);
 
 	if (err_code != NULL)
 		*err_code = err;
 	EM_DEBUG_FUNC_END();
 	return ret;
 }
-	
 
 #ifdef __FEATURE_BACKUP_ACCOUNT__
 #include <ss_manager.h>
@@ -1011,6 +1067,8 @@ INTERNAL_FUNC int emcore_restore_accounts(const char *file_path, int *error_code
 				}
 			}
 		}
+
+		EM_SAFE_FREE(account_list);
 	}
 
 	if (ssm_getinfo(file_path, &sfi, SSM_FLAG_SECRET_OPERATION, NULL) < 0) {

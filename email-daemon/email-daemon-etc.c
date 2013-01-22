@@ -38,6 +38,7 @@
 #include "email-daemon-account.h"
 #include "email-debug-log.h"
 #include "email-internal-types.h"
+#include "email-core-account.h"
 #include "email-core-event.h"
 #include "email-core-utils.h"
 #include "email-utilities.h"
@@ -141,8 +142,8 @@ INTERNAL_FUNC int emdaemon_cancel_sending_mail_job(int account_id, int mail_id, 
 		goto FINISH_OFF;
 	}
 
-	if (!(ref_account = emdaemon_get_account_reference(account_id)))  {
-		EM_DEBUG_EXCEPTION("emdaemon_get_account_reference failed [%d]", account_id);
+	if (!(ref_account = emcore_get_account_reference(account_id)))  {
+		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
@@ -161,6 +162,11 @@ FINISH_OFF:
 	if(err_code != NULL)
 		*err_code = err;
 	
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 #ifdef __FEATURE_PROGRESS_IN_OUTBOX__
 	if(!emstorage_free_mail(&mail_tbl_data, 1, &err))
 		EM_DEBUG_EXCEPTION("emcore_free_mail Failed [%d ]", err);	

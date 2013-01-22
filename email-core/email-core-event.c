@@ -1359,17 +1359,18 @@ int event_handler_EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT(email_account_t *accou
 
 	EM_DEBUG_LOG("incoming_server_address  :  %s", account->incoming_server_address);
 
-	if (!emnetwork_check_network_status(&err))  {
+	if (!emnetwork_check_network_status(&err)) {
+		emcore_delete_account_from_unvalidated_account_list(account->account_id);
 		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
-
 		if (!emcore_notify_network_event(NOTI_VALIDATE_AND_CREATE_ACCOUNT_FAIL, account->account_id, NULL,  handle_to_be_published, err))
 			EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FAIL] Failed >>>> ");
 		goto FINISH_OFF;
 	}
-	else  {
+	else {
 		EM_DEBUG_LOG("incoming_server_address : %s", account->incoming_server_address);
 
 		if (!emcore_validate_account_with_account_info(account, &err)) {
+			emcore_delete_account_from_unvalidated_account_list(account->account_id);
 			EM_DEBUG_EXCEPTION("emcore_validate_account_with_account_info failed err :  %d", err);
 			if (err == EMAIL_ERROR_CANCELLED) {
 				EM_DEBUG_EXCEPTION(" notify  :  NOTI_VALIDATE_AND_CREATE_ACCOUNT_CANCEL ");
@@ -1388,7 +1389,7 @@ int event_handler_EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT(email_account_t *accou
 				goto FINISH_OFF;
 			}
 
-			emcore_refresh_account_reference();
+			emcore_init_account_reference();
 
 			EM_DEBUG_LOG("incoming_server_type [%d]", account->incoming_server_type);
 
@@ -1399,7 +1400,6 @@ int event_handler_EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT(email_account_t *accou
 					emcore_delete_account(account->account_id, NULL);
 					goto FINISH_OFF;
 				}
-
 			}
 
 			EM_DEBUG_LOG("validating and creating an account are succeeded for account id  [%d]  err [%d]", account->account_id, err);
@@ -1472,7 +1472,7 @@ int event_handler_EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT(int account_id, email_
 			em_convert_account_to_account_tbl(new_account_info, new_account_tbl);
 
 			if (emstorage_update_account(account_id, new_account_tbl, true, &err)) {
-				emcore_refresh_account_reference();
+				emcore_init_account_reference();
 			}
 
 			EM_DEBUG_LOG("validating and updating an account are succeeded for account id [%d], err [%d]", new_account_info->account_id, err);
@@ -1765,7 +1765,7 @@ int event_handler_EMAIL_EVENT_VALIDATE_ACCOUNT(int account_id, int handle_to_be_
 			}
 		}
 		else {
-			email_account_t *account_ref;
+			email_account_t *account_ref = NULL;
 			account_ref = emcore_get_account_reference(account_id);
 
 			if (account_ref) {
@@ -1782,6 +1782,9 @@ int event_handler_EMAIL_EVENT_VALIDATE_ACCOUNT(int account_id, int handle_to_be_
 					if (!emcore_notify_network_event(NOTI_VALIDATE_ACCOUNT_FINISH, account_id, NULL,  handle_to_be_published, err))
 						EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FINISH] Success >>>>");
 				}
+
+				emcore_free_account(account_ref);
+				EM_SAFE_FREE(account_ref);
 			}
 		}
 	}
@@ -1862,6 +1865,12 @@ int event_handler_EMAIL_EVENT_MOVE_MAIL(int account_id, int *mail_ids, int mail_
 	ret = true;
 FINISH_OFF:
 	EM_SAFE_FREE(mail_ids); /*prevent 33693*/
+
+	if (account_ref) {
+		emcore_free_account(account_ref);
+		EM_SAFE_FREE(account_ref);
+	}
+
 	if (error)
 		*error = err;
 
@@ -1987,6 +1996,11 @@ int event_handler_EMAIL_EVENT_DELETE_MAIL(int account_id, int *mail_id_list, int
 
 	ret = true;
 FINISH_OFF:
+
+	if (account_ref) {
+		emcore_free_account(account_ref);
+		EM_SAFE_FREE(account_ref);
+	}
 
 	if (error)
 		*error = err;

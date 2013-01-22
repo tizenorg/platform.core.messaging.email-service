@@ -1491,7 +1491,7 @@ INTERNAL_FUNC int emcore_sync_header(emstorage_mailbox_tbl_t *input_mailbox_tbl,
 	int err_from_vconf = 0;
 	int status = EMAIL_LIST_FAIL;
 	int download_limit_count;
-	email_account_t        *account_ref = NULL;
+	email_account_t      *account_ref = NULL;
 	emstorage_rule_tbl_t *rule = NULL;
 	emcore_uid_list      *uid_list = NULL;
 	emcore_uid_list      *uid_elem = NULL;
@@ -1808,6 +1808,11 @@ INTERNAL_FUNC int emcore_sync_header(emstorage_mailbox_tbl_t *input_mailbox_tbl,
 FINISH_OFF:
 
 	*unread_mail = unread;
+
+	if (account_ref) {
+		emcore_free_account(account_ref);
+		EM_SAFE_FREE(account_ref);
+	}
 
 	if (!emcore_remove_overflowed_mails(input_mailbox_tbl, &err_2))
 		EM_DEBUG_EXCEPTION("emcore_remove_overflowed_mails failed - %d", err_2);
@@ -2165,6 +2170,11 @@ FINISH_OFF:
 		stream = NULL;
 	}
 
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code)
 		*err_code = err;
 
@@ -2269,6 +2279,11 @@ FINISH_OFF:
 	if (mailbox && !mailbox->mail_stream){
 		emcore_close_mailbox(0, stream);
 		stream = NULL;
+	}
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
 	}
 
 	if (err_code)
@@ -2563,6 +2578,11 @@ FINISH_OFF:
 	EM_SAFE_FREE(data);
 	EM_SAFE_FREE(long_enc_path);
 
+	if (account_ref) {
+		emcore_free_account(account_ref);
+		EM_SAFE_FREE(account_ref);
+	}
+
 	if (fp)
 		fclose(fp);
 
@@ -2602,7 +2622,7 @@ static int emcore_initiate_pbd(MAILSTREAM *stream, int account_id, int mail_id, 
 
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	email_account_t *account_ref;
+	email_account_t *account_ref = NULL;
 	emstorage_mailbox_tbl_t* mailbox = NULL;
 
 	if (account_id < FIRST_ACCOUNT_ID || mail_id < 0 || NULL == uid || 0 == input_maibox_id){
@@ -2666,10 +2686,15 @@ static int emcore_initiate_pbd(MAILSTREAM *stream, int account_id, int mail_id, 
 
 	ret = true;
 
-	FINISH_OFF:
+FINISH_OFF:
 
 	if (mailbox) {
 		emstorage_free_mailbox(&mailbox, 1, &err);
+	}
+
+	if (account_ref) {
+		emcore_free_account(account_ref);
+		EM_SAFE_FREE(account_ref);
 	}
 
 	if (NULL  != err_code)

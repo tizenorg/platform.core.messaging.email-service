@@ -97,18 +97,10 @@ struct emcore_account_list_t {
 	emcore_account_list_t *next;
 };
 
-static emcore_account_list_t **g_account_reference = NULL;
-
 INTERNAL_FUNC char *emcore_convert_mutf7_to_utf8(char *mailbox_name)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	return (char *)(utf8_from_mutf7((unsigned char *)mailbox_name));
-}
-
-INTERNAL_FUNC int emcore_set_account_reference(emcore_account_list_t **account_list, int account_num, int *err_code)
-{
-	g_account_reference = (emcore_account_list_t **)account_list;
-	return 1;
 }
 
 /*  in smtp case, path argument must be ENCODED_PATH_SMTP */
@@ -241,8 +233,9 @@ int emcore_get_long_encoded_path(int account_id, char *path, int delimiter, char
 
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
+	email_account_t *ref_account = NULL;
 
-	email_account_t *ref_account = emcore_get_account_reference(account_id);
+	ref_account = emcore_get_account_reference(account_id);
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		error = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -257,6 +250,12 @@ int emcore_get_long_encoded_path(int account_id, char *path, int delimiter, char
 	ret = true;
 
 FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code != NULL)
 		*err_code = error;
 	EM_PROFILE_END(emCorelongEncodedpath);

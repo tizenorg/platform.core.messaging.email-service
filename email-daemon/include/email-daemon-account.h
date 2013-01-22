@@ -39,9 +39,7 @@ extern "C"
 
 #include "email-daemon.h"
 
-int            emdaemon_initialize_account_reference();
-email_account_t* emdaemon_get_account_reference(int account_id);
-int            emdaemon_free_account_reference(void);
+int emdaemon_initialize_account_reference();
 
 #ifdef __cplusplus
 }

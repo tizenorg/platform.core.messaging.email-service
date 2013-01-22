@@ -356,7 +356,7 @@ INTERNAL_FUNC int emdaemon_finalize(int* err_code)
 	}
 	
 	/* free account reference list */
-	emdaemon_free_account_reference();
+	emcore_free_account_reference();
 	
 	/* close database */
 	if (!emstorage_close(&err)) {

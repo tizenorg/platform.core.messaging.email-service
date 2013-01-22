@@ -39,6 +39,7 @@
 #include "email-daemon-account.h"
 #include "email-debug-log.h"
 #include "email-core-mailbox.h"
+#include "email-core-account.h"
 #include "email-core-global.h"
 #include "email-core-utils.h"
 
@@ -53,6 +54,7 @@ INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(int account_id, char* mailbox, 
 	/*  default variable */
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
+	email_account_t* ref_account = NULL;
 
 	if (account_id <= 0 ||!mailbox)  {
 		EM_DEBUG_EXCEPTION("account_id[%d], mailbox[%p]", account_id, mailbox);
@@ -60,10 +62,10 @@ INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(int account_id, char* mailbox, 
 		goto FINISH_OFF;
 	}
 
-	email_account_t* ref_account = emdaemon_get_account_reference(account_id);
+	ref_account = emcore_get_account_reference(account_id);
 
 	if (!ref_account)  {
-		EM_DEBUG_EXCEPTION("emdaemon_get_account_reference failed [%d]", account_id);
+		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
@@ -83,6 +85,12 @@ INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(int account_id, char* mailbox, 
 	ret = true;
 
 FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code)
 		*err_code = err;
 	EM_DEBUG_FUNC_END();
@@ -95,6 +103,7 @@ INTERNAL_FUNC int emdaemon_get_mailbox_list(int account_id, email_mailbox_t** ma
 
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
+	email_account_t* ref_account = NULL;
 
 	if (account_id <= 0 || !mailbox_list || !count)  {
 		EM_DEBUG_EXCEPTION("account_id[%d], mailbox_list[%p], count[%p]", account_id, mailbox_list, count);
@@ -102,10 +111,10 @@ INTERNAL_FUNC int emdaemon_get_mailbox_list(int account_id, email_mailbox_t** ma
 		goto FINISH_OFF;
 	}
 
-	email_account_t* ref_account = emdaemon_get_account_reference(account_id);
+	ref_account = emcore_get_account_reference(account_id);
 
 	if (!ref_account)  {
-		EM_DEBUG_EXCEPTION("emdaemon_get_account_reference failed [%d]", account_id);
+		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
@@ -118,6 +127,12 @@ INTERNAL_FUNC int emdaemon_get_mailbox_list(int account_id, email_mailbox_t** ma
 	ret = true;
 
 FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code)
 		*err_code = err;
 	EM_DEBUG_FUNC_END();
@@ -132,6 +147,7 @@ INTERNAL_FUNC int emdaemon_get_mail_count_of_mailbox(email_mailbox_t* mailbox, i
 	/*  default variable */
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
+	email_account_t* ref_account = NULL;
 
 	if (!mailbox || !total || !unseen)  {
 		EM_DEBUG_EXCEPTION("mailbox[%p], total[%p], unseen[%p]", mailbox, total, unseen);
@@ -139,9 +155,9 @@ INTERNAL_FUNC int emdaemon_get_mail_count_of_mailbox(email_mailbox_t* mailbox, i
 		goto FINISH_OFF;
 	}
 
-	email_account_t* ref_account = emdaemon_get_account_reference(mailbox->account_id);
+	ref_account = emcore_get_account_reference(mailbox->account_id);
 	if (ref_account == NULL)  {
-		EM_DEBUG_EXCEPTION(" emdaemon_get_account_reference failed [%d]", mailbox->account_id);
+		EM_DEBUG_EXCEPTION(" emcore_get_account_reference failed [%d]", mailbox->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
@@ -155,6 +171,12 @@ INTERNAL_FUNC int emdaemon_get_mail_count_of_mailbox(email_mailbox_t* mailbox, i
 	ret = true;
 
 FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code)
 		*err_code = err;
 	EM_DEBUG_FUNC_END();
@@ -167,6 +189,7 @@ INTERNAL_FUNC int emdaemon_add_mailbox(email_mailbox_t* new_mailbox, int on_serv
 
 	int ret = false;;
 	int err = EMAIL_ERROR_NONE;
+	email_account_t* ref_account = NULL;
 
 	if (!new_mailbox || new_mailbox->account_id <= 0 || !new_mailbox->mailbox_name)  {
 		if (new_mailbox != NULL)
@@ -175,10 +198,10 @@ INTERNAL_FUNC int emdaemon_add_mailbox(email_mailbox_t* new_mailbox, int on_serv
 		goto FINISH_OFF;
 	}
 
-	email_account_t* ref_account = emdaemon_get_account_reference(new_mailbox->account_id);
+	ref_account = emcore_get_account_reference(new_mailbox->account_id);
 
 	if (!ref_account)  {
-		EM_DEBUG_EXCEPTION("emdaemon_get_account_reference failed [%d]", new_mailbox->account_id);
+		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", new_mailbox->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
@@ -213,6 +236,12 @@ INTERNAL_FUNC int emdaemon_add_mailbox(email_mailbox_t* new_mailbox, int on_serv
 	ret = true;
 
 FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code)
 		*err_code = err;
 	EM_DEBUG_FUNC_END();
@@ -227,6 +256,7 @@ INTERNAL_FUNC int emdaemon_update_mailbox(email_mailbox_t* old_mailbox, email_ma
 	/*  default variable */
 	int ret = false;;
 	int err = EMAIL_ERROR_NONE;
+	email_account_t* ref_account = NULL;
 
 	if (!old_mailbox || old_mailbox->account_id <= 0 || !old_mailbox->mailbox_name
 		|| !new_mailbox || new_mailbox->account_id <= 0 || !new_mailbox->mailbox_name)  {
@@ -240,10 +270,10 @@ INTERNAL_FUNC int emdaemon_update_mailbox(email_mailbox_t* old_mailbox, email_ma
 		goto FINISH_OFF;
 	}
 
-	email_account_t* ref_account = emdaemon_get_account_reference(old_mailbox->account_id);
+	ref_account = emcore_get_account_reference(old_mailbox->account_id);
 
 	if (!ref_account)  {
-		EM_DEBUG_EXCEPTION("emdaemon_get_account_reference failed [%d]", old_mailbox->account_id);
+		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", old_mailbox->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;		/*  instead of EMAIL_ERROR_INVALID_PARAM; */
 		goto FINISH_OFF;
 	}
@@ -260,6 +290,12 @@ INTERNAL_FUNC int emdaemon_update_mailbox(email_mailbox_t* old_mailbox, email_ma
 	ret = true;
 
 FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code)
 		*err_code = err;
 	EM_DEBUG_FUNC_END();
@@ -332,6 +368,7 @@ INTERNAL_FUNC int emdaemon_delete_mailbox(int input_mailbox_id, int on_server, i
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 	emstorage_mailbox_tbl_t *mailbox_tbl = NULL;
+	email_account_t* ref_account = NULL;
 
 	if ((err = emstorage_get_mailbox_by_id(input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE || !mailbox_tbl) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed. [%d]", err);
@@ -345,11 +382,10 @@ INTERNAL_FUNC int emdaemon_delete_mailbox(int input_mailbox_id, int on_server, i
 		goto FINISH_OFF;
 	}
 
-	email_account_t* ref_account = emdaemon_get_account_reference(mailbox_tbl->account_id);
-
+	ref_account = emcore_get_account_reference(mailbox_tbl->account_id);
 
 	if (!ref_account)  {
-		EM_DEBUG_EXCEPTION("emdaemon_get_account_reference failed [%d]", mailbox_tbl->account_id);
+		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", mailbox_tbl->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
@@ -381,6 +417,12 @@ INTERNAL_FUNC int emdaemon_delete_mailbox(int input_mailbox_id, int on_server, i
 	ret = true;
 
 FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code)
 		*err_code = err;
 	EM_DEBUG_FUNC_END();
@@ -394,6 +436,7 @@ INTERNAL_FUNC int emdaemon_delete_mailbox_all(email_mailbox_t* mailbox, int* err
 	/*  default variable */
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
+	email_account_t* ref_account = NULL;
 
 	if (!mailbox)  {
 		err = EMAIL_ERROR_INVALID_PARAM;
@@ -406,11 +449,10 @@ INTERNAL_FUNC int emdaemon_delete_mailbox_all(email_mailbox_t* mailbox, int* err
 		goto FINISH_OFF;
 	}
 
-	email_account_t* ref_account = emdaemon_get_account_reference(mailbox->account_id);
-
+	ref_account = emcore_get_account_reference(mailbox->account_id);
 
 	if (!ref_account)  {
-		EM_DEBUG_EXCEPTION("emdaemon_get_account_reference failed [%d]", mailbox->account_id);
+		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", mailbox->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
@@ -423,6 +465,12 @@ INTERNAL_FUNC int emdaemon_delete_mailbox_all(email_mailbox_t* mailbox, int* err
 	ret = true;
 
 FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code)
 		*err_code = err;
 	EM_DEBUG_FUNC_END();
@@ -465,8 +513,8 @@ INTERNAL_FUNC int emdaemon_sync_header(int input_account_id, int input_mailbox_i
 	}
 	else {
 
-		if (!(ref_account = emdaemon_get_account_reference(input_account_id))) {
-			EM_DEBUG_EXCEPTION("emdaemon_get_account_reference failed [%d]", input_account_id);
+		if (!(ref_account = emcore_get_account_reference(input_account_id))) {
+			EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", input_account_id);
 			err = EMAIL_ERROR_INVALID_ACCOUNT;
 			goto FINISH_OFF;
 		}
@@ -494,6 +542,12 @@ INTERNAL_FUNC int emdaemon_sync_header(int input_account_id, int input_mailbox_i
 	ret = true;
 
 FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code)
 		*err_code = err;
 	EM_DEBUG_FUNC_END();

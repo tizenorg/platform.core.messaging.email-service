@@ -230,6 +230,11 @@ INTERNAL_FUNC int emcore_get_mailbox_list(int account_id, email_mailbox_t **mail
 FINISH_OFF: 
 	if (local_mailbox_list != NULL)
 		emstorage_free_mailbox(&local_mailbox_list, count, NULL);
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
 	
 	if (err_code != NULL)
 		*err_code = error;
@@ -306,6 +311,10 @@ FINISH_OFF:
 	
 	*mailbox_list = tmp_mailbox_list;
 	
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
 	
 	if (mailbox_tbl_list != NULL)
 		emstorage_free_mailbox(&mailbox_tbl_list, count, NULL);
@@ -790,7 +799,9 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox(int account_id, char *mailbox
 	
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
-	email_account_t *ref_account = emcore_get_account_reference(account_id);
+	email_account_t *ref_account = NULL;
+
+	ref_account = emcore_get_account_reference(account_id);
 
 	if (!ref_account) {		
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed - account id[%d]", account_id);
@@ -800,7 +811,13 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox(int account_id, char *mailbox
 	
 	ret = emcore_connect_to_remote_mailbox_with_account_info(ref_account, mailbox, mail_stream, &error);
 
-FINISH_OFF: 
+FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code)
 		*err_code = error;
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
@@ -856,7 +873,9 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox(int account_id, int input_mai
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
 	email_session_t *session = NULL;
-	email_account_t *ref_account = emcore_get_account_reference(account_id);
+	email_account_t *ref_account = NULL;
+
+	ref_account = emcore_get_account_reference(account_id);
 
 	if (!ref_account)  {		
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed - account id[%d]", account_id);
@@ -883,6 +902,11 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox(int account_id, int input_mai
 	ret = emcore_connect_to_remote_mailbox_with_account_info(ref_account, input_mailbox_id, mail_stream, &error);
 
 FINISH_OFF: 
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
 
 	emcore_clear_session(session);
 	

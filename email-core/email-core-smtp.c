@@ -1185,7 +1185,7 @@ INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mai
 		goto FINISH_OFF;
 	}
 
-	if (!(ref_account = emcore_get_account_reference(account_id)))  {
+	if (!(ref_account = emcore_get_account_reference(account_id))) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
@@ -1437,6 +1437,11 @@ FINISH_OFF:
 					EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]", err2);
 			}
 		}
+	}
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
 	}
 
 #ifndef __FEATURE_KEEP_CONNECTION__
@@ -1717,6 +1722,12 @@ INTERNAL_FUNC int emcore_send_saved_mail(int account_id, char *input_mailbox_nam
 	ret = true;
 
 FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (stream)
 		smtp_close(stream);
 
@@ -2042,6 +2053,11 @@ static int emcore_send_mail_smtp(SENDSTREAM *stream, ENVELOPE *env, char *data_f
 FINISH_OFF:
 	if (ret == false)
 		smtp_send(stream, "RSET", 0);
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
 
 	if (err_code)
 		*err_code = err;
@@ -2768,6 +2784,11 @@ FINISH_OFF:
 	else {
 		mail_free_envelope(&envelope);
 		*output_envelope = NULL;
+	}
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
 	}
 
 	EM_DEBUG_FUNC_END("error [%d]", error);
