@@ -477,7 +477,7 @@ INTERNAL_FUNC int emcore_move_mail_on_server_ex(int account_id, int src_mailbox_
 	int string_count = 0;
 	emstorage_mailbox_tbl_t* dest_mailbox = NULL;
 	
-	if (num <= 0  || account_id <= 0 || src_mailbox_id <= 0 || dest_mailbox_id <= 0 || NULL == mail_ids)  {
+	if (num <= 0  || account_id <= 0 || src_mailbox_id <= 0 || dest_mailbox_id <= 0 || NULL == mail_ids) {
 		if (error_code != NULL) {
 			*error_code = EMAIL_ERROR_INVALID_PARAM;
 		}
@@ -494,14 +494,13 @@ INTERNAL_FUNC int emcore_move_mail_on_server_ex(int account_id, int src_mailbox_
 		goto FINISH_OFF;
 	}
 
- 
 	if (ref_account->incoming_server_type != EMAIL_SERVER_TYPE_IMAP4) {
 		*error_code = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
 
-	if (!emcore_connect_to_remote_mailbox(account_id, src_mailbox_id, (void **)&stream, &err_code))		 {
+	if (!emcore_connect_to_remote_mailbox(account_id, src_mailbox_id, (void **)&stream, &err_code)) {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed[%d]", err_code);
 		
 		goto FINISH_OFF;
@@ -586,6 +585,11 @@ INTERNAL_FUNC int emcore_move_mail_on_server_ex(int account_id, int src_mailbox_
 FINISH_OFF: 
 	emcore_close_mailbox(0, stream);
 	stream = NULL;
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
 
 #ifdef __FEATURE_LOCAL_ACTIVITY__
 	if (ret || ref_account->incoming_server_type != EMAIL_SERVER_TYPE_IMAP4) /* Delete local activity for POP3 mails and successful move operation in IMAP */ {
@@ -3355,6 +3359,11 @@ FINISH_OFF:
 		EM_SAFE_FREE(g_inline_list);
 	}
 
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	multi_part_body_size = 0;
 	_pop3_received_body_size = 0;
 	_pop3_last_notified_body_size = 0;
@@ -3421,7 +3430,7 @@ static int emcore_delete_mails_from_remote_server(int input_account_id, int inpu
 	EM_DEBUG_FUNC_BEGIN("input_account_id[%d], input_mail_ids[%p], input_mail_id_count[%d], input_delete_option [%d]", input_account_id, input_mail_ids, input_mail_id_count, input_delete_option);
 
 	int err = EMAIL_ERROR_NONE;
-	email_account_t        *account = NULL;
+	email_account_t *account = NULL;
 #ifdef 	__FEATURE_BULK_DELETE_MOVE_UPDATE_REQUEST_OPTI__
 	int bulk_flag = false;
 #endif
@@ -3488,6 +3497,11 @@ static int emcore_delete_mails_from_remote_server(int input_account_id, int inpu
 
 FINISH_OFF:
 
+	if (account) {
+		emcore_free_account(account);
+		EM_SAFE_FREE(account);
+	}
+
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
@@ -3528,6 +3542,11 @@ int emcore_delete_mail(int account_id, int mail_ids[], int num, int from_server,
 FINISH_OFF: 
 	if (from_server)
 		emcore_show_user_message(account_id, EMAIL_ACTION_DELETE_MAIL, ret == true ? 0  :  err);
+
+	if (account) {
+		emcore_free_account(account);
+		EM_SAFE_FREE(account);
+	}
 
 	if (err_code != NULL)
 		*err_code = err;
@@ -4866,6 +4885,11 @@ INTERNAL_FUNC int emcore_move_mail_on_server(int account_id, int src_mailbox_id,
 FINISH_OFF:
 	if (stream) emcore_close_mailbox(account_id, stream);
 
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (mail != NULL)
 		emstorage_free_mail(&mail, 1, NULL);
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
@@ -5025,6 +5049,16 @@ FINISH_OFF:
 
 	if (target_mailbox)
 		emstorage_free_mailbox(&target_mailbox, 1, NULL);
+
+	if (source_account_ref) {
+		emcore_free_account(source_account_ref);
+		EM_SAFE_FREE(source_account_ref);
+	}
+
+	if (target_account_ref) {
+		emcore_free_account(target_account_ref);
+		EM_SAFE_FREE(target_account_ref);
+	}
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
@@ -5589,6 +5623,11 @@ FINISH_OFF:
 	if (mail)
 		emstorage_free_mail(&mail, 1, NULL);
 
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code != NULL)
 		*err_code = err;
 	EM_DEBUG_FUNC_END("err [%d]", err);	
@@ -5632,7 +5671,7 @@ INTERNAL_FUNC int emcore_sync_seen_flag_with_server(int mail_ids[], int num, int
 
 	account_id = mail->account_id;
 
-	if (!(ref_account = emcore_get_account_reference(account_id)))   {
+	if (!(ref_account = emcore_get_account_reference(account_id))) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
@@ -5710,6 +5749,11 @@ FINISH_OFF:
 	
 	if (stream) emcore_close_mailbox(account_id, stream);
 	if (mail) emstorage_free_mail(&mail, 1, NULL);
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
 
 	if (err_code != NULL)
 		*err_code = err;
@@ -5917,7 +5961,7 @@ INTERNAL_FUNC int emcore_sync_flags_field_with_server(int mail_ids[], int num, e
 	int id_set_count = 0;
 	int len_of_each_range = 0;
 	int string_count = 0;
-	email_account_t *temp_account;
+	email_account_t *temp_account = NULL;
 	email_id_set_t *id_set = NULL;
 	emstorage_mail_tbl_t *mail = NULL;
 	email_uid_range_set *uid_range_set = NULL;
@@ -6099,11 +6143,15 @@ FINISH_OFF:
 	emcore_close_mailbox(0, stream);
 	stream = NULL;
 
+	if (temp_account) {
+		emcore_free_account(temp_account);
+		EM_SAFE_FREE(temp_account);
+	}
+
 	if (err_code != NULL)
 		*err_code = err;
 	EM_DEBUG_FUNC_END();
 	return ret;
-
 }
 #endif
 

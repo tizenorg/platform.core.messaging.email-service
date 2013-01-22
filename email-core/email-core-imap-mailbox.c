@@ -68,6 +68,11 @@ INTERNAL_FUNC int emcore_get_default_mail_slot_count(int input_account_id, int *
 		default_mail_slot_count = account_ref->default_mail_slot_size;
 
 FINISH_OFF: 
+
+	if (account_ref) {
+		emcore_free_account(account_ref);
+		EM_SAFE_FREE(account_ref);
+	}
 	
 	if (output_count)
 		*output_count = default_mail_slot_count;
@@ -123,6 +128,11 @@ INTERNAL_FUNC int emcore_remove_overflowed_mails(emstorage_mailbox_tbl_t *intput
 	ret = true;
 FINISH_OFF: 
 	EM_SAFE_FREE(mail_id_list);
+
+	if (account_ref) {
+		emcore_free_account(account_ref);
+		EM_SAFE_FREE(account_ref);
+	}
 
 	if (err_code)
 		*err_code = err;
@@ -223,6 +233,11 @@ INTERNAL_FUNC int emcore_set_mail_slot_size(int account_id, int mailbox_id, int 
 	
 FINISH_OFF: 
 
+	if (account_ref) {
+		emcore_free_account(account_ref);
+		EM_SAFE_FREE(account_ref);
+	}
+
 	if (account_tbl_list)
 		emstorage_free_account(&account_tbl_list, account_count, NULL);
 
@@ -237,35 +252,40 @@ FINISH_OFF:
 
 static int emcore_get_mailbox_connection_path(int account_id, char *mailbox_name, char **path, int *err_code)
 {
-    email_account_t *ref_account = NULL;
+	EM_DEBUG_FUNC_BEGIN("account_id [%d], mailbox_name[%s], err_code[%p]", account_id, mailbox_name, err_code);
+	email_account_t *ref_account = NULL;
 	size_t path_len = 0;
-
+	int ret = false;
+	int err = EMAIL_ERROR_NONE;
 
 	ref_account = emcore_get_account_reference(account_id);
 	if (!ref_account)	 {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed");
-		return 0;
+		goto FINISH_OFF;
 	}
 
 	path_len = EM_SAFE_STRLEN(ref_account->incoming_server_address) +
-                          (mailbox_name ? EM_SAFE_STRLEN(mailbox_name) : 0) + 50;
+			(mailbox_name ? EM_SAFE_STRLEN(mailbox_name) : 0) + 50;
 
-    *path = em_malloc(path_len);/* EM_SAFE_STRLEN(ref_account->incoming_server_address) + */
-                          /* (mailbox_name ? EM_SAFE_STRLEN(mailbox_name) : 0) + 20); */
-    if (!*path)
-    	return 0;
+	*path = em_malloc(path_len);/* EM_SAFE_STRLEN(ref_account->incoming_server_address) + */
+								/* (mailbox_name ? EM_SAFE_STRLEN(mailbox_name) : 0) + 20); */
+	if (!*path) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
 	memset(*path, 0x00, path_len);
-    /* 1. server address / server type */
 
-    if (ref_account->incoming_server_type == EMAIL_SERVER_TYPE_POP3) {
-        SNPRINTF(*path + 1, path_len-1, "%s:%d/pop", ref_account->incoming_server_address, ref_account->incoming_server_port_number);
-    }
-    else {
-        SNPRINTF(*path + 1, path_len-1, "%s:%d/imap", ref_account->incoming_server_address, ref_account->incoming_server_port_number);
-    }
+	/* 1. server address / server type */
+	if (ref_account->incoming_server_type == EMAIL_SERVER_TYPE_POP3) {
+		SNPRINTF(*path + 1, path_len-1, "%s:%d/pop", ref_account->incoming_server_address, ref_account->incoming_server_port_number);
+	} else {
+		SNPRINTF(*path + 1, path_len-1, "%s:%d/imap", ref_account->incoming_server_address, ref_account->incoming_server_port_number);
+	}
 
-    /* 2. set tls option if security connection */
-/*     if (ref_account->incoming_server_secure_connection) strncat(*path + 1, "/tls", path_len-(EM_SAFE_STRLEN(*path)-1)); */
+	/* 2. set tls option if security connection */
+	/*if (ref_account->incoming_server_secure_connection) strncat(*path + 1, "/tls", path_len-(EM_SAFE_STRLEN(*path)-1));*/
 	if (ref_account->incoming_server_secure_connection & 0x01) {
 		strncat(*path + 1, "/ssl", path_len-(EM_SAFE_STRLEN(*path)-1));
 	}
@@ -274,13 +294,25 @@ static int emcore_get_mailbox_connection_path(int account_id, char *mailbox_name
 	else
 		strncat(*path + 1, "/notls", path_len-(EM_SAFE_STRLEN(*path)-1));
 
-    /*  3. re-format mailbox name (ex:"{mai.test.com:143/imap} or {mai.test.com:143/imap/tls}"} */
-    strncat(*path + 1, "}", path_len-EM_SAFE_STRLEN(*path)-1);
-    **path = '{';
+	/*  3. re-format mailbox name (ex:"{mai.test.com:143/imap} or {mai.test.com:143/imap/tls}"} */
+	strncat(*path + 1, "}", path_len-EM_SAFE_STRLEN(*path)-1);
+	**path = '{';
 
-    if (mailbox_name) strncat(*path, mailbox_name, path_len-EM_SAFE_STRLEN(*path)-1);
+	if (mailbox_name) strncat(*path, mailbox_name, path_len-EM_SAFE_STRLEN(*path)-1);
 
-    return 1;
+	ret = true;
+
+FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
+	if (!ret)
+		return 0;
+
+	return 1;
 }
 
 INTERNAL_FUNC int emcore_sync_mailbox_list(int account_id, char *mailbox_name, int handle, int *err_code)
@@ -318,7 +350,7 @@ INTERNAL_FUNC int emcore_sync_mailbox_list(int account_id, char *mailbox_name, i
 	}
 	
 	/* if not imap4 mail, return */
-	if ( ref_account->incoming_server_type != EMAIL_SERVER_TYPE_IMAP4)  {
+	if ( ref_account->incoming_server_type != EMAIL_SERVER_TYPE_IMAP4) {
 		EM_DEBUG_EXCEPTION("unsupported account...");
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
@@ -521,6 +553,11 @@ FINISH_OFF:
 	}
 	EM_SAFE_FREE(mailbox_name_for_mailbox_type);
 	EM_SAFE_FREE(mbox_path);
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
 
 	if (stream) 
 		emcore_close_mailbox(account_id, stream);
@@ -907,7 +944,7 @@ INTERNAL_FUNC int emcore_create_imap_mailbox(email_mailbox_t *mailbox, int *err_
         goto FINISH_OFF;
     }
 
-	emcore_close_mailbox(0, stream);				
+	emcore_close_mailbox(0, stream);
 	stream = NULL;
 
     EM_SAFE_FREE(long_enc_path);
@@ -916,7 +953,7 @@ INTERNAL_FUNC int emcore_create_imap_mailbox(email_mailbox_t *mailbox, int *err_
 
 FINISH_OFF:
     if (stream){
-		emcore_close_mailbox(0, stream);				
+		emcore_close_mailbox(0, stream);
 		stream = NULL;
     }
 
@@ -950,12 +987,12 @@ INTERNAL_FUNC int emcore_delete_imap_mailbox(int input_mailbox_id, int *err_code
 {
 	EM_DEBUG_FUNC_BEGIN();
 
-    MAILSTREAM *stream = NULL;
-    char *long_enc_path = NULL;
-    email_account_t *ref_account = NULL;
-    void *tmp_stream = NULL;
-    int ret = false;
-    int err = EMAIL_ERROR_NONE;
+	MAILSTREAM *stream = NULL;
+	char *long_enc_path = NULL;
+	email_account_t *ref_account = NULL;
+	void *tmp_stream = NULL;
+	int ret = false;
+	int err = EMAIL_ERROR_NONE;
 	emstorage_mailbox_tbl_t *mailbox_tbl = NULL;
 
 	if ((err = emstorage_get_mailbox_by_id(input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE || !mailbox_tbl) {
@@ -963,51 +1000,56 @@ INTERNAL_FUNC int emcore_delete_imap_mailbox(int input_mailbox_id, int *err_code
 		goto FINISH_OFF;
 	}
 
-    ref_account = emcore_get_account_reference(mailbox_tbl->account_id);
+	ref_account = emcore_get_account_reference(mailbox_tbl->account_id);
 
-    if (!ref_account || ref_account->incoming_server_type != EMAIL_SERVER_TYPE_IMAP4) {
-    	EM_DEBUG_EXCEPTION("Invalid account information");
-        err = EMAIL_ERROR_INVALID_ACCOUNT;
-        goto FINISH_OFF;
-    }
+	if (!ref_account || ref_account->incoming_server_type != EMAIL_SERVER_TYPE_IMAP4) {
+		EM_DEBUG_EXCEPTION("Invalid account information");
+		err = EMAIL_ERROR_INVALID_ACCOUNT;
+		goto FINISH_OFF;
+	}
 
-    /* connect mail server */
-    if (!emcore_connect_to_remote_mailbox(mailbox_tbl->account_id, 0, (void **)&tmp_stream, &err)) {
-    	EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
-        goto FINISH_OFF;
-    }
+	/* connect mail server */
+	if (!emcore_connect_to_remote_mailbox(mailbox_tbl->account_id, 0, (void **)&tmp_stream, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
+		goto FINISH_OFF;
+	}
 
-    stream = (MAILSTREAM *)tmp_stream;
+	stream = (MAILSTREAM *)tmp_stream;
 
-    /* encode mailbox name by UTF7, and rename to full path (ex : {mail.test.com}child_mailbox) */
-    if (!emcore_get_long_encoded_path(mailbox_tbl->account_id, mailbox_tbl->mailbox_name, '/', &long_enc_path, &err)) {
-    	EM_DEBUG_EXCEPTION("emcore_get_long_encoded_path failed [%d]", err);
-        goto FINISH_OFF;
-    }
+	/* encode mailbox name by UTF7, and rename to full path (ex : {mail.test.com}child_mailbox) */
+	if (!emcore_get_long_encoded_path(mailbox_tbl->account_id, mailbox_tbl->mailbox_name, '/', &long_enc_path, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_get_long_encoded_path failed [%d]", err);
+		goto FINISH_OFF;
+	}
 
-    /* delete mailbox */
-    if (!mail_delete(stream, long_enc_path)) {
-    	EM_DEBUG_EXCEPTION("mail_delete failed");
-        err = EMAIL_ERROR_IMAP4_DELETE_FAILURE;
-        goto FINISH_OFF;
-    }
+	/* delete mailbox */
+	if (!mail_delete(stream, long_enc_path)) {
+		EM_DEBUG_EXCEPTION("mail_delete failed");
+		err = EMAIL_ERROR_IMAP4_DELETE_FAILURE;
+		goto FINISH_OFF;
+	}
 
-	emcore_close_mailbox(0, stream);				
+	emcore_close_mailbox(0, stream);
 	stream = NULL;
 
-    EM_SAFE_FREE(long_enc_path);
+	EM_SAFE_FREE(long_enc_path);
 
-    ret = true;
+	ret = true;
 
 FINISH_OFF:
-    if (stream) {
-		emcore_close_mailbox(0, stream);				
+	if (stream) {
+		emcore_close_mailbox(0, stream);
 		stream = NULL;
-    }
+	}
 
-    EM_SAFE_FREE(long_enc_path);
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
 
-    if (mailbox_tbl)
+	EM_SAFE_FREE(long_enc_path);
+
+	if (mailbox_tbl)
 		emstorage_free_mailbox(&mailbox_tbl, 1, NULL);
 
 	if (err == EMAIL_ERROR_NONE) {
@@ -1017,73 +1059,78 @@ FINISH_OFF:
 	else if (!emcore_notify_network_event(NOTI_DELETE_MAILBOX_FAIL, input_mailbox_id, 0, 0, err))
 		EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_ADD_MAILBOX_FAIL] failed");
 
-    if (err_code)
-        *err_code = err;
+	if (err_code)
+		*err_code = err;
 
-    return ret;
+	return ret;
 }
 
 
 INTERNAL_FUNC int emcore_move_mailbox_on_imap_server(int input_account_id, char *input_old_mailbox_path, char *input_new_mailbox_path)
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_old_mailbox_path [%p], input_new_mailbox_path [%p]", input_account_id, input_old_mailbox_path, input_new_mailbox_path);
-    MAILSTREAM *stream = NULL;
-    char *long_enc_path_old = NULL;
-    char *long_enc_path_new = NULL;
-    email_account_t *ref_account = NULL;
-    void *tmp_stream = NULL;
-    int err = EMAIL_ERROR_NONE;
+	MAILSTREAM *stream = NULL;
+	char *long_enc_path_old = NULL;
+	char *long_enc_path_new = NULL;
+	email_account_t *ref_account = NULL;
+	void *tmp_stream = NULL;
+	int err = EMAIL_ERROR_NONE;
 
-    if (!input_old_mailbox_path || !input_new_mailbox_path) {
-    	EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-        err = EMAIL_ERROR_INVALID_PARAM;
-        goto FINISH_OFF;
-    }
+	if (!input_old_mailbox_path || !input_new_mailbox_path) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
 
-    ref_account = emcore_get_account_reference(input_account_id);
+	ref_account = emcore_get_account_reference(input_account_id);
 
-    if (!ref_account || ref_account->incoming_server_type != EMAIL_SERVER_TYPE_IMAP4) {
-    	EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_ACCOUNT");
-        err = EMAIL_ERROR_INVALID_ACCOUNT;
-        goto FINISH_OFF;
-    }
+	if (!ref_account || ref_account->incoming_server_type != EMAIL_SERVER_TYPE_IMAP4) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_ACCOUNT");
+		err = EMAIL_ERROR_INVALID_ACCOUNT;
+		goto FINISH_OFF;
+	}
 
-    /* connect mail server */
-    stream = NULL;
-    if (!emcore_connect_to_remote_mailbox(input_account_id, 0, (void **)&tmp_stream, &err)) {
-    	EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed. [%d]", err);
-        goto FINISH_OFF;
-    }
+	/* connect mail server */
+	stream = NULL;
+	if (!emcore_connect_to_remote_mailbox(input_account_id, 0, (void **)&tmp_stream, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed. [%d]", err);
+		goto FINISH_OFF;
+	}
 
-    stream = (MAILSTREAM *)tmp_stream;
+	stream = (MAILSTREAM *)tmp_stream;
 
-    /* encode mailbox name by UTF7, and rename to full path (ex : {mail.test.com}child_mailbox) */
-    if (!emcore_get_long_encoded_path(input_account_id, input_old_mailbox_path, '/', &long_enc_path_old, &err)) {
-    	EM_DEBUG_EXCEPTION("emcore_get_long_encoded_path failed. [%d]", err);
-        goto FINISH_OFF;
-    }
+	/* encode mailbox name by UTF7, and rename to full path (ex : {mail.test.com}child_mailbox) */
+	if (!emcore_get_long_encoded_path(input_account_id, input_old_mailbox_path, '/', &long_enc_path_old, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_get_long_encoded_path failed. [%d]", err);
+		goto FINISH_OFF;
+	}
 
-    /* encode mailbox name by UTF7, and rename to full path (ex : {mail.test.com}child_mailbox) */
-    if (!emcore_get_long_encoded_path(input_account_id, input_new_mailbox_path, '/', &long_enc_path_new, &err)) {
-    	EM_DEBUG_EXCEPTION("emcore_get_long_encoded_path failed. [%d]", err);
-        goto FINISH_OFF;
-    }
+	/* encode mailbox name by UTF7, and rename to full path (ex : {mail.test.com}child_mailbox) */
+	if (!emcore_get_long_encoded_path(input_account_id, input_new_mailbox_path, '/', &long_enc_path_new, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_get_long_encoded_path failed. [%d]", err);
+		goto FINISH_OFF;
+	}
 
-    /* rename mailbox */
-    if (!mail_rename(stream, long_enc_path_old, long_enc_path_new)) {
-        err = EMAIL_ERROR_IMAP4_RENAME_FAILURE;
-        goto FINISH_OFF;
-    }
+	/* rename mailbox */
+	if (!mail_rename(stream, long_enc_path_old, long_enc_path_new)) {
+		err = EMAIL_ERROR_IMAP4_RENAME_FAILURE;
+		goto FINISH_OFF;
+	}
 
 FINISH_OFF:
-    EM_SAFE_FREE(long_enc_path_old);
-    EM_SAFE_FREE(long_enc_path_new);
+	EM_SAFE_FREE(long_enc_path_old);
+	EM_SAFE_FREE(long_enc_path_new);
 
-    if (stream) {
-		emcore_close_mailbox(0, stream);				
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
+	if (stream) {
+		emcore_close_mailbox(0, stream);
 		stream = NULL;
-    }
+	}
 
-    EM_DEBUG_FUNC_END("err [%d]", err);
-    return err;
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
 }

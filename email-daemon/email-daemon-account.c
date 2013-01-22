@@ -48,12 +48,6 @@
 #include "email-utilities.h"
 #include "email-convert.h"
 
-static int emdaemon_refresh_account_reference()
-{
-	EM_DEBUG_FUNC_BEGIN();
-	return emcore_refresh_account_reference();
-}
-
 static int emdaemon_check_filter_id(int account_id, int filter_id, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], filter_id[%d], err_code[%p]", account_id, filter_id, err_code);
@@ -98,7 +92,8 @@ INTERNAL_FUNC int emdaemon_create_account(email_account_t* account, int* err_cod
 		EM_DEBUG_EXCEPTION(" emcore_account_add failed [%d]", err);
 		goto FINISH_OFF;
 	}
-	emdaemon_refresh_account_reference();
+
+	emcore_init_account_reference();
 
 	ret = true;
 FINISH_OFF:
@@ -167,6 +162,8 @@ INTERNAL_FUNC int emdaemon_validate_account(int account_id, int *handle, int* er
 
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
+	email_event_t event_data = {0};
+	email_account_t* ref_account = NULL;
 
 	if (account_id < 1)  {
 		EM_DEBUG_EXCEPTION(" account_id[%d]", account_id);
@@ -174,11 +171,8 @@ INTERNAL_FUNC int emdaemon_validate_account(int account_id, int *handle, int* er
 		goto FINISH_OFF;
 	}
 
-	email_event_t event_data = {0};
-	email_account_t* ref_account = NULL;
-
-	if (!(ref_account = emdaemon_get_account_reference(account_id))) {
-		EM_DEBUG_EXCEPTION(" emdaemon_get_account_reference failed [%d]", account_id);
+	if (!(ref_account = emcore_get_account_reference(account_id))) {
+		EM_DEBUG_EXCEPTION(" emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
@@ -195,6 +189,12 @@ INTERNAL_FUNC int emdaemon_validate_account(int account_id, int *handle, int* er
 	ret = true;
 
 FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code)
 		*err_code = err;
 	EM_DEBUG_FUNC_END();
@@ -273,7 +273,7 @@ INTERNAL_FUNC int emdaemon_update_account(int account_id, email_account_t* new_a
 		goto FINISH_OFF;
 	}
 
-	emdaemon_refresh_account_reference();
+	emcore_init_account_reference();
 
 #ifdef __FEATURE_AUTO_POLLING__
 	int  old_check_interval = old_account_info.check_interval;
@@ -732,18 +732,6 @@ FINISH_OFF:
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
-}
-
-email_account_t* emdaemon_get_account_reference(int account_id)
-{
-	EM_DEBUG_FUNC_BEGIN();
-	return emcore_get_account_reference(account_id);
-}
-
-int emdaemon_free_account_reference()
-{
-	EM_DEBUG_FUNC_BEGIN();
-	return emcore_free_account_reference();
 }
 
 INTERNAL_FUNC int emdaemon_insert_accountinfo_to_contact(email_account_t* account)

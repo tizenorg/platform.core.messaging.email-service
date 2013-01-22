@@ -2011,6 +2011,9 @@ void stb_add_account_with_validation(HIPC_API a_hAPI)
 	int handle = 0;
 	char* stream = NULL;
 	email_account_t *account = NULL;
+	email_account_t *ref_account = NULL;
+	int ref_check_interval = 0;
+	int ref_account_id = 0;
 	int err = EMAIL_ERROR_NONE;
 
 	/* get account info */
@@ -2042,14 +2045,24 @@ void stb_add_account_with_validation(HIPC_API a_hAPI)
 		goto FINISH_OFF;
 	}
 
-	if(!emdaemon_validate_account_and_create(account, &handle, &err)) {
+	ref_account = emcore_get_account_reference(account->account_id);
+
+	if (!ref_account) {
+		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	ref_check_interval = ref_account->check_interval;
+	ref_account_id = ref_account->account_id;
+
+	if(!emdaemon_validate_account_and_create(ref_account, &handle, &err)) {
 		EM_DEBUG_EXCEPTION("emdaemon_validate_account_and_create fail [%d]", err);
 		goto FINISH_OFF;
 	}
 #ifdef __FEATURE_AUTO_POLLING__
 	/*  start auto polling, if check_interval not zero */
-	if(account->check_interval > 0) {
-		if(!emdaemon_add_polling_alarm( account->account_id, account->check_interval))
+	if(ref_check_interval > 0) {
+		if(!emdaemon_add_polling_alarm(ref_account_id, ref_check_interval))
 			EM_DEBUG_EXCEPTION("emdaemon_add_polling_alarm[NOTI_ACCOUNT_ADD] : start auto poll failed >>> ");
 	}
 #endif /*  __FEATURE_AUTO_POLLING__ */
@@ -2073,6 +2086,7 @@ FINISH_OFF:
 		if (!emipc_execute_stub_api(a_hAPI))
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 	}
+
 /*	note: account is freed in thread_func_branch_command, which is run by other thread */
 /*	emcore_free_account(account); */
 

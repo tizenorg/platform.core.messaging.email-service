@@ -447,6 +447,11 @@ FINISH_OFF:
 	else if (mail_stream)
 		emcore_close_mailbox(mailbox->account_id, mail_stream);
 
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	if (err_code)
 		*err_code = err;
 

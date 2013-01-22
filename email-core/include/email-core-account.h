@@ -54,9 +54,9 @@ INTERNAL_FUNC void emcore_free_option(email_option_t *option);
 
 INTERNAL_FUNC void emcore_free_account(email_account_t *account_list);
 
-INTERNAL_FUNC int emcore_init_account_reference();
+INTERNAL_FUNC void emcore_duplicate_account(const email_account_t *account, email_account_t **account_dup, int *err_code);
 
-INTERNAL_FUNC int emcore_refresh_account_reference();
+INTERNAL_FUNC int emcore_init_account_reference();
 
 INTERNAL_FUNC int emcore_free_account_reference();
 

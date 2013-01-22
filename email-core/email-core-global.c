@@ -39,17 +39,15 @@
 #include "email-utilities.h"
 #include "email-core-account.h"
 
-email_account_list_t *g_unvalidated_account_list = NULL;
-email_account_list_t *g_account_list = NULL;
-int g_account_num = 0;
-int g_account_retrieved = 0;
+static email_account_list_t *g_unvalidated_account_list = NULL;
+static pthread_mutex_t _unvalidated_account_lock = PTHREAD_MUTEX_INITIALIZER;
 
 extern int pthread_mutexattr_settype (pthread_mutexattr_t *__attr, int __kind) __THROW __nonnull ((1));
 
 INTERNAL_FUNC int emcore_get_account_from_unvalidated_account_list(int input_unvalidated_account_id, email_account_t **oupput_account)
 {
 	EM_DEBUG_FUNC_BEGIN("input_unvalidated_account_id[%d], oupput_account[%p]", input_unvalidated_account_id, oupput_account);
-	email_account_list_t *account_node = g_unvalidated_account_list;
+	email_account_list_t *account_node = NULL;
 	int err = EMAIL_ERROR_NONE;
 
 	if(oupput_account == NULL) {
@@ -60,14 +58,16 @@ INTERNAL_FUNC int emcore_get_account_from_unvalidated_account_list(int input_unv
 
 	*oupput_account = NULL;
 
+	ENTER_CRITICAL_SECTION(_unvalidated_account_lock);
+	account_node = g_unvalidated_account_list;
 	while(account_node) {
 		if(account_node->account->account_id == input_unvalidated_account_id) {
-			*oupput_account = account_node->account;
+			emcore_duplicate_account(account_node->account, oupput_account, NULL);
 			break;
 		}
-
 		account_node = account_node->next;
 	}
+	LEAVE_CRITICAL_SECTION(_unvalidated_account_lock);
 
 	if(*oupput_account == NULL)
 		err = EMAIL_ERROR_DATA_NOT_FOUND;
@@ -80,7 +80,7 @@ FINISH_OFF:
 INTERNAL_FUNC int emcore_add_account_to_unvalidated_account_list(email_account_t *input_new_account)
 {
 	EM_DEBUG_FUNC_BEGIN("input_new_account[%p]", input_new_account);
-	email_account_list_t **account_node = &g_unvalidated_account_list;
+	email_account_list_t **account_node = NULL;
 	email_account_list_t *new_account_node = NULL;
 	int new_account_id = -1;
 	int err = EMAIL_ERROR_NONE;
@@ -102,6 +102,9 @@ INTERNAL_FUNC int emcore_add_account_to_unvalidated_account_list(email_account_t
 	new_account_node->account = input_new_account;
 	new_account_node->next = NULL;
 
+	ENTER_CRITICAL_SECTION(_unvalidated_account_lock);
+	account_node = &g_unvalidated_account_list;
+
 	while(*account_node) {
 		if((*account_node)->account->account_id < new_account_id) {
 			new_account_id = (*account_node)->account->account_id - 1;
@@ -111,6 +114,7 @@ INTERNAL_FUNC int emcore_add_account_to_unvalidated_account_list(email_account_t
 
 	input_new_account->account_id = new_account_id;
 	*account_node = new_account_node;
+	LEAVE_CRITICAL_SECTION(_unvalidated_account_lock);
 
 FINISH_OFF:
 	EM_DEBUG_FUNC_END("err [%d]", err);
@@ -120,9 +124,12 @@ FINISH_OFF:
 INTERNAL_FUNC int emcore_delete_account_from_unvalidated_account_list(int input_account_id)
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id[%d]", input_account_id);
-	email_account_list_t *account_node = g_unvalidated_account_list, *prev_node = NULL;
+	email_account_list_t *account_node = NULL, *prev_node = NULL;
 	email_account_t *found_account = NULL;
 	int err = EMAIL_ERROR_NONE;
+
+	ENTER_CRITICAL_SECTION(_unvalidated_account_lock);
+	account_node = g_unvalidated_account_list;
 
 	while(account_node) {
 		if(account_node->account->account_id == input_account_id) {
@@ -138,12 +145,14 @@ INTERNAL_FUNC int emcore_delete_account_from_unvalidated_account_list(int input_
 	}
 
 	if(found_account) {
+		emcore_free_account(found_account);
+		EM_SAFE_FREE(found_account);
 		EM_SAFE_FREE(account_node);
-	}
-	else {
+	} else {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_DATA_NOT_FOUND");
 		err = EMAIL_ERROR_DATA_NOT_FOUND;
 	}
+	LEAVE_CRITICAL_SECTION(_unvalidated_account_lock);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;

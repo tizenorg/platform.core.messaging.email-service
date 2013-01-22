@@ -204,13 +204,13 @@ INTERNAL_FUNC void mm_login(NETMBX *mb, char *user, char *pwd, long trial)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int account_id;
-	email_account_t *ref_account;
+	email_account_t *ref_account = NULL;
 	char *username = NULL;
 	char *password = NULL;
 
 	if (!mb->user[0])  {
 		EM_DEBUG_EXCEPTION("invalid account_id...");
-		return;
+		goto FINISH_OFF;
 	}
 	
 	account_id = atoi(mb->user);
@@ -219,19 +219,19 @@ INTERNAL_FUNC void mm_login(NETMBX *mb, char *user, char *pwd, long trial)
 
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed");
-		return;
+		goto FINISH_OFF;
 	}
 
 	if (ref_account->incoming_server_user_name == NULL) {
 		EM_DEBUG_EXCEPTION("invalid incoming_server_user_name...");
-		return;
+		goto FINISH_OFF;
 	}
 	username = EM_SAFE_STRDUP(ref_account->incoming_server_user_name);
 
 	if (ref_account->incoming_server_password == NULL) {
 		EM_SAFE_FREE(username);
 		EM_DEBUG_EXCEPTION("invalid password...");
-		return;
+		goto FINISH_OFF;
 	}
 
 	password = EM_SAFE_STRDUP(ref_account->incoming_server_password);
@@ -242,7 +242,14 @@ INTERNAL_FUNC void mm_login(NETMBX *mb, char *user, char *pwd, long trial)
 	}
 	else
 		EM_DEBUG_EXCEPTION("User Information is NULL || EM_SAFE_STRLEN is 0 ");
-		
+
+FINISH_OFF:
+
+	if (ref_account) {
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	EM_SAFE_FREE(username);
 	EM_SAFE_FREE(password);
 
