@@ -255,7 +255,7 @@ FINISH_OFF:
 		EM_DEBUG_EXCEPTION("email_close_db failed [%d]", err);
 	}	
 
-	fclose(body_file);
+	if(body_file) fclose(body_file); /*prevent 39446*/
 	
 	if(mailbox_list)
 		email_free_mailbox(&mailbox_list, mailbox_count);
