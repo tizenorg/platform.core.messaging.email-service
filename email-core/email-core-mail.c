@@ -649,7 +649,7 @@ int emcore_delete_mails_from_imap4_server(int mail_ids[], int num, int from_serv
 	}
 
 	for(i = 0; i < num; i++) {
-		if (!emstorage_get_downloaded_mail(mail_ids[i], &mail_tbl_data, false, &err) || !mail_tbl_data)  {
+		if (!emstorage_get_downloaded_mail(mail_ids[i], &mail_tbl_data, false, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_get_downloaded_mail failed [%d]", err);
 
 			if (err == EMAIL_ERROR_MAIL_NOT_FOUND) {	/* not server mail */
@@ -660,7 +660,12 @@ int emcore_delete_mails_from_imap4_server(int mail_ids[], int num, int from_serv
 		}
 	}
 
-	if (!emcore_connect_to_remote_mailbox(mail_tbl_data->account_id, mail_tbl_data->mailbox_id , (void **)&stream, &err))  {
+	if (!mail_tbl_data || mail_tbl_data->account_id <= 0 || mail_tbl_data->mailbox_id <= 0) {
+		EM_DEBUG_EXCEPTION("mail_tbl_data [%p]", mail_tbl_data);
+		goto FINISH_OFF;
+	}
+
+	if (!emcore_connect_to_remote_mailbox(mail_tbl_data->account_id, mail_tbl_data->mailbox_id , (void **)&stream, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -670,7 +675,7 @@ int emcore_delete_mails_from_imap4_server(int mail_ids[], int num, int from_serv
 	/*  Here about 90 bytes are required for fixed keywords in the query-> SELECT local_uid, s_uid from mail_read_mail_uid_tbl where local_uid in (....) ORDER by s_uid  */
 	/*  So length of comma separated strings which will be filled in (.....) in above query can be maximum QUERY_SIZE - 90  */
 
-	if (false == emcore_form_comma_separated_strings(mail_ids, num, QUERY_SIZE - 90, &string_list, &string_count, &err))   {
+	if (false == emcore_form_comma_separated_strings(mail_ids, num, QUERY_SIZE - 90, &string_list, &string_count, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_form_comma_separated_strings failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -3444,7 +3449,6 @@ static int emcore_delete_mails_from_remote_server(int input_account_id, int inpu
 	if (!emnetwork_check_network_status(&err)) {
 		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
 		goto FINISH_OFF;
-
 	}
 
 	FINISH_OFF_IF_CANCELED;
@@ -3667,8 +3671,8 @@ INTERNAL_FUNC int emcore_delete_mails_from_local_storage(int account_id, int *ma
 	}
 
 	for(i = 0; i < num; i++) {
-		memset(mail_id_string, 0, 10);
-		SNPRINTF(mail_id_string, 10, "%d,", mail_ids[i]);
+		memset(mail_id_string, 0, sizeof(mail_id_string));
+		SNPRINTF(mail_id_string, sizeof(mail_id_string), "%d,", mail_ids[i]);
 		strcat(noti_param_string, mail_id_string);
 		/* can be optimized by appending sub string with directly pointing on string array kyuho.jo 2011-10-07 */
 	}
@@ -3702,13 +3706,11 @@ INTERNAL_FUNC int emcore_delete_mails_from_local_storage(int account_id, int *ma
 		/*  delete mail contents from filesystem */
 		if (!emstorage_get_save_name(account_id, result_mail_list[i].mail_id, 0, NULL, buf, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
-
 			goto FINISH_OFF;
 		}
 
 		if (!emstorage_delete_dir(buf, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_delete_dir failed [%d]", err);
-
 		}
 		
 		/* Deleting Meeting Request */

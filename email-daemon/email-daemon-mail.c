@@ -535,8 +535,11 @@ void* thread_func_to_delete_mail(void *thread_argument)
 	}
 
 FINISH_OFF:
-	/* emcore_free_event(event_data); */ /* all of members will be freed after using in each event handler */
-	EM_SAFE_FREE(event_data->event_param_data_3); /*prevent 33692*/
+	/* all of members will be freed after using in each event handler */
+
+	if (from_server != EMAIL_DELETE_LOCAL_AND_SERVER && from_server != EMAIL_DELETE_FROM_SERVER) {
+		EM_SAFE_FREE(event_data->event_param_data_3);
+	}
 	EM_SAFE_FREE(event_data);
 
 	EM_DEBUG_FUNC_END();
@@ -549,7 +552,8 @@ INTERNAL_FUNC int emdaemon_delete_mail(int mailbox_id, int mail_ids[], int mail_
 
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	int* p = NULL, thread_error;
+	int *p = NULL;
+	int thread_error = 0;
 	email_account_t *ref_account = NULL;
 	email_event_t *event_data = NULL;
 	emstorage_mailbox_tbl_t *mailbox_tbl_data = NULL;
@@ -613,8 +617,10 @@ FINISH_OFF:
 		EM_SAFE_FREE(ref_account);
 	}
 
-	if (ret == false)
+	if (thread_error != 0) {
+		EM_SAFE_FREE(event_data);
 		EM_SAFE_FREE(p);
+	}
 
 	if (err_code)
 		*err_code = err;

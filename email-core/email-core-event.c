@@ -2393,7 +2393,7 @@ void* thread_func_branch_command(void *arg)
 						}
 						break;
 
-					case EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT:  {
+					case EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT: {
 							email_account_t *account = (email_account_t *)event_data.event_param_data_1;
 							event_handler_EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT(event_data.account_id, account, handle_to_be_published, &err);
 							emcore_free_account(account);
