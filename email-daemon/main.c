@@ -826,7 +826,7 @@ void stb_add_rule(HIPC_API a_hAPI)
 	EM_DEBUG_LOG("account ID  [%d]", rule.account_id);
 
 	/* call add_filter handler */
-	emdaemon_add_filter(&rule, &err);
+	err = emdaemon_add_filter(&rule);
 
 FINISH_OFF:
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))

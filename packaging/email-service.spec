@@ -1,6 +1,6 @@
 Name:       email-service
 Summary:    E-mail Framework Middleware package
-Version:    0.10.81
+Version:    0.10.82
 Release:    1
 Group:      System/Libraries
 License:    TBD
@@ -107,7 +107,7 @@ vconftool set -t int    db/badge/com.samsung.email "0" -g 6514
 vconftool set -t int    memory/sync/email "0" -i -g 6514
 
 # for priority send 
-vconftool set -t string db/private/email-service/noti_ringthone_path "Whistle.mp3" -g 6514
+vconftool set -t string db/private/email-service/noti_ringtone_path "Whistle.mp3" -g 6514
 vconftool set -t int    db/private/email-service/noti_rep_type "0" -g 6514
 vconftool set -t bool   db/private/email-service/noti_notification_ticker "0" -g 6514
 vconftool set -t bool   db/private/email-service/noti_display_content_ticker "0" -g 6514

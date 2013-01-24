@@ -200,11 +200,10 @@ INTERNAL_FUNC int emdaemon_find_filter(email_rule_t* filter_info, int* err_code)
  * Add a filter information.
  *
  * @param[in] filtering_set		Specifies the pointer of adding filter structure.
- * @param[out] err_code		Specifies the error code returned.
  * @remarks N/A
  * @return This function returns true on success or false on failure.(only EMAIL_FILTER_BLOCK supported.)
  */
-INTERNAL_FUNC int emdaemon_add_filter(email_rule_t* filtering_set, int* err_code);
+INTERNAL_FUNC int emdaemon_add_filter(email_rule_t* filtering_set);
 
 /**
  * Change a filter information.

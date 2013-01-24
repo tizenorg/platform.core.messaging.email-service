@@ -549,12 +549,12 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_add_filter(email_rule_t* filter_info, int* err_code)
+INTERNAL_FUNC int emdaemon_add_filter(email_rule_t* filter_info)
 {
-	EM_DEBUG_FUNC_BEGIN("filter_info[%p], err_code[%p]", filter_info, err_code);
+	EM_DEBUG_FUNC_BEGIN("filter_info[%p]", filter_info);
 
 	/*  default variable */
-	int ret = false, err = EMAIL_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 	if (!filter_info || !(filter_info->value))  {
 		EM_DEBUG_EXCEPTION("filter_info[%p]", filter_info);
 		err = EMAIL_ERROR_INVALID_PARAM;
@@ -588,19 +588,20 @@ INTERNAL_FUNC int emdaemon_add_filter(email_rule_t* filter_info, int* err_code)
 		goto FINISH_OFF;
 	}
 
+	if (filter_info->type == EMAIL_PRIORITY_SENDER) {
+		EM_DEBUG_LOG("Priority Sender add");
+		goto FINISH_OFF;
+	}
+
 	if (!emcore_mail_filter_by_rule((email_rule_t*)filter_info, &err))  {
 		EM_DEBUG_EXCEPTION("emcore_mail_filter_by_rule failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	ret = true;
-
 FINISH_OFF:
 
-	if (err_code)
-		*err_code = err;
 	EM_DEBUG_FUNC_END();
-	return ret;
+	return err;
 }
 
 INTERNAL_FUNC int emdaemon_update_filter(int filter_id, email_rule_t* filter_info, int* err_code)
