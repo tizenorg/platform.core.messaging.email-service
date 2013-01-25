@@ -770,21 +770,19 @@ INTERNAL_FUNC void emcore_free_account(email_account_t *account)
 INTERNAL_FUNC void emcore_duplicate_account(const email_account_t *account, email_account_t **account_dup, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account[%p]", account);
-	int err = EMAIL_ERROR_NONE;
-	int ret = false;
 	email_account_t *temp_account = NULL;
 
-	if(!account) {
+	if(!account || !account_dup) { /*prevent 40514*/
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-		err = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF;
+		if(err_code) *err_code = EMAIL_ERROR_INVALID_PARAM; 
+		return;
 	}
 
 	*account_dup = em_malloc(sizeof(email_account_t));
-	if (!*account_dup) {
+	if(!*account_dup) { /*prevent 40514*/
 		EM_DEBUG_EXCEPTION("malloc failed...");
-		err = EMAIL_ERROR_OUT_OF_MEMORY;
-		goto FINISH_OFF;
+		if(err_code) *err_code = EMAIL_ERROR_OUT_OF_MEMORY;
+		return;
 	}
 
 	memcpy(*account_dup, account , sizeof(email_account_t));
@@ -807,21 +805,9 @@ INTERNAL_FUNC void emcore_duplicate_account(const email_account_t *account, emai
 	temp_account->options.signature                        = EM_SAFE_STRDUP(account->options.signature);
 	temp_account->certificate_path                         = EM_SAFE_STRDUP(account->certificate_path);
 
-	ret = true;
-
-FINISH_OFF:
-
-	if (!ret) {
-		if (account_dup && *account_dup)
-			EM_SAFE_FREE(*account_dup);
-
-		*account_dup = NULL;
-	}
-
 	if (err_code != NULL)
-		*err_code = err;
+		*err_code = EMAIL_ERROR_NONE;
 
-	return;
 	EM_DEBUG_FUNC_END();
 }
 
