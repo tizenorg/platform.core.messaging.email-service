@@ -16,6 +16,9 @@
         <assign>
                 <filesystem path="/usr/lib/libemail-api.so.1.1.0" label="_"/>
                 <filesystem path="/usr/lib/libemail-api.so.1" label="_"/>
+		        <filesystem path="/etc/rc.d/init.d/email-service" label="_" exec_label="none"/>
+		        <filesystem path="/usr/lib/systemd/user/email.service" label="_"/>
+		        <filesystem path="/usr/lib/systemd/user/tizen-middleware.target.wants/email.service" label="_"/>
         </assign>
         <request>
                 <domain name="email-service"/>
