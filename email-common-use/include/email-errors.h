@@ -167,6 +167,7 @@
 #define EMAIL_ERROR_LOAD_ENGINE_FAILURE                 -1056    /*  loading engine failed */
 #define EMAIL_ERROR_CLOSE_FAILURE                       -1057    /*  engine is still used */
 #define EMAIL_ERROR_NULL_VALUE                          -1302
+#define EMAIL_ERROR_EMPTY_FILE                          -1304
 
 /* Should be classified */
 #define EMAIL_ERROR_SYSTEM_FAILURE                      -1050    /*  There is a system error */

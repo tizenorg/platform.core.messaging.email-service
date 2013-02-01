@@ -3187,7 +3187,7 @@ static void emcore_free_email_image_data(email_image_data **image_data, int coun
 
 static int emcore_parse_image_part_for_partial_body(char *header_start_string, char *start_header, char *boundary_string, char *bufsendforparse, email_image_data *image_data, int body_size)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_FUNC_BEGIN("boundary_string : [%s]", boundary_string);
 
 	int   err = EMAIL_ERROR_NONE;
 	char *multiple_image = NULL;
@@ -3203,6 +3203,7 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 	char *temp_cid1 = NULL;
 	char *cid_end = NULL;
 	char *temp_enc1 = NULL;
+	char *p_boundary_string = NULL;
 
 	if(image_data == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
@@ -3225,7 +3226,10 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 		memcpy(temp_image_boundary, image_boundary, image_boundary_end-image_boundary);
 
 	if ((char *)strcasestr((const char *)temp_image_boundary, "Content-type:") == NULL)
-		boundary_string = temp_image_boundary;
+		p_boundary_string = temp_image_boundary;
+	else
+		p_boundary_string = boundary_string;
+
 	do {
 		if (multiple_image != NULL){
 			p = multiple_image;
@@ -3309,7 +3313,7 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 			if (txt_image != NULL){
 				txt_image += 4; /*  txt_image points at image content */
 				start = txt_image;
-				end = strstr(txt_image, boundary_string);
+				end = strstr(txt_image, p_boundary_string);
 
 
 				if (end == NULL){
@@ -3318,7 +3322,7 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 					end = txt_image + body_size - (txt_image-bufsendforparse);
 				}
 				else{
-					boundarylen = EM_SAFE_STRLEN(boundary_string);
+					boundarylen = EM_SAFE_STRLEN(p_boundary_string);
 					end -= 2;
 				}
 
@@ -3508,38 +3512,38 @@ static int emcore_parse_body_for_imap(char *body_str, int body_size, struct _m_c
 					no_alternative_part_flag = 1;
 				} else {
 					EM_DEBUG_LOG(" Content-type: multipart/alternative ");
-					boundary_start = strstr(temp_alternative_plain_header, "--") + strlen("--");
+					boundary_start = strstr(temp_alternative_plain_header, "--");
 					if(!boundary_start) goto FINISH_OFF; /*prevent 37946 */
 					boundary_end = strcasestr(boundary_start, "Content-type:");
 					if(!boundary_end) goto FINISH_OFF; /*prevent 37946 */
 
-					boundary_string = em_malloc(boundary_end - boundary_start);
+					boundary_string = em_malloc(boundary_end - (boundary_start + strlen("--")));
 					if (boundary_string == NULL) {
 						EM_DEBUG_EXCEPTION("em_malloc failed");
 						err = EMAIL_ERROR_OUT_OF_MEMORY;
 						goto FINISH_OFF;
 					}
 
-					memcpy(boundary_string, boundary_start, boundary_end - boundary_start);
+					memcpy(boundary_string, boundary_start, boundary_end - (boundary_start + strlen("--")));
 				}
 			}
 		} else
 			no_alternative_part_flag = 1;
 
 		if (no_alternative_part_flag) {
-			boundary_start = strstr(p_body_str, "--") + strlen("--");
+			boundary_start = strstr(p_body_str, "--");
 			if(!boundary_start) goto FINISH_OFF; /*prevent 37946 */
 			boundary_end = strcasestr(boundary_start, "Content-type:");
 			if(!boundary_end) goto FINISH_OFF; /*prevent 37946 */
 
-			boundary_string = em_malloc(boundary_end - boundary_start);
+			boundary_string = em_malloc(boundary_end - (boundary_start + strlen("--")));
 			if (boundary_string == NULL) {
 				EM_DEBUG_EXCEPTION("em_malloc failed");
 				err = EMAIL_ERROR_OUT_OF_MEMORY;
 				goto FINISH_OFF;
 			}
 
-			memcpy(boundary_string, boundary_start, boundary_end - boundary_start);
+			memcpy(boundary_string, boundary_start, boundary_end - (boundary_start + strlen("--")));
 		}
 
 		if (boundary_string && boundary_end) { /*prevent 37946 */

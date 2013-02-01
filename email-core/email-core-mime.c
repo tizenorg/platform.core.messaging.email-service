@@ -453,28 +453,34 @@ FINISH_OFF:
 int emcore_mime_flush_receiving_buffer(void *stream, int is_file, char *boundary_string, char *boundary_end_string,  int *end_of_parsing, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("stream[%p], is_file[%d], boundary_string[%s], boundary_end_string[%s], end_of_parsing[%p],  err_code[%p]", stream, is_file, boundary_string, boundary_end_string, end_of_parsing, err_code);
-	char buf[MIME_LINE_LEN] = {0, };
+	int err = EMAIL_ERROR_NONE;
 	int local_end_of_parsing = 0;
+	char buf[MIME_LINE_LEN] = {0, };
 
 	if (!stream) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		if (err_code)
 			*err_code = EMAIL_ERROR_INVALID_PARAM;
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return false;
 	}
 
 	while (TRUE)  {
-		if (!emcore_check_thread_status())  {
-			if (err_code != NULL)
-				*err_code = EMAIL_ERROR_CANCELLED;
+		if (!emcore_check_thread_status()) {
 			EM_DEBUG_FUNC_END("EMAIL_ERROR_CANCELLED");
+			if (err_code)
+				*err_code = EMAIL_ERROR_CANCELLED;
 			return false;
 		}
 
-		if ((is_file == 0 && !emcore_mime_get_line_from_sock(stream, buf, MIME_LINE_LEN, err_code)) ||
-			(is_file == 1 && !emcore_get_line_from_file(stream, buf, MIME_LINE_LEN, err_code))) {
-			EM_DEBUG_EXCEPTION("emcore_mime_get_line_from_sock failed");
-			local_end_of_parsing = 0;
+		if ((is_file == 0 && !emcore_mime_get_line_from_sock(stream, buf, MIME_LINE_LEN, &err)) ||
+			(is_file == 1 && !emcore_get_line_from_file(stream, buf, MIME_LINE_LEN, &err))) {
+			if (err != EMAIL_ERROR_NO_MORE_DATA) {
+				EM_DEBUG_EXCEPTION("file : [%d], emcore_mime_get_line_from_sock or emcore_mime_get_line_from_file failed", is_file);
+				local_end_of_parsing = 0;
+				break;
+			}
+	
+			local_end_of_parsing = 1;
 			break;
 		}
 
@@ -494,6 +500,9 @@ int emcore_mime_flush_receiving_buffer(void *stream, int is_file, char *boundary
 
 	if (end_of_parsing)
 		*end_of_parsing = local_end_of_parsing;
+
+	if (err_code)
+		*err_code = err;
 
 	EM_DEBUG_FUNC_END();
 	return true;
@@ -758,8 +767,15 @@ int emcore_mime_parse_body(void *stream, int is_file, struct _m_mesg *mmsg, stru
 {
 	EM_DEBUG_FUNC_BEGIN("stream[%p], is_file[%d], mmsg[%p], cnt_info[%p], callback[%p], err_code[%p]", stream, is_file, mmsg, cnt_info, callback, err_code);
 
+	if (!mmsg->header) {
+		EM_DEBUG_EXCEPTION("Invalid paramter");
+		*err_code = EMAIL_ERROR_INVALID_PARAM;
+		return false;
+	} 
+	
 	char *content_type = NULL, *content_encoding = NULL, *holder = NULL, *attachment_name, *t = NULL;
-	int type = 0, end_of_parsing = 0, size, local_err_code = EMAIL_ERROR_NONE;
+	int type = 0, end_of_parsing = 0, size;
+	int err = EMAIL_ERROR_NONE;
 
 	if (!emcore_check_thread_status())  {
 		if (err_code != NULL)
@@ -788,22 +804,23 @@ int emcore_mime_parse_body(void *stream, int is_file, struct _m_mesg *mmsg, stru
 
 	switch (type)  {
 		case TYPE_MULTIPART:
-			if (mmsg->header && !emcore_mime_get_header_value(mmsg->header->part_header, CONTENT_BOUNDARY, err_code))  {
+			if (mmsg->header && !emcore_mime_get_header_value(mmsg->header->part_header, CONTENT_BOUNDARY, &err))  {
 				EM_DEBUG_FUNC_END("false");
+				if (err_code != NULL)
+					*err_code = err;
 				return false;
 			}
 
-			if (mmsg->header && !emcore_mime_parse_part(stream, is_file, mmsg->header->part_header, &mmsg->nested, cnt_info, &end_of_parsing, &local_err_code)) {
+			if (mmsg->header && !emcore_mime_parse_part(stream, is_file, mmsg->header->part_header, &mmsg->nested, cnt_info, &end_of_parsing, &err)) {
 				EM_DEBUG_FUNC_END("false");
+				if (err_code != NULL)
+					*err_code = err;
 				return false;
 			}
 
 			/*  after finishing body parsing, make stream empty to get next mail. (get line from sock or file until '.' is read */
-			if (end_of_parsing == true && local_err_code != EMAIL_ERROR_NO_MORE_DATA)
+			if (end_of_parsing == true && err != EMAIL_ERROR_NO_MORE_DATA)
 				emcore_mime_flush_receiving_buffer(stream, is_file, NULL, NULL, NULL, err_code);
-
-			if (err_code)
-				*err_code = local_err_code;
 
 			break;
 
@@ -843,21 +860,17 @@ int emcore_mime_parse_body(void *stream, int is_file, struct _m_mesg *mmsg, stru
 				EM_DEBUG_LOG("After emcore_mime_get_content_data");
 
 				char *charset = mmsg->header? emcore_mime_get_header_value(mmsg->header->part_header, CONTENT_CHARSET, err_code) : NULL; /* prevent 27453 */
-
 				EM_DEBUG_LOG(">>>> charset [%s]", charset);
 
 				if (mmsg->header && mmsg->header->part_header && strstr((t = emcore_mime_get_header_value(mmsg->header->part_header, CONTENT_TYPE, err_code)) ? t  :  "", "HTML")) {
 					if (!charset || !strncmp(charset, "X-UNKNOWN", strlen("X-UNKNOWN")))
-						cnt_info->text.plain_charset = strdup("UTF-8");
+						cnt_info->text.html_charset = strdup("UTF-8");
 					else
-						cnt_info->text.plain_charset = EM_SAFE_STRDUP(charset);
-
-					EM_DEBUG_LOG(">>>> cnt_info->text.plain_charset [%s]", cnt_info->text.plain_charset);
+						cnt_info->text.html_charset = EM_SAFE_STRDUP(charset);
+					EM_DEBUG_LOG(">>>> cnt_info->text.html_charset [%s]", cnt_info->text.html_charset);
 
 					cnt_info->text.html = holder;
-
-					EM_DEBUG_LOG(">>>> cnt_info->text.plain [%s]", cnt_info->text.html);
-
+					EM_DEBUG_LOG(">>>> cnt_info->text.html [%s]", cnt_info->text.html);
 				}
 				else if (mmsg->header) {
 
@@ -865,11 +878,9 @@ int emcore_mime_parse_body(void *stream, int is_file, struct _m_mesg *mmsg, stru
 						cnt_info->text.plain_charset = strdup("UTF-8");
 					else
 						cnt_info->text.plain_charset = EM_SAFE_STRDUP(charset);
-
 					EM_DEBUG_LOG(">>>> cnt_info->text.plain_charset [%s]", cnt_info->text.plain_charset);
 
 					cnt_info->text.plain = holder;
-
 					EM_DEBUG_LOG(">>>> cnt_info->text.plain [%s]", cnt_info->text.plain);
 				}
 			}
@@ -896,7 +907,6 @@ int emcore_mime_parse_part(void *stream, int is_file, struct _m_part_header *par
 	char *holder = NULL;
 	char *attachment_name = NULL;
 	char *content_disposition = NULL;
-	char *t = NULL;
 	char *pTemp = NULL;
 	int type = 0;
 	int content_disposition_type = 0;
@@ -1044,56 +1054,50 @@ int emcore_mime_parse_part(void *stream, int is_file, struct _m_part_header *par
 
 				/*  first check inline content */
 				/*  if the content id or content location exis */
-				t = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_TYPE, err_code);
-				EM_DEBUG_LOG("content_type : [%s]", t);
+				content_disposition = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_DISPOSITION, err_code);
+				EM_DEBUG_LOG("content_disposition : [%s]", content_disposition);
 
-				if (!strstr(t ? t : "", "HTML")) {
-					content_disposition = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_DISPOSITION, err_code);
-					EM_DEBUG_LOG("content_disposition : [%s]", content_disposition);
+				attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_ID, err_code);
+				EM_DEBUG_LOG("content_id : [%s]", attachment_name);
 
-					attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_ID, err_code);
-					EM_DEBUG_LOG("content_id : [%s]", attachment_name);
+				if (attachment_name) {
+					if (emcore_search_string_from_file(cnt_info->text.html, attachment_name, &result) == EMAIL_ERROR_NONE && result) {
+						content_disposition_type = INLINE_ATTACHMENT;
+					} else if (!strcasecmp(content_disposition ? content_disposition : "", "attachment")) {
+						attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_NAME, err_code);
 
-					if (attachment_name) {
-						if (emcore_search_string_from_file(cnt_info->text.html, attachment_name, &result) == EMAIL_ERROR_NONE && result) {
-							content_disposition_type = INLINE_ATTACHMENT;
-						} else if (!strcasecmp(content_disposition ? content_disposition : "", "attachment")) {
-							attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_NAME, err_code);
+						if (!attachment_name)
+							attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_FILENAME, err_code);
 
-							if (!attachment_name)
-								attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_FILENAME, err_code);
+						content_disposition_type = ATTACHMENT;
 
-							content_disposition_type = ATTACHMENT;
-
-						} else {
-							EM_DEBUG_EXCEPTION("Unknown mime type");
-						}
 					} else {
-						if (!strcasecmp(content_disposition ? content_disposition : "", "attachment")) {
-							attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_NAME, err_code);
+						EM_DEBUG_EXCEPTION("Unknown mime type");
+					}
+				} else {
+					if (!strcasecmp(content_disposition ? content_disposition : "", "attachment")) {
+						attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_NAME, err_code);
 
-							if (!attachment_name)
-								attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_FILENAME, err_code);
+						if (!attachment_name)
+							attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_FILENAME, err_code);
 
-							content_disposition_type = ATTACHMENT;
+						content_disposition_type = ATTACHMENT;
 
-						} else if (!strcasecmp(content_disposition ? content_disposition : "", "inline")) {
-							attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_NAME, err_code);
+					} else if (!strcasecmp(content_disposition ? content_disposition : "", "inline")) {
+						attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_NAME, err_code);
 
-							if (!attachment_name)
-								attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_FILENAME, err_code);
+						if (!attachment_name)
+							attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_FILENAME, err_code);
 
-							content_disposition_type = INLINE_ATTACHMENT;
-						} else if (strstr(content_type, "PKCS7")) {
-							attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_NAME, err_code);
-							EM_DEBUG_LOG_MIME(">> attachment = [%s]", attachment_name ? attachment_name  :  NIL);
+						content_disposition_type = INLINE_ATTACHMENT;
+					} else if (strstr(content_type ? content_type : "", "PKCS7")) {
+						attachment_name = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_NAME, err_code);
+						EM_DEBUG_LOG_MIME(">> attachment = [%s]", attachment_name ? attachment_name  :  NIL);
 
-							content_disposition_type = ATTACHMENT;
+						content_disposition_type = ATTACHMENT;
 
-						} else {
-							EM_DEBUG_EXCEPTION("Unknown mime");
-						}
-
+					} else {
+						EM_DEBUG_LOG("No attachment");
 					}
 				}
 
@@ -1119,36 +1123,36 @@ int emcore_mime_parse_part(void *stream, int is_file, struct _m_part_header *par
 
 					EM_DEBUG_LOG("After emcore_mime_get_content_data");
 
-					if (cnt_info->grab_type & GRAB_TYPE_TEXT)  {
-						if (tmp_body->part_header && strstr(t ? t  :  "", "HTML"))  {
+					if (cnt_info->grab_type & GRAB_TYPE_TEXT) {
+						char *charset = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_CHARSET, err_code);
+						EM_DEBUG_LOG(" charset [%s]", charset);
+
+						if (tmp_body->part_header && strstr(content_type ? content_type  :  "", "HTML"))  {
+							if (!charset || !strncmp(charset, "X-UNKNOWN", strlen("X-UNKNOWN")))
+								cnt_info->text.html_charset = strdup("UTF-8");
+							else
+								cnt_info->text.html_charset = EM_SAFE_STRDUP(charset);
+							EM_DEBUG_LOG(" cnt_info->text.html_charset [%s]", cnt_info->text.html_charset);
+
 							cnt_info->text.html = holder;
-
 							EM_DEBUG_LOG(" cnt_info->text.html [%s]", cnt_info->text.html);
-						}
-						else  {
-							char *charset = emcore_mime_get_header_value(tmp_body->part_header, CONTENT_CHARSET, err_code);
-							EM_DEBUG_LOG(" charset [%s]", charset);
-
+						} else {
 							if (!charset || !strncmp(charset, "X-UNKNOWN", strlen("X-UNKNOWN")))
 								cnt_info->text.plain_charset = strdup("UTF-8");
 							else
 								cnt_info->text.plain_charset = EM_SAFE_STRDUP(charset);
-
 							EM_DEBUG_LOG(" cnt_info->text.plain_charset [%s]", cnt_info->text.plain_charset);
 
 							cnt_info->text.plain = holder;
-
 							EM_DEBUG_LOG(" cnt_info->text.plain [%s]", cnt_info->text.plain);
 						}
-					}
-					else  {
-						if (holder)  {
+					} else {
+						if (holder) {
 							free(holder);
 							holder = NULL;
 						}
 					}
-				}
-				else  {		/*  attachment */
+				} else {		/*  attachment */
 					EM_DEBUG_LOG("attachment_name is not NULL. It's a attachment");
 					struct attachment_info *file = NULL;
 					struct attachment_info *temp_file = cnt_info->file;
@@ -1742,7 +1746,7 @@ int emcore_mime_get_content_data(void *stream, int is_file, int is_text, char *b
 
 	if (is_file) {
 		EM_DEBUG_LOG("from file");
-		error = emcore_decode_body_text_from_file((FILE *)stream, boundary_str, encoding, mode, is_text, fd, holder, end_of_parsing, size);
+		error = emcore_decode_body_text_from_file((FILE *)stream, boundary_str, encoding, mode, is_text, fd, holder, end_of_parsing, &sz);
 		if (error != EMAIL_ERROR_NONE) {
 			if (error != EMAIL_ERROR_NO_MORE_DATA) {
 				EM_DEBUG_EXCEPTION("emcore_decode_body_text_from_file failed : [%d]", error);
@@ -2596,27 +2600,14 @@ static int imap_mail_write_body_to_file(MAILSTREAM *stream, int account_id, int 
 	char *filename = NULL;
 	int server_response_yn = 0;
 	int write_flag = false;
-	char *write_buffer = NULL;
 	unsigned char encoded[DOWNLOAD_MAX_BUFFER_SIZE] = {0, };
 	unsigned char test_buffer[LOCAL_MAX_BUFFER_SIZE] = {0, };
 	int flag_first_write = true;
-	int max_write_buffer_size = MAX_WRITE_BUFFER_SIZE;
 
 	if (!stream || !filepath || !section)  {
 		EM_DEBUG_EXCEPTION("stream[%p], filepath[%s], uid[%d], section[%s], encoding[%d], decoded_total[%p]", stream, filepath, uid, section, encoding, decoded_total);
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
-	}
-
-	EM_DEBUG_LOG(">>> WRITE BUFFER SIZE  :  %d KB", max_write_buffer_size);
-
-	if (max_write_buffer_size > 0) {
-		max_write_buffer_size *= 1024;		/*  KB -> byte */
-		if (!(write_buffer = em_malloc(sizeof(char) *max_write_buffer_size))) {
-			EM_DEBUG_EXCEPTION("em_malloc failed...");
-			err = EMAIL_ERROR_OUT_OF_MEMORY;
-			goto FINISH_OFF;
-		}
 	}
 
 	FINISH_OFF_IF_CANCELED;
@@ -2936,8 +2927,6 @@ FINISH_OFF:
 
 	if (fp != NULL)
 		fclose(fp);
-
-	EM_SAFE_FREE(write_buffer);
 
 	if (ret == false) {	/*  delete temp fil */
 		struct stat temp_file_stat;
@@ -3297,10 +3286,7 @@ static int emcore_get_body_part_imap_full(MAILSTREAM *stream, int msg_uid, int a
 							_imap4_received_body_size -= gap;
 							_imap4_last_notified_body_size = _imap4_received_body_size;
 
-							if (body_size)
-								progress = 100*total/body_size;
-							else
-								progress = body_size;
+							progress = 100*total/body_size; /*prevent 40023*/
 
 							EM_DEBUG_LOG("DOWNLOADING STATUS NOTIFY  :  Encoded[%d] / [%d] = %d %% Completed. -- Total Decoded[%d]", total, body_size, progress, total);
 							EM_DEBUG_LOG("DOWNLOADING STATUS NOTIFY  :  Total[%d] / [%d] = %d %% Completed.", _imap4_received_body_size, _imap4_total_body_size, imap4_total_body_download_progress);
@@ -4999,13 +4985,11 @@ INTERNAL_FUNC int emcore_make_mail_data_from_mime_data(struct _m_mesg *mmsg, str
 			goto FINISH_OFF;
 		}
 
-		if (cnt_info->text.plain_charset != NULL) {
-			SNPRINTF(html_body, MAX_PATH, "%s%s", cnt_info->text.plain_charset, HTML_EXTENSION_STRING);
-		}
-		else {
+		if (cnt_info->text.html_charset != NULL) {
+			SNPRINTF(html_body, MAX_PATH, "%s%s", cnt_info->text.html_charset, HTML_EXTENSION_STRING);
+		} else {
 			strcpy(html_body, UNKNOWN_CHARSET_HTML_TEXT_FILE);
 		}
-
 
 		if (!emstorage_get_save_name(EML_FOLDER, eml_mail_id, 0, html_body, buf, &err))  {
 			EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
@@ -5418,11 +5402,11 @@ int emcore_decode_body_text_from_file(FILE *stream, char *boundary_str, int enco
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int error = EMAIL_ERROR_NONE;
-	int start_location = 0;
-	int end_location = 0;
 	int p_size = 0;
 	int partial_body = 0;
 	int dec_len = 0;
+	long start_location = 0;
+	long end_location = 0;
 	char boundary[BOUNDARY_LEN] = {0x00, };
 	char boundary_end[BOUNDARY_LEN] = {0x00, };
 	char buf[MIME_LINE_LEN] = {0x00, };
@@ -5506,7 +5490,14 @@ int emcore_decode_body_text_from_file(FILE *stream, char *boundary_str, int enco
 		}
 
 		if (modified_body == NULL) {
-			modified_body      = strdup(body); /*prevent 35585 */
+			modified_body = em_malloc(dec_len + 1);
+			if (modified_body == NULL) {
+				EM_DEBUG_EXCEPTION("em_malloc failed");
+				error = EMAIL_ERROR_OUT_OF_MEMORY;
+				goto FINISH_OFF;
+			}
+
+			memcpy(modified_body, body, dec_len);  /*prevent 35585 */
 			modified_body_size = dec_len;
 		}
 
@@ -5524,6 +5515,9 @@ int emcore_decode_body_text_from_file(FILE *stream, char *boundary_str, int enco
 	fseek((FILE *)stream, end_location, SEEK_SET);
 
 FINISH_OFF:
+
+	if (size)
+		*size = modified_body_size;
 
 	EM_SAFE_FREE(modified_body);
 	EM_SAFE_FREE(body); /*prevent 35585 */

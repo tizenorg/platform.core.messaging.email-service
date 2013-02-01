@@ -815,7 +815,9 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 	if (mail_data->preview_text == NULL) {
 		if ( (err = emcore_get_preview_text_from_file(mail_data->file_path_plain, mail_data->file_path_html, MAX_PREVIEW_TEXT_LENGTH, &(mail_data->preview_text))) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_get_preview_text_from_file failed[%d]", err);
-			goto FINISH_OFF;
+
+			if (err != EMAIL_ERROR_EMPTY_FILE)
+				goto FINISH_OFF;
 		}
 	}
 
@@ -1192,12 +1194,12 @@ INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mai
 	}
 
 	/*  get mail to send */
-	if ( !emstorage_get_mail_by_id(mail_id, &mail_tbl_data, false, &err) || err != EMAIL_ERROR_NONE)  {
+	if (!emstorage_get_mail_by_id(mail_id, &mail_tbl_data, false, &err) || err != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mail_by_id failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	if ( (err = emstorage_get_attachment_list(mail_id, false, &attachment_tbl_data, &attachment_tbl_count)) != EMAIL_ERROR_NONE) {
+	if ((err = emstorage_get_attachment_list(mail_id, false, &attachment_tbl_data, &attachment_tbl_count)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_get_attachment_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1214,7 +1216,7 @@ INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mai
 		goto FINISH_OFF;
 	}
 	else {
-		if ( (err = em_verify_email_address_of_mail_tbl(mail_tbl_data, false)) != EMAIL_ERROR_NONE ) {
+		if ((err = em_verify_email_address_of_mail_tbl(mail_tbl_data, false)) != EMAIL_ERROR_NONE) {
 			err = EMAIL_ERROR_INVALID_ADDRESS;
 			EM_DEBUG_EXCEPTION("em_verify_email_address_of_mail_tbl failed [%d]", err);
 			goto FINISH_OFF;
@@ -1240,7 +1242,7 @@ INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mai
 	/*Update status flag to DB*/
 
 	/*  get rfc822 data */
-	if (!emcore_make_rfc822_file_from_mail(mail_tbl_data, attachment_tbl_data, attachment_tbl_count, &envelope, &fpath, opt, &err))  {
+	if (!emcore_make_rfc822_file_from_mail(mail_tbl_data, attachment_tbl_data, attachment_tbl_count, &envelope, &fpath, opt, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_make_rfc822_file_from_mail failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -2639,7 +2641,7 @@ static int emcore_make_envelope_from_mail(emstorage_mail_tbl_t *input_mail_tbl_d
 				envelope->from = rfc822_parse_mailbox(&p, NULL);
 
 			EM_SAFE_FREE(p);
-			if (!envelope->from)  {
+			if (!envelope->from) {
 				EM_DEBUG_EXCEPTION("rfc822_parse_mailbox failed...");
 				error = EMAIL_ERROR_INVALID_ADDRESS;
 				goto FINISH_OFF;
@@ -2916,7 +2918,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_
 		root_body->size.bytes         = 0;
 		root_body->parameter          = param;
 
-		if (input_mail_tbl_data->smime_type == EMAIL_SMIME_NONE) {
+		if (input_mail_tbl_data->smime_type == EMAIL_SMIME_NONE && input_mail_tbl_data->file_path_plain && input_mail_tbl_data->file_path_html) {
 			part_for_text = attach_mutipart_with_sub_type(root_body, "ALTERNATIVE", &error);
 
 			if (!part_for_text) {
@@ -2925,28 +2927,28 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_
 			}
 
 			text_body = &part_for_text->body;
-		}
 
-		if (input_mail_tbl_data->file_path_plain && EM_SAFE_STRLEN(input_mail_tbl_data->file_path_plain) > 0)  {
-			EM_DEBUG_LOG("file_path_plain[%s]", input_mail_tbl_data->file_path_plain);
-			if (!attach_part(text_body, (unsigned char *)input_mail_tbl_data->file_path_plain, 0, NULL, NULL, false, &error))  {
-				EM_DEBUG_EXCEPTION("attach_part failed [%d]", error);
-				goto FINISH_OFF;
-			}
-		}
-
-		if (input_mail_tbl_data->file_path_html && EM_SAFE_STRLEN(input_mail_tbl_data->file_path_html) > 0)  {
-			EM_DEBUG_LOG("file_path_html[%s]", input_mail_tbl_data->file_path_html);
-
-			part_for_html = attach_mutipart_with_sub_type(text_body, "RELATED", &error);
-			if (!part_for_html) {
-				EM_DEBUG_EXCEPTION("attach_mutipart_with_sub_type [part_for_html] failed [%d]", error);
-				goto FINISH_OFF;
+			if (input_mail_tbl_data->file_path_plain && EM_SAFE_STRLEN(input_mail_tbl_data->file_path_plain) > 0) {
+				EM_DEBUG_LOG("file_path_plain[%s]", input_mail_tbl_data->file_path_plain);
+				if (!attach_part(text_body, (unsigned char *)input_mail_tbl_data->file_path_plain, 0, NULL, NULL, false, &error)) {
+					EM_DEBUG_EXCEPTION("attach_part failed [%d]", error);
+					goto FINISH_OFF;
+				}
 			}
 
-			if (!attach_part(&(part_for_html->body) , (unsigned char *)input_mail_tbl_data->file_path_html, 0, NULL, "html", false, &error))  {
-				EM_DEBUG_EXCEPTION("attach_part failed [%d]", error);
-				goto FINISH_OFF;
+			if (input_mail_tbl_data->file_path_html && EM_SAFE_STRLEN(input_mail_tbl_data->file_path_html) > 0) {
+				EM_DEBUG_LOG("file_path_html[%s]", input_mail_tbl_data->file_path_html);
+
+				part_for_html = attach_mutipart_with_sub_type(text_body, "RELATED", &error);
+				if (!part_for_html) {
+					EM_DEBUG_EXCEPTION("attach_mutipart_with_sub_type [part_for_html] failed [%d]", error);
+					goto FINISH_OFF;
+				}
+
+				if (!attach_part(&(part_for_html->body) , (unsigned char *)input_mail_tbl_data->file_path_html, 0, NULL, "html", false, &error)) {
+					EM_DEBUG_EXCEPTION("attach_part failed [%d]", error);
+					goto FINISH_OFF;
+				}
 			}
 		}
 
@@ -2990,7 +2992,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_
 		}
 		text_body = NULL;
 	}
-	else  {
+	else {
 		text_body = mail_newbody();
 
 		if (text_body == NULL)  {
@@ -3028,7 +3030,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_
 		if (part_for_html)
 			html_body = &(part_for_html->body);
 
-		if (!emcore_write_rfc822(envelope, root_body ? root_body  :  text_body, html_body, input_mail_tbl_data->priority, input_mail_tbl_data->report_status, &fname, &error))  {
+		if (!emcore_write_rfc822(envelope, root_body ? root_body : text_body, html_body, input_mail_tbl_data->priority, input_mail_tbl_data->report_status, &fname, &error))  {
 			EM_DEBUG_EXCEPTION("emcore_write_rfc822 failed [%d]", error);
 			goto FINISH_OFF;
 		}
