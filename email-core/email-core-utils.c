@@ -1195,6 +1195,12 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 			goto FINISH_OFF;
 		}
 
+		if (S_ISREG(st_buf.st_mode) && st_buf.st_size == 0) {
+			EM_DEBUG_LOG("input_html_file is empty size");
+			err = EMAIL_ERROR_EMPTY_FILE;
+			goto FINISH_OFF;
+		}
+
 		if (!(local_preview_text = (char*)em_malloc(sizeof(char) * (st_buf.st_size + 1)))) {
 			EM_DEBUG_EXCEPTION("em_malloc failed");
 			err = EMAIL_ERROR_OUT_OF_MEMORY;
@@ -1226,9 +1232,22 @@ int emcore_get_preview_text_from_file(const char *input_plain_path, const char *
 			goto FINISH_OFF;
 		}
 
+		memset(&st_buf, 0, sizeof(struct stat));
+		if (stat(input_plain_path, &st_buf) < 0)  {
+			EM_DEBUG_EXCEPTION("stat(\"%s\") failed...", input_plain_path);
+			err = EMAIL_ERROR_INVALID_MAIL;
+			goto FINISH_OFF;
+		}
+
 		if (!(fp_plain = fopen(input_plain_path, "r")))  {
 			EM_DEBUG_EXCEPTION("fopen failed [%s]", input_plain_path);
 			err = EMAIL_ERROR_SYSTEM_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		if (S_ISREG(st_buf.st_mode) && st_buf.st_size == 0) {
+			EM_DEBUG_LOG("input_text_file is empty size");
+			err = EMAIL_ERROR_EMPTY_FILE;
 			goto FINISH_OFF;
 		}
 

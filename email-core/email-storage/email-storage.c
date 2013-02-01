@@ -1113,7 +1113,7 @@ static int _get_stmt_field_data_time_t(DB_STMT hStmt, time_t *buf, int index)
 
 static int _get_stmt_field_data_string(DB_STMT hStmt, char **buf, int ucs2, int index)
 {
-	if ((hStmt < 0) || (buf == NULL) || (index < 0))  {
+	if (!hStmt || !buf || (index < 0))  { /*prevent 39619*/
 		EM_DEBUG_EXCEPTION("hStmt[%d], buf[%p], index[%d]", hStmt, buf, index);
 		return false;
 	}
@@ -1144,7 +1144,7 @@ static int _get_stmt_field_data_string(DB_STMT hStmt, char **buf, int ucs2, int 
 
 static void _get_stmt_field_data_blob(DB_STMT hStmt, void **buf, int index)
 {
-	if ((hStmt < 0) || (buf == NULL) || (index < 0))  {
+	if( !hStmt || !buf || (index < 0))  { /*prevent 39618*/
 		EM_DEBUG_EXCEPTION("hStmt[%d], buf[%p], index[%d]", hStmt, buf, index);
 		return;
 	}
@@ -1167,7 +1167,7 @@ static void _get_stmt_field_data_blob(DB_STMT hStmt, void **buf, int index)
 
 static int _get_stmt_field_data_string_without_allocation(DB_STMT hStmt, char *buf, int buffer_size, int ucs2, int index)
 {
-	if ((hStmt < 0) || (buf == NULL) || (index < 0))  {
+	if (!hStmt || !buf || (index < 0))  { /*prevent 39620*/
 		EM_DEBUG_EXCEPTION("hStmt[%d], buf[%p], buffer_size[%d], index[%d]", hStmt, buf, buffer_size, index);
 		return false;
 	}
@@ -9250,11 +9250,12 @@ FINISH_OFF:
 	else if (p_data_tbl != NULL)
 		emstorage_free_attachment(&p_data_tbl, *output_attachment_count, NULL);
 
-	rc = sqlite3_finalize(hStmt);
-
-	if (rc != SQLITE_OK)  {
-		EM_DEBUG_EXCEPTION("sqlite3_finalize failed [%d]", rc);
-		error = EMAIL_ERROR_DB_FAILURE;
+	if (hStmt) {
+		rc = sqlite3_finalize(hStmt);
+		if (rc != SQLITE_OK)  {
+			EM_DEBUG_EXCEPTION("sqlite3_finalize failed [%d]", rc);
+			error = EMAIL_ERROR_DB_FAILURE;
+		}
 	}
 
 	EMSTORAGE_FINISH_READ_TRANSACTION(input_transaction);

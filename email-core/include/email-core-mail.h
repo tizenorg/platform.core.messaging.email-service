@@ -71,6 +71,7 @@ struct _m_content_info
 		char *plain;            /*  body plain text */
 		char *plain_charset;    /*  charset of body text */
 		char *html;             /*  body html text */
+		char *html_charset;     /*  charset of html text */
 	} text;
 
 	struct attachment_info 

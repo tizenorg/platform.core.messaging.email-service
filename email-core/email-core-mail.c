@@ -1327,8 +1327,6 @@ int emcore_get_mail_contact_info_with_update(email_mail_contact_info_t *contact_
 	ADDRESS *addr = NULL;
 	char *address = NULL;
 	char *temp_emailaddr = NULL;
-	int start_text_ascii = 2;
-	int end_text_ascii = 3;	
 	char *alias = NULL;
 	int is_searched = false;
 	int address_length = 0;
@@ -1568,13 +1566,8 @@ int emcore_get_mail_contact_info_with_update(email_mail_contact_info_t *contact_
 		temp_emailaddr = NULL;
 	}
 
-	if (contact_name != NULL) {
-		contact_info->contact_name = g_strdup(contact_name);
-	}
-	else {
-		contact_info->contact_name = g_strdup_printf("%c%d%c%s%c", start_text_ascii, 0, start_text_ascii, full_address, end_text_ascii);
-		contact_info->contact_id = -1;			
-	}
+
+	contact_info->contact_name = g_strdup(contact_name); /*prevent 40020*/
 
 	ret = true;
 	
@@ -5248,7 +5241,8 @@ INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_a
 	if (input_mail_data->preview_text == NULL) {
 		if ( (err =emcore_get_preview_text_from_file(input_mail_data->file_path_plain, input_mail_data->file_path_html, MAX_PREVIEW_TEXT_LENGTH, &(input_mail_data->preview_text))) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_get_preview_text_from_file failed[%d]", err);
-			goto FINISH_OFF2;
+			if (err != EMAIL_ERROR_EMPTY_FILE)
+				goto FINISH_OFF2;
 		}
 	}
 
