@@ -3194,7 +3194,7 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 	int   donot_parse_next_image = 0;
 	char *image_boundary = NULL;
 	char *image_boundary_end = NULL;
-	char  temp_image_boundary[256] = {0};
+	char *temp_image_boundary = NULL;
 	int   i = 0, ch_image = 0, cidno = 0;
 	int   enc_type = ENCOTHER, dec_len = 0, image_length = 0;
 	char *p = header_start_string;
@@ -3208,7 +3208,7 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 	if(image_data == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
-		return 0;
+		return false;
 	}
 
 	image_boundary     = start_header;
@@ -3222,13 +3222,22 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 
 	image_boundary++;
 
+	temp_image_boundary = em_malloc((image_boundary_end - image_boundary) + 1);
+	if (temp_image_boundary == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		return false;
+	}
+
 	if (image_boundary  != NULL && image_boundary_end != NULL)
 		memcpy(temp_image_boundary, image_boundary, image_boundary_end-image_boundary);
 
 	if ((char *)strcasestr((const char *)temp_image_boundary, "Content-type:") == NULL)
-		p_boundary_string = temp_image_boundary;
+		p_boundary_string = strdup(temp_image_boundary);
 	else
-		p_boundary_string = boundary_string;
+		p_boundary_string = EM_SAFE_STRDUP(boundary_string);
+
+	EM_SAFE_FREE(temp_image_boundary);
 
 	do {
 		if (multiple_image != NULL){
@@ -3255,6 +3264,7 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 
 			if(!start_header) { /*prevent 27449*/
 				EM_DEBUG_EXCEPTION("start_header NULL");
+				EM_SAFE_FREE(p_boundary_string);
 				return false;
 			}
 
@@ -3378,6 +3388,8 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 		}
 	} while (multiple_image != NULL && donot_parse_next_image != 1 && (i < IMAGE_DISPLAY_PARTIAL_BODY_COUNT));
 
+	EM_SAFE_FREE(p_boundary_string);
+	
 	EM_DEBUG_FUNC_END();
 	return 1;
 }
