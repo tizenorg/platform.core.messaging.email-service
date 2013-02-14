@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<node name="/org/tizen/email_service">
+	<interface name="org.tizen.email_service">
+		<method name="Launch">
+			<annotation name="org.freedesktop.DBus.GLib.CSymbol" value="email_service_launch"/>
+			<arg type="u" name="result_val" direction="out"/>
+		</method>
+	</interface>
+</node>

@@ -1,0 +1,26 @@
+<manifest>
+        <define>
+                <domain name="email-service"/>
+                <provide>
+                        <label name="email-service::db"/>
+                </provide>
+                <request>
+                        <smack request="email-service::db" type="rw"/>
+                        <smack request="system::use_internet" type="w"/>
+                </request>
+                <permit>
+                        <smack permit="system::use_internet" type="rwx"/>
+                        <smack permit="webkit2-efl" type="rx"/>
+                </permit>
+        </define>
+        <assign>
+                <filesystem path="/usr/lib/libemail-api.so.1.1.0" label="_"/>
+                <filesystem path="/usr/lib/libemail-api.so.1" label="_"/>
+		        <filesystem path="/etc/rc.d/init.d/email-service" label="_" exec_label="none"/>
+		        <filesystem path="/usr/lib/systemd/user/email.service" label="_"/>
+		        <filesystem path="/usr/lib/systemd/user/tizen-middleware.target.wants/email.service" label="_"/>
+        </assign>
+        <request>
+                <domain name="email-service"/>
+        </request>
+</manifest>
