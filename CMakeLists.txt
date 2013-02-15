@@ -17,12 +17,12 @@ MESSAGE(">>> Build type: ${CMAKE_BUILD_TYPE}")
 ##########################################################
 # Define BASE LIB
 ##########################################################
-ADD_SUBDIRECTORY(Common)
+ADD_SUBDIRECTORY(email-common-use)
 
 #########################################################
 # Define IPC
 ##########################################################
-ADD_SUBDIRECTORY(ipc)
+ADD_SUBDIRECTORY(email-ipc)
 
 ##########################################################
 # Define STORAGE, NETWORK, CORE lib
@@ -34,13 +34,13 @@ ADD_SUBDIRECTORY(email-core)
 # Define Email API   
 ##########################################################
 
-ADD_SUBDIRECTORY(MAPI)
+ADD_SUBDIRECTORY(email-api)
 
 ##########################################################
 # Define Execute File
 ##########################################################
 
-ADD_SUBDIRECTORY(email-engine)
+ADD_SUBDIRECTORY(email-daemon)
 
 ##########################################################
 # Define Test App
@@ -49,20 +49,13 @@ ADD_SUBDIRECTORY(email-engine)
 ADD_SUBDIRECTORY(utilities)
 
 ##########################################################
-# Define locale
-##########################################################
-
-ADD_SUBDIRECTORY(po)
-
-##########################################################
 # Define Install Files
 ##########################################################
 
 CONFIGURE_FILE(email-service.pc.in email-service.pc @ONLY)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/email-service.pc DESTINATION lib/pkgconfig) 
-INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/config/.email-service.db DESTINATION /opt/dbspace)
-INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/config/.email-service.db-journal DESTINATION /opt/dbspace)
 
-#SET(RC_LOCAL_SCRIPT email-service)
-#INSTALL(PROGRAMS ${RC_LOCAL_SCRIPT} DESTINATION /etc/rc.d/init.d)
+# LICENSE file
+INSTALL(FILES ${CMAKE_SOURCE_DIR}/LICENSE.BSD DESTINATION /usr/share/license/email-service/LICENSE)
 
+INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/res/ DESTINATION /opt/usr/data/email/res/image FILES_MATCHING PATTERN "*.png")
