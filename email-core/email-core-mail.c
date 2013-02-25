@@ -4865,8 +4865,11 @@ INTERNAL_FUNC int emcore_move_mail_on_server(int account_id, int src_mailbox_id,
 					EM_DEBUG_LOG("Mail MOVE SUCCESS ");
 				}
 			}
-			else
+			else {
 				EM_DEBUG_EXCEPTION(">>>> Server MAIL ID IS NULL >>>> ");
+				ret = 0;
+				goto FINISH_OFF;
+			}
 		}
 		else {
 			EM_DEBUG_EXCEPTION(">>>> STREAM DATA IS NULL >>> ");

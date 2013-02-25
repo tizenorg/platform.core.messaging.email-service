@@ -2463,7 +2463,7 @@ INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id)
 		goto FINISH_OFF;
 	}
 
-	if (mailbox_tbl->local_yn == 0) {
+	if (mailbox_tbl->local_yn) {
 		EM_DEBUG_EXCEPTION("The mailbox [%s] is not on server.", mail_table_data->mailbox_name);
 		err = EMAIL_ERROR_INVALID_MAILBOX;
 		goto FINISH_OFF;
