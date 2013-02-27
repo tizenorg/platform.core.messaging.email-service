@@ -4769,8 +4769,15 @@ INTERNAL_FUNC int emcore_move_mail(int mail_ids[], int mail_ids_count, int dst_m
 	ret = true;
 
 FINISH_OFF:
+	if (ret == false) {
+		if (!emcore_notify_storage_event(NOTI_MAIL_MOVE_FAIL, account_id, noti_param_1, parameter_string, noti_param_2))
+			EM_DEBUG_EXCEPTION(" emcore_notify_storage_event failed [ NOTI_MAIL_MOVE_FAIL ] >>>> ");
+	}
+
 	emstorage_free_mail(&mail_list, mail_ids_count, NULL);
+
 	EM_SAFE_FREE(parameter_string);
+
 	if (err_code != NULL)
 		*err_code = err;
 	EM_DEBUG_FUNC_END("err [%d]", err);
