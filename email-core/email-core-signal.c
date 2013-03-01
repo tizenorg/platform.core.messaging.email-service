@@ -31,6 +31,7 @@
 #include "email-core-utils.h"
 #include "email-internal-types.h"
 #include "email-debug-log.h"
+#include "email-core-notification.h"
 
 #define EMAIL_STORAGE_CHANGE_NOTI       "User.Email.StorageChange"
 #define EMAIL_NETOWRK_CHANGE_NOTI       "User.Email.NetworkStatus"
@@ -166,6 +167,7 @@ FINISH_OFF:
 INTERNAL_FUNC int emcore_notify_storage_event(email_noti_on_storage_event transaction_type, int data1, int data2 , char *data3, int data4)
 {
 	EM_DEBUG_FUNC_BEGIN("transaction_type[%d], data1[%d], data2[%d], data3[%p], data4[%d]", transaction_type, data1, data2, data3, data4);
+	emcore_notification_handle(transaction_type, data1, data2, data3, data4);
 	return emcore_send_signal(_NOTI_TYPE_STORAGE, (int)transaction_type, data1, data2, data3, data4);
 }
 

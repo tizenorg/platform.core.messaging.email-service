@@ -158,6 +158,7 @@ SET(CORE-SRCS
 	${CMAKE_SOURCE_DIR}/email-core/email-core-tasks.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-signal.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-alarm.c
+    ${CMAKE_SOURCE_DIR}/email-core/email-core-notification.c
 )
 
 INCLUDE_DIRECTORIES(

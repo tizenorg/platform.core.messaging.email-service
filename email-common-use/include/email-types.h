@@ -252,6 +252,7 @@ typedef enum
 
 	NOTI_MAIL_UPDATE                         = 10004,
 	NOTI_MAIL_FIELD_UPDATE                   = 10020,
+	NOTI_MAIL_FIELD_UPDATE2                  = 10021,
 
 	NOTI_MAIL_MOVE                           = 10005,
 	NOTI_MAIL_MOVE_FAIL                      = 10010,

@@ -82,7 +82,6 @@
 #define EMAIL_CH_SQUARE_BRACKET_S '['
 #define EMAIL_CH_SQUARE_BRACKET_E ']'
 #define EMAIL_CH_SPACE            ' '
-#define EMAIL_NOTI_ICON_PATH      EMAILPATH"/res/image/Q02_Notification_email.png"
 
 typedef struct  _em_transaction_info_type_t {
 	int mail_id;

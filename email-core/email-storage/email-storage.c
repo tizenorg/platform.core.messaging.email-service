@@ -8160,6 +8160,9 @@ FINISH_OFF:
 	if (ret && parameter_string && !emcore_notify_storage_event(NOTI_MAIL_FIELD_UPDATE, account_id, target_mail_attribute_type, parameter_string, value))
 		EM_DEBUG_EXCEPTION("emcore_notify_storage_event failed : NOTI_MAIL_FIELD_UPDATE [%s,%d]", field_name, value);
 
+	if (error == EMAIL_ERROR_NONE && mail_id_string_buffer)
+		emcore_notify_storage_event(NOTI_MAIL_FIELD_UPDATE2, account_id, target_mail_attribute_type, mail_id_string_buffer, value);
+
 	EM_SAFE_FREE(mail_id_string_buffer);
 	EM_SAFE_FREE(parameter_string);
 

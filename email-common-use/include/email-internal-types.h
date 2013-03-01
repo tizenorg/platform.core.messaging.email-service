@@ -216,6 +216,7 @@ typedef pthread_t thread_t;
 #define EMAIL_ALARM_CLASS_SCHEDULED_SENDING   1
 #define EMAIL_ALARM_CLASS_NEW_MAIL_ALERT      2
 #define EMAIL_ALARM_CLASS_AUTO_POLLING        3
+#define EMAIL_NOTI_ICON_PATH      EMAILPATH"/res/image/Q02_Notification_email.png"
 
 #define EVENT_QUEUE_MAX 32
 
@@ -364,6 +365,12 @@ typedef struct
 	int   storage_type;
 	int   contact_id;
 } email_mail_contact_info_t;
+
+typedef struct
+{
+	char *display_name;
+	int  person_id;
+} email_mail_person_info_t;
 
 /*  global account list */
 typedef struct email_account_list {

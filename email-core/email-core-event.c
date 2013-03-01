@@ -57,6 +57,7 @@
 #include "email-core-sound.h"
 #include "email-core-signal.h"
 #include "email-debug-log.h"
+#include "email-core-notification.h"
 
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
@@ -2487,6 +2488,7 @@ INTERNAL_FUNC int emcore_start_event_loop(int *err_code)
 	INITIALIZE_RECURSIVE_CRITICAL_SECTION(_event_callback_table_lock);
 
 	emcore_initialize_event_callback_table();
+    emcore_initialize_notification();
 
     /* create thread */
 	THREAD_CREATE(g_srv_thread, thread_func_branch_command, NULL, thread_error);
@@ -2523,6 +2525,7 @@ INTERNAL_FUNC int emcore_stop_event_loop(int *err_code)
 
 	/* 	pthread_kill(g_srv_thread, SIGINT); */
 	emcore_cancel_thread(g_active_que, NULL, err_code);
+    emcore_shutdown_notification();
 
 	ENTER_CRITICAL_SECTION(_event_available_lock);
 	WAKE_CONDITION_VARIABLE(_event_available_signal);
