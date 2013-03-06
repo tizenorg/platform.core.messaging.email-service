@@ -19,7 +19,6 @@
 *
 */
 
-
 #ifndef __EMAIL_DBUS_ACTIVATION_H__
 #define __EMAIL_DBUS_ACTIVATION_H__
 
@@ -29,20 +28,17 @@
 typedef struct _email_service_t EmailService;
 typedef struct _email_service_class_t EmailServiceClass;
 
-
 #define EMAIL_SERVICE_NAME "org.tizen.email_service"
 #define EMAIL_SERVICE_PATH "/org/tizen/email_service"
 
 GType email_service_get_type(void);
 
-struct _email_service_t
-{
+struct _email_service_t {
 	GObject parent;
 	int status;
 };
 
-struct _email_service_class_t
-{
+struct _email_service_class_t {
 	GObjectClass parent;
 };
 
@@ -53,19 +49,15 @@ struct _email_service_class_t
 #define IS_EMAIL_SERVICE_CLASS(klass)   (G_TYPE_CHECK_CLASS_TYPE ((klass), EMAIL_SERVICE_TYPE))
 #define EMAIL_SERVICE_GET_CLASS(obj)    (G_TYPE_INSTANCE_GET_CLASS ((obj), EMAIL_SERVICE_TYPE, EmailServiceClass))
 
-typedef enum
-{
+typedef enum {
 	NFC_SERVICE_ERROR_INVALID_PRAM
 } email_servcie_error;
-
-GQuark email_service_error_quark(void);
-#define EMAIL_SERVICE_ERROR email_service_error_quark()
 
 /**
  *     launch the email-service
  */
-gboolean email_service_launch(EmailService *email_service, guint *result_val, GError **error);
 
+gboolean email_service_launch(EmailService *email_service, guint *result_val, GError **error);
 EXPORT_API int emipc_init_dbus_connection();
 EXPORT_API int emipc_launch_email_service();
 
