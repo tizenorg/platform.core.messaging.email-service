@@ -3699,8 +3699,10 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 		attachment_num = 0;
 		uidno = 0;
 
-		if ((err = emcore_parse_bodystructure(stream, reply_from_server, imap_response[i].header, &body, &cnt_info, &total_mail_size, &uidno)) != EMAIL_ERROR_NONE) {
+		err = emcore_parse_bodystructure(stream, reply_from_server, imap_response[i].header, &body, &cnt_info, &total_mail_size, &uidno);
+		if (err != EMAIL_ERROR_NONE || !body) {
 			EM_DEBUG_EXCEPTION("emcore_parse_bodystructure failed : [%d]", err);
+			err = EMAIL_ERROR_ON_PARSING;
 			goto FINISH_OFF;
 		}
 
