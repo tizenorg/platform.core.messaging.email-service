@@ -1,4 +1,0 @@
-/usr/lib/*.so
-/usr/lib/*.so.*
-/usr/bin/email-service
-/opt/apps/email-service/*
