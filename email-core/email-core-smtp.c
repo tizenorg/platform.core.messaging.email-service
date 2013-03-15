@@ -1279,9 +1279,7 @@ INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mai
 		goto FINISH_OFF;
 	}
 	dst_mailbox_id = local_mailbox->mailbox_id;
-
-	if(local_mailbox)
-		emstorage_free_mailbox(&local_mailbox, 1, NULL);
+	emstorage_free_mailbox(&local_mailbox, 1, NULL);
 
 
 	if (!emcore_connect_to_remote_mailbox(account_id, EMAIL_CONNECT_FOR_SENDING, (void **)&tmp_stream, &err))  {
@@ -1328,9 +1326,7 @@ INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mai
 			goto FINISH_OFF;
 		}
 		dst_mailbox_id = local_mailbox->mailbox_id;
-
-		if(local_mailbox)
-			emstorage_free_mailbox(&local_mailbox, 1, NULL);
+		emstorage_free_mailbox(&local_mailbox, 1, NULL);
 
 		/*  unsent mail is moved to 'OUTBOX'. */
 		if (!emcore_move_mail(&mail_id, 1, dst_mailbox_id, EMAIL_MOVED_BY_COMMAND, 0, NULL))
@@ -1394,6 +1390,24 @@ INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mai
 		}
 #endif
 #endif
+
+		if (ref_account->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
+			emstorage_mailbox_tbl_t* src_mailbox = NULL;
+			if (!emstorage_get_mailbox_by_mailbox_type(account_id, EMAIL_MAILBOX_TYPE_OUTBOX, &src_mailbox, true, &err))  {
+				EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
+				goto FINISH_OFF;
+			}
+
+			if (src_mailbox->local_yn)
+				emcore_sync_mail_from_client_to_server(mail_id);
+			else {
+				if (!emcore_move_mail_on_server(account_id, src_mailbox->mailbox_id, &mail_id, 1, local_mailbox->mailbox_name, &err)) {
+					EM_DEBUG_EXCEPTION(" emcore_move_mail_on_server falied [%d]", err);
+				}
+			}
+
+			emstorage_free_mailbox(&src_mailbox, 1, NULL);
+		}
 
 		/* On Successful Mail sent remove the Draft flag */
 		mail_tbl_data->flags_draft_field = 0;

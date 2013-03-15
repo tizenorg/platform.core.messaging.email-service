@@ -3,7 +3,7 @@
 	<interface name="org.tizen.email_service">
 		<method name="Launch">
 			<annotation name="org.freedesktop.DBus.GLib.CSymbol" value="email_service_launch"/>
-			<arg type="u" name="result_val" direction="out"/>
+			<arg type="u" name="result_val" direction="out" />
 		</method>
 	</interface>
 </node>

@@ -2463,7 +2463,7 @@ INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id)
 		goto FINISH_OFF;
 	}
 
-	if (mailbox_tbl->local_yn == 0) {
+	if (mailbox_tbl->local_yn) {
 		EM_DEBUG_EXCEPTION("The mailbox [%s] is not on server.", mail_table_data->mailbox_name);
 		err = EMAIL_ERROR_INVALID_MAILBOX;
 		goto FINISH_OFF;
@@ -3699,8 +3699,10 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 		attachment_num = 0;
 		uidno = 0;
 
-		if ((err = emcore_parse_bodystructure(stream, reply_from_server, imap_response[i].header, &body, &cnt_info, &total_mail_size, &uidno)) != EMAIL_ERROR_NONE) {
+		err = emcore_parse_bodystructure(stream, reply_from_server, imap_response[i].header, &body, &cnt_info, &total_mail_size, &uidno);
+		if (err != EMAIL_ERROR_NONE || !body) {
 			EM_DEBUG_EXCEPTION("emcore_parse_bodystructure failed : [%d]", err);
+			err = EMAIL_ERROR_ON_PARSING;
 			goto FINISH_OFF;
 		}
 
