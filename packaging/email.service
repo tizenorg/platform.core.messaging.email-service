@@ -6,6 +6,7 @@ Description=Start the Email service
 ExecStart=/usr/bin/email-service
 Nice=5
 OOMScoreAdjust=100
+Restart=always
 
 [Install]
 WantedBy=tizen-middleware.target
