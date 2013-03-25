@@ -53,7 +53,8 @@ ADD_SUBDIRECTORY(utilities)
 ##########################################################
 
 CONFIGURE_FILE(email-service.pc.in email-service.pc @ONLY)
-INSTALL(FILES ${CMAKE_BINARY_DIR}/email-service.pc DESTINATION lib/pkgconfig) 
+
+INSTALL(FILES ${CMAKE_BINARY_DIR}/email-service.pc DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)
 
 # LICENSE file
 INSTALL(FILES ${CMAKE_SOURCE_DIR}/LICENSE.BSD DESTINATION /usr/share/license/email-service/LICENSE)

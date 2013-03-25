@@ -45,7 +45,6 @@ BuildRequires:  pkgconfig(badge)
 BuildRequires:  pkgconfig(feedback)
 
 
-
 %description
 E-mail Framework Middleware Library/Binary package
 
@@ -66,9 +65,9 @@ E-mail Framework Middleware Development package
 
 export CFLAGS="${CFLAGS} -fPIC -Wall -g -fvisibility=hidden"
 export CXXFLAGS="${CXXFLAGS} -fPIC -Wall -g -fvisibility=hidden"
-export LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--rpath=%{_prefix}/lib -Wl,--as-needed"
+export LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--rpath=%{_libdir} -Wl,--as-needed"
 
-cmake . -DCMAKE_INSTALL_PREFIX=%{_prefix}
+%cmake .
 
 make %{?_smp_mflags}
 
@@ -76,9 +75,9 @@ make %{?_smp_mflags}
 mkdir -p %{buildroot}/usr/share/license
 %make_install
 
-mkdir -p %{buildroot}%{_libdir}/systemd/user/tizen-middleware.target.wants
-install -m 0644 %SOURCE1 %{buildroot}%{_libdir}/systemd/user/
-ln -sf ../email.service %{buildroot}%{_libdir}/systemd/user/tizen-middleware.target.wants/
+mkdir -p %{buildroot}/usr/lib/systemd/user/tizen-middleware.target.wants
+install -m 0644 %SOURCE1 %{buildroot}/usr/lib/systemd/user/
+ln -sf ../email.service %{buildroot}/usr/lib/systemd/user/tizen-middleware.target.wants/
 
 
 %post
@@ -431,8 +430,8 @@ systemctl daemon-reload
 %{_bindir}/email-service
 /opt/usr/data/email/res/*
 %{_libdir}/lib*.so.*
-%{_libdir}/systemd/user/email.service
-%{_libdir}/systemd/user/tizen-middleware.target.wants/email.service
+/usr/lib/systemd/user/email.service
+/usr/lib/systemd/user/tizen-middleware.target.wants/email.service
 /usr/share/dbus-1/services/email-service.service
 /usr/share/license/email-service/LICENSE
 
