@@ -45,7 +45,7 @@ extern "C"
 
 /* ----------------------------------------------------------------------------- */
 /*  Feature definitions */
-#define __FEATURE_USING_ACCOUNT_SVC__
+/*#define __FEATURE_USING_ACCOUNT_SVC__*/
 #define __FEATURE_BACKUP_ACCOUNT__
 #define __FEATURE_MOVE_TO_OUTBOX_FIRST__
 /*  #define __FEATURE_PARTIAL_BODY_FOR_POP3__ */
