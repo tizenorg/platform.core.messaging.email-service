@@ -2961,9 +2961,9 @@ FINISH_OFF:
 	return contact_err;
 }
 
-int emcore_set_contacts_log(int account_id, char *email_address, char *subject, time_t date_time, email_action_t action)
+int emcore_set_contacts_log(int mail_id, char *email_address, char *subject, time_t date_time, email_action_t action)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id : [%d], address : [%p], subject : [%s], action : [%d], date_time : [%d]", account_id, email_address, subject, action, (int)date_time);
+	EM_DEBUG_FUNC_BEGIN("mail_id : [%d], address : [%p], subject : [%s], action : [%d], date_time : [%d]", mail_id, email_address, subject, action, (int)date_time);
 	
 	int err = EMAIL_ERROR_NONE;
 	int contacts_error = CONTACTS_ERROR_NONE;
@@ -3038,7 +3038,7 @@ int emcore_set_contacts_log(int account_id, char *email_address, char *subject, 
 	}
 
 	/* Set Mail id */
-	if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.extra_data1, account_id)) != CONTACTS_ERROR_NONE) {
+	if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.extra_data1, mail_id)) != CONTACTS_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("contacts_record_set_int [mail id] failed [%d]", contacts_error);
 		goto FINISH_OFF;
 	}
@@ -3084,7 +3084,7 @@ INTERNAL_FUNC int emcore_set_sent_contacts_log(emstorage_mail_tbl_t *input_mail_
 			rfc822_parse_adrlist(&addr, address_array[i], NULL);
 			for (p_addr = addr ; p_addr ;p_addr = p_addr->next) {
 				SNPRINTF(email_address, MAX_EMAIL_ADDRESS_LENGTH, "%s@%s", addr->mailbox, addr->host);
-				if ((err = emcore_set_contacts_log(input_mail_data->account_id, email_address, input_mail_data->subject, input_mail_data->date_time, EMAIL_ACTION_SEND_MAIL)) != EMAIL_ERROR_NONE) {
+				if ((err = emcore_set_contacts_log(input_mail_data->mail_id, email_address, input_mail_data->subject, input_mail_data->date_time, EMAIL_ACTION_SEND_MAIL)) != EMAIL_ERROR_NONE) {
 					EM_DEBUG_EXCEPTION("emcore_set_contacts_log failed : [%d]", err);
 					goto FINISH_OFF;
 				}
@@ -3111,7 +3111,7 @@ INTERNAL_FUNC int emcore_set_received_contacts_log(emstorage_mail_tbl_t *input_m
 	EM_DEBUG_FUNC_BEGIN("input_mail_data : [%p]", input_mail_data);
 	int err = EMAIL_ERROR_NONE;
 
-	if ((err = emcore_set_contacts_log(input_mail_data->account_id, input_mail_data->email_address_sender, input_mail_data->subject, input_mail_data->date_time, EMAIL_ACTION_SYNC_HEADER)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_set_contacts_log(input_mail_data->mail_id, input_mail_data->email_address_sender, input_mail_data->subject, input_mail_data->date_time, EMAIL_ACTION_SYNC_HEADER)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_set_contacts_log failed [%d]", err);
 	}
 
@@ -3125,17 +3125,43 @@ INTERNAL_FUNC int emcore_delete_contacts_log(int account_id)
 
 	int err = EMAIL_ERROR_NONE;
 	int contacts_error = CONTACTS_ERROR_NONE;
+	email_mailbox_t *mailbox_list;
+	int i, count;
 
 	if ((contacts_error = contacts_connect2()) != CONTACTS_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("Open connect service failed [%d]", contacts_error);
 		goto FINISH_OFF;
 	}
 	
-	/* Delete record of the account id */
-	if ((contacts_error = contacts_phone_log_delete(CONTACTS_PHONE_LOG_DELETE_BY_EMAIL_EXTRA_DATA1, account_id)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_phone_log_delete failed [%d]", contacts_error);
+	if (!emcore_get_mailbox_list(account_id, &mailbox_list, &count, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_get_mailbox_list failed [%d]", err);
+		goto FINISH_OFF;
 	}
-	
+
+	for (i = 0; i < count; i++) {
+		int *mail_ids = NULL;
+		int mail_ids_count = 0;
+		char query[QUERY_SIZE];
+		int j;
+
+		SNPRINTF(query, sizeof(query), " where mailbox_id = %d and account_id = %d",
+				 mailbox_list[i].mailbox_id, account_id);
+		emstorage_query_mail_id_list(query, false, &mail_ids, &mail_ids_count);
+
+		if (mail_ids_count > 0) {
+			for (j = 0; j < mail_ids_count; j++) {
+				/* Delete record of the account id */
+				if (contacts_phone_log_delete(
+						CONTACTS_PHONE_LOG_DELETE_BY_EMAIL_EXTRA_DATA1, mail_ids[j])
+					!= CONTACTS_ERROR_NONE) {
+					EM_DEBUG_EXCEPTION("contacts_phone_log_delete failed [%d]",
+									   contacts_error);
+				}
+			}
+			EM_SAFE_FREE(mail_ids);
+		}
+		emcore_free_mailbox(&mailbox_list[i]);
+	}
 
 FINISH_OFF:
 	err = convert_contact_err_to_email_err(contacts_error);
