@@ -295,7 +295,7 @@ EXPORT_API int email_add_read_receipt(int input_read_mail_id, int *output_receip
  */
 EXPORT_API int email_update_mail(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t* input_meeting_request, int input_from_eas);
 
-EXPORT_API int email_update_mail_attribute(int *input_mail_id_array, int input_mail_id_count, email_mail_attribute_type input_attribute, email_mail_attribute_value_t input_value);
+EXPORT_API int email_update_mail_attribute(int input_account_id, int *input_mail_id_array, int input_mail_id_count, email_mail_attribute_type input_attribute_type, email_mail_attribute_value_t input_value);
 
 /**
  * @fn email_count_mail(email_mailbox_t* mailbox, int* total, int* unseen)

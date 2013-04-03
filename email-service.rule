@@ -1,0 +1,11 @@
+email-service email-service::db rw
+email-service system::use_internet w
+email-service system::vconf arwxt
+
+system::use_internet email-service rwx
+webkit2-efl email-service rx
+
+com.samsung.quickpanel email-service rx
+com.samsung.indicator email-service rwx
+com.samsung.lockscreen email-service rx
+com.samsung.dropbox pkgmgr::db rw

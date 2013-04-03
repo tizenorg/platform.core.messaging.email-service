@@ -64,11 +64,12 @@ void testapp_show_menu (eEMAIL_MENU menu)
 			testapp_print ("==========================================\n");
 			testapp_print ("    ACCOUNT MENU \n");
 			testapp_print ("==========================================\n");
-			testapp_print (" 1.  Create account\n");
+			testapp_print (" 1.  Add account with validation\n");
 			testapp_print (" 2.  Update account\n");
 			testapp_print (" 3.  Delete account\n");
 			testapp_print (" 4.  Get account\n");
 			testapp_print (" 5.  Get account list\n");
+			testapp_print (" 6.  Update check interval\n");
 			testapp_print (" 7.  Validate account\n");
 			testapp_print (" 8.  Cancel validate Account\n");
 			testapp_print (" 9.  Backup All accounts\n");
@@ -81,6 +82,7 @@ void testapp_show_menu (eEMAIL_MENU menu)
 			testapp_print (" 16. Add certificate\n");
 			testapp_print (" 17. Get certificate\n");
 			testapp_print (" 18. Delete certificate\n");
+			testapp_print (" 19. Add Account\n");
 			testapp_print (" 0.  Go to Main Menu\n");
 			testapp_print ("------------------------------------------\n");
 			break;
@@ -100,7 +102,10 @@ void testapp_show_menu (eEMAIL_MENU menu)
 			testapp_print ("9.  Mail Count \n");
 			testapp_print ("10. Move mails to another account\n");
 			testapp_print ("11. Send mail with downloading attachment of original mail\n");
+			testapp_print ("12. Get mail data\n");
+			testapp_print ("13. Schedule sending mail\n");
 			testapp_print ("14. Delete a mail \n");
+			testapp_print ("15. Update mail attribute \n");
 			testapp_print ("16. Download mail body\n");
 			testapp_print ("17. Download an attachment\n");
 			testapp_print ("20. Delete all mail\n");

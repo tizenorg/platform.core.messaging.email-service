@@ -1024,6 +1024,7 @@ TPL_API int tpl_dump(tpl_node *r, int mode, ...) {
                 if (errno == EINTR || errno == EAGAIN) continue;
                 tpl_hook.oops("error writing to fd %d: %s\n", fd, strerror(errno));
                 free(buf);
+                va_end(ap);
                 return -1;
             }
         } while (sz > 0);
@@ -1035,6 +1036,7 @@ TPL_API int tpl_dump(tpl_node *r, int mode, ...) {
           pa_sz = va_arg(ap, size_t);
           if (pa_sz < sz) {
               tpl_hook.oops("tpl_dump: buffer too small, need %d bytes\n", sz);
+              va_end(ap);
               return -1;
           }
           rc=tpl_dump_to_mem(r,pa_addr,sz);
@@ -1481,6 +1483,7 @@ TPL_API int tpl_load(tpl_node *r, int mode, ...) {
         fd = va_arg(ap,int);
     } else {
         tpl_hook.oops("unsupported tpl_load mode %d\n", mode);
+        va_end(ap);
         return -1;
     }
     va_end(ap);

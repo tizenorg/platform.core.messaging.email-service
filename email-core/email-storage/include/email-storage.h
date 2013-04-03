@@ -44,6 +44,7 @@ extern "C"
 #include "email-internal-types.h"
 
 #define FIRST_ACCOUNT_ID    1
+#define EMAIL_SERVICE_CREATE_TABLE_QUERY_FILE_PATH "/opt/usr/data/email/res/email-service.sql"
 
 
 #ifdef __FEATURE_BULK_DELETE_MOVE_UPDATE_REQUEST_OPTI__
@@ -179,12 +180,21 @@ typedef struct
 	int     reserved;
 } emstorage_read_mail_uid_tbl_t;
 
+#ifdef __FEATURE_BODY_SEARCH__
+typedef struct
+{
+	int mail_id;
+	int account_id;
+	int mailbox_id;
+	char *body_text;
+} emstorage_mail_text_tbl_t;
+#endif
+
 typedef struct 
 {
 	int                    mail_id;
 	int                    account_id;
 	int                    mailbox_id;
-	char                  *mailbox_name;
 	int                    mailbox_type;
 	char                  *subject;
 	time_t                 date_time;
@@ -229,6 +239,9 @@ typedef struct
 	email_message_class    message_class;
 	email_digest_type      digest_type;
 	email_smime_type       smime_type;
+	time_t                 scheduled_sending_time;
+	int                    eas_data_length;
+	char                  *eas_data;
 } emstorage_mail_tbl_t;
 
 /* mail_attachment_tbl entity */
@@ -701,6 +714,17 @@ INTERNAL_FUNC int emstorage_get_downloaded_mail_size(int account_id, char *local
  */
 INTERNAL_FUNC int emstorage_add_downloaded_mail(emstorage_read_mail_uid_tbl_t *read_mail_uid, int transaction, int *err_code);
 
+#ifdef __FEATURE_BODY_SEARCH__
+/*
+ * emstorage_add_mail_text
+ *
+ * description :  add stripped text of mail body to mail_text_tbl
+ * arguments :
+ * return  :
+ */
+INTERNAL_FUNC int emstorage_add_mail_text(emstorage_mail_text_tbl_t* mail_text, int transaction, int *err_code);
+#endif
+
 /*
  * emstorage_change_read_mail_uid
  *
@@ -733,7 +757,7 @@ INTERNAL_FUNC int emstorage_free_read_mail_uid(emstorage_read_mail_uid_tbl_t **r
 /************** Rules(Filtering) Management ******************/
 
 /*
- * emstorage_get_rule_count
+ * emstorage_get_rule_count_by_account_id
  *
  * description :  get number of rules from rule table
  * arguments : 
@@ -741,7 +765,7 @@ INTERNAL_FUNC int emstorage_free_read_mail_uid(emstorage_read_mail_uid_tbl_t **r
  *    count  :  number of accounts
  * return  : 
  */
-INTERNAL_FUNC int emstorage_get_rule_count(int account_id, int *count, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_get_rule_count_by_account_id(int account_id, int *count, int transaction, int *err_code);
 
 /*
  * emstorage_get_rule
@@ -764,7 +788,7 @@ INTERNAL_FUNC int emstorage_get_rule(int account_id, int type, int start_idx, in
  * arguments : 
  * return  : 
  */
-INTERNAL_FUNC int emstorage_get_rule_by_id(int account_id, int rule_id, emstorage_rule_tbl_t **rule, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_get_rule_by_id(int rule_id, emstorage_rule_tbl_t **rule, int transaction, int *err_code);
 
 /*
  * emstorage_change_rule
@@ -776,7 +800,7 @@ INTERNAL_FUNC int emstorage_get_rule_by_id(int account_id, int rule_id, emstorag
  *    rule  :  buffer to hold selected rule
  * return  : 
  */
-INTERNAL_FUNC int emstorage_change_rule(int account_id, int rule_id, emstorage_rule_tbl_t *rule, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_change_rule(int rule_id, emstorage_rule_tbl_t *rule, int transaction, int *err_code);
 
 /*
  * emstorage_find_rule
@@ -805,7 +829,7 @@ INTERNAL_FUNC int emstorage_add_rule(emstorage_rule_tbl_t *rule, int transaction
  *    rule  :  rule to be deteted
  * return  : 
  */
-INTERNAL_FUNC int emstorage_delete_rule(int account_id, int rule_id, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_delete_rule(int rule_id, int transaction, int *err_code);
 
 /*
  * emstorage_free_rule
@@ -829,7 +853,7 @@ INTERNAL_FUNC int emstorage_free_rule(emstorage_rule_tbl_t **rule_list, int coun
  *    unseen  :  unseen mail count
  * return  : 
  */
-INTERNAL_FUNC int emstorage_get_mail_count(int account_id, const char *mailbox, int *total, int *unseen, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_get_mail_count(int account_id, int mailbox_id, int *total, int *unseen, int transaction, int *err_code);
 
 /*
  * emstorage_get_mail_by_id
@@ -841,6 +865,19 @@ INTERNAL_FUNC int emstorage_get_mail_count(int account_id, const char *mailbox, 
  * return  : 
  */
 INTERNAL_FUNC int emstorage_get_mail_by_id(int mail_id, emstorage_mail_tbl_t **mail, int transaction, int *err_code);
+
+#ifdef __FEATURE_BODY_SEARCH__
+/*
+ * emstorage_get_mail_text_by_id
+ *
+ * description :  get mail_text from mail_text table by mail id
+ * arguments :
+ *    mail_id  :  mail id
+ *    mail_text  :  double pointer to hold mail_text
+ * return  :
+ */
+INTERNAL_FUNC int emstorage_get_mail_text_by_id(int mail_id, emstorage_mail_text_tbl_t **mail_text, int transaction, int *err_code);
+#endif
 
 /*
  * emstorage_get_mail
@@ -897,6 +934,15 @@ INTERNAL_FUNC int emstorage_query_mail_list(const char *conditional_clause, int 
  * description :  query mail table information
  */
 INTERNAL_FUNC int emstorage_query_mail_tbl(const char *conditional_clause, int transaction, emstorage_mail_tbl_t** result_mail_tbl, int *result_count, int *err_code);
+
+#ifdef __FEATURE_BODY_SEARCH__
+/*
+ * emstorage_query_mail_text_tbl
+ *
+ * description :  query mail_text table information
+ */
+INTERNAL_FUNC int emstorage_query_mail_text_tbl(const char *conditional_clause, int transaction, emstorage_mail_text_tbl_t** result_mail_text_tbl, int *result_count, int *err_code);
+#endif
 
 /*
  * emstorage_query_mailbox_tbl
@@ -975,6 +1021,19 @@ INTERNAL_FUNC int emstorage_mail_search_end(int search_handle, int transaction, 
  */
 INTERNAL_FUNC int emstorage_set_field_of_mails_with_integer_value(int account_id, int mail_ids[], int mail_ids_count, char *field_name, int value, int transaction, int *err_code);
 
+#ifdef __FEATURE_BODY_SEARCH__
+/*
+ * emstorage_change_mail_text_field
+ *
+ * description :  update mail_text data
+ * arguments :
+ *    mail_id  :  mail id
+ *    mail_text  :  mail_text pointer
+ * return  :
+ */
+INTERNAL_FUNC int emstorage_change_mail_text_field(int mail_id, emstorage_mail_text_tbl_t* mail_text, int transaction, int *err_code);
+#endif
+
 /*
  * emstorage_change_mail_field
  *
@@ -1008,7 +1067,6 @@ INTERNAL_FUNC int emstorage_change_mail_field(int mail_id, email_mail_change_typ
 INTERNAL_FUNC int emstorage_change_mail(int mail_id, emstorage_mail_tbl_t *mail, int transaction, int *err_code);
 INTERNAL_FUNC int emstorage_clean_save_status(int save_status, int  *err_code);
 INTERNAL_FUNC int emstorage_update_server_uid(char *old_server_uid, char *new_server_uid, int *err_code);
-INTERNAL_FUNC int emstorage_modify_mailbox_of_mails(char *old_mailbox_name, char *new_mailbox_name, int transaction, int *err_code);
 
 INTERNAL_FUNC int emstorage_increase_mail_id(int *mail_id, int transaction, int *err_code);
 
@@ -1068,7 +1126,7 @@ INTERNAL_FUNC int emstorage_delete_mail_by_account(int account_id, int transacti
  *    mailbox  :  mail box
  * return  : 
  */
-INTERNAL_FUNC int emstorage_delete_mail_by_mailbox(int account_id, char *mailbox, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_delete_mail_by_mailbox(int account_id, int mailbox_id, int transaction, int *err_code);
 
 /*
  * emstorage_delete_multiple_mails
@@ -1093,6 +1151,19 @@ INTERNAL_FUNC int emstorage_delete_multiple_mails(int mail_ids[], int number_of_
  * return  : 
  */
 INTERNAL_FUNC int emstorage_free_mail(emstorage_mail_tbl_t **mail_list, int count, int *err_code);
+
+#ifdef __FEATURE_BODY_SEARCH__
+/*
+ * emstorage_free_mail_text
+ *
+ * description :  free memory
+ * arguments :
+ *    mail_list  :  mail_text array
+ *    count  :  the number of array element
+ * return  :
+ */
+INTERNAL_FUNC int emstorage_free_mail_text(emstorage_mail_text_tbl_t** mail_text_list, int count, int *err_code);
+#endif
 
 /*
  * emstorage_get_attachment
@@ -1355,7 +1426,7 @@ INTERNAL_FUNC int emstorage_delete_dir(char *src_dir, int *err_code);
 INTERNAL_FUNC void emstorage_flush_db_cache();
 INTERNAL_FUNC int emstorage_test(int mail_id, int account_id, char *full_address_to, char *full_address_cc, char *full_address_bcc, int *err_code);
 
-INTERNAL_FUNC int emstorage_get_sender_list(int account_id, const char *mailbox_name, int search_type, const char *search_value, email_sort_type_t sorting, email_sender_list_t** sender_list, int *sender_count,  int *err_code);
+INTERNAL_FUNC int emstorage_get_sender_list(int account_id, int mailbox_id, int search_type, const char *search_value, email_sort_type_t sorting, email_sender_list_t** sender_list, int *sender_count,  int *err_code);
 INTERNAL_FUNC int emstorage_free_sender_list(email_sender_list_t **sender_list, int count);
 
 /* Handling Thread mail */
@@ -1419,12 +1490,13 @@ INTERNAL_FUNC int emstorage_get_id_set_from_mail_ids(char *mail_ids, email_id_se
 #endif
 
 /**
- * @fn emstorage_filter_mails_by_rule(int account_id, char dest_mailbox_name, email_rule_t *rule, int **filtered_mail_id_list, int *count_of_mails, int err_code)
+ * @fn emstorage_filter_mails_by_rule(int account_id, int dest_mailbox_id, int dst_mailbox_type, email_rule_t *rule, int **filtered_mail_id_list, int *count_of_mails, int err_code)
  * Move mails by specified rule for spam filtering. 
  *
  * @author 								kyuho.jo@samsung.com
  * @param[in] account_id				Account id of the mails and the mailboxes.
- * @param[in] dest_mailbox_name			Mailbox name of spam mailbox.
+ * @param[in] dest_mailbox_id			Mailbox id of spam mailbox.
+ * @param[in] dest_mailbox_type			Mailbox id of spam mailbox.
  * @param[in] rule						Filtering rule.
  * @param[out] filtered_mail_id_list	Mail id list which are filtered by the rule.
  * @param[out] count_of_mails			Count of mails which are filtered by the rule.
@@ -1433,7 +1505,7 @@ INTERNAL_FUNC int emstorage_get_id_set_from_mail_ids(char *mail_ids, email_id_se
  * @remarks 									
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emstorage_filter_mails_by_rule(int account_id, int dest_mailbox_id, emstorage_rule_tbl_t *rule, int **filtered_mail_id_list, int *count_of_mails, int *err_code);
+INTERNAL_FUNC int emstorage_filter_mails_by_rule(int account_id, int dest_mailbox_id, int dest_mailbox_type, emstorage_rule_tbl_t *rule, int **filtered_mail_id_list, int *count_of_mails, int *err_code);
 
 INTERNAL_FUNC int emstorage_add_meeting_request(int account_id, int input_mailbox_id, email_meeting_request_t *meeting_req, int transaction, int *err_code);
 INTERNAL_FUNC int emstorage_get_meeting_request(int mail_id, email_meeting_request_t **meeting_req, int transaction, int *err_code);

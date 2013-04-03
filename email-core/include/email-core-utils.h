@@ -65,8 +65,14 @@ int   emcore_is_storage_full(int *error);
 int   emcore_get_long_encoded_path_with_account_info(email_account_t *account, char *path, int delimiter, char **long_enc_path, int *err_code);
 void  emcore_fill_address_information_of_mail_tbl(emstorage_mail_tbl_t *mail_data);
 
+INTERNAL_FUNC char* emcore_get_mail_field_name_by_attribute_type(email_mail_attribute_type input_attribute_type);
+INTERNAL_FUNC int emcore_get_attribute_type_by_mail_field_name(char *input_mail_field_name, email_mail_attribute_type *output_mail_attribute_type);
+INTERNAL_FUNC int emcore_get_mail_attribute_value_type(email_mail_attribute_type input_attribute_type, email_mail_attribute_value_type *output_value_type);
+INTERNAL_FUNC int emcore_get_preview_text_from_file(const char *input_plain_path, const char *input_html_path, int input_preview_buffer_length, char **output_preview_buffer);
+#ifdef __FEATURE_BODY_SEARCH__
+INTERNAL_FUNC int emcore_strip_mail_body_from_file(emstorage_mail_tbl_t *mail, char **stripped_text, int *err_code);
+#endif
 
-INTERNAL_FUNC int   emcore_get_preview_text_from_file(const char *input_plain_path, const char *input_html_path, int input_preview_buffer_length, char **output_preview_buffer);
 int   reg_replace (char *input_source_text, char *input_old_pattern_string, char *input_new_string);
 int   emcore_strip_HTML(char *source_string);
 int   emcore_send_noti_for_new_mail(int account_id, char *mailbox_name, char *subject, char *from, char *uid, char *datetime);
@@ -187,6 +193,16 @@ INTERNAL_FUNC int emcore_delete_activity(emstorage_activity_tbl_t *activity, int
 INTERNAL_FUNC void emcore_free_rule(email_rule_t* rule);
 
 INTERNAL_FUNC int emcore_search_string_from_file(char *file_path, char *search_string, int *result);
+
+INTERNAL_FUNC int emcore_load_query_from_file(char *file_path, char ***query_array, int *array_len);
+
+#ifdef __FEATURE_BLOCKING_MODE__
+INTERNAL_FUNC bool emcore_init_blocking_mode_status();
+INTERNAL_FUNC void emcore_set_blocking_mode_of_setting(int input_blocking_mode_of_setting);
+INTERNAL_FUNC int emcore_get_blocking_mode_status();
+INTERNAL_FUNC void emcore_set_blocking_mode_status(int blocking_mode);
+INTERNAL_FUNC int emcore_check_blocking_mode(char *sender_address, int *blocking_status);
+#endif /* __FEATURE_BLOCKING_MODE__ */
 
 #ifdef __cplusplus
 }

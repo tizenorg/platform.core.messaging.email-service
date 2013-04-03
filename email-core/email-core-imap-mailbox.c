@@ -816,9 +816,6 @@ INTERNAL_FUNC int emcore_set_sync_imap_mailbox(email_internal_mailbox_t *mailbox
 
 				if (mailbox_renamed) /* renamed mailbox */ {
 					EM_DEBUG_LOG("downloaded_uids[temp].mailbox_name [%s]", downloaded_uids[temp].mailbox_name);
-					/* Do a mailbox rename in the DB */
-					if (!emstorage_modify_mailbox_of_mails(downloaded_uids[temp].mailbox_name, mailbox->mailbox_name, true, &err))
-						EM_DEBUG_EXCEPTION(" emstorage_modify_mailbox_of_mails Failed [%d]", err);
 
 					mailbox_renamed = 0;
 
@@ -995,6 +992,9 @@ INTERNAL_FUNC int emcore_delete_imap_mailbox(int input_mailbox_id, int *err_code
 	int err = EMAIL_ERROR_NONE;
 	emstorage_mailbox_tbl_t *mailbox_tbl = NULL;
 
+	if(!emcore_notify_network_event(NOTI_DELETE_MAILBOX_START, input_mailbox_id, 0, 0, 0))
+		EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_DELETE_MAILBOX_START] failed");
+
 	if ((err = emstorage_get_mailbox_by_id(input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE || !mailbox_tbl) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed. [%d]", err);
 		goto FINISH_OFF;
@@ -1054,7 +1054,7 @@ FINISH_OFF:
 
 	if (err == EMAIL_ERROR_NONE) {
 		if(!emcore_notify_network_event(NOTI_DELETE_MAILBOX_FINISH, input_mailbox_id, 0, 0, 0))
-		EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_ADD_MAILBOX_FINISH] failed");
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_ADD_MAILBOX_FINISH] failed");
 	}
 	else if (!emcore_notify_network_event(NOTI_DELETE_MAILBOX_FAIL, input_mailbox_id, 0, 0, err))
 		EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_ADD_MAILBOX_FAIL] failed");

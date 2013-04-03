@@ -41,6 +41,8 @@
 #include "email-core-account.h"
 #include "email-core-event.h"
 #include "email-core-utils.h"
+#include "email-core-alarm.h"
+#include "email-core-smtp.h"
 #include "email-utilities.h"
 #include "email-storage.h"
 
@@ -132,6 +134,12 @@ INTERNAL_FUNC int emdaemon_cancel_sending_mail_job(int account_id, int mail_id, 
 				goto FINISH_OFF;
 			}
 		}
+
+
+	}
+
+	if ((err = emcore_delete_alram_data_by_reference_id(EMAIL_ALARM_CLASS_SCHEDULED_SENDING, mail_id)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_LOG("emcore_delete_alram_data_by_reference_id failed [%d]",err);
 	}
 
 #endif
@@ -360,6 +368,60 @@ FINISH_OFF:
 	return ret;
 }
 
+INTERNAL_FUNC int emdaemon_reschedule_sending_mail()
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int err = EMAIL_ERROR_NONE;
+	char *conditional_clause_string = NULL;
+	email_list_filter_t filter_list[3];
+	email_mail_list_item_t *result_mail_list = NULL;
+	int filter_rule_count = 3;
+	int result_mail_count = 0;
+	int i = 0;
+
+	memset(filter_list, 0 , sizeof(email_list_filter_t) * filter_rule_count);
+
+	filter_list[0].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_RULE;
+	filter_list[0].list_filter_item.rule.target_attribute              = EMAIL_MAIL_ATTRIBUTE_SCHEDULED_SENDING_TIME;
+	filter_list[0].list_filter_item.rule.rule_type                     = EMAIL_LIST_FILTER_RULE_NOT_EQUAL;
+	filter_list[0].list_filter_item.rule.key_value.integer_type_value  = 0;
+
+	filter_list[1].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_OPERATOR;
+	filter_list[1].list_filter_item.operator_type                      = EMAIL_LIST_FILTER_OPERATOR_AND;
+
+	filter_list[2].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_RULE;
+	filter_list[2].list_filter_item.rule.target_attribute              = EMAIL_MAIL_ATTRIBUTE_SAVE_STATUS;
+	filter_list[2].list_filter_item.rule.rule_type                     = EMAIL_LIST_FILTER_RULE_EQUAL;
+	filter_list[2].list_filter_item.rule.key_value.integer_type_value  = EMAIL_MAIL_STATUS_SEND_SCHEDULED;
+
+	/* Get scheduled mail list */
+	if( (err = emstorage_write_conditional_clause_for_getting_mail_list(filter_list, filter_rule_count, NULL, 0, -1, -1, &conditional_clause_string)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emstorage_write_conditional_clause_for_getting_mail_list failed[%d]", err);
+		goto FINISH_OFF;
+	}
+
+	EM_DEBUG_LOG("conditional_clause_string[%s].", conditional_clause_string);
+
+	if(!emstorage_query_mail_list(conditional_clause_string, true, &result_mail_list, &result_mail_count, &err) && !result_mail_list) {
+		EM_DEBUG_EXCEPTION("emstorage_query_mail_list [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	/* Add alarm for scheduled mail */
+	for(i = 0; i < result_mail_count; i++) {
+		if((err = emcore_schedule_sending_mail(result_mail_list[i].mail_id, result_mail_list[i].scheduled_sending_time)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_schedule_sending_mail failed [%d]", err);
+			goto FINISH_OFF;
+		}
+	}
+
+FINISH_OFF:
+	EM_SAFE_FREE(result_mail_list);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
+
 INTERNAL_FUNC int emdaemon_clear_all_mail_data(int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -392,6 +454,5 @@ INTERNAL_FUNC int emdaemon_clear_all_mail_data(int* err_code)
 	EM_DEBUG_FUNC_END();
     return ret;
 }
-
 	
 /* --------------------------------------------------------------------------------*/

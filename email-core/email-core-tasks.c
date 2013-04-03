@@ -35,8 +35,10 @@
 #include "email-core-tasks.h"
 #include "email-core-task-manager.h"
 #include "email-core-mail.h"
+#include "email-core-smtp.h"
 #include "email-core-mailbox-sync.h"
 #include "email-core-signal.h"
+#include "email-core-utils.h"
 #include "tpl.h"
 
 /*-------------------------------------------------------------------------------------------*/
@@ -322,5 +324,315 @@ FINISH_OFF:
 INTERNAL_FUNC void* task_handler_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL(void *input_param)
 {
 	return NULL;
+}
+/*-------------------------------------------------------------------------------------------*/
+/* to handle EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL */
+#define task_parameter_format_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL "ii"
+
+INTERNAL_FUNC int email_encode_task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL(void *input_task_parameter_struct, char **output_byte_stream, int *output_stream_size)
+{
+	EM_DEBUG_FUNC_BEGIN("input_task_parameter_struct [%p] output_byte_stream [%p] output_stream_size [%p]", input_task_parameter_struct, output_byte_stream, output_stream_size);
+
+	int err = EMAIL_ERROR_NONE;
+	task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL *task_parameter = input_task_parameter_struct;
+	tpl_node *tn = NULL;
+	void  *result_data = NULL;
+	size_t result_data_length = 0;
+
+	if (task_parameter == NULL || output_byte_stream == NULL || output_stream_size == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	tn = tpl_map(task_parameter_format_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL
+			, &task_parameter->mail_id, &task_parameter->scheduled_time);
+	tpl_pack(tn, 0);
+	tpl_dump(tn, TPL_MEM, &result_data, &result_data_length);
+	tpl_free(tn);
+
+	*output_byte_stream = result_data;
+	*output_stream_size = result_data_length;
+
+FINISH_OFF:
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return EMAIL_ERROR_NONE;
+}
+
+INTERNAL_FUNC int email_decode_task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL(char *input_byte_stream, int input_stream_size, void **output_task_parameter_struct)
+{
+	EM_DEBUG_FUNC_BEGIN("input_byte_stream [%p] input_stream_size [%d] output_task_parameter_struct [%p]", input_byte_stream, input_stream_size, output_task_parameter_struct);
+	int err = EMAIL_ERROR_NONE;
+	tpl_node *tn = NULL;
+	task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL *task_parameter = NULL;
+
+	if (input_byte_stream == NULL || input_stream_size == 0 || output_task_parameter_struct == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	task_parameter = em_malloc(sizeof(task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL));
+
+	if(task_parameter == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	tn = tpl_map(task_parameter_format_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL
+				, &task_parameter->mail_id, &task_parameter->scheduled_time);
+	tpl_load(tn, TPL_MEM, input_byte_stream, input_stream_size);
+	tpl_unpack(tn, 0);
+
+	*output_task_parameter_struct = task_parameter;
+
+FINISH_OFF:
+
+	if(tn)
+		tpl_free(tn);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return EMAIL_ERROR_NONE;
+}
+
+INTERNAL_FUNC void* task_handler_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL(void *input_param)
+{
+	EM_DEBUG_FUNC_BEGIN("input_param [%p]", input_param);
+	int err = EMAIL_ERROR_NONE;
+	task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL *task_param = input_param;
+
+	if((err = emcore_schedule_sending_mail(task_param->mail_id, task_param->scheduled_time)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_schedule_sending_mail [%d]", err);
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+FINISH_OFF:
+
+	EM_SAFE_FREE(task_param);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return (void*)err;
+}
+/*-------------------------------------------------------------------------------------------*/
+/* to handle EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE */
+#define task_parameter_format_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE "iiBiiB"
+
+INTERNAL_FUNC int email_encode_task_parameter_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE(void *input_task_parameter_struct, char **output_byte_stream, int *output_stream_size)
+{
+	EM_DEBUG_FUNC_BEGIN("input_task_parameter_struct [%p] output_byte_stream [%p] output_stream_size [%p]", input_task_parameter_struct, output_byte_stream, output_stream_size);
+
+	int err = EMAIL_ERROR_NONE;
+	task_parameter_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE *task_parameter = input_task_parameter_struct;
+	email_mail_attribute_value_type attribute_value_type = EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_NONE;
+	tpl_bin tb_mail_id_array;
+	tpl_bin tb_value;
+	tpl_node *tn = NULL;
+	void  *result_data = NULL;
+	size_t result_data_length = 0;
+
+	if (task_parameter == NULL || output_byte_stream == NULL || output_stream_size == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	if ((err = emcore_get_mail_attribute_value_type(task_parameter->attribute_type, &attribute_value_type)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_get_mail_attribute_value_type failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	tn = tpl_map(task_parameter_format_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE
+				, &task_parameter->account_id
+				, &task_parameter->mail_id_count
+				, &tb_mail_id_array
+				, &task_parameter->attribute_type
+				, &task_parameter->value_length
+				, &tb_value);
+
+	tb_mail_id_array.sz   = sizeof(int) * task_parameter->mail_id_count;
+	tb_mail_id_array.addr = task_parameter->mail_id_array;
+
+	switch(attribute_value_type) {
+		case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_INTEGER :
+			task_parameter->value_length = 4;
+			tb_value.sz                  = task_parameter->value_length;
+			tb_value.addr                = &task_parameter->value.integer_type_value;
+			break;
+		case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_STRING :
+			task_parameter->value_length = EM_SAFE_STRLEN(task_parameter->value.string_type_value);
+			tb_value.sz                  = task_parameter->value_length;
+			tb_value.addr                = task_parameter->value.string_type_value;
+			break;
+		case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_TIME :
+			task_parameter->value_length = 4;
+			tb_value.sz                  = task_parameter->value_length;
+			tb_value.addr                = &task_parameter->value.datetime_type_value;
+			break;
+		case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_NONE :
+		default :
+			EM_DEBUG_EXCEPTION("invalid attribute value type [%d]", attribute_value_type);
+			err = EMAIL_ERROR_INVALID_PARAM;
+			goto FINISH_OFF;
+	}
+
+	tpl_pack(tn, 0);
+	tpl_dump(tn, TPL_MEM, &result_data, &result_data_length);
+
+	*output_byte_stream = result_data;
+	*output_stream_size = result_data_length;
+
+FINISH_OFF:
+
+	if(tn)
+		tpl_free(tn);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return EMAIL_ERROR_NONE;
+}
+
+INTERNAL_FUNC int email_decode_task_parameter_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE(char *input_byte_stream, int input_stream_size, void **output_task_parameter_struct)
+{
+	EM_DEBUG_FUNC_BEGIN("input_byte_stream [%p] input_stream_size [%d] output_task_parameter_struct [%p]", input_byte_stream, input_stream_size, output_task_parameter_struct);
+	int err = EMAIL_ERROR_NONE;
+	tpl_node *tn = NULL;
+	tpl_bin tb_mail_id_array;
+	tpl_bin tb_value;
+	task_parameter_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE *task_parameter = NULL;
+	email_mail_attribute_value_type attribute_value_type = EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_NONE;
+
+	if (input_byte_stream == NULL || input_stream_size == 0 || output_task_parameter_struct == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	task_parameter = em_malloc(sizeof(task_parameter_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE));
+
+	if(task_parameter == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	tn = tpl_map(task_parameter_format_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE
+			, &task_parameter->account_id
+			, &task_parameter->mail_id_count
+			, &tb_mail_id_array
+			, &task_parameter->attribute_type
+			, &task_parameter->value_length
+			, &tb_value);
+
+	tpl_load(tn, TPL_MEM, input_byte_stream, input_stream_size);
+	tpl_unpack(tn, 0);
+
+	if(task_parameter->mail_id_count <= 0 || tb_mail_id_array.addr == NULL) {
+		EM_DEBUG_LOG("No mail id list. mail_id_count[%d] addr[%p]", task_parameter->mail_id_count, tb_mail_id_array.addr);
+	}
+	else {
+		task_parameter->mail_id_array = tb_mail_id_array.addr;
+	}
+
+	if(tb_value.addr) {
+		if ((err = emcore_get_mail_attribute_value_type(task_parameter->attribute_type, &attribute_value_type)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_get_mail_attribute_value_type failed [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		switch(attribute_value_type) {
+			case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_INTEGER :
+				memcpy(&task_parameter->value.integer_type_value, tb_value.addr, tb_value.sz);
+				break;
+			case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_STRING :
+				task_parameter->value.string_type_value = em_malloc(tb_value.sz + 1);
+				if(task_parameter->value.string_type_value == NULL) {
+					EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
+					err = EMAIL_ERROR_OUT_OF_MEMORY;
+					goto FINISH_OFF;
+				}
+				memcpy(&task_parameter->value.string_type_value, tb_value.addr, tb_value.sz);
+				break;
+			case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_TIME :
+				memcpy(&task_parameter->value.datetime_type_value, tb_value.addr, tb_value.sz);
+				break;
+			case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_NONE :
+			default :
+				EM_DEBUG_EXCEPTION("invalid attribute value type [%d]", attribute_value_type);
+				err = EMAIL_ERROR_INVALID_PARAM;
+				goto FINISH_OFF;
+		}
+	}
+
+	*output_task_parameter_struct = task_parameter;
+
+FINISH_OFF:
+
+	if(tn)
+		tpl_free(tn);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return EMAIL_ERROR_NONE;
+}
+
+INTERNAL_FUNC void* task_handler_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE(void *input_param)
+{
+	EM_DEBUG_FUNC_BEGIN("input_param [%p]", input_param);
+	if(!input_param) { /*prevent 43681*/
+		EM_DEBUG_EXCEPTION("NULL parameter");		
+		return NULL;
+	}
+
+	int err = EMAIL_ERROR_NONE;
+	char *field_name = NULL;
+	task_parameter_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE *task_param = input_param;
+	email_mail_attribute_value_type attribute_value_type = EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_NONE; /*prevent 43700*/
+
+	if((field_name = emcore_get_mail_field_name_by_attribute_type(task_param->attribute_type)) == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	if((err = emcore_get_mail_attribute_value_type(task_param->attribute_type, &attribute_value_type)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_get_mail_attribute_value_type failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	switch(attribute_value_type) {
+		case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_INTEGER :
+			if(!emstorage_set_field_of_mails_with_integer_value(task_param->account_id, task_param->mail_id_array, task_param->mail_id_count, field_name, task_param->value.integer_type_value, true, &err)) {
+				EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]", err);
+				goto FINISH_OFF;
+			}
+			break;
+		case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_STRING :
+			err = EMAIL_ERROR_NOT_SUPPORTED;
+			break;
+		case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_TIME :
+			if(!emstorage_set_field_of_mails_with_integer_value(task_param->account_id, task_param->mail_id_array, task_param->mail_id_count, field_name, task_param->value.datetime_type_value, true, &err)) {
+				EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]", err);
+				goto FINISH_OFF;
+			}
+			break;
+		case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_NONE :
+		default :
+			err = EMAIL_ERROR_INVALID_PARAM;
+			break;
+	}
+
+FINISH_OFF:
+
+	EM_SAFE_FREE(task_param->mail_id_array);
+	if (attribute_value_type == EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_STRING) {
+		EM_SAFE_FREE(task_param->value.string_type_value);
+	}
+
+	free(task_param);
+
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return (void*)err;
 }
 /*-------------------------------------------------------------------------------------------*/

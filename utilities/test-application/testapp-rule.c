@@ -79,9 +79,13 @@ static gboolean testapp_test_add_rule()
 	result_from_scanf = scanf("%d", &flag);
 	rule->flag2= flag;
 
-	if ( email_add_rule(rule) < 0)
+	if (email_add_rule(rule) < 0)
 		testapp_print("\n email_add_rule failed");
 
+	testapp_print("ID of rule : [%d]\n", rule->filter_id);
+
+	if (email_apply_rule(rule->filter_id) != EMAIL_ERROR_NONE)
+		testapp_print("email_apply_rule failed\n");
 	
 	email_free_rule(&rule, 1);
 	

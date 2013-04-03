@@ -188,8 +188,6 @@ EXPORT_API int email_update_rule(int filter_id, email_rule_t* new_set);
  */
 EXPORT_API int email_delete_rule(int filter_id);
 
-
-
 /**
 
  * @fn email_free_rule (email_rule_t** filtering_set, int count)
@@ -203,6 +201,19 @@ EXPORT_API int email_delete_rule(int filter_id);
  * @remarks N/A
  */
 EXPORT_API int email_free_rule (email_rule_t** filtering_set, int count);
+
+/**
+
+ * @fn email_apply_rule(int filter_id)
+ * @brief	Delete a filter information.This function will delete the exsting filter information by specified filter Id.
+ *
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure
+ * @param[in] filter_id	Specifies the filter ID.
+ * @exception 	EMAIL_ERROR_INVALID_PARAM 	-Invalid argument
+ * @see 	none
+ * @remarks N/A
+ */
+EXPORT_API int email_apply_rule(int filter_id);
 
 #ifdef __cplusplus
 }

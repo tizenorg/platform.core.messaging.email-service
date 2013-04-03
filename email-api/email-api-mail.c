@@ -89,7 +89,9 @@ EXPORT_API int email_add_mail(email_mail_data_t *input_mail_data, email_attachme
 			err = EMAIL_ERROR_NULL_VALUE;
 			goto FINISH_OFF;
 		}
-		emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, mail_data_stream, size);
+
+		if (!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, mail_data_stream, size))
+			EM_DEBUG_EXCEPTION("emipc_add_dynamic_parameter failed");
 		
 		/* email_attachment_data_t */
 		attachment_data_list_stream = em_convert_attachment_data_to_byte_stream(input_attachment_data_list, input_attachment_count, &size);
@@ -110,7 +112,8 @@ EXPORT_API int email_add_mail(email_mail_data_t *input_mail_data, email_attachme
 				goto FINISH_OFF;
 			}
 
-			emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, meeting_request_stream, size);
+			if (!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, meeting_request_stream, size))
+				EM_DEBUG_EXCEPTION("emipc_add_dynamic_parameter failed");
 		}
 
 		/* input_from_eas */
@@ -372,7 +375,47 @@ FINISH_OFF:
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
+}
 
+EXPORT_API int email_update_mail_attribute(int input_account_id, int *input_mail_id_array, int input_mail_id_count, email_mail_attribute_type input_attribute_type, email_mail_attribute_value_t input_value)
+{
+	EM_DEBUG_FUNC_BEGIN("input_account_id[%d] input_mail_id_array[%p] input_mail_id_count[%d] input_attribute_type[%d]", input_account_id, input_mail_id_array, input_mail_id_count, input_attribute_type);
+
+	int err = EMAIL_ERROR_NONE;
+	task_parameter_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE task_parameter;
+	email_mail_attribute_value_type value_type;
+
+	if(input_mail_id_count <= 0 || input_mail_id_array == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	if((err = emcore_get_mail_attribute_value_type(input_attribute_type, &value_type)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_get_mail_attribute_value_type failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	task_parameter.account_id     = input_account_id;
+	task_parameter.mail_id_count  = input_mail_id_count;
+	task_parameter.mail_id_array  = input_mail_id_array;
+	task_parameter.attribute_type = input_attribute_type;
+	task_parameter.value          = input_value;
+
+	if(value_type == EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_STRING)
+		task_parameter.value_length = EM_SAFE_STRLEN(input_value.string_type_value);
+	else
+		task_parameter.value_length = 4;
+
+	if((err = emipc_execute_proxy_task(EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE, &task_parameter)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("execute_proxy_task failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+FINISH_OFF:
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
 }
 
 EXPORT_API int email_clear_mail_data()
@@ -1296,59 +1339,85 @@ EXPORT_API int email_cancel_sending_mail(int mail_id)
 	int err = EMAIL_ERROR_NONE;
 	int account_id = 0;
 	email_mail_data_t* mail_data = NULL;
-
+	email_account_server_t account_server_type;
 	HIPC_API hAPI = NULL;
 	
 	
-	if ((err = emcore_get_mail_data(mail_id, &mail_data)) != EMAIL_ERROR_NONE)  {
+	if (((err = emcore_get_mail_data(mail_id, &mail_data)) != EMAIL_ERROR_NONE) || mail_data == NULL)  {
 		EM_DEBUG_EXCEPTION("emcore_get_mail_data failed [%d]", err);
-		goto FINISH_OFF;
-	}
-
-	if (!mail_data) {
-		EM_DEBUG_EXCEPTION("mail_data is null");
-		err = EMAIL_ERROR_NULL_VALUE;		
 		goto FINISH_OFF;
 	}
 
 	account_id = mail_data->account_id;
 
-	hAPI = emipc_create_email_api(_EMAIL_API_SEND_MAIL_CANCEL_JOB);
-
-	if(!hAPI) {
-		EM_DEBUG_EXCEPTION("emipc_create_email_api failed");
-		err = EMAIL_ERROR_NULL_VALUE;		
+	/*  check account bind type and branch off  */
+	if ( em_get_account_server_type_by_account_id(account_id, &account_server_type, false, &err) == false ) {
+		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
+		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	/* Account_id */
-	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &account_id, sizeof(int))) {
-		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-		err = EMAIL_ERROR_OUT_OF_MEMORY;		
-		goto FINISH_OFF;
-	}
+	if ( account_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC ) {
+		int as_handle;
+		ASNotiData as_noti_data;
 
-	/* Mail ID */
-	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &(mail_id), sizeof(int))) {
-		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-		err = EMAIL_ERROR_OUT_OF_MEMORY;		
-		goto FINISH_OFF;
-	}
+		if ( em_get_handle_for_activesync(&as_handle, &err) == false ) {
+			EM_DEBUG_EXCEPTION("em_get_handle_for_activesync failed[%d].", err);
+			err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
+			goto FINISH_OFF;
+		}
 
-	/* Execute API */
-	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
-		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;	
-		goto FINISH_OFF;
+		/*  noti to active sync */
+		as_noti_data.cancel_sending_mail.handle     = as_handle;
+		as_noti_data.cancel_sending_mail.mail_id    = mail_id;
+		as_noti_data.cancel_sending_mail.account_id = account_id;
+
+		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_CANCEL_SENDING_MAIL, &as_noti_data) == false) {
+			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
+			err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
+			goto FINISH_OFF;
+		}
 	}
+	else {
+
+		hAPI = emipc_create_email_api(_EMAIL_API_SEND_MAIL_CANCEL_JOB);
+
+		if(!hAPI) {
+			EM_DEBUG_EXCEPTION("emipc_create_email_api failed");
+			err = EMAIL_ERROR_NULL_VALUE;
+			goto FINISH_OFF;
+		}
+
+		/* Account_id */
+		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &account_id, sizeof(int))) {
+			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
+		/* Mail ID */
+		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &(mail_id), sizeof(int))) {
+			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
 	
-	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+		/* Execute API */
+		if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
+			err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+	}
 
 FINISH_OFF:
 	if(hAPI)
 		emipc_destroy_email_api(hAPI);
 
-	emcore_free_mail_data_list(&mail_data, 1);
+	if(mail_data)
+		emcore_free_mail_data_list(&mail_data, 1);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
@@ -1720,6 +1789,7 @@ EXPORT_API int email_expunge_mails_deleted_flagged(int input_mailbox_id, int inp
 
 		/*  noti to active sync */
 		as_noti_data.expunge_mails_deleted_flagged.handle        = as_handle;
+		as_noti_data.expunge_mails_deleted_flagged.account_id    = mailbox_tbl_data->account_id;
 		as_noti_data.expunge_mails_deleted_flagged.mailbox_id    = input_mailbox_id;
 		as_noti_data.expunge_mails_deleted_flagged.on_server     = input_on_server;
 

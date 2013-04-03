@@ -90,4 +90,28 @@ typedef struct
 DECLARE_CONVERTER_FOR_TASK_PARAMETER(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL);
 INTERNAL_FUNC void* task_handler_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL(void *input_param);
 /*-------------------------------------------------------------------------------------------*/
+/* to handle EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL */
+typedef struct
+{
+	int    mail_id;
+	time_t scheduled_time;
+} task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL;
+
+DECLARE_CONVERTER_FOR_TASK_PARAMETER(EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL);
+INTERNAL_FUNC void* task_handler_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL(void *input_param);
+/*-------------------------------------------------------------------------------------------*/
+/* to handle EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE */
+typedef struct
+{
+	int  account_id;
+	int  mail_id_count;
+	int *mail_id_array;
+	email_mail_attribute_type attribute_type;
+	int  value_length;
+	email_mail_attribute_value_t value;
+} task_parameter_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE;
+
+DECLARE_CONVERTER_FOR_TASK_PARAMETER(EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE);
+INTERNAL_FUNC void* task_handler_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE(void *input_param);
+
 #endif /* EMAIL_CORE_TASKS_H_ */

@@ -69,7 +69,7 @@ EXPORT_API int email_send_mail(int mail_id, int *handle)
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
-	EM_DEBUG_LOG("mail_table_data->account_id[%d], mail_table_data->mailbox_name[%s]", mail_table_data->account_id, mail_table_data->mailbox_name);
+	EM_DEBUG_LOG("mail_table_data->account_id[%d], mail_table_data->mailbox_id[%d]", mail_table_data->account_id, mail_table_data->mailbox_id);
 
 	memset(&as_noti_data, 0x00, sizeof(ASNotiData));
 
@@ -168,7 +168,7 @@ EXPORT_API int email_send_mail_with_downloading_attachment_of_original_mail(int 
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
-	EM_DEBUG_LOG("mail_table_data->account_id[%d], mail_table_data->mailbox_name[%s]", mail_table_data->account_id, mail_table_data->mailbox_name);
+	EM_DEBUG_LOG("mail_table_data->account_id[%d], mail_table_data->mailbox_id[%d]", mail_table_data->account_id, mail_table_data->mailbox_id);
 
 	/*  check account bind type and branch off  */
 	if ( em_get_account_server_type_by_account_id(mail_table_data->account_id, &account_server_type, false, &err) == false ) {
@@ -192,6 +192,7 @@ EXPORT_API int email_send_mail_with_downloading_attachment_of_original_mail(int 
 		/*  noti to active sync */
 		as_noti_data.send_mail_with_downloading_attachment_of_original_mail.handle     = as_handle;
 		as_noti_data.send_mail_with_downloading_attachment_of_original_mail.mail_id    = input_mail_id;
+		as_noti_data.send_mail_with_downloading_attachment_of_original_mail.account_id = mail_table_data->account_id;
 
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_SEND_MAIL_WITH_DOWNLOADING_OF_ORIGINAL_MAIL, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -206,6 +207,78 @@ EXPORT_API int email_send_mail_with_downloading_attachment_of_original_mail(int 
 		task_parameter.mail_id        = input_mail_id;
 
 		if((err = emipc_execute_proxy_task(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, &task_parameter)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("execute_proxy_task failed [%d]", err);
+			goto FINISH_OFF;
+		}
+	}
+
+FINISH_OFF:
+	emipc_destroy_email_api(hAPI);
+	hAPI = (HIPC_API)NULL;
+
+	emstorage_free_mail(&mail_table_data, 1, NULL);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
+
+EXPORT_API int email_schedule_sending_mail(int input_mail_id, time_t input_scheduled_time)
+{
+	EM_DEBUG_FUNC_BEGIN("mail_id[%d], input_time[%d]", input_mail_id, input_scheduled_time);
+
+	int err = EMAIL_ERROR_NONE;
+	emstorage_mail_tbl_t* mail_table_data = NULL;
+	email_account_server_t account_server_type;
+	HIPC_API hAPI = NULL;
+	task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL task_parameter;
+
+	if(input_mail_id <= 0) {
+		EM_DEBUG_EXCEPTION("mail_id is not valid");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	if(!emstorage_get_mail_by_id(input_mail_id, &mail_table_data, true, &err) || !mail_table_data) {
+		EM_DEBUG_EXCEPTION("Failed to get mail by mail_id [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	/*  check account bind type and branch off  */
+	if ( em_get_account_server_type_by_account_id(mail_table_data->account_id, &account_server_type, false, &err) == false ) {
+		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
+		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	if ( account_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
+		int as_handle;
+		ASNotiData as_noti_data;
+
+		memset(&as_noti_data, 0x00, sizeof(ASNotiData));
+
+		if ( em_get_handle_for_activesync(&as_handle, &err) == false ) {
+			EM_DEBUG_EXCEPTION("em_get_handle_for_activesync failed[%d].", err);
+			err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		/*  noti to active sync */
+		as_noti_data.schedule_sending_mail.handle         = as_handle;
+		as_noti_data.schedule_sending_mail.account_id     = mail_table_data->account_id;
+		as_noti_data.schedule_sending_mail.mail_id        = input_mail_id;
+		as_noti_data.schedule_sending_mail.scheduled_time = input_scheduled_time;
+
+		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_SCHEDULE_SENDING_MAIL, &as_noti_data) == false) {
+			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
+			err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
+			goto FINISH_OFF;
+		}
+	}
+	else {
+		task_parameter.mail_id         = input_mail_id;
+		task_parameter.scheduled_time  = input_scheduled_time;
+
+		if((err = emipc_execute_proxy_task(EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL, &task_parameter)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("execute_proxy_task failed [%d]", err);
 			goto FINISH_OFF;
 		}

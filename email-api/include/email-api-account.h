@@ -273,7 +273,9 @@ EXPORT_API int email_free_account(email_account_t** account_list, int count);
  * @see		none
  * @remarks N/A
  */
-EXPORT_API int email_validate_account(int account_id, int *handle);
+EXPORT_API int email_validate_account(int account_id, int *handle) DEPRECATED; /* Will be replaced with email_validate_account_ex */
+
+EXPORT_API int email_validate_account_ex(email_account_t* account, int *handle);
 
 /**
 

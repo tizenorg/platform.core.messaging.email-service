@@ -25,7 +25,6 @@
 #include <mm_player.h>
 #include <mm_error.h>
 #include <mm_session_private.h>
-#include <alarm.h>
 #include <feedback.h>
 
 typedef enum

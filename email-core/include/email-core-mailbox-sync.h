@@ -59,6 +59,7 @@ typedef struct
 	int header_len;
 	char *body;
 	int body_len;
+	unsigned long uid_no;
 } email_partial_buffer;
 
 #endif
@@ -82,19 +83,22 @@ int emcore_make_mail_tbl_data_from_envelope(MAILSTREAM *mail_stream, ENVELOPE *i
 
 int emcore_add_mail_to_mailbox(emstorage_mailbox_tbl_t *input_maibox_data, emstorage_mail_tbl_t *input_new_mail_tbl_data, int *output_mail_id, int *output_thread_id);
 
+#ifdef __FEATURE_BODY_SEARCH__
+int emcore_add_mail_text(emstorage_mailbox_tbl_t *input_maibox_data, emstorage_mail_tbl_t *input_new_mail_tbl_data, char *stripped_text, int *err_code);
+#endif
+
 /**
  * Download unread all headers from mail server.
  *
  * @param[in] input_mailbox_tbl	Specifies the mailbox to contain target mailbox name.
  *                      if the mailbox name is NULL, headers are downloaded from all synchronous mailbox.
  *                      the mailbox name is unused in POP3 case.
- * @param[in] input_mailbox_tbl_spam	Mailbox information of Spambox for filtering blocked mails.
  * @param[in] stream_recycle Stream to reuse.
  * @param[out] err_code	Specifies the error code returned.
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emcore_sync_header(emstorage_mailbox_tbl_t *input_mailbox_tbl, emstorage_mailbox_tbl_t *input_mailbox_tbl_spam, void *stream_recycle, emcore_uid_list **input_uid_list, int *unread_mail, int *err_code);
+INTERNAL_FUNC int emcore_sync_header(emstorage_mailbox_tbl_t *input_mailbox_tbl, void *stream_recycle, emcore_uid_list **input_uid_list, int *unread_mail, int *err_code);
 
 typedef enum
 {

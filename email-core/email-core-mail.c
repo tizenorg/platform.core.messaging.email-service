@@ -89,10 +89,6 @@ int _imap4_last_notified_body_size = 0;
 int _imap4_total_body_size = 0;
 int _imap4_download_noti_interval_value = 0;
 
-BODY **g_inline_list = NULL ;
-int g_inline_count = 0;
-
-
 static int emcore_delete_mails_from_pop3_server(email_account_t *input_account, int input_mail_ids[], int input_mail_id_count);
 static int emcore_mail_cmd_read_mail_pop3(void *stream, int msgno, int limited_size, int *downloded_size, int *total_body_size, int *err_code);
 
@@ -204,40 +200,6 @@ static void _print_body(BODY *body, int recursive)
 	EM_DEBUG_LOG(" ========================================================== ");
 }
 #endif /*  FEATURE_CORE_DEBUG */
-
-static int convert_contact_err_to_email_err(int contact_err)
-{
-	int err = EMAIL_ERROR_NONE;
-
-	switch (contact_err) {
-	case CONTACTS_ERROR_NONE :
-		err = EMAIL_ERROR_NONE;
-		break;
-	case CONTACTS_ERROR_OUT_OF_MEMORY :
-		err = EMAIL_ERROR_OUT_OF_MEMORY;
-		break;
-	case CONTACTS_ERROR_INVALID_PARAMETER :
-		err = EMAIL_ERROR_INVALID_PARAM;
-		break;
-	case CONTACTS_ERROR_NO_DATA :
-		err = EMAIL_ERROR_DATA_NOT_FOUND;
-		break;
-	case CONTACTS_ERROR_DB :
-		err = EMAIL_ERROR_DB_FAILURE;
-		break;
-	case CONTACTS_ERROR_IPC :
-		err = EMAIL_ERROR_IPC_CONNECTION_FAILURE;
-		break;
-	case CONTACTS_ERROR_SYSTEM:
-		err = EMAIL_ERROR_SYSTEM_FAILURE;
-		break;
-	case CONTACTS_ERROR_INTERNAL:
-	default:
-		err = EMAIL_ERROR_UNKNOWN;
-		break;
-	}
-	return err;
-}
 
 static int pop3_mail_delete(MAILSTREAM *stream, int msgno, int *err_code)
 {
@@ -999,321 +961,6 @@ FINISH_OFF:
 	
 	if (err_code)
 		*err_code = err;
-
-	return ret;
-}
-
-int emcore_get_mail_contact_info(email_mail_contact_info_t *contact_info, char *full_address, int *err_code)
-{
-	EM_DEBUG_FUNC_BEGIN("contact_info[%p], full_address[%s], err_code[%p]", contact_info, full_address, err_code);
-	
-	int ret = false;
-	int err = EMAIL_ERROR_NONE;
-	
-	if (!emcore_get_mail_contact_info_with_update(contact_info, full_address, 0, &err))
-		EM_DEBUG_EXCEPTION("emcore_get_mail_contact_info_with_update failed [%d]", err);
-	else
-		ret = true;
-	
-	if (err_code != NULL)
-		*err_code = err;
-	
-	return ret;
-}
-
-int emcore_search_contact_info_by_address(const char *contact_uri, int property_id, char *address, int limit, contacts_record_h *contacts_record)
-{
-	EM_DEBUG_FUNC_BEGIN();
-	int contact_err = CONTACTS_ERROR_NONE;
-	
-	contacts_query_h query = NULL;
-	contacts_filter_h filter = NULL;
-	contacts_list_h list = NULL;
-
-	if ((contact_err = contacts_query_create(contact_uri, &query)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_query_create failed");
-		goto FINISH_OFF;
-	}
-	
-	if ((contact_err = contacts_filter_create(contact_uri, &filter)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_filter_create failed");
-		goto FINISH_OFF;
-	}
-
-	if ((contact_err = contacts_filter_add_str(filter, property_id, CONTACTS_MATCH_EXACTLY, address)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_filter_add_str failed");
-		goto FINISH_OFF;
-	}
-	
-	if ((contact_err = contacts_query_set_filter(query, filter)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_query_set_filter failed");
-		goto FINISH_OFF;
-	}
-
-	if ((contact_err = contacts_db_get_records_with_query(query, 0, limit, &list)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_db_get_record_with_query failed");
-		goto FINISH_OFF;
-	}
-
-	if ((contact_err = contacts_list_get_current_record_p(list, contacts_record)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_list_get_current_record_p failed");
-		goto FINISH_OFF;
-	}
-
-FINISH_OFF:
-
-	if (query != NULL)
-		contacts_query_destroy(query);
-
-	if (filter != NULL)
-		contacts_filter_destroy(filter);
-
-	if (list != NULL)
-		contacts_list_destroy(list, false);
-
-	return contact_err;
-}
-
-int emcore_set_contacts_log(int account_id, char *email_address, char *subject, time_t date_time, email_action_t action)
-{
-	EM_DEBUG_FUNC_BEGIN("account_id : [%d], address : [%p], subject : [%s], action : [%d], date_time : [%d]", account_id, email_address, subject, action, (int)date_time);
-	
-	int err = EMAIL_ERROR_NONE;
-	int contacts_error = CONTACTS_ERROR_NONE;
-	int person_id = 0;
-	int action_type = 0;
-	
-	contacts_record_h phone_record = NULL;
-	contacts_record_h person_record = NULL;	
-
-	if ((contacts_error = contacts_connect2()) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("Open connect service failed [%d]", contacts_error);
-		goto FINISH_OFF;
-	}
-
-	if ((contacts_error = contacts_record_create(_contacts_phone_log._uri, &phone_record)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_query_create failed [%d]", contacts_error);
-		goto FINISH_OFF;
-	}
-
-	/* Set email address */
-	if ((contacts_error = contacts_record_set_str(phone_record, _contacts_phone_log.address, email_address)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_record_set_str [address] failed [%d]", contacts_error);
-		goto FINISH_OFF;
-	}
-
-	/* Search contact person info */
-	if ((contacts_error = emcore_search_contact_info_by_address(_contacts_person_email._uri, _contacts_person_email.email, email_address, 1, &person_record)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emcore_search_contact_info_by_address failed [%d]", contacts_error);
-		EM_DEBUG_LOG("Not match person");
-	} else {
-		/* Get person_id in contacts_person_email record  */
-		if (person_record  && (contacts_error = contacts_record_get_int(person_record, _contacts_person_email.person_id, &person_id)) != CONTACTS_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("contacts_record_get_str failed [%d]", contacts_error);
-			goto FINISH_OFF;
-		}
-
-		/* Set the person id */
-		if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.person_id, person_id)) != CONTACTS_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("contacts_record_set_int [person id] failed [%d]", contacts_error);
-			goto FINISH_OFF;
-		}
-	}
-
-	switch (action) {
-	case EMAIL_ACTION_SEND_MAIL :
-		action_type = CONTACTS_PLOG_TYPE_EMAIL_SENT;
-		break;
-	case EMAIL_ACTION_SYNC_HEADER :
-		action_type = CONTACTS_PLOG_TYPE_EMAIL_RECEIVED;
-		break;
-	default :
-		EM_DEBUG_EXCEPTION("Unknown action type");
-		goto FINISH_OFF;
-	}
-
-	/* Set log type */
-	if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.log_type, action_type)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_record_set_int [log_type] failed [%d]", contacts_error);
-		goto FINISH_OFF;
-	}
-
-	/* Set log time */
-	if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.log_time, (int)date_time)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_record_set_str [address] failed [%d]", contacts_error);
-		goto FINISH_OFF;
-	}
-
-	/* Set subject */
-	if ((contacts_error = contacts_record_set_str(phone_record, _contacts_phone_log.extra_data2, subject)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_record_set_str [subject] failed [%d]", contacts_error);
-		goto FINISH_OFF;
-	}
-
-	/* Set Mail id */
-	if ((contacts_error = contacts_record_set_int(phone_record, _contacts_phone_log.extra_data1, account_id)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_record_set_int [mail id] failed [%d]", contacts_error);
-		goto FINISH_OFF;
-	}
-
-	/* Insert the record in DB */
-	if ((contacts_error = contacts_db_insert_record(phone_record, NULL)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_db_insert_record failed [%d]",contacts_error );
-		goto FINISH_OFF;
-	}
-
-FINISH_OFF:
-
-	if (phone_record != NULL)
-		contacts_record_destroy(phone_record, false);
-
-	if (person_record != NULL)
-		contacts_record_destroy(person_record, false);
-
-	err = convert_contact_err_to_email_err(contacts_error);
-
-	if ((contacts_error = contacts_disconnect2()) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("Open connect service failed [%d]", contacts_error);
-		err = convert_contact_err_to_email_err(contacts_error);
-	}
-
-	EM_DEBUG_FUNC_END("err [%d]", err);
-	return err;
-}
-
-INTERNAL_FUNC int emcore_set_sent_contacts_log(emstorage_mail_tbl_t *input_mail_data)
-{
-	EM_DEBUG_FUNC_BEGIN("input_mail_data : [%p]", input_mail_data);
-	
-	int i = 0;
-	int err = EMAIL_ERROR_NONE;
-	char email_address[MAX_EMAIL_ADDRESS_LENGTH];
-	char *address_array[3] = {input_mail_data->full_address_to, input_mail_data->full_address_cc, input_mail_data->full_address_bcc};
-	ADDRESS *addr = NULL;
-	ADDRESS *p_addr = NULL;
-
-	for (i = 0; i < 3; i++) {
-		if (address_array[i] && address_array[i][0] != 0) {
-			rfc822_parse_adrlist(&addr, address_array[i], NULL);
-			for (p_addr = addr ; p_addr ;p_addr = p_addr->next) {
-				SNPRINTF(email_address, MAX_EMAIL_ADDRESS_LENGTH, "%s@%s", addr->mailbox, addr->host);
-				if ((err = emcore_set_contacts_log(input_mail_data->account_id, email_address, input_mail_data->subject, input_mail_data->date_time, EMAIL_ACTION_SEND_MAIL)) != EMAIL_ERROR_NONE) {
-					EM_DEBUG_EXCEPTION("emcore_set_contacts_log failed : [%d]", err);
-					goto FINISH_OFF;
-				}
-			}
-		
-			if (addr) {	
-				mail_free_address(&addr);
-				addr = NULL;
-			}
-		}
-	}
-
-FINISH_OFF:
-
-	if (addr) 
-		mail_free_address(&addr);
-
-	EM_DEBUG_FUNC_END("err [%d]", err);
-	return err;
-}
-
-INTERNAL_FUNC int emcore_set_received_contacts_log(emstorage_mail_tbl_t *input_mail_data)
-{
-	EM_DEBUG_FUNC_BEGIN("input_mail_data : [%p]", input_mail_data);
-	int err = EMAIL_ERROR_NONE;
-
-	if ((err = emcore_set_contacts_log(input_mail_data->account_id, input_mail_data->email_address_sender, input_mail_data->subject, input_mail_data->date_time, EMAIL_ACTION_SYNC_HEADER)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emcore_set_contacts_log failed [%d]", err);
-	}
-
-	EM_DEBUG_FUNC_END("err [%d]", err);
-	return err;
-}
-
-INTERNAL_FUNC int emcore_delete_contacts_log(int account_id)
-{
-	EM_DEBUG_FUNC_BEGIN("account_id [%d]", account_id);
-
-	int err = EMAIL_ERROR_NONE;
-	int contacts_error = CONTACTS_ERROR_NONE;
-
-	if ((contacts_error = contacts_connect2()) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("Open connect service failed [%d]", contacts_error);
-		goto FINISH_OFF;
-	}
-	
-	/* Delete record of the account id */
-	if ((contacts_error = contacts_phone_log_delete(CONTACTS_PHONE_LOG_DELETE_BY_EMAIL_EXTRA_DATA1, account_id)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_phone_log_delete failed [%d]", contacts_error);
-	}
-	
-
-FINISH_OFF:
-	err = convert_contact_err_to_email_err(contacts_error);
-
-	if ((contacts_error = contacts_disconnect2()) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("Open connect service failed [%d]", contacts_error);
-		err = convert_contact_err_to_email_err(contacts_error);
-	}
-
-	EM_DEBUG_FUNC_END("err [%d]", err);
-	return err;
-}
-
-INTERNAL_FUNC int emcore_get_mail_display_name(char *email_address, char **contact_display_name, int *err_code)
-{
-	EM_DEBUG_FUNC_BEGIN("contact_name_value[%s], contact_display_name[%p]", email_address, contact_display_name);
-
-	int contact_err = 0;
-	int ret = false;
-	char *display = NULL;
-	/* Contact variable */
-	contacts_record_h record = NULL;
-
-	if ((contact_err = emcore_search_contact_info_by_address(_contacts_contact_email._uri, _contacts_contact_email.email, email_address, 1, &record)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emcore_search_contact_info_by_address failed");
-		goto FINISH_OFF;
-	}
-/*
-	if ((contact_err = contacts_list_get_count(list, &list_count)) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_list_get_count failed");
-		goto FINISH_OFF;
-	}
-
-	if (list_count > 1) {
-		EM_DEBUG_EXCEPTION("Duplicated contacts info");
-		contact_err = CONTACTS_ERROR_INTERNAL;
-		goto FINISH_OFF;
-	} else if (list_count == 0) {
-		EM_DEBUG_EXCEPTION("Not found contact info");
-		contact_err = CONTACTS_ERROR_NO_DATA;
-		goto FINISH_OFF;
-	}
-*/
-
-	if (contacts_record_get_str(record, _contacts_contact_email.display_name, &display) != CONTACTS_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("contacts_record_get_str failed");
-		goto FINISH_OFF;
-	}
-
-	ret = true;
-
-FINISH_OFF:
-
-	if (record != NULL)
-		contacts_record_destroy(record, false);
-
-	if (ret) {
-		*contact_display_name = display;
-	} else {
-		*contact_display_name = NULL;
-		EM_SAFE_FREE(display);
-	}
-
-	if (err_code != NULL)
-		*err_code = convert_contact_err_to_email_err(contact_err);
 
 	return ret;
 }
@@ -2266,7 +1913,7 @@ INTERNAL_FUNC int emcore_get_attachment_data_list(int input_mail_id, email_attac
 	} 
 
 	if (attachment_tbl_count)  {
-		EM_DEBUG_LOG("attchment count %d", attachment_tbl_count);
+		EM_DEBUG_LOG("attachment count %d", attachment_tbl_count);
 
 		*output_attachment_data = em_malloc(sizeof(email_attachment_data_t) * attachment_tbl_count);
 
@@ -2353,7 +2000,7 @@ INTERNAL_FUNC int emcore_download_attachment(int account_id, int mail_id, int nt
 
 	if (!mail->server_mail_status)  {
 		EM_DEBUG_EXCEPTION("not synchronous mail...");
-		err = EMAIL_ERROR_INVALID_MAIL;
+		err = EMAIL_ERROR_MAIL_NOT_FOUND_ON_SERVER;
 		goto FINISH_OFF;
 	}
 	
@@ -2851,7 +2498,6 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 	int iActualSize = 0;
 	char html_body[MAX_PATH] = {0, };
 	emcore_uid_list *uid_list = NULL;
-	char *mailbox_name = NULL;
 #ifdef CHANGE_HTML_BODY_TO_ATTACHMENT
 	int html_changed = 0;
 #endif
@@ -2877,12 +2523,9 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 		goto FINISH_OFF;
 	}
 	
-	if (mail->mailbox_name)
-		mailbox_name = EM_SAFE_STRDUP(mail->mailbox_name);
-	
 	if (1 == mail->body_download_status)  {
 		EM_DEBUG_EXCEPTION("not synchronous mail...");
-		err = EMAIL_ERROR_INVALID_MAIL;
+		err = EMAIL_ERROR_MAIL_IS_ALREADY_DOWNLOADED;
 		goto FINISH_OFF;
 	}
 	
@@ -3303,17 +2946,8 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 
 	}
 
-	EM_DEBUG_LOG("Check #1");
-
 	mail->attachment_count = local_attachment_count;
 	mail->inline_content_count = local_inline_content_count;
-
-	EM_DEBUG_LOG("Check #2");
-
-	EM_DEBUG_LOG("Mailbox Name [%s]", mailbox_name);
-	mail->mailbox_name = EM_SAFE_STRDUP(mailbox_name);	 /*  fix for mailboox sync fail */
-
-	EM_DEBUG_LOG("Check #3");
 
 	/*  change mail's information. */
 	if (!emstorage_change_mail_field(mail_id, APPEND_BODY, mail, false, &err))  {
@@ -3322,6 +2956,33 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 
 		goto FINISH_OFF;
 	}
+
+#ifdef __FEATURE_BODY_SEARCH__
+	/* strip html content and save into mail_text_tbl */
+	char *stripped_text = NULL;
+	if (!emcore_strip_mail_body_from_file(mail, &stripped_text, &err) || stripped_text == NULL) {
+		EM_DEBUG_EXCEPTION("emcore_strip_mail_body_from_file failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	emstorage_mail_text_tbl_t *mail_text;
+	if (!emstorage_get_mail_text_by_id(mail_id, &mail_text, true, &err) || !mail_text) {
+		EM_DEBUG_EXCEPTION("emstorage_get_mail_text_by_id failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	EM_SAFE_FREE(mail_text->body_text);
+	mail_text->body_text = stripped_text;
+
+	if (!emstorage_change_mail_text_field(mail_id, mail_text, false, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_change_mail_text_field failed [%d]", err);
+		emstorage_rollback_transaction(NULL, NULL, NULL); /*  ROLLBACK TRANSACTION; */
+		goto FINISH_OFF;
+	}
+
+	if (mail_text)
+		emstorage_free_mail_text(&mail_text, 1, NULL);
+#endif
 
 	EM_DEBUG_LOG("cnt_info->text.plain [%s], cnt_info->text.html [%s]", cnt_info->text.plain, cnt_info->text.html);
 	
@@ -3352,11 +3013,6 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 
 FINISH_OFF:
 
-	if (g_inline_count) {
-		g_inline_count = 0;
-		EM_SAFE_FREE(g_inline_list);
-	}
-
 	if (ref_account) {
 		emcore_free_account(ref_account);
 		EM_SAFE_FREE(ref_account);
@@ -3378,7 +3034,6 @@ FINISH_OFF:
 	if (mail)
 		emstorage_free_mail(&mail, 1, NULL);
 	EM_SAFE_FREE(s_uid);
-	EM_SAFE_FREE(mailbox_name);
 
 	multi_part_body_size = 0;
 	
@@ -3428,7 +3083,10 @@ static int emcore_delete_mails_from_remote_server(int input_account_id, int inpu
 	EM_DEBUG_FUNC_BEGIN("input_account_id[%d], input_mail_ids[%p], input_mail_id_count[%d], input_delete_option [%d]", input_account_id, input_mail_ids, input_mail_id_count, input_delete_option);
 
 	int err = EMAIL_ERROR_NONE;
+	int i = 0;
 	email_account_t *account = NULL;
+	char *noti_param_string = NULL;
+	char mail_id_string[10] = { 0, };
 #ifdef 	__FEATURE_BULK_DELETE_MOVE_UPDATE_REQUEST_OPTI__
 	int bulk_flag = false;
 #endif
@@ -3445,6 +3103,25 @@ static int emcore_delete_mails_from_remote_server(int input_account_id, int inpu
 	}
 
 	FINISH_OFF_IF_CANCELED;
+
+	/* Sending Notification */
+	noti_param_string = em_malloc(sizeof(char) * 10 * input_mail_id_count);
+
+	if(!noti_param_string) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	for(i = 0; i < input_mail_id_count; i++) {
+		memset(mail_id_string, 0, sizeof(mail_id_string));
+		SNPRINTF(mail_id_string, sizeof(mail_id_string), "%d,", input_mail_ids[i]);
+		strcat(noti_param_string, mail_id_string);
+		/* can be optimized by appending sub string with directly pointing on string array kyuho.jo 2011-10-07 */
+	}
+
+	if (!emcore_notify_network_event(NOTI_DELETE_MAIL_START, input_account_id, noti_param_string, 0, 0))
+		EM_DEBUG_EXCEPTION(" emcore_notify_storage_event failed [ NOTI_DELETE_MAIL_START ] >>>> ");
 
 	if (account->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
 		if (!bulk_flag && !emcore_delete_mails_from_imap4_server(input_mail_ids, input_mail_id_count, input_delete_option, &err)) {
@@ -3493,6 +3170,17 @@ static int emcore_delete_mails_from_remote_server(int input_account_id, int inpu
 	}
 
 FINISH_OFF:
+
+	if (err == EMAIL_ERROR_NONE) {
+		if (!emcore_notify_network_event(NOTI_DELETE_MAIL_FINISH,  input_account_id, noti_param_string, 0, 0))
+			EM_DEBUG_EXCEPTION(" emcore_notify_network_event failed [ NOTI_DELETE_MAIL_FINISH ] >>>> ");
+	}
+	else {
+		if (!emcore_notify_network_event(NOTI_DELETE_MAIL_FAIL,  input_account_id, noti_param_string, 0, 0))
+			EM_DEBUG_EXCEPTION(" emcore_notify_network_event failed [ NOTI_DELETE_MAIL_FAIL ] >>>> ");
+	}
+
+	EM_SAFE_FREE(noti_param_string);
 
 	if (account) {
 		emcore_free_account(account);
@@ -3679,7 +3367,6 @@ INTERNAL_FUNC int emcore_delete_mails_from_local_storage(int account_id, int *ma
 		if (result_mail_list[i].thread_item_count > 1)	{
 			if (!emstorage_update_latest_thread_mail(account_id, result_mail_list[i].thread_id, 0, 0, false,  &err)) {
 				EM_DEBUG_EXCEPTION("emstorage_update_latest_thread_mail failed [%d]", err);
-		
 				goto FINISH_OFF;
 			}
 		}
@@ -3718,6 +3405,12 @@ INTERNAL_FUNC int emcore_delete_mails_from_local_storage(int account_id, int *ma
 	ret = true;
 
 FINISH_OFF:
+
+	if(ret == false) {
+		if (!emcore_notify_storage_event(NOTI_MAIL_DELETE_FAIL, account_id, noti_param_1, noti_param_string, noti_param_2))
+			EM_DEBUG_EXCEPTION(" emcore_notify_storage_event failed [ NOTI_MAIL_DELETE_FAIL ] >>>> ");
+	}
+
 	EM_SAFE_FREE(noti_param_string);
 
 	if (result_mail_list)
@@ -4052,7 +3745,7 @@ INTERNAL_FUNC int emcore_mail_add_attachment(int mail_id, email_attachment_data_
 	int ret = false, err = EMAIL_ERROR_NONE;
 	emstorage_mail_tbl_t *mail_table_data = NULL;
 	int attachment_id = 0;
-	
+	int before_tr_begin = 0;
 
 	
 	if (!emstorage_get_mail_field_by_id(mail_id, RETRIEVE_SUMMARY, &mail_table_data, true, &err) || !mail_table_data)  {
@@ -4077,7 +3770,11 @@ INTERNAL_FUNC int emcore_mail_add_attachment(int mail_id, email_attachment_data_
 	attachment_tbl.attachment_inline_content_status = attachment->inline_content_status;
 
 	/*  BEGIN TRANSACTION; */
-	emstorage_begin_transaction(NULL, NULL, NULL);
+	if (!emstorage_begin_transaction(NULL, NULL, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_begin_transaction failed [%d]", err);
+		before_tr_begin = 1;
+		goto FINISH_OFF;
+	}
 
 	if (!emstorage_add_attachment(&attachment_tbl, 0, false, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_add_attachment failed [%d]", err);
@@ -4146,9 +3843,9 @@ FINISH_OFF:
 		}
 	}
 	else {	/*  ROLLBACK TRANSACTION; */
-		if (emstorage_rollback_transaction(NULL, NULL, NULL) == false)
+		if (!before_tr_begin && emstorage_rollback_transaction(NULL, NULL, NULL) == false)
 			err = EMAIL_ERROR_DB_FAILURE;
-	}	
+	}
 
 FINISH_OFF2: 
 	if (mail_table_data != NULL)
@@ -4165,11 +3862,13 @@ INTERNAL_FUNC int emcore_mail_add_attachment_data(int input_mail_id, email_attac
 {
 	EM_DEBUG_FUNC_BEGIN("input_mail_id[%d], input_attachment_data[%p]", input_mail_id, input_attachment_data);
 
-	int                        err             = EMAIL_ERROR_NONE;
-	int                        attachment_id   = 0;
-	char                       buf[512] = { 0, };
-	emstorage_mail_tbl_t            *mail_table_data = NULL;
-	emstorage_attachment_tbl_t  attachment_tbl  = { 0 };
+	int err = EMAIL_ERROR_NONE;
+	int attachment_id = 0;
+	int ret = false;
+	int before_tr_begin = 0;
+	char buf[512] = { 0, };
+	emstorage_mail_tbl_t *mail_table_data = NULL;
+	emstorage_attachment_tbl_t attachment_tbl  = { 0 };
 	
 	if (input_attachment_data == NULL)  {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
@@ -4178,27 +3877,29 @@ INTERNAL_FUNC int emcore_mail_add_attachment_data(int input_mail_id, email_attac
 
 	if (!emstorage_get_mail_field_by_id(input_mail_id, RETRIEVE_SUMMARY, &mail_table_data, true, &err) || !mail_table_data)  {
 		EM_DEBUG_EXCEPTION("emstorage_get_mail_field_by_id failed [%d]", err);
-
-		goto FINISH_OFF2;
+		before_tr_begin = 1;
+		goto FINISH_OFF;
 	}
 
 	mail_table_data->attachment_count               = mail_table_data->attachment_count + 1;
-
 	attachment_tbl.account_id                       = mail_table_data->account_id;
 	attachment_tbl.mailbox_id                       = mail_table_data->mailbox_id;
 	attachment_tbl.mail_id 	                        = input_mail_id;
 	attachment_tbl.attachment_name                  = input_attachment_data->attachment_name;
 	attachment_tbl.attachment_size                  = input_attachment_data->attachment_size;
 	attachment_tbl.attachment_save_status           = input_attachment_data->save_status;
-	attachment_tbl.attachment_drm_type          = input_attachment_data->drm_status;
+	attachment_tbl.attachment_drm_type              = input_attachment_data->drm_status;
 	attachment_tbl.attachment_inline_content_status = input_attachment_data->inline_content_status;
 	
 	/*  BEGIN TRANSACTION; */
-	emstorage_begin_transaction(NULL, NULL, NULL);
+	if (!emstorage_begin_transaction(NULL, NULL, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_begin_transaction failed [%d]", err);
+		before_tr_begin = 1;
+		goto FINISH_OFF;
+	}
 
 	if (!emstorage_add_attachment(&attachment_tbl, 0, false, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_add_attachment failed [%d]", err);
-
 		goto FINISH_OFF;
 	}
 	
@@ -4217,7 +3918,8 @@ INTERNAL_FUNC int emcore_mail_add_attachment_data(int input_mail_id, email_attac
 			EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 			goto FINISH_OFF;
 		}
-        attachment_tbl.attachment_path = buf;
+
+		attachment_tbl.attachment_path = buf;
 
 		if (!emstorage_change_attachment_field(input_mail_id, UPDATE_SAVENAME, &attachment_tbl, false, &err))  {
 			EM_DEBUG_EXCEPTION("emstorage_change_attachment_field failed [%d]", err);
@@ -4240,7 +3942,7 @@ INTERNAL_FUNC int emcore_mail_add_attachment_data(int input_mail_id, email_attac
 		}
 		
 		/* Here only filename is being updated. Since first add is being done there will not be any old files.
-		    So no need to check for old files in this update case */
+			So no need to check for old files in this update case */
 		if (!emstorage_change_attachment_field(input_mail_id, UPDATE_SAVENAME, &attachment_tbl, false, &err))  {
 			EM_DEBUG_EXCEPTION("emstorage_change_attachment_field failed [%d]", err);
 	
@@ -4251,18 +3953,18 @@ INTERNAL_FUNC int emcore_mail_add_attachment_data(int input_mail_id, email_attac
 		input_attachment_data->attachment_path = EM_SAFE_STRDUP(buf);
 	}
 	
+	ret = true;
+
 FINISH_OFF:
-	if (err == EMAIL_ERROR_NONE) {	/*  COMMIT TRANSACTION; */
+	if (ret) { /*  COMMIT TRANSACTION; */
 		if (emstorage_commit_transaction(NULL, NULL, NULL) == false) {
 			err = EMAIL_ERROR_DB_FAILURE;
 		}
-	}
-	else {	/*  ROLLBACK TRANSACTION; */
-		if (emstorage_rollback_transaction(NULL, NULL, NULL) == false)
+	} else { /*  ROLLBACK TRANSACTION; */
+		if (!before_tr_begin && emstorage_rollback_transaction(NULL, NULL, NULL) == false)
 			err = EMAIL_ERROR_DB_FAILURE;
-	}	
+	}
 	
-FINISH_OFF2:
 	if (mail_table_data != NULL)
 		emstorage_free_mail(&mail_table_data, 1, NULL);
 	
@@ -4304,7 +4006,10 @@ int emcore_delete_mail_attachment(int attachment_id, int *err_code)
 	}
 
 	/*  BEGIN TRANSACTION; */
-	emstorage_begin_transaction(NULL, NULL, NULL);
+	if(!emstorage_begin_transaction(NULL, NULL, &error)) {
+		EM_DEBUG_EXCEPTION("emstorage_begin_transaction failed [%d]", error);
+		goto FINISH_OFF;
+	}
 	
 	if (!emstorage_delete_attachment_on_db(attachment_id, false, &error))  {
 		EM_DEBUG_EXCEPTION("emstorage_delete_attachment_on_db failed [%d]", error);
@@ -4342,22 +4047,22 @@ static int emcore_mail_update_attachment_data(int input_mail_id, email_attachmen
 {
 	EM_DEBUG_FUNC_BEGIN("input_mail_id[%d], input_attachment_data[%p]", input_mail_id, input_attachment_data);
 
-	int                         err = EMAIL_ERROR_NONE;
-	int                         attachment_id = 0;
-	char                        buf[512] = { 0 , };
+	int err = EMAIL_ERROR_NONE;
+	int attachment_id = 0;
+	char buf[512] = { 0 , };
 	emstorage_attachment_tbl_t *existing_attachment_info = NULL;
 	emstorage_attachment_tbl_t  attachment_tbl = { 0 };
 
 	if (input_attachment_data == NULL)  {
 		EM_DEBUG_EXCEPTION("Invalid Parameter");
 		err = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF2;
+		goto FINISH_OFF;
 	}
 
 	if (!emstorage_get_attachment(input_attachment_data->attachment_id, &existing_attachment_info, 1, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_attachment failed [%d]", err);
 
-		goto FINISH_OFF2;
+		goto FINISH_OFF;
 	}
 	
 	attachment_tbl.mail_id                          = input_mail_id;
@@ -4381,16 +4086,17 @@ static int emcore_mail_update_attachment_data(int input_mail_id, email_attachmen
 	
 	if (!emstorage_get_save_name(attachment_tbl.account_id, input_mail_id, attachment_id, input_attachment_data->attachment_name, buf, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
-		goto FINISH_OFF2;
+		goto FINISH_OFF;
 	}
-    attachment_tbl.attachment_path = buf;
+
+	attachment_tbl.attachment_path = buf;
 
 	EM_DEBUG_LOG("downloaded [%d], savename [%s], attachment_path [%s]", input_attachment_data->save_status, input_attachment_data->attachment_path, existing_attachment_info->attachment_path);
 	if (input_attachment_data->save_status && EM_SAFE_STRCMP(input_attachment_data->attachment_path, existing_attachment_info->attachment_path) != 0) {
 		if (!emstorage_move_file(input_attachment_data->attachment_path, buf, false ,&err))  {
 			EM_DEBUG_EXCEPTION("emstorage_move_file failed [%d]", err);
 
-			goto FINISH_OFF2;
+			goto FINISH_OFF;
 		}
 	}
 	else
@@ -4399,26 +4105,25 @@ static int emcore_mail_update_attachment_data(int input_mail_id, email_attachmen
 	EM_SAFE_FREE(input_attachment_data->attachment_path);
 	input_attachment_data->attachment_path = EM_SAFE_STRDUP(buf);
 
-	emstorage_begin_transaction(NULL, NULL, NULL);
+	if (!emstorage_begin_transaction(NULL, NULL, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_begin_transaction failed [%d]", err);
+		goto FINISH_OFF;
+	}
 
 	if (!emstorage_update_attachment(&attachment_tbl, false, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_update_attachment failed [%d]", err);
-
-		goto FINISH_OFF;
 	}
 	
-FINISH_OFF:
 	if (err == EMAIL_ERROR_NONE) {	/*  COMMIT TRANSACTION; */
 		if (emstorage_commit_transaction(NULL, NULL, NULL) == false) {
 			err = EMAIL_ERROR_DB_FAILURE;
 		}
-	}
-	else {	/*  ROLLBACK TRANSACTION; */
+	} else {	/*  ROLLBACK TRANSACTION; */
 		if (emstorage_rollback_transaction(NULL, NULL, NULL) == false)
 			err = EMAIL_ERROR_DB_FAILURE;
 	}
 
-FINISH_OFF2:
+FINISH_OFF:
 	if (existing_attachment_info)
 		emstorage_free_attachment(&existing_attachment_info, 1, NULL);
 
@@ -4558,14 +4263,15 @@ INTERNAL_FUNC int emcore_mail_copy(int mail_id, email_mailbox_t *dst_mailbox, in
 	}
 
 	/*  BEGIN TRANSACTION; */
-	emstorage_begin_transaction(NULL, NULL, NULL);
+	if (!emstorage_begin_transaction(NULL, NULL, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_begin_transaction failed [%d]", err);
+		goto FINISH_OFF;
+	}
 
 	/*  insert mail data */
-	EM_SAFE_FREE(mail->mailbox_name);
 	
 	mail->account_id   = dst_mailbox->account_id;
 	mail->mailbox_id   = dst_mailbox->mailbox_id;
-	mail->mailbox_name = EM_SAFE_STRDUP(dst_mailbox->mailbox_name);
 	mail->mailbox_type = dst_mailbox->mailbox_type;
 	
 	if (!emstorage_add_mail(mail, 0, false, &err))  {
@@ -4660,6 +4366,31 @@ INTERNAL_FUNC int emcore_mail_copy(int mail_id, email_mailbox_t *dst_mailbox, in
 		goto FINISH_OFF;
 	}
 
+#ifdef __FEATURE_BODY_SEARCH__
+	/* Insert mail_text to DB */
+	char *stripped_text = NULL;
+	emstorage_mailbox_tbl_t *output_mailbox;
+	if (!emcore_strip_mail_body_from_file(mail, &stripped_text, &err) || stripped_text == NULL) {
+		EM_DEBUG_EXCEPTION("emcore_strip_mail_body_from_file failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	if (emstorage_get_mailbox_by_id(dst_mailbox->mailbox_id, &output_mailbox) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed");			
+		goto FINISH_OFF;
+	}
+
+	if (!emcore_add_mail_text(output_mailbox, mail, stripped_text, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_add_mail_text failed [%d]", err);
+		emstorage_rollback_transaction(NULL, NULL, NULL);
+		goto FINISH_OFF;
+	}
+
+	if (output_mailbox != NULL)
+		emstorage_free_mailbox(&output_mailbox, 1, NULL);
+	
+#endif
+
 	if (emstorage_commit_transaction(NULL, NULL, NULL) == false) {
 		err = EMAIL_ERROR_DB_FAILURE;
 		if (emstorage_rollback_transaction(NULL, NULL, NULL) == false)
@@ -4684,6 +4415,9 @@ FINISH_OFF:
 	if (mail != NULL)
 		emstorage_free_mail(&mail, 1, NULL);
 
+#ifdef __FEATURE_BODY_SEARCH__
+	EM_SAFE_FREE(stripped_text);
+#endif
 	EM_SAFE_FREE(mailbox_name);
 
 	if (err_code != NULL)
@@ -4859,17 +4593,10 @@ INTERNAL_FUNC int emcore_move_mail_on_server(int account_id, int src_mailbox_id,
 						goto FINISH_OFF;
 					}
 
-					/* faizan.h@samsung.com   duplicate copy while sync mailbox issue fixed */
-					EM_DEBUG_LOG(">>>mailbox_name[%s]>>>>>>", mail->mailbox_name);
-					EM_DEBUG_LOG(">>>g_new_server_uid[%s]>>>>>>", g_new_server_uid);
-					EM_DEBUG_LOG(">>>mail_id[%d]>>>>>>", mail_id);
-
-					if (!emstorage_update_read_mail_uid(mail_id, g_new_server_uid, mail->mailbox_name, &err_code)) {
+					if (!emstorage_update_read_mail_uid(mail_id, g_new_server_uid, mail->server_mailbox_name, &err_code)) {
 						EM_DEBUG_EXCEPTION("emstorage_update_read_mail_uid failed [%d]", err_code);
 						goto FINISH_OFF;
 					}
-
-					EM_DEBUG_LOG("Mail MOVE SUCCESS ");
 				}
 			}
 			else {
@@ -4884,8 +4611,6 @@ INTERNAL_FUNC int emcore_move_mail_on_server(int account_id, int src_mailbox_id,
 			goto FINISH_OFF;
 		}
 	}
-
-	/* ret = true; */
 
 FINISH_OFF:
 	if (stream) emcore_close_mailbox(account_id, stream);
@@ -4919,7 +4644,7 @@ static int emcore_copy_mail_to_another_account_on_local_storeage(int input_mail_
 
 	if((err = emcore_get_mail_data(input_mail_id, &mail_data)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_get_mail_data failed [%d]", err);
-		err = EMAIL_ERROR_INVALID_MAIL;
+		err = EMAIL_ERROR_MAIL_NOT_FOUND;
 		goto FINISH_OFF;
 	}
 
@@ -5130,7 +4855,7 @@ INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_a
 		if (input_mail_data->file_path_plain)  {
 			if (stat(input_mail_data->file_path_plain, &st_buf) < 0)  {
 				EM_DEBUG_EXCEPTION("input_mail_data->file_path_plain, stat(\"%s\") failed...", input_mail_data->file_path_plain);
-				err = EMAIL_ERROR_INVALID_MAIL;
+				err = EMAIL_ERROR_FILE_NOT_FOUND;
 				goto FINISH_OFF;
 			}
 		}
@@ -5138,7 +4863,7 @@ INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_a
 		if (input_mail_data->file_path_html)  {
 			if (stat(input_mail_data->file_path_html, &st_buf) < 0)  {
 				EM_DEBUG_EXCEPTION("input_mail_data->file_path_html, stat(\"%s\") failed...", input_mail_data->file_path_html);
-				err = EMAIL_ERROR_INVALID_MAIL;
+				err = EMAIL_ERROR_FILE_NOT_FOUND;
 				goto FINISH_OFF;
 			}
 		}
@@ -5148,7 +4873,7 @@ INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_a
 				if (input_attachment_data_list[i].save_status) {
 					if (!input_attachment_data_list[i].attachment_path || stat(input_attachment_data_list[i].attachment_path, &st_buf) < 0)  {
 						EM_DEBUG_EXCEPTION("stat(\"%s\") failed...", input_attachment_data_list[i].attachment_path);
-						err = EMAIL_ERROR_INVALID_ATTACHMENT;
+						err = EMAIL_ERROR_FILE_NOT_FOUND;
 						goto FINISH_OFF;
 					}
 				}
@@ -5262,13 +4987,41 @@ INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_a
 	}
 	
 	/*  BEGIN TRANSACTION; */
-	emstorage_begin_transaction(NULL, NULL, NULL);
+	if (!emstorage_begin_transaction(NULL, NULL, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_begin_transaction failed [%d]", err);
+		goto FINISH_OFF2;
+	}
 	
-	if (!emstorage_change_mail_field(input_mail_data->mail_id, UPDATE_MAIL, converted_mail_tbl_data, false, &err))  {
+	if (!emstorage_change_mail_field(input_mail_data->mail_id, UPDATE_MAIL, converted_mail_tbl_data, false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_change_mail_field failed [%d]", err);
-
 		goto FINISH_OFF;
 	}
+
+#ifdef __FEATURE_BODY_SEARCH__
+	/* strip html content and save into mail_text_tbl */
+	char *stripped_text = NULL;
+	if (!emcore_strip_mail_body_from_file(converted_mail_tbl_data, &stripped_text, &err) || stripped_text == NULL) {
+		EM_DEBUG_EXCEPTION("emcore_strip_mail_body_from_file failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	emstorage_mail_text_tbl_t *mail_text;
+	if (!emstorage_get_mail_text_by_id(input_mail_data->mail_id, &mail_text, true, &err) || !mail_text) {
+		EM_DEBUG_EXCEPTION("emstorage_get_mail_text_by_id failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	EM_SAFE_FREE(mail_text->body_text);
+	mail_text->body_text = stripped_text;
+
+	if (!emstorage_change_mail_text_field(input_mail_data->mail_id, mail_text, false, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_change_mail_text_field failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	if (mail_text)
+		emstorage_free_mail_text(&mail_text, 1, NULL);
+#endif
 	
 	if (input_mail_data->meeting_request_status == EMAIL_MAIL_TYPE_MEETING_REQUEST
 		|| input_mail_data->meeting_request_status == EMAIL_MAIL_TYPE_MEETING_RESPONSE
@@ -5552,13 +5305,12 @@ INTERNAL_FUNC int emcore_sync_flag_with_server(int mail_id, int *err_code)
 		goto FINISH_OFF;
 	}
 
-
 	if (!emcore_check_thread_status())  {
 		err = EMAIL_ERROR_CANCELLED;
 		goto FINISH_OFF;
 	}
 
-	mailbox.mailbox_name = mail->mailbox_name;	
+	mailbox.mailbox_id = mail->mailbox_id;
 	mailbox.account_id = account_id;
 	mailbox.mail_stream = stream;
 
@@ -5690,7 +5442,7 @@ INTERNAL_FUNC int emcore_sync_seen_flag_with_server(int mail_ids[], int num, int
 		goto FINISH_OFF;
 	}
 
-	mailbox.mailbox_name = mail->mailbox_name;
+	mailbox.mailbox_id = mail->mailbox_id;
 	mailbox.account_id = account_id;
 	mailbox.mail_stream = stream;
 	
@@ -5813,6 +5565,7 @@ INTERNAL_FUNC void emcore_free_mail_data(email_mail_data_t *mail_data)
 	EM_SAFE_FREE(mail_data->file_path_plain);
 	EM_SAFE_FREE(mail_data->file_path_html);
 	EM_SAFE_FREE(mail_data->preview_text);
+	EM_SAFE_FREE(mail_data->eas_data);
 
 	EM_DEBUG_FUNC_END();	
 }
@@ -5863,8 +5616,13 @@ INTERNAL_FUNC int emcore_delete_pbd_activity(int account_id, int mail_id, int ac
 
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
+	int before_tr_begin = 0;
 	
-	emstorage_begin_transaction(NULL, NULL, NULL);
+	if (!emstorage_begin_transaction(NULL, NULL, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_begin_transaction failed [%d]", err);
+		before_tr_begin = 1;
+		goto FINISH_OFF;
+	}
 	
 	if (!emstorage_delete_pbd_activity(account_id, mail_id, activity_id, false, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_delete_pbd_activity failed [%d]", err);
@@ -5879,9 +5637,8 @@ FINISH_OFF:
 			err = EMAIL_ERROR_DB_FAILURE;
 			ret = false;
 		}
-	}
-	else {	/*  ROLLBACK TRANSACTION; */
-		if (emstorage_rollback_transaction(NULL, NULL, NULL) == false)
+	} else {	/*  ROLLBACK TRANSACTION; */
+		if (!before_tr_begin && emstorage_rollback_transaction(NULL, NULL, NULL) == false)
 			err = EMAIL_ERROR_DB_FAILURE;
 	}	
 	
@@ -5904,13 +5661,16 @@ INTERNAL_FUNC int emcore_insert_pbd_activity(email_event_partial_body_thd *local
 	
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
+	int before_tr_begin = 0;
 	
-	emstorage_begin_transaction(NULL, NULL, NULL);
+	if (!emstorage_begin_transaction(NULL, NULL, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_begin_transaction failed [%d]", err);
+		before_tr_begin = 1;
+		goto FINISH_OFF;
+	}
 	
 	if (!emstorage_add_pbd_activity(local_activity, activity_id, false, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_add_pbd_activity failed [%d]", err);
-		
-
 		goto FINISH_OFF;
 	}
 
@@ -5922,9 +5682,8 @@ FINISH_OFF:
 			err = EMAIL_ERROR_DB_FAILURE;
 			ret = false;
 		}
-	}
-	else {	/*  ROLLBACK TRANSACTION; */
-		if (emstorage_rollback_transaction(NULL, NULL, NULL) == false)
+	} else {	/*  ROLLBACK TRANSACTION; */
+		if (!before_tr_begin && emstorage_rollback_transaction(NULL, NULL, NULL) == false)
 			err = EMAIL_ERROR_DB_FAILURE;
 	}	
 	
@@ -6161,16 +5920,105 @@ FINISH_OFF:
 }
 #endif
 
+static int emcore_mail_move_by_filter_rule(int account_id, int mailbox_id, int mailbox_type, emstorage_rule_tbl_t *filter_info)
+{
+	EM_DEBUG_FUNC_BEGIN("account_id:[%d], mailbox_id:[%d], filter_info:[%p]", account_id, mailbox_id, filter_info);
+	int err = EMAIL_ERROR_NONE;
+	int mail_id_index = 0;
+	int filter_mail_id_count = 0;
+	int *filter_mail_id_list = NULL;
+	int parameter_string_length = 0;
+	char mail_id_string[10] = { 0x00, };
+	char *parameter_string = NULL;
+	emstorage_mailbox_tbl_t *src_mailbox_tbl = NULL;
+	emstorage_mailbox_tbl_t *dst_mailbox_tbl = NULL;
+	emstorage_mail_tbl_t *mail_tbl = NULL;
+	
+	if ((account_id < 0) && !mailbox_id && !filter_info) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		return err;
+	}
+
+	if (!emstorage_filter_mails_by_rule(account_id, mailbox_id, mailbox_type, filter_info, &filter_mail_id_list, &filter_mail_id_count, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_filter_mails_by_rule failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	if (filter_mail_id_count) {
+		parameter_string_length = 10 /*mailbox_id length*/ + 7 + (10 * filter_mail_id_count);
+		parameter_string = em_malloc(sizeof(char) * parameter_string_length);
+		if (parameter_string == NULL) {
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			EM_DEBUG_EXCEPTION("em_malloc failed for parameter_string");
+			goto FINISH_OFF;
+		}
+
+		SNPRINTF(parameter_string, parameter_string_length, "[NA]%c%d%c", 0x01, mailbox_id, 0x01);
+		
+		for (mail_id_index = 0; mail_id_index < filter_mail_id_count; mail_id_index++) {
+			memset(mail_id_string, 0, 10);
+			SNPRINTF(mail_id_string, 10, "%d", filter_mail_id_list[mail_id_index]);
+			strcat(parameter_string, mail_id_string);
+			strcat(parameter_string, ",");
+		}
+
+		EM_DEBUG_LOG("filtered_mail_id_count [%d]", filter_mail_id_count);
+		EM_DEBUG_LOG("param string [%s]", parameter_string);
+
+		if (!emcore_notify_storage_event(NOTI_MAIL_MOVE, account_id, 0, parameter_string, 0)) 
+			EM_DEBUG_EXCEPTION("emcore_notify_storage_event failed [ NOTI_MAIL_MOVE ] >>>> ");
+	}
+
+	/* Move the mails on server */
+	if ((err = emstorage_get_mailbox_by_id(mailbox_id, &dst_mailbox_tbl)) != EMAIL_ERROR_NONE || !dst_mailbox_tbl) {
+		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed : [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	for (mail_id_index = 0; mail_id_index < filter_mail_id_count; mail_id_index++) {
+		if (!emstorage_get_mail_by_id(filter_mail_id_list[mail_id_index], &mail_tbl, false, &err)) {
+			EM_DEBUG_EXCEPTION("emstorage_get_mail_by_id failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		if ((err = emstorage_get_mailbox_by_id(mail_tbl->mailbox_id, &src_mailbox_tbl)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		if (!emcore_move_mail_on_server(account_id, src_mailbox_tbl->mailbox_id, filter_mail_id_list, filter_mail_id_count, dst_mailbox_tbl->mailbox_name, &err)) {
+			EM_DEBUG_EXCEPTION("emcore_move_mail_on_server failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		emstorage_free_mailbox(&src_mailbox_tbl, 1, NULL); /*prevent 46750*/
+	}
+
+FINISH_OFF:	
+
+	if (src_mailbox_tbl)
+		emstorage_free_mailbox(&src_mailbox_tbl, 1, NULL);
+
+	if (dst_mailbox_tbl)
+		emstorage_free_mailbox(&dst_mailbox_tbl, 1, NULL);
+
+	EM_SAFE_FREE(filter_mail_id_list);
+	EM_SAFE_FREE(parameter_string);
+
+	EM_DEBUG_FUNC_END("err : [%d]", err);
+	return err;
+}
+
+
 INTERNAL_FUNC int emcore_mail_filter_by_rule(email_rule_t *filter_info, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("filter_info[%p], err_code[%p]", filter_info, err_code);
 
 	int ret = false, err = EMAIL_ERROR_NONE;
-	int account_index, account_count, mail_id_index = 0;
-	email_account_t *account_ref = NULL, *account_list_ref = NULL;
-	int filtered_mail_id_count = 0, *filtered_mail_id_list = NULL, parameter_string_length = 0;
-	char *parameter_string = NULL, mail_id_string[10] = { 0x00, };
+	int account_index, account_count;
 	emstorage_mailbox_tbl_t *spam_mailbox = NULL;
+	emstorage_account_tbl_t *account_tbl_t_list = NULL, *account_tbl_t = NULL;
 
 	if (!filter_info)  {
 		EM_DEBUG_EXCEPTION("filter_info[%p]", filter_info);
@@ -6178,51 +6026,44 @@ INTERNAL_FUNC int emcore_mail_filter_by_rule(email_rule_t *filter_info, int *err
 		goto FINISH_OFF;
 	}
 
-	if (!emcore_get_account_reference_list(&account_list_ref, &account_count, &err)) {
-		EM_DEBUG_EXCEPTION("emcore_get_account_reference_list failed [%d]", err);
-		goto FINISH_OFF;
-	}
-
-	for (account_index = 0; account_index < account_count; account_index++) {
-		account_ref = account_list_ref + account_index;
-
-		if (!emstorage_get_mailbox_by_mailbox_type(account_ref->account_id, EMAIL_MAILBOX_TYPE_SPAMBOX, &spam_mailbox, false, &err))
-			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type for account_id[%d] failed [%d]", account_ref->account_id, err);
-		else if (spam_mailbox && spam_mailbox->mailbox_id > 0) {
-			if (!emstorage_filter_mails_by_rule(account_ref->account_id, spam_mailbox->mailbox_id, (emstorage_rule_tbl_t *)filter_info, &filtered_mail_id_list, &filtered_mail_id_count, &err))
-				EM_DEBUG_EXCEPTION("emstorage_filter_mails_by_rule failed [%d]", err);
-			else {
-				if (filtered_mail_id_count) {
-					parameter_string_length = 10 /*mailbox_id length*/ + 7 + (10 * filtered_mail_id_count);
-					parameter_string = em_malloc(sizeof(char) * parameter_string_length);
-
-					if (parameter_string == NULL) {
-						err = EMAIL_ERROR_OUT_OF_MEMORY;
-						EM_DEBUG_EXCEPTION("em_malloc failed for parameter_string");
-						goto FINISH_OFF;
-					}
-					SNPRINTF(parameter_string, parameter_string_length, "[NA]%c%d%c", 0x01, spam_mailbox->mailbox_id, 0x01);
-					
-					for (mail_id_index = 0; mail_id_index < filtered_mail_id_count; mail_id_index++) {
-						memset(mail_id_string, 0, 10);
-						SNPRINTF(mail_id_string, 10, "%d", filtered_mail_id_list[mail_id_index]);
-						strcat(parameter_string, mail_id_string);
-						strcat(parameter_string, ",");
-					}
-
-					EM_DEBUG_LOG("filtered_mail_id_count [%d]", filtered_mail_id_count);
-					EM_DEBUG_LOG("param string [%s]", parameter_string);
-
-					if (!emcore_notify_storage_event(NOTI_MAIL_MOVE, account_ref->account_id, 0, parameter_string, 0)) 
-						EM_DEBUG_EXCEPTION("emcore_notify_storage_event failed [ NOTI_MAIL_MOVE ] >>>> ");
-
-					EM_SAFE_FREE(filtered_mail_id_list);
-					EM_SAFE_FREE(parameter_string);
-				}
-			}
-			emstorage_free_mailbox(&spam_mailbox, 1, &err);
-			spam_mailbox = NULL;
+	switch (filter_info->faction) {
+	case EMAIL_FILTER_MOVE :
+		if ((err = emstorage_get_mailbox_by_id(filter_info->target_mailbox_id, &spam_mailbox)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id for id[%d] failed : [%d]", filter_info->target_mailbox_id, err);
+			goto FINISH_OFF;
 		}
+
+		if ((err = emcore_mail_move_by_filter_rule(filter_info->account_id, spam_mailbox->mailbox_id, spam_mailbox->mailbox_type, (emstorage_rule_tbl_t *)filter_info)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_mail_move_by_filter_rule failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+		break;	
+	case EMAIL_FILTER_BLOCK :
+		if (!emstorage_get_account_list(&account_count, &account_tbl_t_list, false, false, &err)) {
+			EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		for (account_index = 0; account_index < account_count; account_index++) {
+			account_tbl_t = account_tbl_t_list + account_index;
+
+			if (!emstorage_get_mailbox_by_mailbox_type(account_tbl_t->account_id, EMAIL_MAILBOX_TYPE_SPAMBOX, &spam_mailbox, false, &err)) {
+				EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type for account_id[%d] failed : [%d]", account_tbl_t->account_id, err);
+				continue;
+			}
+
+			if ((err = emcore_mail_move_by_filter_rule(account_tbl_t->account_id, spam_mailbox->mailbox_id, spam_mailbox->mailbox_type, (emstorage_rule_tbl_t *)filter_info)) != EMAIL_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("emcore_mail_move_by_filter_rule failed : [%d]", err);
+				goto FINISH_OFF;
+			}
+		
+			
+		}
+		break;
+	case EMAIL_FILTER_DELETE :
+	default:
+		EM_DEBUG_LOG("filter_faction : [%d]", filter_info->faction);
+		break;
 	}
 
 	emcore_display_unread_in_badge();
@@ -6230,10 +6071,9 @@ INTERNAL_FUNC int emcore_mail_filter_by_rule(email_rule_t *filter_info, int *err
 	ret = true;
 
 FINISH_OFF: 
-	EM_SAFE_FREE(account_list_ref);
-	EM_SAFE_FREE(filtered_mail_id_list);
-	EM_SAFE_FREE(parameter_string);
-
+	
+	if (account_tbl_t_list)
+		emstorage_free_account(&account_tbl_t_list, account_count, NULL);
 
 	if (spam_mailbox)
 		emstorage_free_mailbox(&spam_mailbox, 1, &err);

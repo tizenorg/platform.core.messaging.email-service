@@ -219,7 +219,7 @@ static gboolean testapp_test_add_mail (int *result_mail_id)
 	test_mail_data = malloc(sizeof(email_mail_data_t));
 	memset(test_mail_data, 0x00, sizeof(email_mail_data_t));
 	
-	testapp_print("\n Sync server? [0/1]> ");
+	testapp_print("\n From EAS? [0/1]> ");
 	result_from_scanf = scanf("%d", &from_eas);
 
 	test_mail_data->account_id           = account_id;
@@ -234,6 +234,8 @@ static gboolean testapp_test_add_mail (int *result_mail_id)
 	test_mail_data->full_address_cc      = strdup("<test3@test.com>");
 	test_mail_data->full_address_bcc     = strdup("<test4@test.com>");
 	test_mail_data->subject              = strdup("Meeting request mail");
+	test_mail_data->eas_data             = strdup("EAS DATA TEST");
+	test_mail_data->eas_data_length      = strlen(test_mail_data->eas_data) + 1;
 
 	body_file = fopen(body_file_path, "w");
 
@@ -313,6 +315,7 @@ static gboolean testapp_test_add_mail (int *result_mail_id)
 		testapp_print("email_add_mail success.\n");
 
 	testapp_print("saved mail id = [%d]\n", test_mail_data->mail_id);
+	testapp_print("saved mailbox id = [%d]\n", test_mail_data->mailbox_id);
 
 	if(result_mail_id)
 		*result_mail_id = test_mail_data->mail_id;
@@ -703,7 +706,51 @@ static gboolean testapp_test_delete()
 	return FALSE;
 }
 
+static gboolean testapp_test_update_mail_attribute()
+{
+	int  err = EMAIL_ERROR_NONE;
+	int  i = 0;
+	int  account_id = 0;
+	int *mail_id_array = NULL;
+	int  mail_id_count = 0;
+	int  result_from_scanf = 0;
+	email_mail_attribute_type attribute_type;
+	email_mail_attribute_value_t attribute_value;
 
+	testapp_print("\n > Enter account_id: ");
+	result_from_scanf = scanf("%d", &account_id);
+
+	testapp_print("\n > Enter attribute_type: ");
+	result_from_scanf = scanf("%d", (int*)&attribute_type);
+
+	testapp_print("\n > Enter integer type value: ");
+	result_from_scanf = scanf("%d", (int*)&(attribute_value.integer_type_value));
+
+	testapp_print("\n > Enter mail_id_count: ");
+	result_from_scanf = scanf("%d", &mail_id_count);
+
+	mail_id_count = (mail_id_count < 5000)?mail_id_count:5000;
+
+	if (mail_id_count > 0) {
+		mail_id_array = malloc(sizeof(int) * mail_id_count);
+	}
+
+	for (i = 0; i < mail_id_count; i++) {
+		testapp_print("\n > Enter mail id: ");
+		result_from_scanf = scanf("%d", (mail_id_array + i));
+	}
+
+	/* delete message */
+	if ((err = email_update_mail_attribute(account_id, mail_id_array, mail_id_count, attribute_type, attribute_value)) < EMAIL_ERROR_NONE)
+		testapp_print("\n email_update_mail_attribute failed[%d]\n", err);
+	else
+		testapp_print("\n email_update_mail_attribute success\n");
+
+	if (mail_id_array)
+		free(mail_id_array);
+
+	return FALSE;
+}
 
 static gboolean testapp_test_move()
 {
@@ -1253,7 +1300,137 @@ static gboolean	testapp_test_send_mail_with_downloading_attachment_of_original_m
 	return TRUE;
 }
 
+static gboolean	testapp_test_get_mail_data()
+{
+	int err = EMAIL_ERROR_NONE;
+	int mail_id = 0;
+	int result_from_scanf = 0;
+	email_mail_data_t *mail_data = NULL;
 
+	testapp_print("\n > Enter mail id: ");
+	result_from_scanf = scanf("%d", &mail_id);
+
+	/* Get original mail */
+	if((err = email_get_mail_data(mail_id, &mail_data)) != EMAIL_ERROR_NONE || !mail_data) {
+		testapp_print("email_get_mail_data failed [%d]\n", err);
+		return FALSE;
+	}
+
+	testapp_print("mail_id [%d]\n", mail_data->mail_id );
+	testapp_print("account_id [%d]\n", mail_data->account_id);
+	testapp_print("mailbox_id [%d]\n", mail_data->mailbox_id);
+	testapp_print("mailbox_type [%d]\n", mail_data->mailbox_type);
+	if(mail_data->subject)
+		testapp_print("subject [%s]\n", mail_data->subject );
+	testapp_print("date_time [%d]\n", mail_data->date_time );
+	testapp_print("server_mail_status [%d]\n", mail_data->server_mail_status);
+
+	if(mail_data->server_mailbox_name)
+		testapp_print("server_mailbox_name [%s]\n", mail_data->server_mailbox_name );
+
+	if(mail_data->server_mail_id)
+		testapp_print("server_mail_id [%s]\n", mail_data->server_mail_id);
+
+	if(mail_data->message_id)
+		testapp_print("message_id [%s]\n", mail_data->message_id);
+
+	testapp_print("reference_mail_id [%d]\n", mail_data->reference_mail_id );
+
+	if(mail_data->full_address_from)
+		testapp_print("full_address_from [%s]\n", mail_data->full_address_from );
+
+	if(mail_data->full_address_reply)
+		testapp_print("full_address_reply [%s]\n", mail_data->full_address_reply);
+
+	if(mail_data->full_address_to)
+		testapp_print("full_address_to [%s]\n", mail_data->full_address_to );
+
+	if(mail_data->full_address_cc)
+		testapp_print("full_address_cc [%s]\n", mail_data->full_address_cc );
+
+	if(mail_data->full_address_bcc)
+		testapp_print("full_address_bcc [%s]\n", mail_data->full_address_bcc);
+
+	if(mail_data->full_address_return)
+		testapp_print("full_address_return [%s]\n", mail_data->full_address_return );
+
+	if(mail_data->email_address_sender)
+		testapp_print("email_address_sender [%s]\n", mail_data->email_address_sender);
+
+	if(mail_data->email_address_recipient)
+		testapp_print("email_address_recipient [%s]\n", mail_data->email_address_recipient );
+
+	if(mail_data->alias_sender)
+		testapp_print("alias_sender [%s]\n", mail_data->alias_sender);
+
+	if(mail_data->alias_recipient)
+		testapp_print("alias_recipient [%s]\n", mail_data->alias_recipient );
+
+	testapp_print("body_download_status [%d]\n", mail_data->body_download_status);
+
+	if(mail_data->file_path_plain)
+		testapp_print("file_path_plain [%s]\n", mail_data->file_path_plain );
+
+	if(mail_data->file_path_html)
+		testapp_print("file_path_html [%s]\n", mail_data->file_path_html);
+
+	testapp_print("file_path_mime_entity [%s]\n", mail_data->file_path_mime_entity );
+	testapp_print("mail_size [%d]\n", mail_data->mail_size );
+	testapp_print("flags_seen_field [%d]\n", mail_data->flags_seen_field);
+	testapp_print("flags_deleted_field [%d]\n", mail_data->flags_deleted_field );
+	testapp_print("flags_flagged_field [%d]\n", mail_data->flags_flagged_field );
+	testapp_print("flags_answered_field [%d]\n", mail_data->flags_answered_field);
+	testapp_print("flags_recent_field [%d]\n", mail_data->flags_recent_field);
+	testapp_print("flags_draft_field [%d]\n", mail_data->flags_draft_field );
+	testapp_print("flags_forwarded_field [%d]\n", mail_data->flags_forwarded_field );
+	testapp_print("DRM_status [%d]\n", mail_data->DRM_status);
+	testapp_print("priority [%d]\n", mail_data->priority);
+	testapp_print("save_status [%d]\n", mail_data->save_status );
+	testapp_print("lock_status [%d]\n", mail_data->lock_status );
+	testapp_print("report_status [%d]\n", mail_data->report_status );
+	testapp_print("attachment_count [%d]\n", mail_data->attachment_count);
+	testapp_print("inline_content_count [%d]\n", mail_data->inline_content_count);
+	testapp_print("thread_id [%d]\n", mail_data->thread_id );
+	testapp_print("thread_item_count [%d]\n", mail_data->thread_item_count );
+
+	if(mail_data->preview_text)
+		testapp_print("preview_text [%s]\n", mail_data->preview_text);
+
+	testapp_print("meeting_request_status [%d]\n", mail_data->meeting_request_status);
+	testapp_print("message_class [%d]\n", mail_data->message_class);
+	testapp_print("digest_type [%d]\n", mail_data->digest_type);
+	testapp_print("smime_type [%d]\n", mail_data->smime_type);
+	testapp_print("scheduled_sending_time [%d]\n", mail_data->scheduled_sending_time);
+	testapp_print("eas_data_length [%d]\n", mail_data->eas_data_length);
+
+	return TRUE;
+}
+
+static gboolean	testapp_test_schedule_sending_mail()
+{
+	int                    added_mail_id = 0;
+	int                    err = EMAIL_ERROR_NONE;
+	int                    handle = 0;
+	time_t                 time_to_send;
+
+	testapp_add_mail_for_sending(&added_mail_id);
+
+	if(added_mail_id) {
+		time(&time_to_send);
+		time_to_send += 60;
+
+		testapp_print("Calling email_schedule_sending_mail...\n");
+
+		if( email_schedule_sending_mail(added_mail_id, time_to_send) < 0) {
+			testapp_print("email_schedule_sending_mail failed[%d]\n", err);
+		}
+		else  {
+			testapp_print("Start sending. handle[%d]\n", handle);
+		}
+	}
+
+	return TRUE;
+}
 
 static gboolean	testapp_test_set_flags_field ()
 {
@@ -1350,6 +1527,17 @@ static gboolean testapp_test_download_attachment ()
 	}
 	return TRUE;
 
+}
+
+static gboolean testapp_test_get_attachment_data_list()
+{
+	int mail_id = 0;
+	int result_from_scanf = 0;
+
+	testapp_print("\n > Enter Mail Id: ");
+	result_from_scanf = scanf("%d", &mail_id);
+
+	return TRUE;
 }
 
 static gboolean testapp_test_retry_send()
@@ -1898,6 +2086,7 @@ static gboolean testapp_test_email_parse_mime_file()
 	testapp_print("Sender: %s\n", mail_data->email_address_sender);
 	testapp_print("Message-ID: %s\n", mail_data->message_id);
 	testapp_print("attachment_count: %d\n", mail_data->attachment_count);
+	testapp_print("SMIME type : %d\n", mail_data->smime_type);
 	testapp_print("inline content count : %d\n", mail_data->inline_content_count);
 
 	for (i = 0;i < mail_data->attachment_count ; i++) {
@@ -2053,8 +2242,17 @@ static gboolean testapp_test_interpret_command (int menu_number)
 		case 11:
 			testapp_test_send_mail_with_downloading_attachment_of_original_mail();
 			break;
+		case 12:
+			testapp_test_get_mail_data();
+			break;
+		case 13:
+			testapp_test_schedule_sending_mail();
+			break;
 		case 14:
 			testapp_test_delete();
+			break;
+		case 15:
+			testapp_test_update_mail_attribute();
 			break;
  		case 16:
 			testapp_test_download_body();
@@ -2062,6 +2260,9 @@ static gboolean testapp_test_interpret_command (int menu_number)
 		case 17:
 			testapp_test_download_attachment();
 			break;		
+		case 18:
+			testapp_test_get_attachment_data_list();
+			break;
 		case 20:
 			testapp_test_delete_all();
 			break;

@@ -55,6 +55,7 @@
 #define EMAIL_ERROR_TASK_BINDER_NOT_FOUND               -1023    /*  no matched task binder was found */
 #define EMAIL_ERROR_TASK_NOT_FOUND                      -1168    /*  no matched task was found */
 #define EMAIL_ERROR_HANDLE_NOT_FOUND                    -1301
+#define EMAIL_ERROR_ALARM_DATA_NOT_FOUND                -1933
 
 /* Error codes for specification for maximum data */
 #define EMAIL_ERROR_NO_MORE_DATA                        -1022    /*  No more data available */
@@ -97,6 +98,7 @@
 /* Error codes for functionality */
 #define EMAIL_ERROR_NOT_IMPLEMENTED                     -1047    /*  The function is not implemented yet*/
 #define EMAIL_ERROR_NOT_SUPPORTED                       -1048    /*  The function is not supported */
+#define EMAIL_ERROR_SERVER_NOT_SUPPORT_FUNCTION         -1823
 
 /* Error codes for from system */
 #define EMAIL_ERROR_NO_SIM_INSERTED                     -1205
@@ -141,6 +143,8 @@
 
 #define EMAIL_ERROR_INVALID_ATTACHMENT_SAVE_NAME        -1301
 
+#define EMAIL_ERROR_DOMAIN_LOOKUP_FAILED                -1423    /* The domain name provided was not found */
+
 /* Error codes for certificate */
 #define EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE            -3001    /*  Cannot load the certificate */
 #define EMAIL_ERROR_INVALID_CERTIFICATE                 -3002    /*  invalid certificate */
@@ -154,9 +158,14 @@
 /* Error codes for mails */
 #define EMAIL_ERROR_MAIL_NOT_FOUND_ON_SERVER            -1055    /*  The expected mail is not found in server */
 #define EMAIL_ERROR_MAIL_IS_NOT_DOWNLOADED              -1095    /*  The mail is not downloaded */
+#define EMAIL_ERROR_MAIL_IS_ALREADY_DOWNLOADED          -1456    /*  The mail is already downloaded */
 
 /* Error codes for attachment */
 #define EMAIL_ERROR_ATTACHMENT_SIZE_EXCEED_POLICY_LIMIT -7001
+
+/* Error codes for MDM */
+#define EMAIL_ERROR_MDM_SERVICE_FAILURE                 -7100
+#define EMAIL_ERROR_MDM_RESTRICTED_MODE                 -7101
 
 /* Etc */
 #define EMAIL_ERROR_ALREADY_INITIALIZED                 -7321
@@ -173,6 +182,7 @@
 #define EMAIL_ERROR_SYSTEM_FAILURE                      -1050    /*  There is a system error */
 #define EMAIL_ERROR_ON_PARSING                          -1700
 #define EMAIL_ERROR_ALREADY_EXISTS                      -1023    /*  data duplicated */
+#define EMAIL_ERROR_INPROPER_RESPONSE_FROM_MSG_SERVICE  -1323
 
 /* Not used */
 #define EMAIL_ERROR_INVALID_USER                        -1003    /*  invalid user ID was given. - Invalid user or password */

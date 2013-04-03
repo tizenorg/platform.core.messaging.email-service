@@ -152,7 +152,10 @@ EXPORT_API void emipc_wait_for_ipc_request()
 					}
 					ev.events = EPOLLIN;
 					ev.data.fd = cfd;
-					epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &ev);
+					if (epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &ev) == -1) {
+						EM_DEBUG_EXCEPTION("epoll_ctl: %s[%d]", strerror(errno), errno);
+						EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl:%s[%d]", strerror(errno), errno);
+					}
 				} else {
 					int recv_len;
 					char *sz_buf = NULL;
@@ -171,7 +174,10 @@ EXPORT_API void emipc_wait_for_ipc_request()
 							EM_DEBUG_LOG("[IPCLib] Stream size is less than default size");
 					} else if( recv_len == 0 ) {
 						EM_DEBUG_LOG("[IPCLib] Client closed connection [%d]", event_fd);
-						epoll_ctl(epfd, EPOLL_CTL_DEL, event_fd, events);
+						if (epoll_ctl(epfd, EPOLL_CTL_DEL, event_fd, events) == -1) {
+							EM_DEBUG_EXCEPTION("epoll_ctl: %s[%d]", strerror(errno), errno);
+							EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl:%s[%d]", strerror(errno), errno);
+						}
 						close(event_fd);
 					} 
 					EM_SAFE_FREE(sz_buf);

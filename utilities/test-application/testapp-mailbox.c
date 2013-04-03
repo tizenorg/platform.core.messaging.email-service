@@ -23,6 +23,7 @@
 
 /* common header */
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 
@@ -240,6 +241,9 @@ static gboolean testapp_test_delete_mailbox_ex()
 	err = email_delete_mailbox_ex(account_id, mailbox_id_array, mailbox_id_count, on_server, &handle);
 
 	testapp_print("\nemail_delete_mailbox_ex returns [%d], handle [%d] \n", err, handle);
+
+	if(mailbox_id_array)
+		free(mailbox_id_array);
 	return 0;
 }
 

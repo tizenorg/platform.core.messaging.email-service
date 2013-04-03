@@ -237,10 +237,10 @@ extern int _imap4_download_noti_interval_value;
 extern int multi_part_body_size;
 extern bool only_body_download;
 
-extern BODY **g_inline_list;
-extern int g_inline_count;
-
 /* ---------------------------------------------------------------------- */
+static BODY **g_inline_list;
+static int g_inline_count;
+
 /*  Function Declaration */
 
 /*  parsing the first header (RFC822 Header and Message Header and Etc... */
@@ -833,11 +833,17 @@ int emcore_mime_parse_body(void *stream, int is_file, struct _m_mesg *mmsg, stru
 				if (attachment_name) EM_DEBUG_LOG(" attachment = [%s]", attachment_name);
 			}
 
-			if (strstr(content_type, "PKCS7-MIME")) {
+			if (strcasestr(content_type, "PKCS7-MIME")) {
 				EM_DEBUG_LOG("Encrypted mail do not include the body");
+
+				if (attachment_name == NULL)
+					attachment_name = emcore_mime_get_header_value(mmsg->header->part_header, CONTENT_NAME, err_code);
+
+				EM_DEBUG_LOG("attachment_name : [%s]", attachment_name);
+
 				cnt_info->file = em_malloc(sizeof(struct attachment_info));
 				if (cnt_info->file) {
-					cnt_info->file->type = 2;
+					cnt_info->file->type = ATTACHMENT;
 					cnt_info->file->name = EM_SAFE_STRDUP(attachment_name);
 					if (!emcore_mime_get_content_data(stream, is_file, false, NULL, content_encoding, &end_of_parsing, SAVE_TYPE_FILE, &holder, &size, NULL, err_code)) {
 						EM_DEBUG_EXCEPTION("emcore_mime_get_content_data failed : [%d]", err_code);
@@ -845,6 +851,7 @@ int emcore_mime_parse_body(void *stream, int is_file, struct _m_mesg *mmsg, stru
 					}
 					cnt_info->file->save = holder;
 					cnt_info->file->size = size;
+					cnt_info->file->next = NULL;
 				}
 				break;
 			}
@@ -1112,7 +1119,7 @@ int emcore_mime_parse_part(void *stream, int is_file, struct _m_part_header *par
 
 				EM_DEBUG_LOG("attachment_name : [%s]", attachment_name);
 				/*  get content and content information */
-				if (!attachment_name)  {	/*  text */
+				if (content_disposition_type != ATTACHMENT && content_disposition_type != INLINE_ATTACHMENT)  {	/*  text */
 					/*  get content by buffer */
 					EM_DEBUG_LOG_MIME("attachment_name is NULL. It's a text message");
 					if (!emcore_mime_get_content_data(stream, is_file, true, boundary_str, content_encoding, &end_of_parsing, SAVE_TYPE_FILE, &holder, &size, NULL, err_code)) {
@@ -2229,6 +2236,7 @@ PARTLIST* emcore_get_body_full(MAILSTREAM *stream, int msg_uid, BODY *body, stru
 
 				char filename[512] = {0, };
 				struct attachment_info *current_ai = NULL;
+				struct attachment_info *prev_ai = NULL;
 				struct attachment_info *ai = NULL;
 
 				if (emcore_get_file_pointer(body, true, filename, cnt_info, (int*)NULL) < 0)
@@ -2281,10 +2289,29 @@ PARTLIST* emcore_get_body_full(MAILSTREAM *stream, int msg_uid, BODY *body, stru
 					if (current_ai == NULL) {
 						cnt_info->file = ai;
 					} else {
-						while(current_ai->next != NULL)
-							current_ai = current_ai->next;
+						while(current_ai->next != NULL) {
+							if (ai->type == ATTACHMENT) {
+								if (current_ai->type == INLINE_ATTACHMENT) 
+									break;
+							} 
 
-						current_ai->next = ai;
+							prev_ai = current_ai;
+							current_ai = current_ai->next;
+						}
+
+						EM_DEBUG_LOG("current_ai:[%p], prev_ai:[%p]", current_ai, prev_ai);
+
+						if (ai->type == ATTACHMENT) {
+							if (prev_ai == NULL) {
+								cnt_info->file = ai;
+								ai->next = current_ai;
+							} else {
+								prev_ai->next = ai;
+								ai->next = current_ai;
+							}
+						} else {
+							current_ai->next = ai;
+						}
 					}
 				}
 			}
@@ -2455,7 +2482,7 @@ static int emcore_write_response_into_file(char *filename, char *write_mode, cha
 		if (subtype && subtype[0] == 'H')  {
 			char body_inline_id[512] = {0};
 
-			while (strstr(decoded, "cid:"))   {
+			while (strstr(decoded, "cid:")) {
 				EM_DEBUG_LOG("Found cid:");
 				not_found = true;
 				if (g_inline_count) {
@@ -2511,9 +2538,7 @@ static int emcore_write_response_into_file(char *filename, char *write_mode, cha
 						}
 						inline_count++;
 					}
-
 				}
-
 
 				if (not_found) {
 					EM_DEBUG_LOG("not_found is true");
@@ -2531,6 +2556,8 @@ static int emcore_write_response_into_file(char *filename, char *write_mode, cha
 					}
 				}
 			}
+			g_inline_count = 0;
+			EM_SAFE_FREE(g_inline_list);
 		}
 
 		EM_DEBUG_LOG("Trying to fwrite. decoded_len [%d]", decoded_len);
@@ -2551,6 +2578,7 @@ static int emcore_write_response_into_file(char *filename, char *write_mode, cha
 	ret = true;
 
 FINISH_OFF:
+	
 	if (err)
 		*err = error;
 
@@ -3799,9 +3827,7 @@ INTERNAL_FUNC int emcore_get_attribute_value_of_body_part(PARAMETER *input_param
 	memset(output_value, 0, output_buffer_length);
 
 	while (temp_param)  {
-		EM_DEBUG_LOG("temp_param->attribute [%s]", temp_param->attribute);
 		if (!strcasecmp(temp_param->attribute, atribute_name))  {
-			EM_DEBUG_LOG("temp_param->value [%s]", temp_param->value);
 			if (temp_param->value) {
 				if (with_rfc2047_text) {
 					decoded_value = emcore_decode_rfc2047_text(temp_param->value, &err);
@@ -3818,7 +3844,7 @@ INTERNAL_FUNC int emcore_get_attribute_value_of_body_part(PARAMETER *input_param
 				err = EMAIL_ERROR_DATA_NOT_FOUND;
 				goto FINISH_OFF;
 			}
-			EM_DEBUG_LOG("result_value [%s]", result_value);
+
 			if(result_value) {
 				if(output_buffer_length > EM_SAFE_STRLEN(result_value)) {
 					strncpy(output_value, result_value, output_buffer_length);
@@ -4649,7 +4675,7 @@ static void parse_file_path_to_filename(char *src_string, char **out_string)
 
 static char *emcore_decode_rfc2047_word(char *encoded_word, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("encoded_word[%s], err_code[%p]", encoded_word, err_code);
+	EM_DEBUG_FUNC_BEGIN("encoded_word[%p], err_code[%p]", encoded_word, err_code);
 
 	int err = EMAIL_ERROR_NONE;
 	int base64_encoded = false, length = 0;
@@ -4898,6 +4924,7 @@ INTERNAL_FUNC int emcore_make_mail_data_from_mime_data(struct _m_mesg *mmsg, str
 	struct timeval tv;
 	struct attachment_info *ai = NULL;
 	char *encoded_subject = NULL;
+	char *content_type = NULL;
 	email_attachment_data_t *attachment = NULL;
 	email_mail_data_t *p_mail_data = NULL;
 	MESSAGECACHE mail_cache_element = {0, };
@@ -4925,6 +4952,12 @@ INTERNAL_FUNC int emcore_make_mail_data_from_mime_data(struct _m_mesg *mmsg, str
 
 	p_mail_data->mail_id = eml_mail_id;
 	p_mail_data->account_id = EML_FOLDER;
+
+	if (mmsg->header)
+		content_type = emcore_mime_get_header_value(mmsg->header->part_header, CONTENT_TYPE, &err);
+
+	if (strcasestr(content_type, "PKCS7-MIME"))
+		p_mail_data->smime_type = EMAIL_SMIME_ENCRYPTED;
 
 	if (mmsg->rfc822header->date)
 		mail_parse_date(&mail_cache_element, (unsigned char *)mmsg->rfc822header->date);
@@ -5327,9 +5360,16 @@ INTERNAL_FUNC int emcore_get_mime_entity(char *mime_path, char **output_path, in
 	while (TRUE) {
 		if (!emcore_get_line_from_file((void *)fp_read, buf, MIME_LINE_LEN, &err)) {
 			EM_DEBUG_EXCEPTION("emcore_mime_get_line_from_file failed [%d]", err);
-			EM_DEBUG_LOG("this mail is partial body");
-			err = EMAIL_ERROR_INVALID_MAIL;
-			break;
+			if (err == EMAIL_ERROR_NO_MORE_DATA) {
+				EM_DEBUG_LOG("this mail is partial body");
+				end_mime_entity = ftell(fp_read);
+				if ( end_mime_entity < 0 ) {
+					EM_DEBUG_EXCEPTION("ftell failed [%s]", EM_STRERROR(errno));
+					goto FINISH_OFF;
+				}
+				break;
+			}
+			goto FINISH_OFF;
 		}
 
 		if (!strcmp(buf, boundary)) {

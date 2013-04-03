@@ -26,6 +26,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
+#include <glib.h>
+#include <alarm.h>
+
 #include "email-internal-types.h"
 #include "c-client.h"
 #include "email-core-global.h"
@@ -42,12 +46,14 @@
 #include "email-core-imap-mailbox.h"
 #include "email-core-mailbox-sync.h"
 #include "email-core-signal.h"
+#include "email-core-alarm.h"
 #include "email-utilities.h"
 #include "email-convert.h"
-
-
-#include <unistd.h>
 #include "email-debug-log.h"
+
+#undef min
+
+
 
 #ifdef __FEATURE_SUPPORT_REPORT_MAIL__
 static int emcore_get_report_mail_body(ENVELOPE *envelope, BODY **multipart_body, int *err_code);
@@ -827,7 +833,6 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 	}
 
 	converted_mail_tbl->mailbox_id        = mailbox_tbl->mailbox_id;
-	converted_mail_tbl->mailbox_name      = EM_SAFE_STRDUP(mailbox_tbl->mailbox_name);
 
 	/* Fill address information */
 	emcore_fill_address_information_of_mail_tbl(converted_mail_tbl);
@@ -941,6 +946,21 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 		attachment_data_list[i].attachment_id = attachment_tbl.attachment_id;
 	}
 
+#ifdef __FEATURE_BODY_SEARCH__
+	/* Insert mail_text to DB */
+	char *stripped_text = NULL;
+	if (!emcore_strip_mail_body_from_file(converted_mail_tbl, &stripped_text, &err) || stripped_text == NULL) {
+		EM_DEBUG_EXCEPTION("emcore_strip_mail_body_from_file failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	if (!emcore_add_mail_text(mailbox_tbl, converted_mail_tbl, stripped_text, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_add_mail_text failed [%d]", err);
+		emstorage_rollback_transaction(NULL, NULL, NULL);
+		goto FINISH_OFF;
+	}
+#endif
+
 	/*  Insert Meeting request to DB */
 	if (mail_data->meeting_request_status == EMAIL_MAIL_TYPE_MEETING_REQUEST
 		|| mail_data->meeting_request_status == EMAIL_MAIL_TYPE_MEETING_RESPONSE
@@ -981,6 +1001,10 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 FINISH_OFF:
 
 	EM_SAFE_FREE(body_text_file_name);
+
+#ifdef __FEATURE_BODY_SEARCH__
+	EM_SAFE_FREE(stripped_text);
+#endif
 
 	if (account_tbl_item)
 		emstorage_free_account(&account_tbl_item, 1, NULL);
@@ -1159,15 +1183,16 @@ FINISH_OFF:
 }
 
 /*  send a mail */
-INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mail_id, int *err_code)
+INTERNAL_FUNC int emcore_send_mail(int mail_id, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id[%d], input_mailbox_id[%d], mail_id[%d], err_code[%p]", account_id, input_mailbox_id, mail_id, err_code);
+	EM_DEBUG_FUNC_BEGIN("mail_id[%d], err_code[%p]", mail_id, err_code);
 	EM_PROFILE_BEGIN(profile_emcore_send_mail);
 	int ret = false;
 	int err = EMAIL_ERROR_NONE, err2 = EMAIL_ERROR_NONE;
 	int status = EMAIL_SEND_FAIL;
 	int attachment_tbl_count = 0;
 	int i = 0;
+	int account_id = 0;
 	SENDSTREAM *stream = NULL;
 	ENVELOPE *envelope = NULL;
 	sslstart_t stls = NULL;
@@ -1181,21 +1206,23 @@ INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mai
 	emstorage_mailbox_tbl_t* local_mailbox = NULL;
 	int dst_mailbox_id = 0;
 
-	if (!account_id || !mail_id)  {
+	if (!mail_id)  {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF;
-	}
-
-	if (!(ref_account = emcore_get_account_reference(account_id))) {
-		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
-		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
 
 	/*  get mail to send */
 	if (!emstorage_get_mail_by_id(mail_id, &mail_tbl_data, false, &err) || err != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mail_by_id failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	account_id = mail_tbl_data->account_id;
+
+	if (!(ref_account = emcore_get_account_reference(account_id))) {
+		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
+		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
 
@@ -3659,13 +3686,13 @@ INTERNAL_FUNC int emcore_get_body_buff(char *file_path, char **buff)
 		goto FINISH_OFF;
 	}
 
-
 	struct stat stbuf;
-  	stat(file_path, &stbuf);
-	EM_DEBUG_LOG(" File Size [ %d ] ", stbuf.st_size);
-  	read_buff = calloc(1, (stbuf.st_size+ 1));
-	read_size = fread(read_buff, 1, stbuf.st_size, r_fp);
-	read_buff[stbuf.st_size] = '\0';
+	if (stat(file_path, &stbuf) == 0 && stbuf.st_size > 0) {
+		EM_DEBUG_LOG(" File Size [ %d ] ", stbuf.st_size);
+		read_buff = calloc((stbuf.st_size+ 1), sizeof(char));
+		read_size = fread(read_buff, 1, stbuf.st_size, r_fp);
+		read_buff[stbuf.st_size] = '\0';
+	}
 
 	if (ferror(r_fp)) {
 		EM_DEBUG_EXCEPTION("file read failed - %s", file_path);
@@ -3802,7 +3829,7 @@ INTERNAL_FUNC int emcore_send_mail_with_downloading_attachment_of_original_mail(
 	}
 
 	/* Send the mail */
-	if(!emcore_send_mail(mail_to_be_sent->account_id, mail_to_be_sent->mailbox_id, mail_to_be_sent->mail_id, &err)) {
+	if(!emcore_send_mail(mail_to_be_sent->mail_id, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_send_mail failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -3825,3 +3852,74 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
+
+/* Scheduled sending ------------------------------------------------ */
+
+
+static int emcore_sending_alarm_cb(int input_timer_id, void *user_parameter)
+{
+	EM_DEBUG_FUNC_BEGIN("input_timer_id [%d] user_parameter [%p]", input_timer_id, user_parameter);
+	int err = EMAIL_ERROR_NONE;
+	int ret = 0;
+	email_alarm_data_t *alarm_data = NULL;
+
+	if (((err = emcore_get_alarm_data_by_alarm_id(input_timer_id, &alarm_data)) != EMAIL_ERROR_NONE) || alarm_data == NULL) {
+		EM_DEBUG_EXCEPTION("emcore_get_alarm_data_by_alarm_id failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	/* send mail here */
+	if(!emcore_send_mail(alarm_data->reference_id, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_send_mail failed [%d]", ret);
+		goto FINISH_OFF;
+	}
+
+	/* delete alarm info*/
+	emcore_delete_alram_data_from_alarm_data_list(alarm_data);
+
+FINISH_OFF:
+
+	EM_SAFE_FREE(alarm_data);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
+
+
+INTERNAL_FUNC int emcore_schedule_sending_mail(int input_mail_id, time_t input_time_to_send)
+{
+	EM_DEBUG_FUNC_BEGIN("input_mail_id[%d] input_time_to_send[%d]", input_mail_id, input_time_to_send);
+	int err = EMAIL_ERROR_NONE;
+	emstorage_mail_tbl_t *mail_data = NULL;
+
+	/* get mail data */
+	if (!emstorage_get_mail_by_id(input_mail_id, &mail_data, true, &err) || mail_data == NULL) {
+		EM_DEBUG_EXCEPTION("emstorage_get_mail_by_id failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	/* set save_status as EMAIL_MAIL_STATUS_SEND_SCHEDULED */
+	if (!emstorage_set_field_of_mails_with_integer_value(mail_data->account_id, &(mail_data->mail_id), 1, "save_status", EMAIL_MAIL_STATUS_SEND_SCHEDULED, true, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	if (!emstorage_set_field_of_mails_with_integer_value(mail_data->account_id, &(mail_data->mail_id), 1, "scheduled_sending_time", input_time_to_send, true, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	/* add alarm */
+	if ((err = emcore_add_alarm(input_time_to_send, EMAIL_ALARM_CLASS_SCHEDULED_SENDING, input_mail_id, emcore_sending_alarm_cb, NULL)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_add_alarm failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+FINISH_OFF:
+	if(mail_data)
+		emstorage_free_mail(&mail_data, 1, NULL);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
+/* Scheduled sending ------------------------------------------------ */

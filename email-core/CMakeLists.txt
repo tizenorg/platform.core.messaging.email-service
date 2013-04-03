@@ -157,6 +157,7 @@ SET(CORE-SRCS
 	${CMAKE_SOURCE_DIR}/email-core/email-core-task-manager.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-tasks.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-signal.c
+	${CMAKE_SOURCE_DIR}/email-core/email-core-alarm.c
 )
 
 INCLUDE_DIRECTORIES(
@@ -170,7 +171,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage openssl accounts-svc mm-player mm-session feedback alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge)
+pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage openssl accounts-svc mm-player mm-session feedback alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge capi-appfw-application)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${core_pkgs_CFLAGS})

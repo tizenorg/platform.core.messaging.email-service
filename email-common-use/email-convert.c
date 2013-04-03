@@ -39,65 +39,6 @@
 #define fATTACHMENT 0x40
 #define fFORWARD    0x80
 
-INTERNAL_FUNC int em_convert_mail_tbl_to_mail_status(emstorage_mail_tbl_t *mail_tbl_data, int *result_mail_status, int* err_code)
-{
-	EM_DEBUG_FUNC_BEGIN("mail_tbl_data[%p], result_mail_status [%p], err_code[%p]", mail_tbl_data, result_mail_status, err_code);
-	int ret = false, error_code = EMAIL_ERROR_NONE;
-	int attachment_count = 0;
-
-	if(!mail_tbl_data || !result_mail_status) {
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-		error_code = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF;
-	}
-
-	attachment_count = (mail_tbl_data->attachment_count > mail_tbl_data->inline_content_count) ? 1 : 0;
-
-	*result_mail_status = (mail_tbl_data->flags_seen_field      ? fSEEN       : 0) |
-	                      (mail_tbl_data->flags_deleted_field   ? fDELETED    : 0) |
-	                      (mail_tbl_data->flags_flagged_field   ? fFLAGGED    : 0) |
-	                      (mail_tbl_data->flags_answered_field  ? fANSWERED   : 0) |
-	                      (mail_tbl_data->flags_recent_field    ? fOLD        : 0) |
-	                      (mail_tbl_data->flags_draft_field     ? fDRAFT      : 0) |
-	                      (attachment_count                       ? fATTACHMENT : 0) |
-	                      (mail_tbl_data->flags_forwarded_field ? fFORWARD    : 0);
-
-	ret = true;
-FINISH_OFF:
-		if (err_code != NULL)
-		*err_code = error_code;
-
-	EM_DEBUG_FUNC_END("ret [%d]", ret);
-	return ret;
-	}
-
-INTERNAL_FUNC int em_convert_mail_status_to_mail_tbl(int mail_status, emstorage_mail_tbl_t *result_mail_tbl_data, int* err_code)
-{
-	EM_DEBUG_FUNC_BEGIN("mail_status[%d], result_mail_tbl_data [%p], err_code[%p]", mail_status, result_mail_tbl_data, err_code);
-	int ret = false, error_code = EMAIL_ERROR_NONE;
-
-	if(!result_mail_tbl_data) {
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-		error_code = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF;
-	}
-
-	result_mail_tbl_data->flags_seen_field           = (mail_status & fSEEN       ? 1 : 0);
-	result_mail_tbl_data->flags_deleted_field        = (mail_status & fDELETED    ? 1 : 0);
-	result_mail_tbl_data->flags_flagged_field        = (mail_status & fFLAGGED    ? 1 : 0);
-	result_mail_tbl_data->flags_answered_field       = (mail_status & fANSWERED   ? 1 : 0);
-	result_mail_tbl_data->flags_recent_field         = (mail_status & fOLD        ? 1 : 0);
-	result_mail_tbl_data->flags_draft_field          = (mail_status & fDRAFT      ? 1 : 0);
-	result_mail_tbl_data->flags_forwarded_field      = (mail_status & fFORWARD    ? 1 : 0);
-
-	ret = true;
-FINISH_OFF:
-	if (err_code != NULL)
-		*err_code = error_code;
-
-	EM_DEBUG_FUNC_END("ret [%d]", ret);
-	return ret;
-}
 
 INTERNAL_FUNC int em_convert_account_to_account_tbl(email_account_t *account, emstorage_account_tbl_t *account_tbl)
 {
@@ -339,12 +280,27 @@ INTERNAL_FUNC int em_convert_mail_tbl_to_mail_data(emstorage_mail_tbl_t *mail_ta
 		temp_mail_data[i].message_class           = mail_table_data[i].message_class;
 		temp_mail_data[i].digest_type             = mail_table_data[i].digest_type;
 		temp_mail_data[i].smime_type              = mail_table_data[i].smime_type;
+		temp_mail_data[i].scheduled_sending_time  = mail_table_data[i].scheduled_sending_time;
+		temp_mail_data[i].eas_data_length         = mail_table_data[i].eas_data_length;
+		if(mail_table_data[i].eas_data_length && mail_table_data[i].eas_data) {
+			if((temp_mail_data[i].eas_data = em_malloc(mail_table_data[i].eas_data_length)) == NULL) {
+				EM_DEBUG_EXCEPTION("em_malloc failed");
+				err_code = EMAIL_ERROR_OUT_OF_MEMORY;
+				goto FINISH_OFF;
+			}
+		}
+		memcpy(temp_mail_data[i].eas_data, mail_table_data[i].eas_data, mail_table_data[i].eas_data_length);
 	}
 
 	*mail_data = temp_mail_data;
 
 	ret = true;
 FINISH_OFF:
+
+	if(ret == false && temp_mail_data) {
+		emcore_free_mail_data_list(&temp_mail_data, item_count);
+	}
+
 
 	if(error)
 		*error = err_code;
@@ -421,6 +377,21 @@ INTERNAL_FUNC int   em_convert_mail_data_to_mail_tbl(email_mail_data_t *mail_dat
 		temp_mail_tbl[i].message_class           = mail_data[i].message_class;
 		temp_mail_tbl[i].digest_type             = mail_data[i].digest_type;
 		temp_mail_tbl[i].smime_type              = mail_data[i].smime_type;
+		temp_mail_tbl[i].scheduled_sending_time  = mail_data[i].scheduled_sending_time;
+		temp_mail_tbl[i].eas_data_length         = mail_data[i].eas_data_length;
+		if(mail_data[i].eas_data_length && mail_data[i].eas_data) {
+			if((temp_mail_tbl[i].eas_data = em_malloc(mail_data[i].eas_data_length)) == NULL) {
+				EM_DEBUG_EXCEPTION("em_malloc failed");
+				err_code = EMAIL_ERROR_OUT_OF_MEMORY;
+				/*prevent 44357*/
+				if (i > 0)
+					emstorage_free_mail(&temp_mail_tbl, i, NULL);
+				else 
+					EM_SAFE_FREE(temp_mail_tbl);
+				goto FINISH_OFF;
+			}
+		}
+		memcpy(temp_mail_tbl[i].eas_data, mail_data[i].eas_data, mail_data[i].eas_data_length);
 	}
 
 	*mail_table_data = temp_mail_tbl;
@@ -429,7 +400,7 @@ INTERNAL_FUNC int   em_convert_mail_data_to_mail_tbl(email_mail_data_t *mail_dat
 FINISH_OFF:
 
 	if(error)
-			*error = err_code;
+		*error = err_code;
 
 	EM_DEBUG_FUNC_END();
 	return ret;
@@ -694,17 +665,22 @@ INTERNAL_FUNC void em_convert_byte_stream_to_account(char *stream, int stream_le
 }
 
 #define EMAIL_MAIL_DATA_FMT  "S(" "iiiis" "iisss" "issss" "sssss" "sisss"\
-                            "icccc" "cccii" "iiiii" "iisii" "ii" ")"
+                            "icccc" "cccii" "iiiii" "iisii" "iiii)B"
 
 INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_data, int *stream_len)
 {
-	EM_DEBUG_FUNC_END();
+	EM_DEBUG_FUNC_BEGIN("mail_data[%p] stream_len[%p]", mail_data, stream_len);
 	EM_IF_NULL_RETURN_VALUE(mail_data, NULL);
 	EM_IF_NULL_RETURN_VALUE(stream_len, NULL);
 
 	tpl_node *tn = NULL;
+	tpl_bin tb;
 
-	tn = tpl_map(EMAIL_MAIL_DATA_FMT, mail_data);
+	EM_DEBUG_LOG("eas_data_length[%d]", mail_data->eas_data_length); /*prevent 44369*/
+
+	tn      = tpl_map(EMAIL_MAIL_DATA_FMT, mail_data, &tb);
+	tb.sz   = mail_data->eas_data_length;
+	tb.addr = mail_data->eas_data;
 	tpl_pack(tn, 0);
 
 	/* write account to buffer */
@@ -720,15 +696,32 @@ INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_
 
 INTERNAL_FUNC void em_convert_byte_stream_to_mail_data(char *stream, int stream_len, email_mail_data_t *mail_data)
 {
+	EM_DEBUG_FUNC_BEGIN("stream[%p] stream_len[%d] mail_data[%p]", stream, stream_len, mail_data);
 	EM_NULL_CHECK_FOR_VOID(stream);
 	EM_NULL_CHECK_FOR_VOID(mail_data);
 
 	tpl_node *tn = NULL;
+	tpl_bin tb;
 
-	tn = tpl_map(EMAIL_MAIL_DATA_FMT, mail_data);
+	tn = tpl_map(EMAIL_MAIL_DATA_FMT, mail_data, &tb);
+	if(!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return;
+	}
+
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
-	tpl_free(tn);
+
+	if(mail_data->eas_data_length <= 0 || tb.addr == NULL) {
+		EM_DEBUG_LOG("No eas data. eas_data_length[%d] addr[%p]", mail_data->eas_data_length, tb.addr);
+	}
+	else {
+		EM_DEBUG_LOG("eas_data_length[%d] addr[%p]", mail_data->eas_data_length, tb.addr);
+		mail_data->eas_data = tb.addr;
+	}
+
+	if(tn)
+		tpl_free(tn);
 
 	EM_DEBUG_FUNC_END();
 }

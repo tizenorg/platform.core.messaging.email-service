@@ -107,6 +107,8 @@ INTERNAL_FUNC int emdaemon_delete_account(int account_id, int* err_code);
  */
 INTERNAL_FUNC int emdaemon_validate_account(int account_id, int *handle, int* err_code);
 
+INTERNAL_FUNC int emdaemon_validate_account_ex(email_account_t* account, int *handle);
+
 /**
  * Change the information of a email account.
  *
@@ -237,6 +239,15 @@ INTERNAL_FUNC int emdaemon_delete_filter(int filter_id, int* err_code);
  */
 INTERNAL_FUNC int emdaemon_free_filter (email_rule_t** filtering_set, int count, int* err_code);
 
+/**
+ * Apply a filter information.
+ *
+ * @param[in] filter_id	Specifies the filter ID.
+ * @param[out] err_code		Specifies the error code returned.
+ * @remarks N/A
+ * @return This function returns true on success or false on failure.
+ */
+INTERNAL_FUNC int emdaemon_apply_filter(int filter_id, int* err_code);
 
 /*****************************************************************************/
 /*  Mail                                                                     */

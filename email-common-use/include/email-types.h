@@ -158,6 +158,7 @@ enum {
 	_EMAIL_API_BACKUP_ACCOUNTS                           = 0x0100000A,
 	_EMAIL_API_RESTORE_ACCOUNTS                          = 0x0100000B,
 	_EMAIL_API_GET_PASSWORD_LENGTH_OF_ACCOUNT            = 0x0100000C,
+	_EMAIL_API_VALIDATE_ACCOUNT_EX                       = 0x0100000D,
 
 	/* Mail */
 	_EMAIL_API_DELETE_MAIL                               = 0x01100002,
@@ -177,7 +178,6 @@ enum {
 	_EMAIL_API_UPDATE_MAIL                               = 0x01100018,
 	_EMAIL_API_ADD_READ_RECEIPT                          = 0x01100019,
 	_EMAIL_API_EXPUNGE_MAILS_DELETED_FLAGGED             = 0x0110001A,
-	_EMAIL_API_UPDATE_MAIL_ATTRIBUTE                     = 0x0110001B,
 
 	/* Thread */
 	_EMAIL_API_MOVE_THREAD_TO_MAILBOX                    = 0x01110000,
@@ -202,7 +202,7 @@ enum {
 	_EMAIL_API_DELETE_EMAIL                              = 0x01300007,
 	_EMAIL_API_DELETE_EMAIL_ALL                          = 0x01300008,
 	_EMAIL_API_GET_IMAP_MAILBOX_LIST                     = 0x01300015,
-	_EMAIL_API_SEND_MAIL_CANCEL_JOB                       = 0x01300017,
+	_EMAIL_API_SEND_MAIL_CANCEL_JOB                      = 0x01300017,
 	_EMAIL_API_SEARCH_MAIL_ON_SERVER                     = 0x01300019,
 	_EMAIL_API_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER     = 0x0130001A,
 
@@ -213,12 +213,13 @@ enum {
 	_EMAIL_API_FIND_RULE                                 = 0x01400003,
 	_EMAIL_API_DELETE_RULE                               = 0x01400004,
 	_EMAIL_API_UPDATE_RULE                               = 0x01400005,
-	_EMAIL_API_CANCEL_JOB                                = 0x01400006,
-	_EMAIL_API_GET_PENDING_JOB                           = 0x01400007,
-	_EMAIL_API_SEND_RETRY                                = 0x01400008,
-	_EMAIL_API_UPDATE_ACTIVITY                           = 0x01400009,
-	_EMAIL_API_SYNC_LOCAL_ACTIVITY                       = 0x0140000A,
-	_EMAIL_API_PRINT_RECEIVING_EVENT_QUEUE               = 0x0140000B,
+	_EMAIL_API_APPLY_RULE                                = 0x01400006,
+	_EMAIL_API_CANCEL_JOB                                = 0x01400007,
+	_EMAIL_API_GET_PENDING_JOB                           = 0x01400008,
+	_EMAIL_API_SEND_RETRY                                = 0x01400009,
+	_EMAIL_API_UPDATE_ACTIVITY                           = 0x0140000A,
+	_EMAIL_API_SYNC_LOCAL_ACTIVITY                       = 0x0140000B,
+	_EMAIL_API_PRINT_RECEIVING_EVENT_QUEUE               = 0x0140000C,
 
 	/* Etc */
 	_EMAIL_API_PING_SERVICE                              = 0x01500000,
@@ -355,6 +356,11 @@ typedef enum
 	NOTI_SYNC_IMAP_MAILBOX_LIST_FAIL,
 	NOTI_SYNC_IMAP_MAILBOX_LIST_CANCEL,
 
+	NOTI_DELETE_MAIL_START        = 12300,
+	NOTI_DELETE_MAIL_FINISH,
+	NOTI_DELETE_MAIL_FAIL,
+	NOTI_DELETE_MAIL_CANCEL,
+
 	/* To be added more */
 } email_noti_on_network_event;
 
@@ -442,6 +448,7 @@ typedef enum
 	EMAIL_MAIL_STATUS_SEND_FAILURE,                /**< The mail is a mail to been failed to send.*/
 	EMAIL_MAIL_STATUS_SEND_CANCELED,               /**< The mail is a canceled mail.*/
 	EMAIL_MAIL_STATUS_SEND_WAIT,                   /**< The mail is a mail to be send .*/
+	EMAIL_MAIL_STATUS_SEND_SCHEDULED,              /**< The mail is a scheduled mail to be send later.*/
 } email_mail_status_t;
 
 /**
@@ -474,8 +481,8 @@ typedef enum
 {
 	EMAIL_ATTACHMENT_DRM_NONE        = 0,          /**< The mail isn't DRM file.*/
 	EMAIL_ATTACHMENT_DRM_OBJECT,                   /**< The mail is a DRM object.*/
-	EMAIL_ATTACHMENT_DRM_RIGHTS,                   /**< The mail is a DRM rights as xml format.*/
-	EMAIL_ATTACHMENT_DRM_DCF,                      /**< The mail is a DRM dcf.*/
+	EMAIL_ATTACHMENT_DRM_RIGHTS,                   /**< The mail is a DRM rights as XML format.*/
+	EMAIL_ATTACHMENT_DRM_DCF,                      /**< The mail is a DRM DCF.*/
 } email_attachment_drm_t;
 
 /**
@@ -485,8 +492,8 @@ typedef enum
 {
 	EMAIL_MAIL_TYPE_NORMAL                     = 0, /**< NOT a meeting request mail. A Normal mail */
 	EMAIL_MAIL_TYPE_MEETING_REQUEST            = 1, /**< a meeting request mail from a serve */
-	EMAIL_MAIL_TYPE_MEETING_RESPONSE           = 2, /**< a response mail about meeting reques */
-	EMAIL_MAIL_TYPE_MEETING_ORIGINATINGREQUEST = 3  /**< a originating mail about meeting reques */
+	EMAIL_MAIL_TYPE_MEETING_RESPONSE           = 2, /**< a response mail about meeting request */
+	EMAIL_MAIL_TYPE_MEETING_ORIGINATINGREQUEST = 3  /**< a originating mail about meeting request */
 } email_mail_type_t;
 
 /**
@@ -499,7 +506,7 @@ typedef enum
 	EMAIL_MEETING_RESPONSE_TENTATIVE           = 2, /**< The response is tentative */
 	EMAIL_MEETING_RESPONSE_DECLINE             = 3, /**< The response is decline */
 	EMAIL_MEETING_RESPONSE_REQUEST             = 4, /**< The response is request */
-	EMAIL_MEETING_RESPONSE_CANCEL              = 5, /**< The response is cancelation */
+	EMAIL_MEETING_RESPONSE_CANCEL              = 5, /**< The response is cancellation */
 } email_meeting_response_t;
 
 typedef enum
@@ -520,6 +527,7 @@ typedef enum
 	EMAIL_ACTION_VALIDATE_ACCOUNT              = 13,
 	EMAIL_ACTION_VALIDATE_AND_CREATE_ACCOUNT   = 14,
 	EMAIL_ACTION_VALIDATE_AND_UPDATE_ACCOUNT   = 15,
+	EMAIL_ACTION_VALIDATE_ACCOUNT_EX           = 16,
 	EMAIL_ACTION_UPDATE_MAIL                   = 30,
 	EMAIL_ACTION_SET_MAIL_SLOT_SIZE            = 31,
 	EMAIL_ACTION_EXPUNGE_MAILS_DELETED_FLAGGED = 32,
@@ -731,7 +739,8 @@ typedef enum
 	EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT     = 19,
 	EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT     = 20,
 	EMAIL_EVENT_SEARCH_ON_SERVER                = 21,
-	EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER                    = 22,
+	EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER   = 22,
+	EMAIL_EVENT_VALIDATE_ACCOUNT_EX             = 23,
 
 	EMAIL_EVENT_ADD_MAIL                        = 10001,       /*  Deprecated */
 	EMAIL_EVENT_UPDATE_MAIL_OLD                 = 10002,       /*  Deprecated */
@@ -1053,8 +1062,19 @@ typedef enum {
 	EMAIL_MAIL_ATTRIBUTE_MESSAGE_CLASS           = 38,  /* integer type */
 	EMAIL_MAIL_ATTRIBUTE_DIGEST_TYPE             = 39,  /* integer type */
 	EMAIL_MAIL_ATTRIBUTE_SMIME_TYPE              = 40,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_SCHEDULED_SENDING_TIME  = 41,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_EAS_DATA_LENGTH_TYPE    = 42,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_EAS_DATA_TYPE           = 43,  /* binary type */
 	EMAIL_MAIL_ATTRIBUTE_END                         
 } email_mail_attribute_type;
+
+typedef enum {
+	EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_NONE         = 0,
+	EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_INTEGER      = 1,
+	EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_STRING       = 2,
+	EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_TIME         = 3,
+	EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_BINARY       = 4
+} email_mail_attribute_value_type;
 
 typedef enum {
 	EMAIL_ADD_MY_ADDRESS_OPTION_DO_NOT_ADD            = 0,
@@ -1311,6 +1331,9 @@ typedef struct
 	int                   message_class;           /**< Specifies the class of message for EAS. */ /* email_message_class */
 	email_digest_type     digest_type;             /**< Specifies the digest algorithm*/
 	email_smime_type      smime_type;              /**< Specifies the SMIME type. */
+	time_t                scheduled_sending_time;  /**< Specifies the scheduled sending time.*/
+	int                   eas_data_length;         /**< Specifies the length of eas_data. */
+	char                 *eas_data;                /**< Specifies the data for eas engine. */
 } email_mail_data_t;
 
 /**
@@ -1347,6 +1370,9 @@ typedef struct
 	email_mail_type_t     meeting_request_status;                             /**< Whether the mail is a meeting request or not */ /* email_mail_type_t */
 	int                   message_class;                                      /**< Specifies the message class */ /* email_message_class */
 	email_smime_type      smime_type;                                         /**< Specifies the smime type */ /* email_smime_type */
+	time_t                scheduled_sending_time;                             /**< Specifies the scheduled sending time.*/
+	int                   eas_data_length;                                    /**< Specifies the length of eas_data. */
+	char                 *eas_data;                                           /**< Specifies the data for eas engine. */
 } email_mail_list_item_t;
 
 /**
@@ -1567,6 +1593,8 @@ typedef struct {
 	email_list_filter_sort_order_t         sort_order;
 } email_list_sorting_rule_t;
 
+
+
 /*****************************************************************************/
 /*  For Active Sync                                                          */
 /*****************************************************************************/
@@ -1597,6 +1625,7 @@ typedef enum
 	ACTIVE_SYNC_NOTI_CANCEL_SENDING_MAIL,                         /*  a notification to cancel a sending mail */
 	ACTIVE_SYNC_NOTI_DELETE_MAILBOX_EX,                           /*  a notification to delete multiple mailboxes */
 	ACTIVE_SYNC_NOTI_SEND_MAIL_WITH_DOWNLOADING_OF_ORIGINAL_MAIL, /*  a notification to send a mail with downloading attachment of original mail */
+	ACTIVE_SYNC_NOTI_SCHEDULE_SENDING_MAIL,                       /*  a notification to schedule a mail to send later*/
 }	eactivesync_noti_t;
 
 typedef union
@@ -1674,6 +1703,7 @@ typedef union
 	struct _expunge_mails_deleted_flagged
 	{
 		int                    handle;
+		int                    account_id;
 		int                    mailbox_id;
 		int                    on_server;
 	} expunge_mails_deleted_flagged;
@@ -1718,6 +1748,8 @@ typedef union
 
 	struct _cancel_sending_mail
 	{
+		int                     handle;
+		int                     account_id;
 		int                     mail_id;
 	} cancel_sending_mail;
 
@@ -1733,8 +1765,17 @@ typedef union
 	struct _send_mail_with_downloading_attachment_of_original_mail
 	{
 		int                     handle;
+		int                     account_id;
 		int                     mail_id;
 	} send_mail_with_downloading_attachment_of_original_mail;
+
+	struct _schedule_sending_mail
+	{
+		int                     handle;
+		int                     account_id;
+		int                     mail_id;
+		time_t                  scheduled_time;
+	} schedule_sending_mail;
 } ASNotiData;
 
 /*  types for noti string */
@@ -1746,6 +1787,7 @@ typedef enum
 /* Tasks */
 typedef enum {
 	/* Sync tasks */
+	EMAIL_SYNC_TASK_BOUNDARY_START                                          = 11000,
 	/* Sync tasks for account - from 11000 */
 	EMAIL_SYNC_TASK_ADD_ACCOUNT                                             = 11010,
 	EMAIL_SYNC_TASK_DELETE_ACCOUNT                                          = 11020,
@@ -1765,17 +1807,19 @@ typedef enum {
 	EMAIL_SYNC_TASK_SET_LOCAL_MAILBOX                                       = 12060,
 
 	/* Sync tasks for mail - from 13000 */
-	EMAIL_SYNC_GET_ATTACHMENT                                               = 13010,
-	EMAIL_SYNC_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER                        = 13020,
+	EMAIL_SYNC_TASK_GET_ATTACHMENT                                          = 13010,
+	EMAIL_SYNC_TASK_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER                   = 13020,
+	EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL                                   = 13030,
+	EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE                                        = 13040,
 
 	/* Sync tasks for mail thread - from 14000 */
 
 	/* Sync tasks for rule - from 15000 */
 
 	/* Sync tasks for etc - from 16000 */
-
+	EMAIL_SYNC_TASK_BOUNDARY_END                                            = 59999,
 	/* Async tasks */
-	EMAIL_ASYNC_TASK_BOUNDARY                                               = 60000,
+	EMAIL_ASYNC_TASK_BOUNDARY_START                                         = 60000,
 	/* Async tasks for account - from 61000 */
 	EMAIL_ASYNC_TASK_VALIDATE_ACCOUNT                                       = 61010,
 	EMAIL_ASYNC_TASK_ADD_ACCOUNT_WITH_VALIDATION                            = 61020,
@@ -1821,7 +1865,7 @@ typedef enum {
 	/* Async tasks for rule - from 65000 */
 
 	/* Async tasks for etc - from 66000 */
-
+	EMAIL_ASYNC_TASK_BOUNDARY_END                                           = 99999,
 } email_task_type_t;
 
 typedef enum
@@ -1833,6 +1877,7 @@ typedef enum
 	EMAIL_TASK_STATUS_FINISHED                 = 4,
 	EMAIL_TASK_STATUS_FAILED                   = 5,
 	EMAIL_TASK_STATUS_CANCELED                 = 6,
+	EMAIL_TASK_STATUS_SCHEDULED                = 7,
 } email_task_status_type_t;
 
 typedef enum

@@ -55,6 +55,11 @@ EXPORT_API int email_add_account(email_account_t* account)
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
+	if(emstorage_check_duplicated_account(account, true, &err) == false) {
+		EM_DEBUG_EXCEPTION("emstorage_check_duplicated_account failed (%d) ", err);
+		return err;
+	}
+
 	/* composing account information to be added */
 	hAPI = emipc_create_email_api(_EMAIL_API_ADD_ACCOUNT);
 	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
@@ -421,6 +426,47 @@ EXPORT_API int email_validate_account(int account_id, int *handle)
 
 }
 
+EXPORT_API int email_validate_account_ex(email_account_t* account, int *handle)
+{
+	EM_DEBUG_FUNC_BEGIN("account[%p]", account);
+	char* local_account_stream = NULL;
+	int ret = -1;
+	int size = 0;
+	int err = EMAIL_ERROR_NONE;
+
+	EM_IF_NULL_RETURN_VALUE(account, false);
+
+	/* create account information */
+	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_VALIDATE_ACCOUNT_EX);
+	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
+
+	local_account_stream = em_convert_account_to_byte_stream(account, &size);
+	EM_PROXY_IF_NULL_RETURN_VALUE(local_account_stream, hAPI, EMAIL_ERROR_NULL_VALUE);
+	if(!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, local_account_stream, size)) {
+		EM_DEBUG_EXCEPTION(" emipc_add_parameter  failed ");
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
+	}
+
+	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION(" emipc_execute_proxy_api failed ");
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
+	}
+
+	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &ret);
+	if(ret == EMAIL_ERROR_NONE) {
+		if(handle)
+			emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), handle);
+	} else {
+		/*  get error code */
+		emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), &err);
+	}
+
+	emipc_destroy_email_api(hAPI);
+	hAPI = NULL;
+
+	EM_DEBUG_FUNC_END("err[%d]", err);
+	return err;
+}
 
 EXPORT_API int email_add_account_with_validation(email_account_t* account, int *handle)
 {

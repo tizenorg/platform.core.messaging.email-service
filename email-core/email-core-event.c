@@ -280,6 +280,13 @@ INTERNAL_FUNC int emcore_get_pending_event(email_action_t action, int account_id
 				}
 				break;
 
+			case EMAIL_EVENT_VALIDATE_ACCOUNT_EX:
+				if (action == EMAIL_ACTION_VALIDATE_ACCOUNT_EX && account_id == 0) {
+					found = true;
+					goto EXIT;
+				}
+				break;
+
 			case EMAIL_EVENT_UPDATE_MAIL:
 				if (action == EMAIL_ACTION_UPDATE_MAIL)  {
 					found = true;
@@ -409,6 +416,10 @@ static void waiting_status_notify(email_event_t *event_data, int queue_idx)
 			emcore_execute_event_callback(EMAIL_ACTION_VALIDATE_AND_CREATE_ACCOUNT, 0, 0, EMAIL_VALIDATE_ACCOUNT_WAITING, account_id, 0, queue_idx, EMAIL_ERROR_NONE);
 			break;
 
+		case EMAIL_EVENT_VALIDATE_ACCOUNT_EX:
+			emcore_execute_event_callback(EMAIL_ACTION_VALIDATE_ACCOUNT_EX, 0, 0, EMAIL_VALIDATE_ACCOUNT_WAITING, account_id, 0, queue_idx, EMAIL_ERROR_NONE);
+			break;
+
 		case EMAIL_EVENT_MOVE_MAIL:
 			emcore_execute_event_callback(EMAIL_ACTION_MOVE_MAIL, 0, 0, EMAIL_LIST_WAITING, account_id, 0, queue_idx, EMAIL_ERROR_NONE);
 			break;
@@ -496,6 +507,11 @@ static void fail_status_notify(email_event_t *event_data, int error)
 		case EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT:
 			emcore_execute_event_callback(EMAIL_ACTION_VALIDATE_AND_CREATE_ACCOUNT, 0, 0, EMAIL_VALIDATE_ACCOUNT_FAIL, account_id, 0, -1, error);
 			emcore_show_user_message(account_id, EMAIL_ACTION_VALIDATE_AND_CREATE_ACCOUNT, error);
+			break;
+
+		case EMAIL_EVENT_VALIDATE_ACCOUNT_EX:
+			emcore_execute_event_callback(EMAIL_ACTION_VALIDATE_ACCOUNT_EX, 0, 0, EMAIL_VALIDATE_ACCOUNT_FAIL, account_id, 0, -1, error);
+			emcore_show_user_message(account_id, EMAIL_ACTION_VALIDATE_ACCOUNT_EX, error);
 			break;
 
 		case EMAIL_EVENT_CREATE_MAILBOX:
@@ -739,6 +755,7 @@ INTERNAL_FUNC int emcore_insert_event(email_event_t *event_data, int *handle, in
 			case EMAIL_EVENT_SYNC_IMAP_MAILBOX:
 			case EMAIL_EVENT_VALIDATE_ACCOUNT:
 			case EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT:
+			case EMAIL_EVENT_VALIDATE_ACCOUNT_EX:
 			case EMAIL_EVENT_SAVE_MAIL:
 			case EMAIL_EVENT_MOVE_MAIL:
 			case EMAIL_EVENT_DELETE_MAIL:
@@ -1019,7 +1036,7 @@ void* thread_func_branch_command_for_sending_mails(void *arg)
 				case EMAIL_EVENT_SEND_MAIL:
 					emdevice_set_dimming_on_off(false, NULL);
 
-					if (!emcore_send_mail(event_data.account_id, event_data.event_param_data_5, event_data.event_param_data_4, &err))
+					if (!emcore_send_mail(event_data.event_param_data_4, &err))
 						EM_DEBUG_EXCEPTION("emcore_send_mail failed [%d]", err);
 
 					emdevice_set_dimming_on_off(true, NULL);
@@ -1132,7 +1149,7 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 	int unread = 0, total_unread = 0;
 	emcore_uid_list *uid_list = NULL;
 	emstorage_account_tbl_t *account_tbl_array = NULL;
-	emstorage_mailbox_tbl_t *mailbox_tbl_target = NULL, *mailbox_tbl_spam = NULL, *mailbox_tbl_list = NULL;
+	emstorage_mailbox_tbl_t *mailbox_tbl_target = NULL, *mailbox_tbl_list = NULL;
 #ifndef __FEATURE_KEEP_CONNECTION__
 	MAILSTREAM *stream = NULL;
 #endif
@@ -1167,11 +1184,7 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 			if ((err = emcore_update_sync_status_of_account(input_account_id, SET_TYPE_SET, SYNC_STATUS_SYNCING)) != EMAIL_ERROR_NONE)
 				EM_DEBUG_EXCEPTION("emcore_update_sync_status_of_account failed [%d]", err);
 
-			if (!emstorage_get_mailbox_by_mailbox_type(input_account_id, EMAIL_MAILBOX_TYPE_SPAMBOX, &mailbox_tbl_spam, false, &err)) {
-				EM_DEBUG_LOG("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
-			}
-
-			if (!emcore_sync_header(mailbox_tbl_target, mailbox_tbl_spam, NULL, &uid_list, &unread, &err)) {
+			if (!emcore_sync_header(mailbox_tbl_target, NULL, &uid_list, &unread, &err)) {
 				EM_DEBUG_EXCEPTION("emcore_sync_header failed [%d]", err);
 				if (!emcore_notify_network_event(NOTI_DOWNLOAD_FAIL, mailbox_tbl_target->account_id, mailbox_id_param_string, handle_to_be_published, err))
 					EM_DEBUG_EXCEPTION(" emcore_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed >>>> ");
@@ -1237,17 +1250,6 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 
 				EM_DEBUG_LOG("emcore_get_mailbox_list_to_be_sync returns [%d] mailboxes", mailbox_count);
 
-				if(mailbox_tbl_spam) {
-					if (!emstorage_free_mailbox(&mailbox_tbl_spam, 1, &err)) {
-						EM_DEBUG_EXCEPTION("emstorage_free_mailbox failed [%d]", err);
-					}
-					mailbox_tbl_spam = NULL;
-				}
-
-				if (!emstorage_get_mailbox_by_mailbox_type(account_tbl_array[account_index].account_id, EMAIL_MAILBOX_TYPE_SPAMBOX, &mailbox_tbl_spam, false, &err)) {
-					EM_DEBUG_LOG("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
-				}
-
 				if (mailbox_count > 0) {
 #ifndef __FEATURE_KEEP_CONNECTION__
 					if (account_tbl_array[account_index].incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
@@ -1280,9 +1282,9 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 					else if (!mailbox_tbl_list[counter].local_yn) {
 						EM_DEBUG_LOG("[%s] Syncing...", mailbox_tbl_list[counter].mailbox_name);
 #ifdef __FEATURE_KEEP_CONNECTION__
-						if (!emcore_sync_header((mailbox_tbl_list + counter) , mailbox_tbl_spam, NULL, &uid_list, &unread, &err)) {
+						if (!emcore_sync_header((mailbox_tbl_list + counter) , NULL, &uid_list, &unread, &err)) {
 #else /*  __FEATURE_KEEP_CONNECTION__ */
-						if (!emcore_sync_header((mailbox_tbl_list + counter) , mailbox_tbl_spam, (void *)stream, &uid_list, &unread, &err)) {
+						if (!emcore_sync_header((mailbox_tbl_list + counter) , (void *)stream, &uid_list, &unread, &err)) {
 #endif /*  __FEATURE_KEEP_CONNECTION__ */
 							EM_DEBUG_EXCEPTION("emcore_sync_header for %s(mailbox_id = %d) failed [%d]", mailbox_tbl_list[counter].mailbox_name, mailbox_tbl_list[counter].mailbox_id, err);
 
@@ -1421,6 +1423,62 @@ FINISH_OFF:
 
 	EM_DEBUG_FUNC_END();
 	return ret;
+}
+
+int event_handler_EMAIL_EVENT_VALIDATE_ACCOUNT_EX(email_account_t *input_account, int input_handle_to_be_published)
+{
+	EM_DEBUG_FUNC_BEGIN("input_account [%p]", input_account);
+	int err = EMAIL_ERROR_NONE;
+
+	if(!input_account) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	EM_DEBUG_LOG("incoming_server_address [%s]", input_account->incoming_server_address);
+
+	if (!emnetwork_check_network_status(&err)) {
+		emcore_delete_account_from_unvalidated_account_list(input_account->account_id);
+		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
+		if (!emcore_notify_network_event(NOTI_VALIDATE_AND_CREATE_ACCOUNT_FAIL, input_account->account_id, NULL, input_handle_to_be_published, err))
+			EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FAIL] Failed >>>> ");
+		goto FINISH_OFF;
+	}
+	else {
+		EM_DEBUG_LOG("incoming_server_address : %s", input_account->incoming_server_address);
+
+		if (!emcore_validate_account_with_account_info(input_account, &err)) {
+			emcore_delete_account_from_unvalidated_account_list(input_account->account_id);
+
+			EM_DEBUG_EXCEPTION("emcore_validate_account_with_account_info failed err :  %d", err);
+
+			if (err == EMAIL_ERROR_CANCELLED) {
+				EM_DEBUG_EXCEPTION(" notify  :  NOTI_VALIDATE_ACCOUNT_CANCEL ");
+				if (!emcore_notify_network_event(NOTI_VALIDATE_ACCOUNT_CANCEL, input_account->account_id, NULL, input_handle_to_be_published, err))
+					EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_CANCEL] Failed");
+				goto FINISH_OFF;
+			}
+			else
+				goto FINISH_OFF;
+		}
+		else {
+			emcore_delete_account_from_unvalidated_account_list(input_account->account_id);
+
+			EM_DEBUG_LOG("validating an account are succeeded for account id  [%d]  err [%d]", input_account->account_id, err);
+			if (!emcore_notify_network_event(NOTI_VALIDATE_ACCOUNT_FINISH, input_account->account_id, NULL, input_handle_to_be_published, err))
+				EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FINISH] Success");
+		}
+	}
+
+FINISH_OFF:
+	if (err != EMAIL_ERROR_NONE && err != EMAIL_ERROR_CANCELLED && input_account) {
+		if (!emcore_notify_network_event(NOTI_VALIDATE_ACCOUNT_FAIL, input_account->account_id, NULL, input_handle_to_be_published, err))
+			EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_FAIL] Failed");
+	}
+
+	EM_DEBUG_FUNC_END("err[%d]", err);
+	return err;
 }
 
 int event_handler_EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT(int account_id, email_account_t *new_account_info, int handle_to_be_published, int *error)
@@ -1878,16 +1936,16 @@ FINISH_OFF:
 	return ret;
 }
 
-int event_handler_EMAIL_EVENT_DELETE_MAILBOX(int mailbox_id, int on_server, int handle_to_be_published, int *error)
+int event_handler_EMAIL_EVENT_DELETE_MAILBOX(int mailbox_id, int on_server, int recursive, int handle_to_be_published, int *error)
 {
-	EM_DEBUG_FUNC_BEGIN("mailbox_id [%d], on_server [%d], handle_to_be_published [%d], error [%p]",  mailbox_id, on_server, handle_to_be_published, error);
+	EM_DEBUG_FUNC_BEGIN("mailbox_id[%d] on_server[%d] recursive[%d] handle_to_be_published[%d] error[%p]",  mailbox_id, on_server, recursive, handle_to_be_published, error);
 	int err = EMAIL_ERROR_NONE;
 
 	if (!emnetwork_check_network_status(&err))
 		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
 	else  {
-		if (!emcore_delete_mailbox(mailbox_id, on_server, &err))
-			EM_DEBUG_LOG("emcore_delete failed - %d", err);
+		if (( err = emcore_delete_mailbox(mailbox_id, on_server, recursive)) != EMAIL_ERROR_NONE)
+			EM_DEBUG_EXCEPTION("emcore_delete failed [%d]", err);
 	}
 
 	if (error)
@@ -2366,7 +2424,7 @@ void* thread_func_branch_command(void *arg)
 						break;
 
 					case EMAIL_EVENT_DELETE_MAILBOX:
-						event_handler_EMAIL_EVENT_DELETE_MAILBOX(event_data.event_param_data_4, event_data.event_param_data_4, handle_to_be_published, &err);
+						event_handler_EMAIL_EVENT_DELETE_MAILBOX(event_data.event_param_data_4, event_data.event_param_data_5, event_data.event_param_data_6,handle_to_be_published, &err);
 						break;
 
 					case EMAIL_EVENT_SAVE_MAIL:
@@ -2383,9 +2441,18 @@ void* thread_func_branch_command(void *arg)
 						break;
 
 					case EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT: {
-/*						event_handler_EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT(emcore_get_account_from_unvalidated_account_list(), handle_to_be_published, &err);*/
 							email_account_t *account = (email_account_t *)event_data.event_param_data_1;
 							event_handler_EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT(account, handle_to_be_published, &err);
+							if(account) {
+								emcore_free_account(account);
+								EM_SAFE_FREE(account);
+							}
+						}
+						break;
+
+					case EMAIL_EVENT_VALIDATE_ACCOUNT_EX: {
+							email_account_t *account = (email_account_t *)event_data.event_param_data_1;
+							err = event_handler_EMAIL_EVENT_VALIDATE_ACCOUNT_EX(account, handle_to_be_published);
 							if(account) {
 								emcore_free_account(account);
 								EM_SAFE_FREE(account);

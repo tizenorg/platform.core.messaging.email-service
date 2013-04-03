@@ -45,7 +45,7 @@ extern "C"
 
 /* ----------------------------------------------------------------------------- */
 /*  Feature definitions */
-/*#define __FEATURE_USING_ACCOUNT_SVC__*/
+#define __FEATURE_USING_ACCOUNT_SVC_FOR_SYNC_STATUS__
 #define __FEATURE_BACKUP_ACCOUNT__
 #define __FEATURE_MOVE_TO_OUTBOX_FIRST__
 /*  #define __FEATURE_PARTIAL_BODY_FOR_POP3__ */
@@ -66,9 +66,14 @@ extern "C"
 #define __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__
 #define __FEATURE_SUPPORT_VALIDATION_SYSTEM__
 #define __FEATURE_PROGRESS_IN_OUTBOX__
+#define __FEATURE_OMA_EMN__
 /*  #define __FEATURE_USE_SHARED_MUTEX_FOR_PROTECTED_FUNC_CALL__ */
 /*  #define __FEATURE_IMAP_IDLE__ */
+#define __FEATURE_DRIVING_MODE__
+/* #define __FEATURE_DELETE_MAILBOX_RECURSIVELY__ */
+/* #define __FEATURE_RENAME_MAILBOX_RECURSIVELY__ */
 
+/*#define __FEATURE_BODY_SEARCH__*/
 
 /* ----------------------------------------------------------------------------- */
 /*  Macro */
@@ -76,7 +81,7 @@ extern "C"
 #define NULL (char *)0
 #endif
 
-#define SESSION_MAX	                        5
+#define SESSION_MAX	                        10
 #define	IMAP_2004_LOG                       1
 #define TEXT_SIZE                           161 
 #define MAILBOX_COUNT                       6
@@ -120,6 +125,7 @@ extern "C"
 #define SHM_FILE_FOR_DB_LOCK                "/.email_shm_db_lock"
 
 #define NATIVE_EMAIL_APPLICATION_PKG        "com.samsung.email"
+#define NATIVE_EMAIL_DOMAIN                 "email"
 
 #define IMAP_ID_OS                          "TIZEN"
 #define IMAP_ID_OS_VERSION                  "2.0b"
@@ -198,8 +204,8 @@ typedef pthread_t thread_t;
 #define VCONF_KEY_DEFAULT_ACCOUNT_ID    "db/private/email-service/default_account_id"
 #define VCONF_KEY_NOTI_PRIVATE_ID       "db/private/email-service/noti_private_id"
 
-#define OUTMODE "wb"
-#define INMODE "rb"
+#define OUTMODE  "wb"
+#define INMODE   "rb"
 #define READMODE "r"
 
 #define TYPEPKCS7_SIGN 10	
@@ -207,6 +213,10 @@ typedef pthread_t thread_t;
 
 #define INLINE_ATTACHMENT    1
 #define ATTACHMENT           2
+
+#define EMAIL_ALARM_CLASS_SCHEDULED_SENDING   1
+#define EMAIL_ALARM_CLASS_NEW_MAIL_ALERT      2
+#define EMAIL_ALARM_CLASS_AUTO_POLLING        3
 
 /* __FEATURE_LOCAL_ACTIVITY__ supported
 #define BULK_OPERATION_COUNT              50
@@ -365,6 +375,7 @@ typedef struct {
 	email_task_type_t  task_type;
 	thread_t           thread_id;
 } email_active_task_t;
+
 
 typedef void (*email_event_callback)(int total, int done, int status, int account_id, int mail_id, int handle, void *user_data, int error);
 

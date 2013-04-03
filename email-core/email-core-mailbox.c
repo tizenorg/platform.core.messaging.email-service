@@ -204,20 +204,6 @@ INTERNAL_FUNC int emcore_get_mailbox_list(int account_id, email_mailbox_t **mail
 		
 		for (i = 0; i < count; i++)  {
 			em_convert_mailbox_tbl_to_mailbox(local_mailbox_list + i, (*mailbox_list) + i);
-			/*
-			(*mailbox_list)[i].mailbox_id = local_mailbox_list[i].mailbox_id;
-			(*mailbox_list)[i].account_id = account_id;
-			(*mailbox_list)[i].mailbox_name = local_mailbox_list[i].mailbox_name; local_mailbox_list[i].mailbox_name = NULL;
-			(*mailbox_list)[i].alias = local_mailbox_list[i].alias; local_mailbox_list[i].alias = NULL;
-			(*mailbox_list)[i].local = local_mailbox_list[i].local_yn;		
-			(*mailbox_list)[i].mailbox_type = local_mailbox_list[i].mailbox_type;	
-			(*mailbox_list)[i].unread_count = local_mailbox_list[i].unread_count;
-			(*mailbox_list)[i].total_mail_count_on_local = local_mailbox_list[i].total_mail_count_on_local;
-			(*mailbox_list)[i].total_mail_count_on_server = local_mailbox_list[i].total_mail_count_on_server;
-			(*mailbox_list)[i].mail_slot_size = local_mailbox_list[i].mail_slot_size;
-			(*mailbox_list)[i].no_select = local_mailbox_list[i].no_select;
-			(*mailbox_list)[i].last_sync_time = local_mailbox_list[i].last_sync_time;
-			*/
 		}
 	}
 	else
@@ -288,18 +274,6 @@ int emcore_get_mailbox_list_to_be_sync(int account_id, email_mailbox_t **mailbox
 		
 		for (i = 0; i < count; i++)  {
 			em_convert_mailbox_tbl_to_mailbox(mailbox_tbl_list + i, tmp_mailbox_list + i);
-			/*
-			tmp_mailbox_list[i].mailbox_id = mailbox_tbl_list[i].mailbox_id;
-			tmp_mailbox_list[i].account_id = account_id;
-			tmp_mailbox_list[i].mailbox_name = mailbox_tbl_list[i].mailbox_name; mailbox_tbl_list[i].mailbox_name = NULL;
-			tmp_mailbox_list[i].mailbox_type = mailbox_tbl_list[i].mailbox_type; 
-			tmp_mailbox_list[i].alias = mailbox_tbl_list[i].alias; mailbox_tbl_list[i].alias = NULL;
-			tmp_mailbox_list[i].local = mailbox_tbl_list[i].local_yn;
-			tmp_mailbox_list[i].unread_count = mailbox_tbl_list[i].unread_count;
-			tmp_mailbox_list[i].total_mail_count_on_local = mailbox_tbl_list[i].total_mail_count_on_local;
-			tmp_mailbox_list[i].total_mail_count_on_server = mailbox_tbl_list[i].total_mail_count_on_server;
-			tmp_mailbox_list[i].mail_slot_size = mailbox_tbl_list[i].mail_slot_size;
-			*/
 		}
 	}
 	else
@@ -338,7 +312,7 @@ INTERNAL_FUNC int emcore_get_mail_count(email_mailbox_t *mailbox, int *total, in
 		goto FINISH_OFF;
 	}
 	
-	if (!emstorage_get_mail_count(mailbox->account_id, mailbox->mailbox_name, total, unseen, true, &err))  {
+	if (!emstorage_get_mail_count(mailbox->account_id, mailbox->mailbox_id, total, unseen, true, &err))  {
 		EM_DEBUG_EXCEPTION(" emstorage_get_mail_count failed - %d", err);
 
 		goto FINISH_OFF;
@@ -415,60 +389,84 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emcore_delete_mailbox(int input_mailbox_id, int on_server, int *err_code)
+INTERNAL_FUNC int emcore_delete_mailbox(int input_mailbox_id, int input_on_server, int input_recursive)
 {
-	EM_DEBUG_FUNC_BEGIN("input_mailbox_id[%d], err_code[%p]", input_mailbox_id, err_code);
+	EM_DEBUG_FUNC_BEGIN("input_mailbox_id[%d] input_on_server[%d] input_recursive[%d]", input_mailbox_id, input_on_server, input_recursive);
 	
-	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	emstorage_mailbox_tbl_t *mailbox_tbl = NULL;
-	
-	if (input_mailbox_id == 0)  {
-		EM_DEBUG_EXCEPTION(" input_mailbox_id == 0");
+	int i = 0;
+	int mailbox_count = 0;
+	emstorage_mailbox_tbl_t *target_mailbox = NULL;
+	emstorage_mailbox_tbl_t *target_mailbox_array = NULL;
+
+	if (input_mailbox_id <= 0)  {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 	
-	if ((err = emstorage_get_mailbox_by_id(input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE || !mailbox_tbl) {
+	if ((err = emstorage_get_mailbox_by_id(input_mailbox_id, &target_mailbox)) != EMAIL_ERROR_NONE || !target_mailbox) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed. [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	if (on_server) {
-		EM_DEBUG_LOG("Delete the mailbox in Sever >>> ");
-		if  (!emcore_delete_imap_mailbox(input_mailbox_id, &err))
-			EM_DEBUG_EXCEPTION("Delete the mailbox in server : failed [%d]", err);
-		else
-			EM_DEBUG_LOG("Delete the mailbox in server : success");
+#ifdef __FEATURE_DELETE_MAILBOX_RECURSIVELY__
+	if(input_recursive) {
+		/* Getting children mailbox list */
+		if(!emstorage_get_child_mailbox_list(target_mailbox->account_id, target_mailbox->mailbox_name, &mailbox_count, &target_mailbox_array, false,&err)) {
+			EM_DEBUG_EXCEPTION("emstorage_get_child_mailbox_list failed. [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		if (target_mailbox)
+			emstorage_free_mailbox(&target_mailbox, 1, NULL);
+		target_mailbox = NULL;
+	}
+	else
+#endif /* __FEATURE_DELETE_MAILBOX_RECURSIVELY__ */
+	{
+		target_mailbox_array = target_mailbox;
+		mailbox_count        = 1;
+		target_mailbox       = NULL;
 	}
 
-	if (!emcore_delete_all_mails_of_mailbox(mailbox_tbl->account_id, input_mailbox_id, false, &err))  {
-		EM_DEBUG_EXCEPTION("emcore_delete_all_mails_of_mailbox failed [%d]", err);
-		goto FINISH_OFF;
+	/* Remove mailboxes */
+	for(i = 0; i < mailbox_count ; i++) {
+		EM_DEBUG_LOG("Deleting mailbox_id [%d]", target_mailbox_array[i].mailbox_id);
+		if (input_on_server) {
+			EM_DEBUG_LOG("Delete the mailbox in Sever >>> ");
+			if  (!emcore_delete_imap_mailbox(target_mailbox_array[i].mailbox_id, &err))
+				EM_DEBUG_EXCEPTION("Delete the mailbox in server : failed [%d]", err);
+			else
+				EM_DEBUG_LOG("Delete the mailbox in server : success");
+		}
+
+		if (!emcore_delete_all_mails_of_mailbox(target_mailbox_array[i].account_id, target_mailbox_array[i].mailbox_id, false, &err))  {
+			EM_DEBUG_EXCEPTION("emcore_delete_all_mails_of_mailbox failed [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		if (!emstorage_delete_mailbox(target_mailbox_array[i].account_id, -1, target_mailbox_array[i].mailbox_id, true, &err))  {
+			EM_DEBUG_EXCEPTION("emstorage_delete_mailbox failed [%d]", err);
+			goto FINISH_OFF;
+		}
 	}
 
-	if (!emstorage_delete_mailbox(mailbox_tbl->account_id, -1, input_mailbox_id, true, &err))  {
-		EM_DEBUG_EXCEPTION(" emstorage_delete_mailbox failed - %d", err);
-
-		goto FINISH_OFF;
-	}
-	
-	ret = true;
-	
 FINISH_OFF:
-	if (mailbox_tbl)
-		emstorage_free_mailbox(&mailbox_tbl, 1, NULL);
+	if (target_mailbox)
+		emstorage_free_mailbox(&target_mailbox, 1, NULL);
 
-	if (err_code != NULL)
-		*err_code = err;
+	if (target_mailbox_array)
+		emstorage_free_mailbox(&target_mailbox_array, mailbox_count, NULL);
+
 	EM_DEBUG_FUNC_END("err[%d]", err);
-	return ret;
+	return err;
 }
 
 
-INTERNAL_FUNC int emcore_delete_mailbox_ex(int input_account_id, int *input_mailbox_id_array, int input_mailbox_id_count, int input_on_server)
+INTERNAL_FUNC int emcore_delete_mailbox_ex(int input_account_id, int *input_mailbox_id_array, int input_mailbox_id_count, int input_on_server, int input_recursive)
 {
-	EM_DEBUG_FUNC_BEGIN("input_account_id [%d] input_mailbox_id_array[%p] input_mailbox_id_count[%d] input_on_server[%d]", input_mailbox_id_array, input_mailbox_id_array, input_mailbox_id_count, input_on_server);
+	EM_DEBUG_FUNC_BEGIN("input_account_id [%d] input_mailbox_id_array[%p] input_mailbox_id_count[%d] input_on_server[%d] input_recursive[%d]", input_mailbox_id_array, input_mailbox_id_array, input_mailbox_id_count, input_on_server, input_recursive);
 	int err = EMAIL_ERROR_NONE;
 	int i = 0;
 
@@ -484,7 +482,7 @@ INTERNAL_FUNC int emcore_delete_mailbox_ex(int input_account_id, int *input_mail
 	}
 
 	for(i = 0; i < input_mailbox_id_count; i++) {
-		if(!emcore_delete_mailbox(input_mailbox_id_array[i] , input_on_server, &err)) {
+		if((err = emcore_delete_mailbox(input_mailbox_id_array[i] , input_on_server, input_recursive)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_delete_mailbox failed [%d]", err);
 			goto FINISH_OFF;
 		}

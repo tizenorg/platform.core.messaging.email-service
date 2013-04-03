@@ -28,17 +28,17 @@
 #include "email-core-utils.h"
 #include "email-core-mailbox.h"
 #include "email-core-sound.h"
+#include "email-core-alarm.h"
 #include "email-utilities.h"
 
 #define TIMER 30000   // 30 seconds
 #define HAPTIC_TEST_ITERATION 1
+#define EMAIL_ALARM_REFERENCE_ID_FOR_ALERT_TONE -1
 
 static MMHandleType email_mmhandle = 0;
-static alarm_id_t email_alarm_id = 0;
 static int setting_noti_status = 0;
 
 static char *filename;
-alarm_entry_t *alarm_info = NULL;
 
 static pthread_mutex_t sound_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t sound_condition = PTHREAD_COND_INITIALIZER;
@@ -74,20 +74,6 @@ int emcore_alert_sound_init()
 	return ret;
 }
 
-int emcore_alert_alarm_init()
-{
-	EM_DEBUG_FUNC_BEGIN();
-
-	int ret = ALARMMGR_RESULT_SUCCESS;
-	
-	ret = alarmmgr_init("email-service-0");
-	if (ret != ALARMMGR_RESULT_SUCCESS) 
-		EM_DEBUG_EXCEPTION("alarmmgr_init failed : [%d]", ret);
-
-	EM_DEBUG_FUNC_END();
-	return ret;
-}
-
 int emcore_alert_sound_filepath_init()
 {
 	filename = (char  *)em_malloc(MAX_PATH);
@@ -108,13 +94,12 @@ int emcore_alert_sound_filepath_init()
 void emcore_global_noti_key_changed_cb(keynode_t *key_node, void *data)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int ret = 0;
+	int err = EMAIL_ERROR_NONE;
 
 	switch (vconf_keynode_get_type(key_node)) {
 	case VCONF_TYPE_INT:
-		ret = alarmmgr_remove_alarm(email_alarm_id);
-		if (ret != ALARMMGR_RESULT_SUCCESS) {
-			EM_DEBUG_EXCEPTION("delete of alarm id failed");
+		if ((err = emcore_delete_alram_data_by_reference_id(EMAIL_ALARM_CLASS_NEW_MAIL_ALERT, EMAIL_ALARM_REFERENCE_ID_FOR_ALERT_TONE)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_delete_alram_data_by_reference_id failed [%d]", err);
 		}
 		emcore_set_repetition_alarm(vconf_keynode_get_int(key_node));
 		break;
@@ -132,14 +117,14 @@ void emcore_global_noti_key_changed_cb(keynode_t *key_node, void *data)
 void emcore_email_noti_key_changed_cb(keynode_t *key_node, void *data)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int ret = 0;
+	int err = EMAIL_ERROR_NONE;
 
 	switch (vconf_keynode_get_type(key_node)) {
 	case VCONF_TYPE_INT:
-		ret = alarmmgr_remove_alarm(email_alarm_id);
-		if (ret != ALARMMGR_RESULT_SUCCESS) {
-			EM_DEBUG_EXCEPTION("delete of alarm id failed");
+		if ((err = emcore_delete_alram_data_by_reference_id(EMAIL_ALARM_CLASS_NEW_MAIL_ALERT, EMAIL_ALARM_REFERENCE_ID_FOR_ALERT_TONE)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_delete_alram_data_by_reference_id failed [%d]", err);
 		}
+
 		emcore_set_repetition_alarm(vconf_keynode_get_int(key_node));
 		break;
 	case VCONF_TYPE_STRING:
@@ -254,11 +239,6 @@ int emcore_alert_init()
 		return false;
 	}
 
-	if ((err = emcore_alert_alarm_init()) != ALARMMGR_RESULT_SUCCESS) {
-		EM_DEBUG_EXCEPTION("emcore_alert_alarm_init failed : [%d]", err);
-		return false;		
-	}
-
 	if (!emcore_noti_init(NULL)) {
 		EM_DEBUG_EXCEPTION("emcore_noti_init failed");
 		return false;		
@@ -305,7 +285,7 @@ bool emcore_sound_mp_player_create()
 	
 	if (email_mmhandle) {
 		EM_DEBUG_LOG("already create the handle");
-		return false;
+		return true;
 	}
 
 	if ((err = mm_player_create(&email_mmhandle)) != MM_ERROR_NONE) {
@@ -316,46 +296,10 @@ bool emcore_sound_mp_player_create()
 	return true;
 }
 
-bool emcore_alarm_create() 
-{	
-	EM_DEBUG_FUNC_BEGIN();
-
-	alarm_info = alarmmgr_create_alarm();
-
-	if (alarm_info == NULL) {
-		EM_DEBUG_EXCEPTION("alarm create failed");
-		return false;
-	}		
-
-	EM_DEBUG_FUNC_END();
-	return true;
-}
-
-bool emcore_alarm_destory()
-{
-	EM_DEBUG_FUNC_BEGIN();
-
-	int ret;
-	ret = alarmmgr_free_alarm(alarm_info);
-
-	if (ret != ALARMMGR_RESULT_SUCCESS) {
-		EM_DEBUG_EXCEPTION("alarm free failed");
-		return false;
-	}		
-
-	EM_DEBUG_FUNC_END();
-	return true;
-}
-
 bool emcore_alert_create()
 {
 	EM_DEBUG_FUNC_BEGIN();
 
-	/* Create the alarm handle */
-	if (!emcore_alarm_create()) {
-		EM_DEBUG_EXCEPTION("emcore_alarm_create failed.");
-		return false;
-	}
 #if 0	
 	/* Set the music file in alert */
 	if (!emcore_set_mp_filepath(VCONFKEY_SETAPPL_NOTI_EMAIL_RINGTONE_PATH_STR)) {
@@ -371,23 +315,12 @@ bool emcore_alert_create()
 bool emcore_alert_destory()
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int ret = 0;
 
 	/* Destroy the music player handle */
 	if (!emcore_sound_mp_player_destory()) {
 		EM_DEBUG_EXCEPTION("emcore_sound_mp_player_destory fail");
 		return false;
 	}			
-
-	/* Destroy the alarm handle */
-	ret = alarmmgr_free_alarm(alarm_info);
-	if (ret != ALARMMGR_RESULT_SUCCESS) {
-		EM_DEBUG_EXCEPTION("alarmmgr_free_alarm fail");
-		return false;
-	}			
-	
-	/* Set the music file in alert */
-	EM_SAFE_FREE(filename);
 	
 	EM_DEBUG_FUNC_END();
 	return true;
@@ -458,16 +391,6 @@ int emcore_sound_mp_player_start(char *filepath)
 
 	int err = MM_ERROR_NONE;
 
-/*	
-	int volume = -1;
-
-
-	if ((err = vconf_get_int(VCONFKEY_SETAPPL_NOTI_SOUND_VOLUME_INT, &volume)) == -1)
-	{
-		EM_DEBUG_LOG("vconf_get_int failed \n");
-		return err;
-	}
-*/
 	mm_player_set_message_callback(email_mmhandle, emcore_mp_player_state_cb, (void  *)email_mmhandle);
 
 	EM_DEBUG_LOG("Before mm_player_set_attribute filepath = %s", filepath);
@@ -650,7 +573,7 @@ INTERNAL_FUNC int emcore_start_thread_for_alerting_new_mails(int *err_code)
 	return 0;
 }
 
-int emcore_alarm_timeout_cb(int timer_id, void *user_parm)
+int emcore_alarm_timeout_cb_for_alert(int timer_id, void *user_parm)
 {
 	EM_DEBUG_FUNC_BEGIN();
 
@@ -679,54 +602,28 @@ int emcore_alarm_timeout_cb(int timer_id, void *user_parm)
 	return true;
 }
 
-bool set_alarm(int repetition_time)
+/* repetition_time in minutes */
+static int emcore_set_alarm_for_alert(int alert_time_in_minute)
 {
 	EM_DEBUG_FUNC_BEGIN();
 
-	int ret = 0;
-	alarm_date_t alarm_date;
+	int err = EMAIL_ERROR_NONE;
 	time_t current_time;
-	struct tm current_tm;
+	time_t trigger_at_time;
 
 	time(&current_time);
-	localtime_r(&current_time, &current_tm);
-	
-	alarm_date.year = 0;
-	alarm_date.month = 0;
-	alarm_date.day = 0;
 
-	EM_DEBUG_LOG("Current time : [%d]-[%d]-[%d]", current_tm.tm_hour, current_tm.tm_min, current_tm.tm_sec);
-	
-	if (current_tm.tm_min + repetition_time < 60) {
-		alarm_date.hour = current_tm.tm_hour;
-		alarm_date.min = current_tm.tm_min + repetition_time;
-	} else {
-		if (current_tm.tm_hour < 12) {
-			alarm_date.hour = current_tm.tm_hour + 1;
-		} else {
-			alarm_date.hour = (current_tm.tm_hour + 1) % 12;
-		}
+	trigger_at_time = current_time + (alert_time_in_minute * 60);
 
-		alarm_date.min = (current_tm.tm_min + repetition_time) % 60;
+	if ((err = emcore_add_alarm(trigger_at_time, EMAIL_ALARM_CLASS_NEW_MAIL_ALERT, EMAIL_ALARM_REFERENCE_ID_FOR_ALERT_TONE, emcore_alarm_timeout_cb_for_alert, NULL)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_add_alarm failed [%d]", err);
+		goto FINISH_OFF;
 	}
 
-	alarm_date.sec = current_tm.tm_sec;
-	
-	alarmmgr_set_time(alarm_info, alarm_date);
-	alarmmgr_set_repeat_mode(alarm_info, ALARM_REPEAT_MODE_ONCE, 0);
-	alarmmgr_set_type(alarm_info, ALARM_TYPE_VOLATILE);
-	alarmmgr_add_alarm_with_localtime(alarm_info, NULL, &email_alarm_id);
+FINISH_OFF:
 
-	ret = alarmmgr_set_cb(emcore_alarm_timeout_cb, NULL);
-
-	if (ret != ALARMMGR_RESULT_SUCCESS) {
-		EM_DEBUG_EXCEPTION("Failed : alarmmgr_set_cb() -> error[%d]", ret);
-		return false;
-	}
-
-	EM_DEBUG_LOG("Alarm time : [%d]-[%d]-[%d]-[%d]-[%d]-[%d]", alarm_date.year, alarm_date.month, alarm_date.day, alarm_date.hour, alarm_date.min, alarm_date.sec);
-	EM_DEBUG_FUNC_END();
-	return true;
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
 }
 
 void emcore_set_repetition_alarm(int repetition)
@@ -756,7 +653,7 @@ void emcore_set_repetition_alarm(int repetition)
 	EM_DEBUG_LOG("repetition time is %d", repetition_time);
 
 	if (repetition_time > 0) {
-		set_alarm(repetition_time);
+		emcore_set_alarm_for_alert(repetition_time);
 	} 
 
 	EM_DEBUG_FUNC_END();
@@ -817,7 +714,6 @@ void *start_alert_thread(void *arg)
 		}
 		LEAVE_CRITICAL_SECTION(sound_mutex);
 		EM_DEBUG_LOG("Start FINISH");
-		emcore_alarm_destory();
 	}
 
 	EM_DEBUG_FUNC_END();
@@ -827,6 +723,11 @@ void *start_alert_thread(void *arg)
 INTERNAL_FUNC void emcore_start_alert()
 {
 	EM_DEBUG_FUNC_BEGIN("setting_noti_status : [%d]", setting_noti_status);
+
+#ifdef __FEATURE_BLOCKING_MODE__
+	if (emcore_get_blocking_mode_status())
+		return;
+#endif /* __FEATURE_BLOCKING_MODE__ */
 
 	if (setting_noti_status == SETTING_NOTI_STATUS_OFF)
 		return;

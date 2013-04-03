@@ -39,6 +39,7 @@
 #include "email-core-event.h"
 #include "email-core-mailbox.h"
 #include "email-core-utils.h"
+#include "email-core-alarm.h"
 #include "email-debug-log.h"
 
 extern void *
@@ -85,6 +86,8 @@ INTERNAL_FUNC int emcore_init(int *err_code)
 	mail_parameters(NIL, SET_READTIMEOUT  , (void *)180);
 	mail_parameters(NIL, SET_WRITETIMEOUT , (void *)180);
 	mail_parameters(NIL, SET_CLOSETIMEOUT , (void *)30);
+
+	emcore_init_alarm_data_list();
 
 	if (err_code)
 		*err_code = EMAIL_ERROR_NONE;

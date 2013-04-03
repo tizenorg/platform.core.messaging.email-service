@@ -46,7 +46,7 @@ EXPORT_API int email_get_rule(int filter_id, email_rule_t** filtering_set)
 	EM_IF_NULL_RETURN_VALUE(filtering_set, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(filter_id, EMAIL_ERROR_INVALID_PARAM);
 
-	if (!emstorage_get_rule_by_id(0, filter_id, (emstorage_rule_tbl_t**)filtering_set, true, &err))  {
+	if (!emstorage_get_rule_by_id(filter_id, (emstorage_rule_tbl_t**)filtering_set, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_rule_by_id failed [%d]", err);
 
 		goto FINISH_OFF;
@@ -112,16 +112,18 @@ EXPORT_API int email_add_rule(email_rule_t* filtering_set)
 		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api Failed");
 		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
 	}
-		
-	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);	
+	
+	/* get reult form service */
+	err = *((int*)emipc_get_nth_parameter_data(hAPI, ePARAMETER_OUT, 0));
+	if (err == EMAIL_ERROR_NONE) {
+		filtering_set->filter_id = *((int*)emipc_get_nth_parameter_data(hAPI, ePARAMETER_OUT, 1));
+	}	
 
 	emipc_destroy_email_api(hAPI);
 	hAPI = NULL;
 	EM_DEBUG_FUNC_END("error value [%d]", err);
 	return err;
 }
-
-
 
 EXPORT_API int email_update_rule(int filter_id, email_rule_t* new_set)
 {
@@ -224,4 +226,32 @@ EXPORT_API int email_free_rule (email_rule_t** filtering_set, int count)
 	return err;
 }
 
+EXPORT_API int email_apply_rule(int filter_id)
+{
+	EM_DEBUG_FUNC_BEGIN("filter_id[%d]", filter_id);
+	
+	int err = EMAIL_ERROR_NONE;
+		
+	EM_IF_NULL_RETURN_VALUE(filter_id, EMAIL_ERROR_INVALID_PARAM);
+			
+	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_APPLY_RULE);
+	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
+	
+	/* filter_id */
+	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)&filter_id, sizeof(int))) {
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
+	}
+		
+	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
+	}
+	
+	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+	emipc_destroy_email_api(hAPI);
 
+	hAPI = NULL;
+	EM_DEBUG_FUNC_END("error value [%d]", err);
+	return err;
+}

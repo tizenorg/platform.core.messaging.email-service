@@ -367,6 +367,7 @@ INTERNAL_FUNC int emdaemon_delete_mailbox(int input_mailbox_id, int on_server, i
 	/*  default variable */
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
+	int recursive = 1;
 	emstorage_mailbox_tbl_t *mailbox_tbl = NULL;
 	email_account_t* ref_account = NULL;
 
@@ -396,19 +397,22 @@ INTERNAL_FUNC int emdaemon_delete_mailbox(int input_mailbox_id, int on_server, i
 	/*  on_server is allowed to be only 0 when server_type is EMAIL_SERVER_TYPE_ACTIVE_SYNC */
 	if ( ref_account->incoming_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC ) {
 		on_server = 0;
+		recursive = 0;
 	}
+
 	if ( on_server ) {	/*  async */
 		event_data.type = EMAIL_EVENT_DELETE_MAILBOX;
 		event_data.account_id = mailbox_tbl->account_id;
 		event_data.event_param_data_4 = input_mailbox_id;
 		event_data.event_param_data_5 = on_server;
+		event_data.event_param_data_6 = recursive;
 		if(!emcore_insert_event(&event_data, (int*)handle, &err))    {
 			EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", err);
 			goto FINISH_OFF;
 		}
 	}
 	else {
-		if (!emcore_delete_mailbox(input_mailbox_id, on_server,  &err))  {
+		if (!emcore_delete_mailbox(input_mailbox_id, on_server, recursive))  {
 			EM_DEBUG_EXCEPTION("emcore_delete failed [%d]", err);
 			goto FINISH_OFF;
 		}

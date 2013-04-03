@@ -129,6 +129,9 @@ EXPORT_API bool emipc_free_api_info(emipc_email_api_info *api_info);
 			case _EMAIL_API_DELETE_RULE:\
 					s = "_EMAIL_API_DELETE_RULE";\
 					break;\
+			case _EMAIL_API_APPLY_RULE:\
+					s = "_EMAIL_API_APPLY_RULE";\
+					break;\
 			case _EMAIL_API_MOVE_MAIL:\
 					s = "_EMAIL_API_MOVE_MAIL";\
 					break;\

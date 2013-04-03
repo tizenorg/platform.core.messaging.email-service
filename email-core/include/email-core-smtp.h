@@ -42,11 +42,13 @@ extern "C"
 #include "c-client.h"
 #include "email-internal-types.h"
 
-INTERNAL_FUNC int emcore_send_mail(int account_id, int input_mailbox_id, int mail_id, int *err_code);
+INTERNAL_FUNC int emcore_send_mail(int mail_id, int *err_code);
 
 INTERNAL_FUNC int emcore_send_saved_mail(int account_id, char *mailbox, int *err_code);
 
 INTERNAL_FUNC int emcore_send_mail_with_downloading_attachment_of_original_mail(int input_mail_id);
+
+INTERNAL_FUNC int emcore_schedule_sending_mail(int input_mail_id, time_t input_time_to_send);
 
 INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_mail_tbl_data, emstorage_attachment_tbl_t *input_attachment_tbl_t, int input_attachment_count, ENVELOPE **env, char **file_path, email_option_t *sending_option, int *err_code);
 

@@ -112,7 +112,7 @@
  *			//success
  *		else
  *			//failure
- * 		//Get pending job listfor an account
+ * 		//Get pending job list for an account
  *
  *		printf( " Enter Action \n SEND_MAIL = 0 \n SYNC_HEADER = 1 \n" \
  *			    " DOWNLOAD_BODY,= 2 \n DOWNLOAD_ATTACHMENT = 3 \n" \
@@ -165,7 +165,6 @@ extern "C" {
 #endif /* __cplusplus */
 
 /**
-
  * @fn email_send_mail(int mail_id,	int *handle)
  * @brief	Send a mail.This function is invoked when user wants to send a composed mail.
  *
@@ -180,9 +179,10 @@ EXPORT_API int email_send_mail(int mail_id,	int *handle);
 
 EXPORT_API int email_send_mail_with_downloading_attachment_of_original_mail(int input_mail_id, int *output_handle);
 
+EXPORT_API int email_schedule_sending_mail(int input_mail_id, time_t input_time);
+
 
 /**
-
  * @fn email_sync_header(int input_account_id, int input_mailbox_id, int *handle)
  * @brief	Download header of new emails from mail server.This function is invoked when user wants to download only header of new mails.
  *
@@ -198,7 +198,6 @@ EXPORT_API int email_sync_header(int input_account_id, int input_mailbox_id, int
 
 
 /**
-
  * @fn email_sync_header_for_all_account(int *handle)
  * @brief	Download header of new emails from mail server for all emails.This function is invoked when user wants to download header of new mails for all accounts.
  *

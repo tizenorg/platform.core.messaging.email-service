@@ -56,6 +56,7 @@
 #include "email-storage.h"   
 #include "email-core-sound.h" 
 #include "email-core-task-manager.h"
+#include "email-daemon-emn.h"
 
 extern int g_client_count ;
 
@@ -76,6 +77,8 @@ static int _emdaemon_load_email_core()
 	if (emcore_start_event_loop_for_sending_mails(&err) < 0)
 		goto FINISH_OFF;
 
+	emcore_init_task_handler_array();
+
 	/* Disabled task manager
 	if ((err = emcore_start_task_manager_loop()) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_start_task_manager_loop failed [%d]",err);
@@ -89,6 +92,11 @@ static int _emdaemon_load_email_core()
 		goto FINISH_OFF;
 	}
 #endif
+
+#ifdef __FEATURE_BLOCKING_MODE__
+	emcore_init_blocking_mode_status();
+#endif /* __FEATURE_BLOCKING_MODE__ */
+
 	if (emcore_start_thread_for_alerting_new_mails(&err) < 0)
 		goto FINISH_OFF;
 
@@ -236,7 +244,7 @@ static void callback_for_NETWORK_STATUS(keynode_t *input_node, void *input_user_
 			goto FINISH_OFF;
 		}
 
-		if (!emstorage_get_mail_count(account_info->account_id, local_mailbox->mailbox_name, &total, &unseen, false, &err)) {
+		if (!emstorage_get_mail_count(account_info->account_id, local_mailbox->mailbox_id, &total, &unseen, false, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_get_mail_count failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -265,6 +273,25 @@ FINISH_OFF:
 
 	EM_DEBUG_FUNC_END("Error : [%d]", err);
 }
+
+#ifdef __FEATURE_BLOCKING_MODE__
+INTERNAL_FUNC void callback_for_BLOCKING_MODE_STATUS(keynode_t *input_node, void *input_user_data)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int blocking_mode_of_setting = 0;
+
+	if (!input_node) {
+		EM_DEBUG_EXCEPTION("Invalid param");
+		return;
+	}
+	
+	blocking_mode_of_setting = vconf_keynode_get_bool(input_node);
+
+	emcore_set_blocking_mode_of_setting(blocking_mode_of_setting);
+
+	EM_DEBUG_FUNC_END();
+}
+#endif /* __FEATURE_BLOCKING_MODE__ */
 
 INTERNAL_FUNC int emdaemon_initialize(int* err_code)
 {
@@ -315,11 +342,17 @@ INTERNAL_FUNC int emdaemon_initialize(int* err_code)
 		goto FINISH_OFF;
 	}
 
+#ifdef __FEATURE_OMA_EMN__
+	emdaemon_initialize_emn();
+#endif
+
 	/* Subscribe Events */
 	vconf_notify_key_changed(VCONFKEY_ACCOUNT_SYNC_ALL_STATUS_INT,  callback_for_SYNC_ALL_STATUS_from_account_svc,  NULL);
 	vconf_notify_key_changed(VCONFKEY_ACCOUNT_AUTO_SYNC_STATUS_INT, callback_for_AUTO_SYNC_STATUS_from_account_svc, NULL);
 	vconf_notify_key_changed(VCONFKEY_NETWORK_STATUS, callback_for_NETWORK_STATUS, NULL);
-
+#ifdef __FEATURE_BLOCKING_MODE__
+	vconf_notify_key_changed(VCONFKEY_NETWORK_STATUS, callback_for_BLOCKING_MODE_STATUS, NULL);
+#endif
 	emcore_display_unread_in_badge();
 	
 	ret = true;
@@ -365,10 +398,6 @@ INTERNAL_FUNC int emdaemon_finalize(int* err_code)
 	}
 	
 	g_client_count = 0;
-	
-#ifdef __FEATURE_AUTO_POLLING__
-	emdaemon_free_account_alarm_binder_list();
-#endif
 
 	ret = true;
 	

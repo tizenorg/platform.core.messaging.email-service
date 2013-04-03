@@ -69,9 +69,6 @@ INTERNAL_FUNC int   em_convert_time_t_to_string(time_t *input_time, char **outpu
 INTERNAL_FUNC char* em_convert_meeting_req_to_byte_stream(email_meeting_request_t* meeting_req, int* nStreamSize);
 INTERNAL_FUNC void  em_convert_byte_stream_to_meeting_req(char* stream, int stream_len, email_meeting_request_t* meeting_req);
 
-INTERNAL_FUNC int   em_convert_mail_status_to_mail_tbl(int mail_status, emstorage_mail_tbl_t *result_mail_tbl_data, int* err_code);
-INTERNAL_FUNC int   em_convert_mail_tbl_to_mail_status(emstorage_mail_tbl_t *mail_tbl_data, int *result_mail_status, int* err_code);
-
 /* Search filter options */
 INTERNAL_FUNC char* em_convert_search_filter_to_byte_stream(email_search_filter_t *input_search_filter_list, int input_search_filter_count, int *output_stream_size);
 INTERNAL_FUNC void  em_convert_byte_stream_to_search_filter(char *input_stream, email_search_filter_t **output_search_filter_list, int *output_search_filter_count);

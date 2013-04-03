@@ -56,13 +56,29 @@
 #define S3G_SMTP_USE_SECURITY	      1
 #define S3G_KEEP_ON_SERVER		      1
 
-gboolean testapp_test_create_account_by_account_type(int account_type,int *account_id) 
+gboolean  testapp_create_account_object(email_account_t **result_account)
 {
 	email_account_t *account = NULL;
 	char id_string[100] = { 0, }, password_string[100] = { 0, }, address_string[100]  = { 0, };
-	int err_code = EMAIL_ERROR_NONE, samsung3g_account_index;
+	int samsung3g_account_index;
 	int result_from_scanf = 0;
-	int handle;
+	int account_type;
+
+	testapp_print("1. Gawab\n");
+	testapp_print("2. Vodafone\n");
+	testapp_print("4. SAMSUNG 3G TEST (POP)\n");
+	testapp_print("5. SAMSUNG 3G TEST (IMAP)\n");
+	testapp_print("6. Gmail (POP3)\n");
+	testapp_print("7. Gmail (IMAP4)\n");
+	testapp_print("8. Active Sync (dummy)\n");
+	testapp_print("9. AOL\n");
+	testapp_print("10. Hotmail\n");
+	testapp_print("11. Daum (IMAP4)\n");
+	testapp_print("12. Daum (POP3)\n");
+	testapp_print("13. Yahoo (IMAP ID)\n");
+	testapp_print("Choose server type: ");
+
+	result_from_scanf = scanf("%d",&account_type);
 
 	switch(account_type) {
 		case 4 : 
@@ -72,7 +88,7 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 				result_from_scanf = scanf("%d",&samsung3g_account_index);
 			}while( samsung3g_account_index > 10 || samsung3g_account_index < 1);
 			sprintf(id_string, "test%02d", samsung3g_account_index);
-			sprintf(address_string, "<test%02d@streaming.s3glab.net>", samsung3g_account_index);
+			sprintf(address_string, "test%02d@streaming.s3glab.net", samsung3g_account_index);
 			strcpy(password_string, id_string);
 			break;
 		default:
@@ -100,56 +116,56 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 	int data_length = sizeof(data);
 
 	/* Common Options */
-	account->retrieval_mode                = EMAIL_IMAP4_RETRIEVAL_MODE_ALL;
-	account->incoming_server_secure_connection	= 1;
-	account->outgoing_server_type          = EMAIL_SERVER_TYPE_SMTP;
-	account->auto_download_size			   = 2;
-	account->outgoing_server_use_same_authenticator = 1;
-	account->pop_before_smtp               = 0;
-	account->incoming_server_requires_apop = 0;
-	account->logo_icon_path                = NULL;
-	account->user_data                     = malloc (data_length);
+	account->retrieval_mode                          = EMAIL_IMAP4_RETRIEVAL_MODE_ALL;
+	account->incoming_server_secure_connection	     = 1;
+	account->outgoing_server_type                    = EMAIL_SERVER_TYPE_SMTP;
+	account->auto_download_size			             = 2;
+	account->outgoing_server_use_same_authenticator  = 1;
+	account->pop_before_smtp                         = 0;
+	account->incoming_server_requires_apop           = 0;
+	account->logo_icon_path                          = NULL;
+	account->user_data                               = malloc (data_length);
 	memcpy( account->user_data, (void*) &data, data_length );
-	account->user_data_length              = data_length;
-	account->options.priority              = 3;
-	account->options.keep_local_copy       = 1;
-	account->options.req_delivery_receipt  = 0;
-	account->options.req_read_receipt      = 0;
-	account->options.download_limit        = 0;
-	account->options.block_address         = 0;
-	account->options.block_subject         = 0;
-	account->options.display_name_from     = NULL;
-	account->options.reply_with_body       = 0;
-	account->options.forward_with_files    = 0;
-	account->options.add_myname_card       = 0;
-	account->options.add_signature         = 0;
-	account->options.signature             = NULL;
-	account->options.add_my_address_to_bcc = 0;
-	account->check_interval                = 0;
-	account->keep_mails_on_pop_server_after_download	= 1;
-	account->default_mail_slot_size        = 200;
+	account->user_data_length                        = data_length;
+	account->options.priority                        = 3;
+	account->options.keep_local_copy                 = 1;
+	account->options.req_delivery_receipt            = 0;
+	account->options.req_read_receipt                = 0;
+	account->options.download_limit                  = 0;
+	account->options.block_address                   = 0;
+	account->options.block_subject                   = 0;
+	account->options.display_name_from               = NULL;
+	account->options.reply_with_body                 = 0;
+	account->options.forward_with_files              = 0;
+	account->options.add_myname_card                 = 0;
+	account->options.add_signature                   = 0;
+	account->options.signature                       = NULL;
+	account->options.add_my_address_to_bcc           = 0;
+	account->check_interval                          = 0;
+	account->keep_mails_on_pop_server_after_download = 1;
+	account->default_mail_slot_size                  = 200;
 
-	account->account_name                  = strdup(address_string);
-	account->user_display_name             = strdup(id_string);
-	account->user_email_address            = strdup(address_string);
-	account->reply_to_address              = strdup(address_string);
-	account->return_address                = strdup(address_string);
+	account->account_name                            = strdup(address_string);
+	account->user_display_name                       = strdup(id_string);
+	account->user_email_address                      = strdup(address_string);
+	account->reply_to_address                        = strdup(address_string);
+	account->return_address                          = strdup(address_string);
 
-	account->incoming_server_user_name     = strdup(id_string);
-	account->incoming_server_password      = strdup(password_string);
-	account->outgoing_server_user_name     = strdup(id_string);
-	account->outgoing_server_password	   = strdup(password_string);
+	account->incoming_server_user_name               = strdup(id_string);
+	account->incoming_server_password                = strdup(password_string);
+	account->outgoing_server_user_name               = strdup(id_string);
+	account->outgoing_server_password	             = strdup(password_string);
 
 	switch (account_type) {
 		case 1:/*  gawab */
-			account->incoming_server_type  		 = EMAIL_SERVER_TYPE_POP3 ;
-			account->incoming_server_address	 = strdup(GWB_RECV_SERVER_ADDR);
-			account->incoming_server_port_number = EMAIL_POP3S_PORT;
-			account->outgoing_server_address     = strdup(GWB_SMTP_SERVER_ADDR);
-			account->incoming_server_secure_connection	= 1;
+			account->incoming_server_type  		         = EMAIL_SERVER_TYPE_POP3 ;
+			account->incoming_server_address	         = strdup(GWB_RECV_SERVER_ADDR);
+			account->incoming_server_port_number         = EMAIL_POP3S_PORT;
+			account->outgoing_server_address             = strdup(GWB_SMTP_SERVER_ADDR);
+			account->incoming_server_secure_connection	 = 1;
 			account->outgoing_server_need_authentication = 1;
-			account->outgoing_server_port_number = EMAIL_SMTPS_PORT;
-			account->outgoing_server_secure_connection       = 1;
+			account->outgoing_server_port_number         = EMAIL_SMTPS_PORT;
+			account->outgoing_server_secure_connection   = 1;
 
 			break;
 
@@ -168,7 +184,7 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 			account->incoming_server_port_number = S3G_RECV_SERVER_PORT;
 			account->outgoing_server_address     = strdup(S3G_SMTP_SERVER_ADDR);
 			account->outgoing_server_port_number = S3G_SMTP_SERVER_PORT;
- 			account->incoming_server_secure_connection	= S3G_RECV_USE_SECURITY;
+			account->incoming_server_secure_connection	= S3G_RECV_USE_SECURITY;
 			account->outgoing_server_secure_connection  = S3G_SMTP_USE_SECURITY;
 			account->outgoing_server_need_authentication = S3G_SMTP_AUTH;
 			break;
@@ -179,7 +195,7 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 			account->incoming_server_port_number = EMAIL_IMAPS_PORT;
 			account->outgoing_server_address     = strdup(S3G_SMTP_SERVER_ADDR);
 			account->outgoing_server_port_number = S3G_SMTP_SERVER_PORT;
- 			account->incoming_server_secure_connection	= 1;
+			account->incoming_server_secure_connection	= 1;
 			account->outgoing_server_secure_connection  = S3G_SMTP_USE_SECURITY;
 			account->outgoing_server_need_authentication = S3G_SMTP_AUTH;
 			break;
@@ -246,7 +262,7 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 			account->incoming_server_secure_connection	= 1;
 			account->outgoing_server_address    = strdup("smtp.daum.net");
 			account->outgoing_server_port_number = 465;
-            account->outgoing_server_secure_connection = 1;
+			account->outgoing_server_secure_connection = 1;
 			account->outgoing_server_need_authentication = 1;
 			break;
 
@@ -257,7 +273,7 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 			account->incoming_server_secure_connection	= 1;
 			account->outgoing_server_address    = strdup("smtp.daum.net");
 			account->outgoing_server_port_number = 465;
-            account->outgoing_server_secure_connection = 1;
+			account->outgoing_server_secure_connection = 1;
 			account->outgoing_server_need_authentication = 1;
 			break;
 
@@ -278,50 +294,36 @@ gboolean testapp_test_create_account_by_account_type(int account_type,int *accou
 			break;
 	}
 	account->account_svc_id = 77;
-	err_code = email_add_account_with_validation(account, &handle);
-	if( err_code < 0) {
-		testapp_print ("   email_add_account_with_validation error : %d\n",err_code);
-		err_code = email_free_account(&account, 1);
-		return FALSE;
-	}
 
-	testapp_print ("   email_add_account succeed\n");
+	if(result_account)
+		*result_account = account;
 
-	if(account_id)
-		*account_id = account->account_id;
-
-	err_code = email_free_account(&account, 1);
 	return TRUE;
-
 }
 
-static gboolean testapp_test_create_account() 
+static gboolean testapp_test_add_account_with_validation()
 {
-	int account_type = 0 ;
 	int err = EMAIL_ERROR_NONE;
-	int result_from_scanf = 0;
-	
-	testapp_print("1. Gawab\n");
-	testapp_print("2. Vodafone\n");
-	testapp_print("4. SAMSUNG 3G TEST (POP)\n");
-	testapp_print("5. SAMSUNG 3G TEST (IMAP)\n");
-	testapp_print("6. Gmail (POP3)\n");
-	testapp_print("7. Gmail (IMAP4)\n");
-	testapp_print("8. Active Sync (dummy)\n");
-	testapp_print("9. AOL\n");
-	testapp_print("10. Hotmail\n");
-	testapp_print("11. Daum (IMAP4)\n");
-	testapp_print("12. Daum (POP3)\n");
-	testapp_print("13. Yahoo (IMAP ID)\n");
-	testapp_print("Choose server type: ");
-	
-	result_from_scanf = scanf("%d",&account_type);
+	email_account_t *account = NULL;
+	int handle;
 
-	if(!testapp_test_create_account_by_account_type(account_type,&err)) {
-		testapp_print ("   testapp_test_create_account_by_account_type error\n");
+	if(!testapp_create_account_object(&account)) {
+		testapp_print ("testapp_test_create_account_by_account_type error\n");
 		return FALSE;
 	}
-	return FALSE;
+
+	err = email_add_account_with_validation(account, &handle);
+	if( err < 0) {
+		testapp_print ("email_add_account_with_validation error : %d\n", err);
+		err = email_free_account(&account, 1);
+		return FALSE;
+	}
+
+	testapp_print ("email_add_account succeed. account_id\n", account->account_id);
+
+	err = email_free_account(&account, 1);
+
+	return TRUE;
 }
 
 static gboolean testapp_test_update_account()
@@ -433,27 +435,22 @@ static gboolean testapp_test_delete_account ()
 
 static gboolean testapp_test_validate_account ()
 {
-	int result_from_scanf = 0;
-	int account_id;
-	email_account_t *account=NULL;
+	email_account_t *account = NULL;
 	int err_code = EMAIL_ERROR_NONE;
 	int handle = 0;
 	
-	testapp_print("\n>> Enter Account No: ");
-	result_from_scanf = scanf("%d",&account_id);
-
-/* sowmya.kr, 281209 Adding signature to options in email_account_t changes */
-	if( (err_code = email_get_account(account_id, WITHOUT_OPTION,&account)) < 0 ) {
-		testapp_print ("email_get_account failed \n");
+	if(!testapp_create_account_object(&account)) {
+		testapp_print ("testapp_create_account_object error\n");
 		return FALSE;
 	}
-	else
-		testapp_print ("email_get_account result account_name - %s \n", account->account_name);
 
-	if((err_code = email_validate_account(account_id, &handle)) == EMAIL_ERROR_NONE )
-		testapp_print ("email_validate_account successful  handle : %u\n",handle);
+	if((err_code = email_validate_account_ex(account, &handle)) == EMAIL_ERROR_NONE )
+		testapp_print ("email_validate_account_ex successful handle : %u\n",handle);
 	else
-		testapp_print ("email_validate_account failed err_code: %d \n",err_code);
+		testapp_print ("email_validate_account_ex failed err_code : %d \n",err_code);
+
+	if(account)
+		email_free_account(&account, 1);
 		
 	return FALSE;
 
@@ -634,6 +631,38 @@ static gboolean testapp_test_get_account_list ()
 	return FALSE;
 }
 
+static gboolean testapp_test_update_check_interval()
+{
+	int account_id = 0;
+	int result_from_scanf = 0;
+	int err_code = EMAIL_ERROR_NONE;
+	email_account_t *account = NULL;
+
+	testapp_print("\n Enter account id :");
+	result_from_scanf = scanf("%d",&account_id);
+
+	if( (err_code = email_get_account(account_id, GET_FULL_DATA_WITHOUT_PASSWORD, &account)) != EMAIL_ERROR_NONE) {
+		testapp_print ("email_get_account failed [%d]\n", err_code);
+		goto FINISH_OFF;
+	}
+
+	testapp_print("\n Enter new check interval (in mins):");
+	result_from_scanf = scanf("%d",&(account->check_interval));
+
+	if((err_code = email_update_account(account_id, account)) != EMAIL_ERROR_NONE) {
+		testapp_print ("email_update_account failed [%d]\n", err_code);
+		goto FINISH_OFF;
+	}
+
+	testapp_print ("email_update_account successful \n");
+
+FINISH_OFF:
+	if(account)
+		email_free_account(&account, 1);
+
+	return err_code;
+}
+
 static gboolean testapp_test_backup_account()
 {
 	char *file_name = "accounts_file";
@@ -795,13 +824,38 @@ static gboolean testapp_test_delete_certificate()
 	testapp_print("Delete certificate success\n");
 	return true;
 }
+
+static gboolean testapp_test_add_account()
+{
+	int err = EMAIL_ERROR_NONE;
+	email_account_t *account = NULL;
+
+	if(!testapp_create_account_object(&account)) {
+		testapp_print ("testapp_test_create_account_by_account_type error\n");
+		return FALSE;
+	}
+
+	err = email_add_account(account);
+	if( err < 0) {
+		testapp_print ("email_add_account error : %d\n", err);
+		err = email_free_account(&account, 1);
+		return FALSE;
+	}
+
+	testapp_print ("email_add_account succeed. account_id\n", account->account_id);
+
+	err = email_free_account(&account, 1);
+
+	return true;
+}
+
 static gboolean testapp_test_interpret_command (int selected_number)
 {
 	gboolean go_to_loop = TRUE;
 	
 	switch (selected_number) {
 		case 1:
-			testapp_test_create_account();
+			testapp_test_add_account_with_validation();
 			break;
 
 		case 2:
@@ -818,6 +872,10 @@ static gboolean testapp_test_interpret_command (int selected_number)
 		
 		case 5:
 			testapp_test_get_account_list();
+			break;
+
+		case 6:
+			testapp_test_update_check_interval();
 			break;
 
 		case 7:
@@ -866,6 +924,10 @@ static gboolean testapp_test_interpret_command (int selected_number)
 
 		case 18:
 			testapp_test_delete_certificate();
+			break;
+
+		case 19:
+			testapp_test_add_account();
 			break;
 
 		case 0:
