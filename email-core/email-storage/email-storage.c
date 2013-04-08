@@ -10258,6 +10258,7 @@ INTERNAL_FUNC int emstorage_delete_attachment_all_on_db(int account_id, char *ma
 		}
 
 		SNPRINTF(sql_query_string + EM_SAFE_STRLEN(sql_query_string), sizeof(sql_query_string)-(EM_SAFE_STRLEN(sql_query_string)+1), " %s mailbox_name = '%s'", account_id != ALL_ACCOUNT ? "AND" : "WHERE", replaced_mailbox);
+		EM_SAFE_FREE(replaced_mailbox); /*prevent 49434*/
 	}
 	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, sql_query_string, NULL, NULL, NULL), rc);
 	EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
@@ -10504,13 +10505,17 @@ INTERNAL_FUNC char *emstorage_make_directory_path_from_file_path(char *file_name
 	EM_DEBUG_FUNC_BEGIN("Filename [ %p ]", file_name);
 	char delims[] = "/";
 	char *result = NULL;
+	gchar **token = NULL;
 
-	result = strtok(file_name, delims);
+	token = g_strsplit_set(file_name, delims, 1);
 
-	if (result)
-		EM_DEBUG_LOG(">>>> Directory_name [ %s ]", result);
-	else
+	if (token && token[0]) {
+		EM_DEBUG_LOG(">>>> Directory_name [ %s ]", token[0]);
+		result = EM_SAFE_STRDUP(token[0]);
+	} else
 		EM_DEBUG_LOG(">>>> No Need to create Directory");
+
+	g_strfreev(token);
 
 	return result;
 }
@@ -11692,8 +11697,7 @@ INTERNAL_FUNC int emstorage_get_thread_id_of_thread_mails(emstorage_mail_tbl_t *
 	}
 
 	/* prevent 34362 */
-	query_size = strlen(sql_format) + strlen(stripped_subject) + 50 + query_size_account + strlen(sql_format_order_by); /*  + query_size_mailbox; */
-
+	query_size = strlen(sql_format) + strlen(stripped_subject)*2 + 50 + query_size_account + strlen(sql_format_order_by); /*  + query_size_mailbox; */
 	sql_query_string = malloc(query_size);
 
 	if (sql_query_string == NULL) {
