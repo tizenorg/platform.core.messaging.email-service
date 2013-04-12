@@ -1332,7 +1332,7 @@ INTERNAL_FUNC int emdaemon_delete_mail_thread(int thread_id, int delete_always_f
 	int mailbox_id, *mail_id_list = NULL, result_count = 0, i;
 	email_mail_list_item_t *mail_list = NULL;
 
-	if (!emstorage_get_mail_list(0, 0, NULL, thread_id, -1, -1, 0, NULL, EMAIL_SORT_MAILBOX_NAME_HIGH, true, &mail_list, &result_count, &err) || !mail_list || !result_count) {
+	if (!emstorage_get_mail_list(0, 0, NULL, thread_id, -1, -1, 0, NULL, EMAIL_SORT_MAILBOX_ID_HIGH, true, &mail_list, &result_count, &err) || !mail_list || !result_count) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mail_list failed [%d]", err);
 
 		goto FINISH_OFF;
@@ -1383,7 +1383,7 @@ INTERNAL_FUNC int emdaemon_modify_seen_flag_of_thread(int thread_id, int seen_fl
 	int account_id, *mail_id_list = NULL, result_count = 0, i;
 	email_mail_list_item_t *mail_list = NULL;
 
-	if (!emstorage_get_mail_list(0, 0, NULL, thread_id, -1, -1, 0, NULL, EMAIL_SORT_MAILBOX_NAME_HIGH, true, &mail_list, &result_count, &err) || !mail_list || !result_count) {
+	if (!emstorage_get_mail_list(0, 0, NULL, thread_id, -1, -1, 0, NULL, EMAIL_SORT_MAILBOX_ID_HIGH, true, &mail_list, &result_count, &err) || !mail_list || !result_count) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mail_list failed [%d]", err);
 
 		goto FINISH_OFF;

@@ -3222,8 +3222,12 @@ static int _write_conditional_clause_for_getting_mail_list(int account_id, int m
 			 " ORDER BY attachment_count ASC, date_time DESC",   /* case EMAIL_SORT_ATTACHMENT_LOW: */
 			 " ORDER BY lock_status DESC, date_time DESC",	   /* case EMAIL_SORT_FAVORITE_HIGH: */
 			 " ORDER BY lock_status ASC, date_time DESC",		/* case EMAIL_SORT_FAVORITE_LOW: */
-			 " ORDER BY mailbox_name DESC, date_time DESC",	  /* case EMAIL_SORT_MAILBOX_NAME_HIGH: */
-			 " ORDER BY mailbox_name ASC, date_time DESC"		/* case EMAIL_SORT_MAILBOX_NAME_LOW: */
+			 " ORDER BY mailbox_id DESC, date_time DESC",	  /* case EMAIL_SORT_MAILBOX_ID_HIGH: */
+			 " ORDER BY mailbox_id ASC, date_time DESC",		/* case EMAIL_SORT_MAILBOX_ID_LOW: */
+			 " ORDER BY flags_flagged_field DESC, date_time DESC",  /* case EMAIL_SORT_FLAGGED_FLAG_HIGH: */
+			 " ORDER BY flags_flagged_field ASC, date_time DESC",   /* case EMAIL_SORT_FLAGGED_FLAG_LOW: */
+			 " ORDER BY flags_seen_field DESC, date_time DESC",     /* case EMAIL_SORT_SEEN_FLAG_HIGH: */
+			 " ORDER BY flags_seen_field ASC, date_time DESC"       /* case EMAIL_SORT_SEEN_FLAG_LOW: */
 			 };
 
 	if (sorting < EMAIL_SORT_END && sorting >= 0)
