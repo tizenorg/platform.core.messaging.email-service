@@ -1154,6 +1154,81 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END();
 }
 
+
+#define EMAIL_JOB_INFORMATION_FMT   "A(S(iiii))"
+
+INTERNAL_FUNC char* em_convert_task_information_to_byte_stream(email_task_information_t *input_task_information, int input_task_information_count, int *stream_len)
+{
+	EM_DEBUG_FUNC_BEGIN("input_task_information[%p] input_task_information_count[%d] stream_len[%p]", input_task_information, input_task_information_count, stream_len);
+	EM_IF_NULL_RETURN_VALUE(input_task_information, NULL);
+	EM_IF_NULL_RETURN_VALUE(stream_len, NULL);
+
+	email_task_information_t cur = {0};
+	tpl_node *tn = NULL;
+	int i = 0;
+
+	tn = tpl_map(EMAIL_JOB_INFORMATION_FMT, &cur);
+
+	for( ; i < input_task_information_count ; i++ ) {
+		memcpy(&cur, input_task_information + i, sizeof(email_task_information_t));
+		tpl_pack(tn, 1);
+	}
+
+	/* write data to buffer */
+	void *buf = NULL;
+	size_t len = 0;
+	tpl_dump(tn, TPL_MEM, &buf, &len);
+	tpl_free(tn);
+
+	*stream_len = len;
+
+	EM_DEBUG_FUNC_END("serialized len: %d", len);
+	return (char*) buf;
+}
+
+INTERNAL_FUNC void em_convert_byte_stream_to_task_information(char *input_stream, int input_stream_len, email_task_information_t **output_task_information, int *output_task_information_count)
+{
+	EM_DEBUG_FUNC_BEGIN("input_stream[%p] input_stream_len[%d] output_task_information[%p] output_task_information_count[%p]", input_stream, input_stream_len, output_task_information, output_task_information_count);
+	EM_NULL_CHECK_FOR_VOID(input_stream);
+	EM_NULL_CHECK_FOR_VOID(output_task_information);
+
+	email_task_information_t cur = {0};
+	tpl_node *tn = NULL;
+	int i = 0;
+	int count = 0;
+	GList *head = NULL;
+
+	tn = tpl_map(EMAIL_JOB_INFORMATION_FMT, &cur);
+	tpl_load(tn, TPL_MEM, input_stream, input_stream_len);
+
+	while( tpl_unpack(tn, 1) > 0) {
+		email_task_information_t* pdata = (email_task_information_t*) em_malloc(sizeof(email_task_information_t));
+		memcpy(pdata, &cur, sizeof(email_task_information_t));
+		head = g_list_prepend(head, pdata);
+		memset(&cur, 0, sizeof(email_task_information_t));
+		count++;
+	}
+	tpl_free(tn);
+
+	email_task_information_t *deserialized = (email_task_information_t*) em_malloc(sizeof(email_task_information_t)*count);
+
+	head = g_list_reverse(head);
+	GList *p = g_list_first(head);
+
+	for( ; p ; p = g_list_next(p), i++ ) {
+		email_task_information_t* pdata = (email_task_information_t*) g_list_nth_data(p, 0);
+		memcpy( deserialized+i, pdata, sizeof(email_task_information_t));
+		EM_SAFE_FREE(pdata);
+	}
+
+	g_list_free(head);
+
+	*output_task_information_count = count;
+	*output_task_information       = deserialized;
+
+	EM_DEBUG_FUNC_END();
+}
+
 INTERNAL_FUNC int em_convert_certificate_tbl_to_certificate(emstorage_certificate_tbl_t *certificate_tbl, email_certificate_t **certificate, int *error)
 {
 	EM_DEBUG_FUNC_BEGIN("certficate_tbl[%p], certificate[%p]", certificate_tbl, certificate);

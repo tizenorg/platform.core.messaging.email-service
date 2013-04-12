@@ -181,13 +181,11 @@ void testapp_show_menu (eEMAIL_MENU menu)
 			testapp_print ("==========================================\n");
 			testapp_print ("   OTHERS\n");
 			testapp_print ("==========================================\n");
-			testapp_print ("1.  Get Network Status\n");
-			testapp_print ("2.  Get Pending Job\n");
 			testapp_print ("3.  Cancel Job\n");
 			testapp_print ("5.  Set DNET Proper Profile Type\n");
 			testapp_print ("6.  Get DNET Proper Profile Type\n");
 			testapp_print ("7.  Get preview text\n");
-			testapp_print ("11. Print receiving event queue via debug msg\n");
+			testapp_print ("11. Get task information\n");
 			testapp_print ("12. Create DB full\n");
 			testapp_print ("13. Encoding Test\n");
 			testapp_print ("14. DTT Test\n");

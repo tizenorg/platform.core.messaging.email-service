@@ -57,18 +57,6 @@ int emdaemon_unregister_event_callback(email_action_t action, email_event_callba
 	return emcore_unregister_event_callback(action, callback);
 }
 
-INTERNAL_FUNC void emdaemon_get_event_queue_status(int* on_sending, int* on_receiving)
-{
-	emcore_get_event_queue_status(on_sending, on_receiving);
-}
-
-INTERNAL_FUNC int emdaemon_get_pending_job(email_action_t action, int account_id, int mail_id, email_event_status_type_t* status)
-{
-	EM_DEBUG_FUNC_BEGIN("action[%d], account_id[%d], mail_id[%d]", action, account_id, mail_id);
-
-	return emcore_get_pending_event(action, account_id, mail_id, status);
-}
-
 INTERNAL_FUNC int emdaemon_cancel_job(int account_id, int handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], handle[%d], err_code[%p]", account_id, handle, err_code);

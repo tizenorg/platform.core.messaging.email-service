@@ -47,7 +47,6 @@ int  emcore_check_send_mail_thread_status();
 INTERNAL_FUNC int          emcore_get_current_thread_type();
 INTERNAL_FUNC int          emcore_register_event_callback(email_action_t action, email_event_callback callback, void *event_data);
 INTERNAL_FUNC int          emcore_unregister_event_callback(email_action_t action, email_event_callback callback);
-INTERNAL_FUNC int          emcore_get_pending_event(email_action_t action, int account_id, int mail_id, email_event_status_type_t *status);
 INTERNAL_FUNC int          emcore_start_event_loop(int *err_code);
 INTERNAL_FUNC int          emcore_stop_event_loop(int *err_code);
 INTERNAL_FUNC int          emcore_insert_event(email_event_t *event_data, int *handle, int *err_code);
@@ -61,6 +60,7 @@ INTERNAL_FUNC int          emcore_insert_event_for_sending_mails(email_event_t *
 INTERNAL_FUNC int          emcore_get_receiving_event_queue(email_event_t **event_queue, int *event_count, int *err);
 INTERNAL_FUNC int          emcore_cancel_all_threads_of_an_account(int account_id);
 INTERNAL_FUNC int          emcore_free_event(email_event_t *event_data);
+INTERNAL_FUNC int          emcore_get_task_information(email_task_information_t **output_task_information, int *output_task_information_count);
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
 /*  Please contact -> Himanshu [h.gahlaut@samsung.com] for any explanation in code here under this MACRO */

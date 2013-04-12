@@ -947,7 +947,7 @@ static int emcore_get_uids_to_download(MAILSTREAM *stream, email_account_t *acco
 	for (i = 0; i < j; i++) {
 		/*  EM_DEBUG_LOG("input_mailbox_tbl[%s] reserved[%d]", input_mailbox_tbl->name, downloaded_uids[i].reserved); */
 		if (downloaded_uids[i].reserved == 0) {		/*  deleted on server */
-			if (!emstorage_get_maildata_by_servermailid(input_mailbox_tbl->account_id, downloaded_uids[i].s_uid, &mail, true, &err)){
+			if (!emstorage_get_maildata_by_servermailid(input_mailbox_tbl->mailbox_id, downloaded_uids[i].s_uid, &mail, true, &err)){
 				EM_DEBUG_EXCEPTION("emstorage_get_maildata_by_servermailid for uid[%s] Failed [%d] \n ", downloaded_uids[i].s_uid, err);
 				if (err == EMAIL_ERROR_MAIL_NOT_FOUND){
 					continue;
@@ -1210,6 +1210,7 @@ int emcore_check_rule(const char *input_full_address_from, const char *input_sub
 	size_t len = 0;
 	char *src = NULL; 	/*  string which will be compared with rules */
 	char *from_address = NULL;
+	char *p_input_full_address_from = NULL;
 	ADDRESS *addr = NULL;
 
 	if (!matched || !input_full_address_from || !input_subject) {
@@ -1220,10 +1221,12 @@ int emcore_check_rule(const char *input_full_address_from, const char *input_sub
 
 	*matched = -1;
 
-	rfc822_parse_adrlist(&addr, (char*)input_full_address_from, NULL);
+	p_input_full_address_from = strdup((char *)input_full_address_from);
+
+	rfc822_parse_adrlist(&addr, p_input_full_address_from, NULL);
 
 	if(addr) {
-		EM_DEBUG_LOG("rule : full_address_from[%s], addr->mailbox[%s], addr->host[%s]", input_full_address_from, addr->mailbox, addr->host);
+		EM_DEBUG_LOG("rule : full_address_from[%s], addr->mailbox[%s], addr->host[%s]", p_input_full_address_from, addr->mailbox, addr->host);
 
 		if (addr->mailbox)
 			len = EM_SAFE_STRLEN(addr->mailbox);
@@ -1295,6 +1298,7 @@ int emcore_check_rule(const char *input_full_address_from, const char *input_sub
 FINISH_OFF:
 
 	EM_SAFE_FREE(from_address);
+	EM_SAFE_FREE(p_input_full_address_from);
 
 	if (addr  != NULL)
 		mail_free_address(&addr);
@@ -2828,7 +2832,7 @@ static int emcore_parse_bodystructure(void *stream, IMAPPARSEDREPLY *reply_from_
 	imap_parse_body_structure(stream, p_body, (unsigned char **)&bodystructure_string, reply_from_server);
 
 	/* Get the total mail size */
-	if (emcore_set_fetch_body_section(p_body, true, &p_total_mail_size, &err) < 0) {
+	if (emcore_set_fetch_body_section(p_body, false, &p_total_mail_size, &err) < 0) {
 		EM_DEBUG_EXCEPTION("emcore_set_fetch_body_section failed:[%d]", err);
 		goto FINISH_OFF;
 	}
@@ -2872,7 +2876,7 @@ FINISH_OFF:
 	return err;
 }
 
-static int emcore_update_attachment_except_inline(struct _m_content_info *cnt_info, int account_id, int mail_id, int mailbox_id, int *output_total_attachment_size, int *output_attachment_count)
+static int emcore_update_attachment_except_inline(struct _m_content_info *cnt_info, int account_id, int mail_id, int mailbox_id, int *output_total_attachment_size, int *output_attachment_count, int *output_inline_attachment_count)
 {
 	EM_DEBUG_FUNC_BEGIN("cnt_info : [%p], account_id : [%d], mail_id : [%d], mailbox_id : [%d]", cnt_info, account_id, mail_id, mailbox_id);
 	int err = EMAIL_ERROR_NONE;
@@ -2900,7 +2904,7 @@ static int emcore_update_attachment_except_inline(struct _m_content_info *cnt_in
 	attachment_tbl.mailbox_id = mailbox_id;
 	attachment_tbl.attachment_save_status = 0;
 
-	for (attachment_count = 1, attach_info = cnt_info->file; attach_info; attach_info = attach_info->next, attachment_count++) {
+	for (attachment_count = 0, attach_info = cnt_info->file; attach_info; attach_info = attach_info->next, attachment_count++) {
 		if (attach_info->type == INLINE_ATTACHMENT) {
 			EM_DEBUG_LOG("INLINE ATTACHMENT");
 			inline_attachment_count++;
@@ -2918,18 +2922,22 @@ static int emcore_update_attachment_except_inline(struct _m_content_info *cnt_in
 		attachment_tbl.section                          = attach_info->section;
 #endif
 
-		EM_DEBUG_LOG("attachment_count [%d]", attachment_count);
-
 		if (!emstorage_add_attachment(&attachment_tbl, 0, false, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_add_attachment failed : [%d]", err);
 			goto FINISH_OFF;
 		}
 	}
 
+	EM_DEBUG_LOG("attachment_count : [%d], inline_attachment_count : [%d]", attachment_count, inline_attachment_count);
+
+
 FINISH_OFF:
 
 	if (output_attachment_count)
 		*output_attachment_count = attachment_count - inline_attachment_count;
+
+	if (output_inline_attachment_count)
+		*output_inline_attachment_count = inline_attachment_count;
 
 	if (output_total_attachment_size)
 		*output_total_attachment_size = total_attach_size;
@@ -3684,7 +3692,7 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 	int j = 0, i = 0;
 	int i32_index = 0;
 	int total_mail_size = 0, total_attachment_size = 0;
-	int temp_count = 0, attachment_num = 0;
+	int temp_count = 0, attachment_num = 0, inline_attachment_num = 0;
 	char buf[512] = {0, };
 	char *text_plain    = NULL;
 	char *text_html     = NULL;
@@ -3775,7 +3783,7 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 
 		/* Check the body download status and body size */
 		SNPRINTF(uid_string, sizeof(uid_string), "%ld", imap_response[i].uid_no);
-		if (!emstorage_get_maildata_by_servermailid(pbd_event[temp_count].account_id, uid_string, &mail, true, &err) || !mail) {
+		if (!emstorage_get_maildata_by_servermailid(pbd_event[temp_count].mailbox_id, uid_string, &mail, true, &err) || !mail) {
 			EM_DEBUG_EXCEPTION("emstorage_get_mail_data_by_servermailid failed : [%d]", err);
 			if (err == EMAIL_ERROR_MAIL_NOT_FOUND || !mail)
 				goto FINISH_OFF;
@@ -3787,14 +3795,15 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 		}
 
 		/* Update the attachment info except inline attachment */
-		if ((err = emcore_update_attachment_except_inline(cnt_info, pbd_event[temp_count].account_id, mail->mail_id, pbd_event[temp_count].mailbox_id, &total_attachment_size, &attachment_num)) != EMAIL_ERROR_NONE) {
+		if ((err = emcore_update_attachment_except_inline(cnt_info, pbd_event[temp_count].account_id, mail->mail_id, pbd_event[temp_count].mailbox_id, &total_attachment_size, &attachment_num, &inline_attachment_num)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_update_attachment_except_inline failed : [%d]", err);
 			goto FINISH_OFF;
 		}
 
 		EM_DEBUG_LOG("total_mail_size:[%d], total_attachment_size:[%d], attachment_num:[%d]", total_mail_size, total_attachment_size, attachment_num);
-		mail->mail_size               = total_mail_size;
-		mail->attachment_count = attachment_num;
+		mail->mail_size            = total_mail_size;
+		mail->attachment_count     = attachment_num + inline_attachment_num;
+		mail->inline_content_count = inline_attachment_num;
 
 		if (imap_response[i].body_len == 0) {
 			EM_DEBUG_LOG("BODY size is zero");
@@ -3858,8 +3867,6 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 					attachment_tbl.attachment_save_status           = 1;
 					attachment_tbl.attachment_inline_content_status = 1; /*  set to 1 for inline image */
 					attachment_tbl.attachment_mime_type             = image_data[store_file].mime_type;
-					mail->attachment_count++;
-					mail->inline_content_count++;
 					if (!emstorage_add_attachment (&attachment_tbl, false, false, &err))
 						EM_DEBUG_EXCEPTION("emstorage_add_attachment failed - %d", err);
 				}
@@ -3939,7 +3946,6 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 		char *stripped_text = NULL;
 		if (!emcore_strip_mail_body_from_file(mail, &stripped_text, &err) || stripped_text == NULL) {
 			EM_DEBUG_EXCEPTION("emcore_strip_mail_body_from_file failed [%d]", err);
-			goto FINISH_OFF;
 		}
 
 		emstorage_mail_text_tbl_t *mail_text;

@@ -238,8 +238,8 @@ extern int multi_part_body_size;
 extern bool only_body_download;
 
 /* ---------------------------------------------------------------------- */
-static BODY **g_inline_list;
-static int g_inline_count;
+static BODY **g_inline_list = NULL;
+static int g_inline_count = 0;
 
 /*  Function Declaration */
 
@@ -2484,6 +2484,7 @@ static int emcore_write_response_into_file(char *filename, char *write_mode, cha
 
 			while (strstr(decoded, "cid:")) {
 				EM_DEBUG_LOG("Found cid:");
+				EM_DEBUG_LOG("g_inline_count : [%d]", g_inline_count);
 				not_found = true;
 				if (g_inline_count) {
 					BODY *body_inline = NULL;
@@ -4156,6 +4157,7 @@ static int emcore_get_body_part_imap(MAILSTREAM *stream, int account_id, int mai
 
 	if (!is_attachment)  {	/*  Text or RFC822 Message */
 		EM_DEBUG_LOG("Multipart is not attachment, body->type = %d", body->type);
+		EM_DEBUG_LOG("grab_type : [%d]", cnt_info->grab_type);
 		if ((cnt_info->grab_type & GRAB_TYPE_TEXT) && (body->type == TYPEMESSAGE || body->type == TYPETEXT || body->type == TYPEIMAGE))  {
 			if (is_pbd)
 				return SUCCESS;
@@ -4194,9 +4196,12 @@ static int emcore_get_body_part_imap(MAILSTREAM *stream, int account_id, int mai
 			case TYPEAUDIO:
 			case TYPEVIDEO:
 			/*  Inline Content - suspect of crash on partial body download */
-				if (!is_pbd) {
+			/*	if (!is_pbd) */ {
 					EM_DEBUG_LOG("TYPEIMAGE or TYPEAPPLICATION  :  inline content");
 					ai = &(cnt_info->file);
+					
+					while(*ai != NULL)
+						ai = &(*ai)->next;
 
 					dec_len = body->size.bytes;
 					if ((cnt_info->grab_type & GRAB_TYPE_ATTACHMENT) &&
@@ -4567,8 +4572,11 @@ INTERNAL_FUNC int emcore_set_fetch_body_section(BODY *body, int enable_inline_li
 //	body->id = cpystr("1"); /*  top level body */
 	EM_DEBUG_LOG("body->id : [%s]", body->id);
 
-	g_inline_count = 0;
-	EM_SAFE_FREE(g_inline_list);
+	if (enable_inline_list) {
+		g_inline_count = 0;
+		EM_SAFE_FREE(g_inline_list);
+	}
+
 	emcore_set_fetch_part_section(body, (char *)NULL, 0, enable_inline_list, total_mail_size, err_code);
 
 	if (body && body->id)

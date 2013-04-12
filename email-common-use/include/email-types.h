@@ -197,7 +197,6 @@ enum {
 	_EMAIL_API_SYNC_HEADER                               = 0x01300001,
 	_EMAIL_API_DOWNLOAD_BODY                             = 0x01300002,
 	_EMAIL_API_DOWNLOAD_ATTACHMENT                       = 0x01300003,
-	_EMAIL_API_NETWORK_GET_STATUS                        = 0x01300004,
 	_EMAIL_API_SEND_SAVED                                = 0x01300005,
 	_EMAIL_API_DELETE_EMAIL                              = 0x01300007,
 	_EMAIL_API_DELETE_EMAIL_ALL                          = 0x01300008,
@@ -215,17 +214,16 @@ enum {
 	_EMAIL_API_UPDATE_RULE                               = 0x01400005,
 	_EMAIL_API_APPLY_RULE                                = 0x01400006,
 	_EMAIL_API_CANCEL_JOB                                = 0x01400007,
-	_EMAIL_API_GET_PENDING_JOB                           = 0x01400008,
 	_EMAIL_API_SEND_RETRY                                = 0x01400009,
 	_EMAIL_API_UPDATE_ACTIVITY                           = 0x0140000A,
 	_EMAIL_API_SYNC_LOCAL_ACTIVITY                       = 0x0140000B,
-	_EMAIL_API_PRINT_RECEIVING_EVENT_QUEUE               = 0x0140000C,
 
 	/* Etc */
 	_EMAIL_API_PING_SERVICE                              = 0x01500000,
 	_EMAIL_API_UPDATE_NOTIFICATION_BAR_FOR_UNREAD_MAIL   = 0x01500001,
 	_EMAIL_API_SHOW_USER_MESSAGE                         = 0x01500002,
 	_EMAIL_API_WRITE_MIME_FILE                           = 0x01500003,
+	_EMAIL_API_GET_TASK_INFORMATION                       = 0x01500004,
 
 	/* Smime */
 	_EMAIL_API_ADD_CERTIFICATE                           = 0x01600000,
@@ -1069,6 +1067,11 @@ typedef enum {
 } email_mail_attribute_type;
 
 typedef enum {
+	EMAIL_MAIL_TEXT_ATTRIBUTE_FULL_TEXT = 1,
+	EMAIL_MAIL_TEXT_ATTRIBUTE_END
+} email_mail_text_attribute_type;
+
+typedef enum {
 	EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_NONE         = 0,
 	EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_INTEGER      = 1,
 	EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_STRING       = 2,
@@ -1538,8 +1541,9 @@ typedef enum {
 	EMAIL_LIST_FILTER_RULE_LESS_THAN_OR_EQUAL     = 4,
 	EMAIL_LIST_FILTER_RULE_GREATER_THAN_OR_EQUAL  = 5,
 	EMAIL_LIST_FILTER_RULE_INCLUDE                = 6,
-	EMAIL_LIST_FILTER_RULE_IN                     = 7,
-	EMAIL_LIST_FILTER_RULE_NOT_IN                 = 8
+	EMAIL_LIST_FILTER_RULE_MATCH                  = 7,
+	EMAIL_LIST_FILTER_RULE_IN                     = 8,
+	EMAIL_LIST_FILTER_RULE_NOT_IN                 = 9
 } email_list_filter_rule_type_t;
 
 typedef enum {
@@ -1560,9 +1564,16 @@ typedef struct {
 	email_list_filter_case_sensitivity_t   case_sensitivity;
 } email_list_filter_rule_t;
 
+typedef struct {
+	email_list_filter_rule_type_t          rule_type;
+	email_mail_text_attribute_type         target_attribute;
+	email_mail_attribute_value_t           key_value;
+} email_list_filter_rule_fts_t;
+
 typedef enum {
 	EMAIL_LIST_FILTER_ITEM_RULE                     = 0,
-	EMAIL_LIST_FILTER_ITEM_OPERATOR                 = 1,
+	EMAIL_LIST_FILTER_ITEM_RULE_FTS                 = 1,
+	EMAIL_LIST_FILTER_ITEM_OPERATOR                 = 2,
 } email_list_filter_item_type_t;
 
 typedef enum {
@@ -1577,6 +1588,7 @@ typedef struct {
 
 	union {
 		email_list_filter_rule_t           rule;
+		email_list_filter_rule_fts_t       rule_fts;
 		email_list_filter_operator_type_t  operator_type;
 	} list_filter_item;
 
@@ -1587,6 +1599,7 @@ typedef enum {
 	EMAIL_SORT_ORDER_DESCEND                            = 1
 } email_list_filter_sort_order_t;
 
+
 typedef struct {
 	email_mail_attribute_type              target_attribute;
 	bool                                   force_boolean_check;
@@ -1594,12 +1607,18 @@ typedef struct {
 } email_list_sorting_rule_t;
 
 
+typedef struct {
+	int                                    handle;
+	int                                    account_id;
+	email_event_type_t                     type;
+	email_event_status_type_t              status;
+} email_task_information_t;
 
 /*****************************************************************************/
 /*  For Active Sync                                                          */
 /*****************************************************************************/
 
-#define VCONFKEY_EMAIL_SERVICE_ACTIVE_SYNC_HANDLE "db/email_handle/active_sync_handle"
+#define VCONFKEY_EMAIL_SERVICE_ACTIVE_SYNC_HANDLE   "db/email_handle/active_sync_handle"
 #define EMAIL_ACTIVE_SYNC_NOTI                      "User.Email.ActiveSync"
 
 typedef enum

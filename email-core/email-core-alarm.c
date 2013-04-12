@@ -37,9 +37,6 @@
 #include <vconf.h>
 #include <glib.h>
 #include <alarm.h>
-#ifdef __FEATURE_USE_APPSYNC__
-#include <appsync.h>
-#endif
 
 #include "email-convert.h"
 #include "email-types.h"
@@ -51,6 +48,10 @@
 #include "email-core-utils.h"
 #include "email-core-global.h"
 #include "email-core-alarm.h"
+
+#ifdef __FEATURE_USE_APPSYNC__
+#include <appsync.h>
+#endif
 
 
 #define EMAIL_ALARM_DESTINATION "email-service-0"

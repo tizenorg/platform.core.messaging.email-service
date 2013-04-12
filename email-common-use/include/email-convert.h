@@ -49,7 +49,6 @@ INTERNAL_FUNC void  em_convert_byte_stream_to_attachment_data(char *stream, int 
 INTERNAL_FUNC int   em_convert_mailbox_to_mailbox_tbl(email_mailbox_t *mailbox, emstorage_mailbox_tbl_t *mailbox_tbl);
 INTERNAL_FUNC int   em_convert_mailbox_tbl_to_mailbox(emstorage_mailbox_tbl_t *mailbox_tbl, email_mailbox_t *mailbox);
 
-
 INTERNAL_FUNC char* em_convert_mailbox_to_byte_stream(email_mailbox_t* mailbox, int* stream_len);
 INTERNAL_FUNC void  em_convert_byte_stream_to_mailbox(char* stream, int stream_len, email_mailbox_t* mailbox);
 
@@ -72,6 +71,10 @@ INTERNAL_FUNC void  em_convert_byte_stream_to_meeting_req(char* stream, int stre
 /* Search filter options */
 INTERNAL_FUNC char* em_convert_search_filter_to_byte_stream(email_search_filter_t *input_search_filter_list, int input_search_filter_count, int *output_stream_size);
 INTERNAL_FUNC void  em_convert_byte_stream_to_search_filter(char *input_stream, email_search_filter_t **output_search_filter_list, int *output_search_filter_count);
+
+/* Job information */
+INTERNAL_FUNC char* em_convert_task_information_to_byte_stream(email_task_information_t *input_task_information, int input_task_information_count, int *stream_len);
+INTERNAL_FUNC void  em_convert_byte_stream_to_task_information(char *input_stream, int input_stream_len, email_task_information_t **output_task_information, int *output_task_information_count);
 
 /* convert certificate */
 INTERNAL_FUNC int em_convert_certificate_tbl_to_certificate(emstorage_certificate_tbl_t *certificate_tbl, email_certificate_t **certificate, int *error);

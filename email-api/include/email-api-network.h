@@ -232,7 +232,6 @@ EXPORT_API int email_download_body(int mail_id, int with_attachment, int *handle
 
 
 /**
-
  * @fn email_download_attachment(int mail_id, const char* nth, int *handle);
  * @brief	Download a email nth-attachment from server.This function is invoked if user wants to download only specific attachment of a mail whose body is already downloaded.
  *
@@ -248,7 +247,6 @@ EXPORT_API int email_download_attachment(int mail_id, int nth, int *handle);
 
 
 /**
-
  * @fn email_cancel_job(int account_id, int handle);
  * @brief	cancel the ongoing job.This function is invoked if user wants to cancel any ongoing job of a specified account.
  *
@@ -263,41 +261,24 @@ EXPORT_API int email_download_attachment(int mail_id, int nth, int *handle);
 
 EXPORT_API int email_cancel_job(int input_account_id, int input_handle, email_cancelation_type input_cancel_type);
 
+EXPORT_API int email_get_pending_job(email_action_t action, int account_id, int mail_id, email_event_status_type_t * status) DEPRECATED;
+
+EXPORT_API int email_get_network_status(int* on_sending, int* on_receiving) DEPRECATED;
 
 /**
-
- * @fn email_get_pending_job(email_action_t action, int account_id, int mail_id, email_event_status_type_t * status);
- * @brief	get pending job list.This function is invoked if user wants to get the pending job list with status information .
- * 		Based on action item of a mail is for a specific account this will give all pending job list.
+ * @fn email_get_task_information(email_task_information_t *output_task_information)
+ * @brief	This function gives the current job information.
  *
  * @return 	This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
- * @param[in] account_id	Specifies the action of the job.
- * @param[in] account_id	Specifies the account ID.
- * @param[in] mail_id		Specifies the mail ID.
- * @param[out]status		Specifies the status of the job.
- * @exception	 none
- * @see 	email_action_t and email_event_status_type_t
- * @remarks N/A
- */
-EXPORT_API int email_get_pending_job(email_action_t action, int account_id, int mail_id, email_event_status_type_t * status);
-
-
-/**
-
- * @fn email_get_network_status(int* on_sending, int* on_receiving)
- * @brief	This function gives the  current network status.This gives the information to the user whether sending operation is in progress or receiving operation.
- *
- * @return 	This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
- * @param[out] on_sending		True if sending is in progress.
- * @param[out] on_receiving		True if receivng is in progress.
+ * @param[out]	output_task_information	The array of job information.
+ * @param[out]	output_task_information_count	The count of job information.
  * @exception 	none
  * @see 	none
  * @remarks N/A
  */
-EXPORT_API int email_get_network_status(int* on_sending, int* on_receiving);
+EXPORT_API int email_get_task_information(email_task_information_t **output_task_information, int *output_task_information_count);
 
 /**
-
  * @fn email_send_saved(int account_id, int *handle)
  * @brief	Send all mails to been saved in Offline-mode.This function is invoked when user wants to send an email and after saving it.
  * 		This will save the email in draft mailbox and then sends.

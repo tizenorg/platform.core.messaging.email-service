@@ -198,51 +198,61 @@ INTERNAL_FUNC char* em_skip_whitespace_without_strdup(char *source_string)
 	return source_string + i;
 }
 
-/*refactoring required*/
 INTERNAL_FUNC char* em_replace_all_string(char *source_string, char *old_string, char *new_string)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	char *result_buffer = NULL;
-	char *p = NULL;
-	int i = 0, count = 0;
+	int i = 0, j = 0;
 	int old_str_length = 0;
 	int new_str_length = 0;
+	int realloc_len = 0;
 
 	EM_IF_NULL_RETURN_VALUE(source_string, NULL);
 	EM_IF_NULL_RETURN_VALUE(old_string, NULL);
 	EM_IF_NULL_RETURN_VALUE(new_string, NULL);
 
+	int src_len = EM_SAFE_STRLEN(source_string);
 	old_str_length = EM_SAFE_STRLEN(old_string);
 	new_str_length = EM_SAFE_STRLEN(new_string);
 
-	if (old_str_length != new_str_length) {
-		for (i = 0; source_string[i] != '\0';) {
-			if (memcmp(&source_string[i], old_string, old_str_length) == 0) {
-				count++;
-				i += old_str_length;
-			} else {
-				i++;
-			}
-		}
-	} else {
-		i = EM_SAFE_STRLEN(source_string);
-	}
-
-	result_buffer = (char *)malloc(i + 1 + count*(new_str_length-old_str_length));
-	if (result_buffer == NULL)
+	if (src_len <= 0) {
+		EM_DEBUG_LOG("source_string is invalid");
 		return NULL;
+	}
 
-	p = result_buffer;
-	while (*source_string) {
-		if (memcmp(source_string, old_string, old_str_length) == 0) {
-			memcpy(p, new_string, new_str_length);
-			p += new_str_length;
-			source_string += old_str_length;
+	result_buffer = calloc(src_len+1, sizeof(char));
+	if (!result_buffer) {
+		EM_DEBUG_EXCEPTION("calloc failed");
+		return NULL;
+	}
+	realloc_len = src_len + 1;
+
+	for (i = 0; i < src_len && source_string[i] != '\0';) {
+		if (old_str_length <= src_len - i &&
+				memcmp(&source_string[i], old_string, old_str_length) == 0) {
+
+			if (old_str_length != new_str_length) {
+				realloc_len = realloc_len - old_str_length + new_str_length;
+				result_buffer = realloc(result_buffer, realloc_len);
+				if (!result_buffer) {
+					EM_DEBUG_EXCEPTION("realloc failed");
+					return NULL;
+				}
+			}
+			memcpy(&result_buffer[j], new_string, new_str_length);
+			i += old_str_length;
+			j += new_str_length;
 		} else {
-			*p++ = *source_string++;
+			result_buffer[j] = source_string[i];
+			i++;
+			j++;
 		}
 	}
-	*p = '\0';
+
+	if (j < realloc_len)
+		result_buffer[j] = '\0';
+	else
+		result_buffer[realloc_len-1] = '\0';
 
 	EM_DEBUG_FUNC_END("result_buffer : %s", result_buffer);
 	return result_buffer;

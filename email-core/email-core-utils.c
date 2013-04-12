@@ -1205,7 +1205,7 @@ INTERNAL_FUNC char* emcore_get_mail_field_name_by_attribute_type(email_mail_attr
 {
 	EM_DEBUG_FUNC_BEGIN("input_attribute_type [%d]", input_attribute_type);
 
-	if(input_attribute_type > EMAIL_MAIL_ATTRIBUTE_MEETING_REQUEST_STATUS || input_attribute_type < 0) {
+	if(input_attribute_type > EMAIL_MAIL_ATTRIBUTE_EAS_DATA_TYPE || input_attribute_type < 0) {
 		EM_DEBUG_EXCEPTION("Invalid input_attribute_type [%d]", input_attribute_type);
 		return NULL;
 	}
@@ -1403,6 +1403,7 @@ int emcore_strip_mail_body_from_file(emstorage_mail_tbl_t *mail, char **stripped
 
 				if (!g_error_matches(glib_error, G_CONVERT_ERROR, G_CONVERT_ERROR_ILLEGAL_SEQUENCE)) {
 					EM_DEBUG_EXCEPTION("g_convert failed");
+					*stripped_text = EM_SAFE_STRDUP(buf);
 					goto FINISH_OFF;
 				}
 
@@ -1411,6 +1412,7 @@ int emcore_strip_mail_body_from_file(emstorage_mail_tbl_t *mail, char **stripped
 				utf8_encoded_string = (char *)g_convert(buf, byte_read, "UTF-8", encoding_type, &byte_read, &byte_written, &glib_error);
 				if (utf8_encoded_string == NULL) {
 					EM_DEBUG_EXCEPTION("g_convert failed : byte_read[%d]", byte_read);
+					*stripped_text = EM_SAFE_STRDUP(buf);
 					goto FINISH_OFF;
 				}
 			}
@@ -1747,7 +1749,7 @@ int reg_replace (char *input_source_text, char *input_old_pattern_string, char *
 
 	source_text_length = EM_SAFE_STRLEN(input_source_text);
 
-	if (regcomp(&reg_pattern, input_old_pattern_string, REG_ICASE) != 0) {
+	if (regcomp(&reg_pattern, input_old_pattern_string, REG_EXTENDED | REG_ICASE) != 0) {
 		EM_DEBUG_EXCEPTION("regcomp failed");
 		goto FINISH_OFF;
 	}
@@ -1813,26 +1815,17 @@ int emcore_strip_HTML(char *source_string)
 
 	int result = EMAIL_ERROR_NONE;
 
-	/* strip out CR */
-	reg_replace(source_string, "\r", "");
-
-	/* strip out LF */
-	reg_replace(source_string, "\n", "");
+	/* strip out CR, LF */
+	reg_replace(source_string, "(\r|\n)", "");
 
 	/* strip out HEAD */
-	reg_replace(source_string, "<head[^>]*>", "<head>");
-	reg_replace(source_string, "<*/head>", "</head>");
-	reg_replace(source_string, "<head>.*</head>", "");
+	reg_replace(source_string, "<head[^>]*>.*<*/head>", "");
 
 	/* strip out STYLE */
-	reg_replace(source_string, "<style[^>]*>", "<style>");
-	reg_replace(source_string, "<*/style>", "</style>");
-	reg_replace(source_string, "<style>.*</style>", "");
+	reg_replace(source_string, "<style[^>]*>.*<*/style>", "");
 
 	/* strip out SCRIPT */
-	reg_replace(source_string, "<script[^>]*>", "<script>");
-	reg_replace(source_string, "<*/script>", "</script>");
-	reg_replace(source_string, "<script>.*</script>", "");
+	reg_replace(source_string, "<script[^>]*>.*<*/script>", "");
 
 	/* strip out ALL TAG & comment */
 	reg_replace(source_string, "<[^>]*>", "");
@@ -1841,13 +1834,22 @@ int emcore_strip_HTML(char *source_string)
 	reg_replace(source_string, "-->", "");
 
 	/* strip out html entities */
-	/*"&(quot|#34);""&(amp|#38);""&(lt|#60);""&(gt|#62);""&(nbsp|#160);"
-	  "&(iexcl|#161);""&(cent|#162);""&(pound|#163);""&(copy|#169);"*/
-	reg_replace(source_string, "&lt;", "<");
-	reg_replace(source_string, "&gt;", ">");
-	reg_replace(source_string, "&quot;", "\'");
-	reg_replace(source_string, "&nbsp;", " ");
+	reg_replace(source_string, "&(quot|#34|#034);", "\"");
+	reg_replace(source_string, "&(#35|#035);", "#");
+	reg_replace(source_string, "&(#36|#036);", "$");
+	reg_replace(source_string, "&(#37|#037);", "%");
+	reg_replace(source_string, "&(amp|#38|#038);", "&");
+	reg_replace(source_string, "&(lt|#60|#060);", "<");
+	reg_replace(source_string, "&(gt|#62|#062);", ">");
+	reg_replace(source_string, "&(#64|#064);", "@");
+	reg_replace(source_string, "&(lsquo|rsquo);", "'");
+	reg_replace(source_string, "&(ldquo|rdquo);", "\"");
+	reg_replace(source_string, "&sbquo;", ",");
+	reg_replace(source_string, "&(trade|#x2122);", "(TM)");
 
+	/* strip out all type of spaces */
+	reg_replace(source_string, "&(nbsp|#160);", " ");
+	reg_replace(source_string, "[[:space:]]", " ");
 	reg_replace(source_string, "  +", " ");
 
 	EM_DEBUG_FUNC_END();
@@ -3241,6 +3243,9 @@ INTERNAL_FUNC void emcore_set_blocking_mode_of_setting(int input_blocking_mode_o
 
 INTERNAL_FUNC int emcore_get_blocking_mode_status()
 {
+	EM_DEBUG_FUNC_BEGIN("blocking_mode_status : [%d]", blocking_mode_status);
+	EM_DEBUG_FUNC_END();
+
 	return blocking_mode_status;
 }
 

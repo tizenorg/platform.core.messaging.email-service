@@ -108,8 +108,6 @@ INTERNAL_FUNC int g_save_local_activity_run = 0;
 #endif
 
 
-#define EVENT_QUEUE_MAX 32
-
 typedef struct EVENT_CALLBACK_ELEM
 {
 	email_event_callback callback;
@@ -171,182 +169,6 @@ static int is_gdk_lock_needed()
 		return (THREAD_SELF() == g_srv_thread);
 	}
 	return false;
-}
-
-INTERNAL_FUNC int emcore_get_pending_event(email_action_t action, int account_id, int mail_id, email_event_status_type_t *status)
-{
-	EM_DEBUG_FUNC_BEGIN("action[%d], account_id[%d], mail_id[%d]", action, account_id, mail_id);
-
-	int found = false;
-	int i;
-
-	ENTER_RECURSIVE_CRITICAL_SECTION(_event_queue_lock);
-
-	for (i = 1; i < EVENT_QUEUE_MAX; i++)  {
-		switch (g_event_que[i].type)  {
-			case EMAIL_EVENT_SEND_MAIL:
-			case EMAIL_EVENT_SEND_MAIL_SAVED:
-				if (action == EMAIL_ACTION_SEND_MAIL && account_id == g_event_que[i].account_id && mail_id == g_event_que[i].event_param_data_4) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_SYNC_HEADER:
-				if (action == EMAIL_ACTION_SYNC_HEADER && account_id == g_event_que[i].account_id) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_SYNC_HEADER_OMA:
-				if (action == EMAIL_ACTION_SYNC_HEADER_OMA && account_id == g_event_que[i].account_id) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_DOWNLOAD_BODY:
-				if (action == EMAIL_ACTION_DOWNLOAD_BODY && account_id == g_event_que[i].account_id && mail_id == g_event_que[i].event_param_data_4) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-			case EMAIL_EVENT_SYNC_MAIL_FLAG_TO_SERVER:
-				if (action == EMAIL_ACTION_SYNC_MAIL_FLAG_TO_SERVER && account_id == g_event_que[i].account_id && mail_id == g_event_que[i].event_param_data_4) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-			case EMAIL_EVENT_SYNC_FLAGS_FIELD_TO_SERVER:
-				if (action == EMAIL_ACTION_SYNC_FLAGS_FIELD_TO_SERVER && account_id == g_event_que[i].account_id && mail_id == g_event_que[i].event_param_data_4) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-			case EMAIL_EVENT_DOWNLOAD_ATTACHMENT:
-				if (action == EMAIL_ACTION_DOWNLOAD_ATTACHMENT && account_id == g_event_que[i].account_id && mail_id == g_event_que[i].event_param_data_4) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-			case EMAIL_EVENT_DELETE_MAIL:
-			case EMAIL_EVENT_DELETE_MAIL_ALL:
-				if (action == EMAIL_ACTION_DELETE_MAIL && account_id == g_event_que[i].account_id) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_CREATE_MAILBOX:
-				if (action == EMAIL_ACTION_CREATE_MAILBOX && account_id == g_event_que[i].account_id) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_DELETE_MAILBOX:
-				if (action == EMAIL_ACTION_DELETE_MAILBOX && account_id == g_event_que[i].account_id) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_MOVE_MAIL:
-				if (action == EMAIL_ACTION_MOVE_MAIL && account_id == g_event_que[i].account_id && mail_id == g_event_que[i].event_param_data_4) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_VALIDATE_ACCOUNT:
-				if (action == EMAIL_ACTION_VALIDATE_ACCOUNT && account_id == g_event_que[i].account_id) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT:
-				if (action == EMAIL_ACTION_VALIDATE_AND_UPDATE_ACCOUNT && account_id == 0) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT:
-				if (action == EMAIL_ACTION_VALIDATE_AND_CREATE_ACCOUNT && account_id == 0) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_VALIDATE_ACCOUNT_EX:
-				if (action == EMAIL_ACTION_VALIDATE_ACCOUNT_EX && account_id == 0) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_UPDATE_MAIL:
-				if (action == EMAIL_ACTION_UPDATE_MAIL)  {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_SET_MAIL_SLOT_SIZE:
-				if (action == EMAIL_ACTION_SET_MAIL_SLOT_SIZE)  {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_EXPUNGE_MAILS_DELETED_FLAGGED:
-				if (action == EMAIL_ACTION_EXPUNGE_MAILS_DELETED_FLAGGED)  {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_SEARCH_ON_SERVER:
-				if (action == EMAIL_ACTION_SEARCH_ON_SERVER && account_id == g_event_que[i].account_id) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			case EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER:
-				if (action == EMAIL_ACTION_MOVE_MAILBOX && account_id == g_event_que[i].account_id) {
-					found = true;
-					goto EXIT;
-				}
-				break;
-
-			default:
-				break;
-		}
-	}
-
-EXIT:
-	LEAVE_RECURSIVE_CRITICAL_SECTION(_event_queue_lock);
-
-	if (found) {
-		if (status)
-			*status = g_event_que[i].status;
-
-		return i;
-	}
-
-	return FAILURE;
-}
-
-INTERNAL_FUNC void emcore_get_event_queue_status(int *on_sending, int *on_receiving)
-{
-	if (on_sending != NULL)
-		*on_sending = g_sending_busy_cnt;
-
-	if (on_receiving != NULL)
-		*on_receiving = g_receiving_busy_cnt;
 }
 
 static void _sending_busy_ref(void)
@@ -2225,20 +2047,11 @@ static int event_handler_EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER(int input_acc
 	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_mailbox_id [%d], input_old_mailbox_path %s], input_new_mailbox_path [%s], input_new_mailbox_alias [%s], handle_to_be_published [%d]", input_account_id, input_mailbox_id, input_old_mailbox_path, input_new_mailbox_path, input_new_mailbox_alias, handle_to_be_published);
 	int err = EMAIL_ERROR_NONE;
 
-	if ((err = emcore_move_mailbox_on_imap_server(input_account_id, input_old_mailbox_path, input_new_mailbox_path)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emcore_move_mailbox_on_imap_server failed [%d]", err);
-	}
 
 	if (err == EMAIL_ERROR_NONE) {
-		if(!emcore_notify_network_event(NOTI_RENAME_MAILBOX_FINISH, input_mailbox_id, input_new_mailbox_path, handle_to_be_published, 0))
-			EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_RENAME_MAILBOX_FINISH] failed");
-
-		if ((err = emstorage_rename_mailbox(input_mailbox_id, input_new_mailbox_path, input_new_mailbox_alias, true)) != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("emstorage_rename_mailbox failed [%d]", err);
+		if ((err = emcore_rename_mailbox(input_mailbox_id, input_new_mailbox_path, input_new_mailbox_alias, true, true, handle_to_be_published)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_rename_mailbox failed [%d]", err);
 		}
-	}
-	else if (!emcore_notify_network_event(NOTI_RENAME_MAILBOX_FAIL, input_mailbox_id, input_new_mailbox_path, handle_to_be_published, 0)) {
-		EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_RENAME_MAILBOX_FAIL] failed");
 	}
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
@@ -2945,22 +2758,54 @@ FINISH_OFF:
 	return ret;
 }
 
-
-INTERNAL_FUNC int emcore_get_receiving_event_queue(email_event_t **event_queue, int *event_active_queue, int *err)
+INTERNAL_FUNC int emcore_get_task_information(email_task_information_t **output_task_information, int *output_task_information_count)
 {
-	if (event_queue == NULL || event_active_queue == NULL) {
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM event_queue[%p] event_active_queue[%p]", event_queue, event_active_queue);
+	EM_DEBUG_FUNC_BEGIN("output_task_information[%p] output_task_information_count[%p]", output_task_information, output_task_information_count);
+	int err = EMAIL_ERROR_NONE;
+	int i = 0;
+	int count = 0;
+	int index = 0;
+	email_task_information_t *task_information = NULL;
 
-		if (err)
-			*err = EMAIL_ERROR_INVALID_PARAM;
-
-		return false;
+	if (output_task_information == NULL || output_task_information_count == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
 	}
 
-	*event_queue = g_event_que;
-	*event_active_queue = g_active_que;
+	for(i = 0; i < EVENT_QUEUE_MAX; i++) {
+		if(g_event_que[i].type != EMAIL_EVENT_NONE && g_event_que[i].status != EMAIL_EVENT_STATUS_CANCELED)
+			count++;
+	}
 
-	return true;
+	if(count != 0) {
+		if((task_information = em_malloc(sizeof(email_task_information_t) * count)) == NULL) {
+			EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
+		for(i = 0; i < EVENT_QUEUE_MAX; i++) {
+			if(g_event_que[i].type != EMAIL_EVENT_NONE && g_event_que[i].status != EMAIL_EVENT_STATUS_CANCELED) {
+				task_information[index].handle     = i;
+				task_information[index].account_id = g_event_que[i].account_id;
+				task_information[index].type       = g_event_que[i].type;
+				task_information[index].status     = g_event_que[i].status;
+				index++;
+			}
+		}
+	}
+	else {
+		err = EMAIL_ERROR_DATA_NOT_FOUND;
+	}
+
+	*output_task_information_count = count;
+	*output_task_information       = task_information;
+
+FINISH_OFF:
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
 }
 
 INTERNAL_FUNC int emcore_free_event(email_event_t *event_data)

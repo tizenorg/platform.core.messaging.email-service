@@ -951,7 +951,6 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 	char *stripped_text = NULL;
 	if (!emcore_strip_mail_body_from_file(converted_mail_tbl, &stripped_text, &err) || stripped_text == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_strip_mail_body_from_file failed [%d]", err);
-		goto FINISH_OFF;
 	}
 
 	if (!emcore_add_mail_text(mailbox_tbl, converted_mail_tbl, stripped_text, &err)) {

@@ -108,7 +108,7 @@ EXPORT_API int emipc_send_email_socket(int fd, unsigned char *buf, int len)
 		EM_DEBUG_LOG("WARNING: buf_size [%d] != write_len[%d]", len, write_len);
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
-	EM_DEBUG_FUNC_END();
+	EM_DEBUG_FUNC_END("write_len [%d]", write_len);
 	return write_len;
 }
 

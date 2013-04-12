@@ -69,7 +69,7 @@ EXPORT_API int emipc_finalize_proxy_main()
 
 EXPORT_API bool emipc_execute_api_of_proxy_main(emipc_email_api_info *api_info)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_FUNC_BEGIN("api_info [%p]", api_info);
 	
 	int ret;
 	unsigned char *in_stream = NULL;
@@ -83,6 +83,7 @@ EXPORT_API bool emipc_execute_api_of_proxy_main(emipc_email_api_info *api_info)
 	}
 
 	in_stream = emipc_serialize_api_info(api_info, ePARAMETER_IN, &length);
+
 	if( !in_stream ) {
 		EM_DEBUG_EXCEPTION("NULL stream");
 		return false;
@@ -112,6 +113,6 @@ EXPORT_API bool emipc_execute_api_of_proxy_main(emipc_email_api_info *api_info)
 		EM_SAFE_FREE(ipc_buf);
 	}
 	
-	EM_DEBUG_FUNC_END();
+	EM_DEBUG_FUNC_END("result [%d]", result);
 	return result;		
 }

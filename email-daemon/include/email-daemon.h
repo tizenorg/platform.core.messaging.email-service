@@ -557,26 +557,6 @@ INTERNAL_FUNC int emdaemon_register_event_callback(email_action_t action, email_
 INTERNAL_FUNC int emdaemon_unregister_event_callback(email_action_t action, email_event_callback callback);
 
 /**
- * Get current event queue status.
- *
- * @param[out] on_sending		True if sending is in progress.
- * @param[out] on_receiving		True if receiving is in progress.
- * @remarks N/A
- */
-INTERNAL_FUNC void emdaemon_get_event_queue_status(int* on_sending, int* on_receiving);
-
-/**
- * Get the handle of a pending job.
- *
- * @param[in] action			Specifies kind of the job.
- * @param[in] account_id	Specifies the account ID.
- * @param[in] mail_id			Specifies the mail ID.
- * @remarks N/A
- * @return This function return its handle if a pending job exists, otherwise -1.
- */
-INTERNAL_FUNC int emdaemon_get_pending_job(email_action_t action, int account_id, int mail_id, email_event_status_type_t* status);
-
-/**
  * Cancel a progressive work.
  *
  * @param[in] account_id		Specifies the account ID.
@@ -639,8 +619,6 @@ INTERNAL_FUNC int emdaemon_start_auto_polling(int* err_code);
 INTERNAL_FUNC int emdaemon_insert_accountinfo_to_contact(email_account_t* account);
 
 INTERNAL_FUNC int emdaemon_update_accountinfo_to_contact(email_account_t* old_account, email_account_t* new_account);
-
-INTERNAL_FUNC int emdaemon_update_mailbox(email_mailbox_t* old_mailbox, email_mailbox_t* new_mailbox, int on_server, int *handle, int* err_code);
 
 INTERNAL_FUNC int emdaemon_set_mailbox_type(int input_mailbox_id, email_mailbox_type_e input_mailbox_type);
 

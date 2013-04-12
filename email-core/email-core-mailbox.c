@@ -528,61 +528,98 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emcore_update_mailbox(email_mailbox_t *old_mailbox, email_mailbox_t *new_mailbox, int *err_code)
+INTERNAL_FUNC int emcore_rename_mailbox(int input_mailbox_id, char *input_new_mailbox_name, char *input_new_mailbox_alias, int input_on_server, int input_recursive, int handle_to_be_published)
 {
-	EM_DEBUG_FUNC_BEGIN("old_mailbox[%p], new_mailbox[%p], err_code[%p]", old_mailbox, new_mailbox, err_code);
-	
-	int ret = false;
+	EM_DEBUG_FUNC_BEGIN("input_mailbox_id[%d] input_new_mailbox_name[%p] input_new_mailbox_alias[%p] input_on_server[%d] input_recursive[%d] handle_to_be_published[%d]", input_mailbox_id, input_new_mailbox_name, input_new_mailbox_alias, input_on_server, input_recursive, handle_to_be_published);
+
 	int err = EMAIL_ERROR_NONE;
-	
-	if (old_mailbox == NULL || new_mailbox == NULL)  {
-		EM_DEBUG_EXCEPTION("old_mailbox[%p], new_mailbox[%p]", old_mailbox, new_mailbox);
-		
+	int i = 0;
+	int mailbox_count = 0;
+	emstorage_mailbox_tbl_t *target_mailbox = NULL;
+	emstorage_mailbox_tbl_t *target_mailbox_array = NULL;
+	char *renamed_mailbox_name = NULL;
+	char *old_mailbox_name = NULL;
+
+	if (input_mailbox_id == 0 || input_new_mailbox_name == NULL || input_new_mailbox_alias == NULL)  {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-	
-	emstorage_mailbox_tbl_t new_mailbox_tbl;
-	memset(&new_mailbox_tbl, 0x00, sizeof(emstorage_mailbox_tbl_t));
-	
-	/*  Support only updating mailbox_type */
-	new_mailbox_tbl.mailbox_type = new_mailbox->mailbox_type;
 
-	if (old_mailbox->mailbox_type != new_mailbox_tbl.mailbox_type) {
-		if (!emstorage_update_mailbox_type(old_mailbox->account_id, -1, old_mailbox->mailbox_name, new_mailbox_tbl.mailbox_type, true, &err))  {
-			EM_DEBUG_EXCEPTION("emstorage_update_mailbox failed - %d", err);
-			goto FINISH_OFF;
-		}
-	}
-
-	new_mailbox_tbl.mailbox_id 			= old_mailbox->mailbox_id;
-	new_mailbox_tbl.account_id 			= old_mailbox->account_id;
-	new_mailbox_tbl.mailbox_name 		= new_mailbox->mailbox_name;
-	new_mailbox_tbl.mailbox_type 		= new_mailbox->mailbox_type;
-	new_mailbox_tbl.alias 				= new_mailbox->alias;
-	new_mailbox_tbl.mail_slot_size 		= new_mailbox->mail_slot_size;
-	new_mailbox_tbl.total_mail_count_on_server = new_mailbox->total_mail_count_on_server;
-	
-	if (!emstorage_update_mailbox(old_mailbox->account_id, -1, old_mailbox->mailbox_id, &new_mailbox_tbl, true, &err))  {
-		EM_DEBUG_EXCEPTION("emstorage_update_mailbox failed - %d", err);
-
+	if ((err = emstorage_get_mailbox_by_id(input_mailbox_id, &target_mailbox)) != EMAIL_ERROR_NONE || !target_mailbox) {
+		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed. [%d]", err);
 		goto FINISH_OFF;
 	}
-	
-	if (EM_SAFE_STRCMP(old_mailbox->mailbox_name, new_mailbox_tbl.mailbox_name) != 0) {
-		if ( (err = emstorage_rename_mailbox(old_mailbox->mailbox_id, new_mailbox_tbl.mailbox_name, new_mailbox_tbl.alias, true)) != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("emstorage_rename_mailbox failed [%d]", err);
+
+	EM_DEBUG_LOG("target_mailbox->mailbox_name [%s]", target_mailbox->mailbox_name);
+	old_mailbox_name = EM_SAFE_STRDUP(target_mailbox->mailbox_name);
+
+	if (input_on_server) {
+		EM_DEBUG_LOG("Rename the mailbox in Sever >>> ");
+
+		if ((err = emcore_rename_mailbox_on_imap_server(target_mailbox->account_id, target_mailbox->mailbox_id, target_mailbox->mailbox_name, input_new_mailbox_name, handle_to_be_published)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_rename_mailbox_on_imap_server failed [%d]", err);
 			goto FINISH_OFF;
 		}
+		else
+			EM_DEBUG_LOG("Rename the mailbox on server : success");
 	}
-	
-	ret = true;
-	
-FINISH_OFF: 
-	if (err_code)
-		*err_code = err;
-	
-	return ret;
+
+#ifdef __FEATURE_RENAME_MAILBOX_RECURSIVELY__
+	if(input_recursive) {
+		/* Getting children mailbox list */
+		if(!emstorage_get_child_mailbox_list(target_mailbox->account_id, target_mailbox->mailbox_name, &mailbox_count, &target_mailbox_array, false,&err)) {
+			EM_DEBUG_EXCEPTION("emstorage_get_child_mailbox_list failed. [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		if (target_mailbox)
+			emstorage_free_mailbox(&target_mailbox, 1, NULL);
+		target_mailbox = NULL;
+	}
+	else
+#endif /* __FEATURE_RENAME_MAILBOX_RECURSIVELY__ */
+	{
+		target_mailbox_array = target_mailbox;
+		mailbox_count        = 1;
+		target_mailbox       = NULL;
+	}
+
+	/* Remove mailboxes */
+	for(i = 0; i < mailbox_count ; i++) {
+		EM_DEBUG_LOG("Rename mailbox_id [%d] mailbox_name [%s]", target_mailbox_array[i].mailbox_id, target_mailbox_array[i].mailbox_name);
+
+		if(input_mailbox_id == target_mailbox_array[i].mailbox_id) {
+			if ((err = emstorage_rename_mailbox(target_mailbox_array[i].mailbox_id, input_new_mailbox_name, input_new_mailbox_alias, true)) != EMAIL_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("emstorage_rename_mailbox failed [%d]", err);
+				goto FINISH_OFF;
+			}
+		}
+		else {
+			EM_DEBUG_LOG("target_mailbox_array[i].mailbox_name[%s] old_mailbox_name[%s] input_new_mailbox_name [%s]", target_mailbox_array[i].mailbox_name, old_mailbox_name, input_new_mailbox_name);
+			renamed_mailbox_name = em_replace_string(target_mailbox_array[i].mailbox_name, old_mailbox_name, input_new_mailbox_name);
+			EM_DEBUG_LOG("renamed_mailbox_name[%s]", renamed_mailbox_name);
+
+			if ((err = emstorage_rename_mailbox(target_mailbox_array[i].mailbox_id, renamed_mailbox_name, target_mailbox_array[i].alias, true)) != EMAIL_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("emstorage_rename_mailbox failed [%d]", err);
+				goto FINISH_OFF;
+			}
+
+			EM_SAFE_FREE(renamed_mailbox_name);
+		}
+	}
+
+FINISH_OFF:
+	EM_SAFE_FREE(renamed_mailbox_name);
+	EM_SAFE_FREE(old_mailbox_name);
+
+	if (target_mailbox)
+		emstorage_free_mailbox(&target_mailbox, 1, NULL);
+
+	if (target_mailbox_array)
+		emstorage_free_mailbox(&target_mailbox_array, mailbox_count, NULL);
+
+	return err;
 }
 
 extern int try_auth;

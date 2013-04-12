@@ -293,6 +293,27 @@ INTERNAL_FUNC void callback_for_BLOCKING_MODE_STATUS(keynode_t *input_node, void
 }
 #endif /* __FEATURE_BLOCKING_MODE__ */
 
+static void callback_for_VCONFKEY_MSG_SERVER_READY(keynode_t *input_node, void *input_user_data)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int msg_server_ready = 0;
+
+	if (!input_node) {
+		EM_DEBUG_EXCEPTION("Invalid param");
+		return;
+	}
+
+	msg_server_ready = vconf_keynode_get_bool(input_node);
+
+	if(msg_server_ready) {
+		if(emdaemon_initialize_emn() != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emdaemon_initialize_emn failed");
+		}
+	}
+
+	return;
+}
+
 INTERNAL_FUNC int emdaemon_initialize(int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -343,7 +364,9 @@ INTERNAL_FUNC int emdaemon_initialize(int* err_code)
 	}
 
 #ifdef __FEATURE_OMA_EMN__
-	emdaemon_initialize_emn();
+	if(emdaemon_initialize_emn() != EMAIL_ERROR_NONE) {
+		vconf_notify_key_changed(VCONFKEY_MSG_SERVER_READY, callback_for_VCONFKEY_MSG_SERVER_READY, NULL);
+	}
 #endif
 
 	/* Subscribe Events */

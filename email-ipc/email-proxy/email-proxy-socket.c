@@ -115,7 +115,7 @@ EXPORT_API bool emipc_end_proxy_socket()
  * EMAIL_ERROR_IPC_SOCKET_FAILURE, when no IPC connection */
 EXPORT_API int emipc_send_proxy_socket(unsigned char *data, int len)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_FUNC_BEGIN("data [%p] len [%d]", data, len);
 	int socket_fd = emipc_get_proxy_socket_id();
 
 	/* if thread socket is not created */
@@ -134,6 +134,7 @@ EXPORT_API int emipc_send_proxy_socket(unsigned char *data, int len)
 		emipc_end_proxy_socket();
 	}
 
+	EM_DEBUG_FUNC_END("send_len [%d]", send_len);
 	return send_len;
 }
 
@@ -154,7 +155,7 @@ EXPORT_API int emipc_get_proxy_socket_id()
 		}
 	}
 	LEAVE_CRITICAL_SECTION(proxy_mutex);
-	EM_DEBUG_LOG("tid %d, socket_fd %d", tid, socket_fd);
+	EM_DEBUG_FUNC_END("tid %d, socket_fd %d", tid, socket_fd);
 	return socket_fd;
 }
 

@@ -2962,12 +2962,12 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
 	char *stripped_text = NULL;
 	if (!emcore_strip_mail_body_from_file(mail, &stripped_text, &err) || stripped_text == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_strip_mail_body_from_file failed [%d]", err);
-		goto FINISH_OFF;
 	}
 
 	emstorage_mail_text_tbl_t *mail_text;
 	if (!emstorage_get_mail_text_by_id(mail_id, &mail_text, true, &err) || !mail_text) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mail_text_by_id failed [%d]", err);
+		emstorage_rollback_transaction(NULL, NULL, NULL); /*  ROLLBACK TRANSACTION; */
 		goto FINISH_OFF;
 	}
 
@@ -4372,11 +4372,11 @@ INTERNAL_FUNC int emcore_mail_copy(int mail_id, email_mailbox_t *dst_mailbox, in
 	emstorage_mailbox_tbl_t *output_mailbox;
 	if (!emcore_strip_mail_body_from_file(mail, &stripped_text, &err) || stripped_text == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_strip_mail_body_from_file failed [%d]", err);
-		goto FINISH_OFF;
 	}
 
 	if (emstorage_get_mailbox_by_id(dst_mailbox->mailbox_id, &output_mailbox) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed");			
+		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed");
+		emstorage_rollback_transaction(NULL, NULL, NULL);
 		goto FINISH_OFF;
 	}
 
@@ -5002,7 +5002,6 @@ INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_a
 	char *stripped_text = NULL;
 	if (!emcore_strip_mail_body_from_file(converted_mail_tbl_data, &stripped_text, &err) || stripped_text == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_strip_mail_body_from_file failed [%d]", err);
-		goto FINISH_OFF;
 	}
 
 	emstorage_mail_text_tbl_t *mail_text;
@@ -5564,6 +5563,7 @@ INTERNAL_FUNC void emcore_free_mail_data(email_mail_data_t *mail_data)
 	EM_SAFE_FREE(mail_data->alias_recipient);
 	EM_SAFE_FREE(mail_data->file_path_plain);
 	EM_SAFE_FREE(mail_data->file_path_html);
+	EM_SAFE_FREE(mail_data->file_path_mime_entity);
 	EM_SAFE_FREE(mail_data->preview_text);
 	EM_SAFE_FREE(mail_data->eas_data);
 

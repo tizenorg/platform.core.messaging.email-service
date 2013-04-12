@@ -1765,30 +1765,6 @@ void stb_retry_sending_mail(HIPC_API a_hAPI)
 	EM_DEBUG_FUNC_END();
 }
 
-void stb_get_event_queue_status(HIPC_API a_hAPI)
-{
-	EM_DEBUG_FUNC_BEGIN();
-	int on_sending = 0;
-	int on_receiving = 0;
-
-	/*get the network status */
-	emdaemon_get_event_queue_status(&on_sending, &on_receiving);
-
-	/* on_sending */
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &on_sending, sizeof(int)))
-		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-
-	/* on_receving */
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &on_receiving, sizeof(int)))
-		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-
-	EM_DEBUG_LOG("stb_get_event_queue_status - Before Execute API");
-	if (!emipc_execute_stub_api(a_hAPI))
-		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
-
-	EM_DEBUG_FUNC_END();
-}
-
 void stb_cancel_job(HIPC_API a_hAPI)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -1807,61 +1783,6 @@ void stb_cancel_job(HIPC_API a_hAPI)
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
-	if (!emipc_execute_stub_api(a_hAPI))
-		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
-	EM_DEBUG_FUNC_END();
-}
-
-void stb_get_pending_job(HIPC_API a_hAPI)
-{
-	EM_DEBUG_FUNC_BEGIN();
-	email_action_t action = -1;
-	int account_id = 0;
-	int mail_id = -1;
-	int err = EMAIL_ERROR_NONE;
-	email_event_status_type_t status = 0;
-
-	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &action);
-	EM_DEBUG_LOG("action [%d]", action);
-
-	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &account_id);
-	EM_DEBUG_LOG("account_id [%d]", account_id);
-
-	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, sizeof(int), &mail_id);
-	EM_DEBUG_LOG("mail_id [%d]", mail_id);
-
-	if(emdaemon_get_pending_job(action, account_id, mail_id, &status))
-		err = EMAIL_ERROR_NONE;
-	else
-		err = EMAIL_ERROR_UNKNOWN;
-
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
-		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &status, sizeof(int)))
-		EM_DEBUG_EXCEPTION("emipc_add_parameter status failed ");
-	if (!emipc_execute_stub_api(a_hAPI))
-		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
-	EM_DEBUG_FUNC_END();
-}
-
-void stb_print_receiving_event_queue_via_debug_msg(HIPC_API a_hAPI)
-{
-	email_event_t *event_queue = NULL;
-	int event_active_queue = 0, err, i;
-
-	emcore_get_receiving_event_queue(&event_queue, &event_active_queue, &err);
-
-	EM_DEBUG_LOG("======================================================================");
-	EM_DEBUG_LOG("Event active index [%d]", event_active_queue);
-	EM_DEBUG_LOG("======================================================================");
-	for(i = 1; i < 32; i++)
-		EM_DEBUG_LOG("event[%d] : type[%d], account_id[%d], arg[%d], status[%d]", i, event_queue[i].type, event_queue[i].account_id, event_queue[i].event_param_data_4, event_queue[i].status);
-	EM_DEBUG_LOG("======================================================================");
-	EM_DEBUG_LOG("======================================================================");
-
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
-		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
-
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 	EM_DEBUG_FUNC_END();
@@ -2182,6 +2103,40 @@ void stb_get_password_length(HIPC_API a_hAPI)
 
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+	EM_DEBUG_FUNC_END();
+}
+
+void stb_get_task_information(HIPC_API a_hAPI)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int err = 0;
+	int task_information_count = 0;
+	int stream_length;
+	email_task_information_t *task_information = NULL;
+	char *task_information_stream = NULL;
+
+	err = emcore_get_task_information(&task_information, &task_information_count);
+
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		EM_DEBUG_LOG("emipc_add_parameter failed ");
+
+	/* email_task_information_t */
+	if(task_information_count) {
+		task_information_stream = em_convert_task_information_to_byte_stream(task_information, task_information_count, &stream_length);
+
+		if((stream_length > 0) && !emipc_add_dynamic_parameter(a_hAPI, ePARAMETER_OUT, task_information_stream, stream_length)) {
+			EM_DEBUG_EXCEPTION("emipc_add_dynamic_parameter failed");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+		}
+	}
+
+	if (!emipc_execute_stub_api(a_hAPI))
+		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
+
+	if(task_information) {
+		EM_SAFE_FREE(task_information);
+	}
+
 	EM_DEBUG_FUNC_END();
 }
 
@@ -2836,6 +2791,11 @@ FINISH_OFF:
 			EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
 	}
 
+	if (ref_account) { /*prevent 49435*/
+		emcore_free_account(ref_account);
+		EM_SAFE_FREE(ref_account);
+	}
+
 	/* Free task parameter */
 	EM_SAFE_FREE(task_param->mailbox_id_array);
 	EM_SAFE_FREE(task_param);
@@ -3151,14 +3111,6 @@ void stb_API_mapper(HIPC_API a_hAPI)
 			stb_cancel_job(a_hAPI);
 			break;
 
-		case _EMAIL_API_GET_PENDING_JOB:
-			stb_get_pending_job(a_hAPI);
-			break;
-
-		case _EMAIL_API_NETWORK_GET_STATUS:
-			stb_get_event_queue_status(a_hAPI);
-			break;
-
 		case _EMAIL_API_SEND_RETRY:
 			stb_retry_sending_mail(a_hAPI);
 			break;
@@ -3195,8 +3147,8 @@ void stb_API_mapper(HIPC_API a_hAPI)
 			stb_get_password_length(a_hAPI);
 			break;
 
-		case _EMAIL_API_PRINT_RECEIVING_EVENT_QUEUE :
-			stb_print_receiving_event_queue_via_debug_msg(a_hAPI);
+		case _EMAIL_API_GET_TASK_INFORMATION:
+			stb_get_task_information(a_hAPI);
 			break;
 
 		case _EMAIL_API_ADD_CERTIFICATE:

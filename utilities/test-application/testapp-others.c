@@ -42,40 +42,6 @@
 #include "email-ipc.h"
 #include "email-core-utils.h"
 
-static gboolean testapp_test_get_network_status()
-{
-	int on_sending = 0;
-	int on_receiving = 0;
-	email_get_network_status(&on_sending, &on_receiving);
-	testapp_print("\tNetwork status : \n On sending - %d \n On Receiving - %d \n", on_sending, on_receiving);
-	return FALSE;
-}
-
-static gboolean testapp_test_get_pending_job()
-{
-	int action = -1;
-	int account_id = 0;
-	int mail_id = 0;
-	int result_from_scanf = 0;
-	email_event_status_type_t status = -1;
-	testapp_print( " Enter Action \n SEND_MAIL = 0 \n SYNC_HEADER = 1 \n" \
-			    " DOWNLOAD_BODY,= 2 \n DOWNLOAD_ATTACHMENT = 3 \n" \
-			    " DELETE_MAIL = 4 \n SEARCH_MAIL = 5 \n SAVE_MAIL = 6 \n" \
-			    " NUM = 7 \n");
-	result_from_scanf = scanf("%d",&action);
-
-	testapp_print("\n > Enter account_id: ");
-	result_from_scanf = scanf("%d", &account_id);
-
-	testapp_print("\n > Enter Mail Id: ");
-	result_from_scanf = scanf("%d", &mail_id);
-
-	if( email_get_pending_job( action, account_id, mail_id, &status) >= 0)
-		testapp_print("\t status - %d \n",status);
-
-	return FALSE;
-}
-
 static gboolean testapp_test_cancel_job	()
 {
 	int account_id = 0;
@@ -123,28 +89,23 @@ static gboolean testapp_test_get_preview_text_from_file()
 	return TRUE;
 }
 
-static gboolean testapp_test_print_receving_queue_via_debug_msg()
+static gboolean testapp_test_get_task_information()
 {
-	int err;
-	void* hAPI = (void*)emipc_create_email_api(_EMAIL_API_PRINT_RECEIVING_EVENT_QUEUE);
+	int i = 0;
+	int err = EMAIL_ERROR_NONE;
+	int task_information_count = 0;
+	email_task_information_t *task_information_array = NULL;
 
-	if(hAPI == NULL)
-		return EMAIL_ERROR_NULL_VALUE;
-		
-	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
-		testapp_print("testapp_test_print_receving_queue_via_debug_msg - emipc_execute_proxy_api failed \n ");
-		if(hAPI == NULL)
-			return EMAIL_ERROR_NULL_VALUE;
-	}
-
-	emipc_get_parameter(hAPI, 1, 0, sizeof(int), &err);
 	
-	testapp_print(" >>>> RETURN VALUE : %d \n", err);
+	err = email_get_task_information(&task_information_array, &task_information_count);
 
-	emipc_destroy_email_api(hAPI);
+	testapp_print("\n======================================================================\n");
+	for(i = 0; i < task_information_count; i++)
+		testapp_print("type[%d], account_id[%d], handle[%d], status[%d]", task_information_array[i].type, task_information_array[i].account_id, task_information_array[i].handle, task_information_array[i].status);
+	testapp_print("\n======================================================================\n");
 
-	hAPI = NULL;
-	testapp_print("testapp_test_print_receving_queue_via_debug_msg  ..........End\n");
+	testapp_print("testapp_test_get_task_information  ..........End\n");
+
 	return err;
 }
 
@@ -247,7 +208,7 @@ FINISH_OFF:
 	return error;
 }
 
-#define LIB_EMAIL_SERVICE_PATH	LIBPATH "libemail-api.so"
+#define LIB_EMAIL_SERVICE_PATH	"/usr/lib/libemail-api.so"
 
 int (*Datastore_FI_EMTB)(char **);
 int (*Datastore_FI_EMSB)(char **);
@@ -421,12 +382,6 @@ static gboolean testapp_test_interpret_command (int menu_number)
 	gboolean go_to_loop = TRUE;
 
 	switch (menu_number) {
-		case 1:
-			testapp_test_get_network_status();
-			break;
-		case 2:
-			testapp_test_get_pending_job ();
-			break;
 		case 3:
 			testapp_test_cancel_job ();
 			break;
@@ -440,7 +395,7 @@ static gboolean testapp_test_interpret_command (int menu_number)
 			testapp_test_get_preview_text_from_file();
 			break;
 		case 11:
-			testapp_test_print_receving_queue_via_debug_msg();
+			testapp_test_get_task_information();
 			break;
 		case 12:
 			testapp_test_create_db_full();

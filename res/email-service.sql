@@ -223,12 +223,12 @@ CREATE TABLE mail_task_tbl
 	task_parameter                   BLOB,
 	date_time                        DATETIME
 );
-CREATE TABLE mail_text_tbl
+CREATE VIRTUAL TABLE mail_text_tbl USING fts4
 (
-	mail_id				INTEGER,
-	account_id			INTEGER,
-	mailbox_id			INTEGER,
-	body_text			TEXT
+	mail_id				 INTEGER,
+	account_id			 INTEGER,
+	mailbox_id			 INTEGER,
+	body_text			 TEXT
 );
 CREATE UNIQUE INDEX mail_account_idx1 ON mail_account_tbl (account_id);
 CREATE UNIQUE INDEX mail_box_idx1 ON mail_box_tbl (mailbox_id);

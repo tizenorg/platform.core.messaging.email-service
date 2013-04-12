@@ -837,7 +837,7 @@ INTERNAL_FUNC int emcore_set_sync_imap_mailbox(email_internal_mailbox_t *mailbox
 					
 					/* if non synchronous, delete imap mailbox from db */
 					if (!emstorage_update_mailbox(mailbox->account_id, 0, downloaded_uids[temp].mailbox_id, &mailbox_tbl, true, &err)) {
-						EM_DEBUG_EXCEPTION(" emstorage_update_mailbox Failed [ %d ] ", err);
+						EM_DEBUG_EXCEPTION(" emstorage_update_mailbox Failed [%d] ", err);
 						goto JOB_ERROR;
 					}
 					
@@ -1066,9 +1066,9 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC int emcore_move_mailbox_on_imap_server(int input_account_id, char *input_old_mailbox_path, char *input_new_mailbox_path)
+INTERNAL_FUNC int emcore_rename_mailbox_on_imap_server(int input_account_id, int input_mailbox_id, char *input_old_mailbox_path, char *input_new_mailbox_path, int handle_to_be_published)
 {
-	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_old_mailbox_path [%p], input_new_mailbox_path [%p]", input_account_id, input_old_mailbox_path, input_new_mailbox_path);
+	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_mailbox_id [%d], input_old_mailbox_path [%p], input_new_mailbox_path [%p] handle_to_be_published[%d]", input_account_id, input_mailbox_id, input_old_mailbox_path, input_new_mailbox_path, handle_to_be_published);
 	MAILSTREAM *stream = NULL;
 	char *long_enc_path_old = NULL;
 	char *long_enc_path_new = NULL;
@@ -1118,6 +1118,15 @@ INTERNAL_FUNC int emcore_move_mailbox_on_imap_server(int input_account_id, char 
 	}
 
 FINISH_OFF:
+
+	if (err  == EMAIL_ERROR_NONE) {
+		if(!emcore_notify_network_event(NOTI_RENAME_MAILBOX_FINISH, input_mailbox_id, input_new_mailbox_path, handle_to_be_published, 0))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_RENAME_MAILBOX_FINISH] failed");
+	}
+	else {
+		if (!emcore_notify_network_event(NOTI_RENAME_MAILBOX_FAIL, input_mailbox_id, input_new_mailbox_path, handle_to_be_published, 0))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_RENAME_MAILBOX_FAIL] failed");
+	}
 	EM_SAFE_FREE(long_enc_path_old);
 	EM_SAFE_FREE(long_enc_path_new);
 

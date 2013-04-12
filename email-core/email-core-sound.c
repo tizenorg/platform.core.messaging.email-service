@@ -724,6 +724,8 @@ INTERNAL_FUNC void emcore_start_alert()
 {
 	EM_DEBUG_FUNC_BEGIN("setting_noti_status : [%d]", setting_noti_status);
 
+	int voicerecoder_state = 0;
+
 #ifdef __FEATURE_BLOCKING_MODE__
 	if (emcore_get_blocking_mode_status())
 		return;
@@ -731,6 +733,16 @@ INTERNAL_FUNC void emcore_start_alert()
 
 	if (setting_noti_status == SETTING_NOTI_STATUS_OFF)
 		return;
+
+	/* skip sound alert when voice recording */
+	if (vconf_get_int(VCONFKEY_VOICERECORDER_STATE, &voicerecoder_state) != 0) {
+		EM_DEBUG_EXCEPTION("vconf_get_int failed");
+	} else {
+		if (voicerecoder_state == VCONFKEY_VOICERECORDER_RECORDING) {
+			EM_DEBUG_LOG("voice recoder is on recording");
+			return;
+		}
+	}
 
 	ENTER_CRITICAL_SECTION(sound_mutex);
 	WAKE_CONDITION_VARIABLE(sound_condition);

@@ -70,10 +70,9 @@ extern "C"
 /*  #define __FEATURE_USE_SHARED_MUTEX_FOR_PROTECTED_FUNC_CALL__ */
 /*  #define __FEATURE_IMAP_IDLE__ */
 #define __FEATURE_DRIVING_MODE__
-/* #define __FEATURE_DELETE_MAILBOX_RECURSIVELY__ */
-/* #define __FEATURE_RENAME_MAILBOX_RECURSIVELY__ */
-
-/*#define __FEATURE_BODY_SEARCH__*/
+#define __FEATURE_DELETE_MAILBOX_RECURSIVELY__
+#define __FEATURE_RENAME_MAILBOX_RECURSIVELY__
+#define __FEATURE_BODY_SEARCH__
 
 /* ----------------------------------------------------------------------------- */
 /*  Macro */
@@ -218,6 +217,8 @@ typedef pthread_t thread_t;
 #define EMAIL_ALARM_CLASS_NEW_MAIL_ALERT      2
 #define EMAIL_ALARM_CLASS_AUTO_POLLING        3
 
+#define EVENT_QUEUE_MAX 32
+
 /* __FEATURE_LOCAL_ACTIVITY__ supported
 #define BULK_OPERATION_COUNT              50
 #define ALL_ACTIVITIES                    0
@@ -284,17 +285,17 @@ enum
 /*  event information */
 typedef struct
 {
-	int                      account_id;         /*  in general, account id */
+	int                        account_id;         /*  in general, account id */
 	email_event_type_t         type;
 	email_event_status_type_t  status;
-	char                    *event_param_data_1; /*  in general, mailbox name (exception in emcore_send_mail, emcore_send_saved_mail it is email_option_t **/
-	char                    *event_param_data_2;
-	char                    *event_param_data_3;
-	int                      event_param_data_4;
-	int                      event_param_data_5;
-	int                      event_param_data_6; /* in general, notification parameter #1 */
-	int                      event_param_data_7; /* in general, notification parameter #2 */
-	int                      event_param_data_8;
+	char                      *event_param_data_1; /*  in general, mailbox name (exception in emcore_send_mail, emcore_send_saved_mail it is email_option_t **/
+	char                      *event_param_data_2;
+	char                      *event_param_data_3;
+	int                        event_param_data_4;
+	int                        event_param_data_5;
+	int                        event_param_data_6; /* in general, notification parameter #1 */
+	int                        event_param_data_7; /* in general, notification parameter #2 */
+	int                        event_param_data_8;
 } email_event_t;
 
 

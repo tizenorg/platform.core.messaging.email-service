@@ -548,15 +548,24 @@ static gboolean testapp_test_get_mail_list_ex()
 	int err = EMAIL_ERROR_NONE;
 	int i = 0;
 
-	filter_rule_count = 1;
+	filter_rule_count = 3;
 
 	filter_list = malloc(sizeof(email_list_filter_t) * filter_rule_count);
 	memset(filter_list, 0 , sizeof(email_list_filter_t) * filter_rule_count);
 
-	filter_list[0].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_RULE;
-	filter_list[0].list_filter_item.rule.target_attribute              = EMAIL_MAIL_ATTRIBUTE_MAILBOX_TYPE;
-	filter_list[0].list_filter_item.rule.rule_type                     = EMAIL_LIST_FILTER_RULE_EQUAL;
-	filter_list[0].list_filter_item.rule.key_value.integer_type_value  = EMAIL_MAILBOX_TYPE_INBOX;
+	filter_list[0].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_RULE_FTS;
+	filter_list[0].list_filter_item.rule_fts.target_attribute              = EMAIL_MAIL_TEXT_ATTRIBUTE_FULL_TEXT;
+	filter_list[0].list_filter_item.rule_fts.rule_type                     = EMAIL_LIST_FILTER_RULE_MATCH;
+	filter_list[0].list_filter_item.rule_fts.key_value.string_type_value  = strdup("ieee");
+
+	filter_list[1].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_OPERATOR;
+	filter_list[1].list_filter_item.operator_type                      = EMAIL_LIST_FILTER_OPERATOR_OR;
+
+	filter_list[2].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_RULE;
+	filter_list[2].list_filter_item.rule.target_attribute              = EMAIL_MAIL_ATTRIBUTE_SUBJECT;
+	filter_list[2].list_filter_item.rule.rule_type                     = EMAIL_LIST_FILTER_RULE_INCLUDE;
+	filter_list[2].list_filter_item.rule.key_value.string_type_value   = strdup("2013");
+	filter_list[2].list_filter_item.rule.case_sensitivity              = false;
 
 	/*
 	filter_list[1].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_OPERATOR;
@@ -632,7 +641,7 @@ static gboolean testapp_test_get_mail_list_ex()
 		testapp_print("email_get_mail_list_ex failed.\n");
 	}
 
-	email_free_list_filter(&filter_list, 9);
+	email_free_list_filter(&filter_list, 3);
 
 	return FALSE;
 }

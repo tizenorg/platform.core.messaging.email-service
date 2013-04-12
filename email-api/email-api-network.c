@@ -859,79 +859,73 @@ FINISH_OFF:
 EXPORT_API int email_get_pending_job(email_action_t action, int account_id, int mail_id, email_event_status_type_t * status)
 {
 	EM_DEBUG_FUNC_BEGIN("action[%d], account_id[%d], mail_id[%d], status[%p]", action, account_id, mail_id, status);
-	
-	int err = EMAIL_ERROR_NONE;
-
-	EM_IF_ACCOUNT_ID_NULL(account_id, EMAIL_ERROR_NULL_VALUE);
-	
-	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_GET_PENDING_JOB);
-
-	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
-
-	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &action, sizeof(int))) {
-		EM_DEBUG_EXCEPTION("emipc_add_parameter action failed ");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
-	}
-
-	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &account_id, sizeof(int))) {
-		EM_DEBUG_EXCEPTION("emipc_add_parameter account_id failed ");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
-	}
-
-	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &mail_id, sizeof(int))) {
-		EM_DEBUG_EXCEPTION("emipc_add_parameter account_id failed ");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
-	}
-
-	/* Execute API */
-	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed  ");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
-	}
-
-	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
-
-	if(status) {
-		emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), status);
-		EM_DEBUG_LOG("status : %d ", *status);
-	}
-	
-	emipc_destroy_email_api(hAPI);
-	hAPI = NULL;
-
+	int err = EMAIL_ERROR_NOT_SUPPORTED;
 	EM_DEBUG_FUNC_END("err [%d]", err);  
 	return err;
 
 }
 
-
-
 EXPORT_API int email_get_network_status(int* on_sending, int* on_receiving)
 {
 	EM_DEBUG_FUNC_BEGIN("on_sending[%p], on_receiving[%p]", on_sending, on_receiving);
+	int err = EMAIL_ERROR_NOT_SUPPORTED;
+	EM_DEBUG_FUNC_END("err [%d]", err);  
+	return err;
+}
+
+EXPORT_API int email_get_task_information(email_task_information_t **output_task_information, int *output_task_information_count)
+{
+	EM_DEBUG_FUNC_BEGIN("output_task_information[%p] output_task_information_count[%p]", output_task_information, output_task_information_count);
 	int err = EMAIL_ERROR_NONE;
-	
-	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_NETWORK_GET_STATUS);
+	int task_information_stream_length = 0;
+	HIPC_API hAPI = NULL;
+	char *task_information_stream = NULL;
 
-	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
-
-	/* Execute API */
-	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
-		emipc_destroy_email_api(hAPI);
-		hAPI = NULL;
-		err = EMAIL_ERROR_IPC_SOCKET_FAILURE ;
-		EM_DEBUG_FUNC_END("err [%d]", err); return err;
+	if(output_task_information == NULL || output_task_information_count == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
-	if(on_sending)
-		emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), on_sending );
-	if(on_receiving)	
-		emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), on_receiving);
+	if((hAPI = emipc_create_email_api(_EMAIL_API_GET_TASK_INFORMATION)) == NULL) {
+		EM_DEBUG_EXCEPTION("emipc_create_email_api failed");
+		err = EMAIL_ERROR_IPC_CRASH;
+		goto FINISH_OFF;
+	}
 
-	emipc_destroy_email_api(hAPI);
-	hAPI = NULL;
-	EM_DEBUG_FUNC_END("err [%d]", err);  
+	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
+		err = EMAIL_ERROR_IPC_CRASH;
+		goto FINISH_OFF;
+	}
+	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+
+	if(EMAIL_ERROR_NONE == err) {
+		task_information_stream_length = emipc_get_parameter_length(hAPI, ePARAMETER_OUT, 1);
+		if(task_information_stream_length > 0) {
+			task_information_stream = (char*)em_malloc(task_information_stream_length + 1);
+
+			if(!task_information_stream) {
+				EM_DEBUG_EXCEPTION("em_malloc failed");
+				err = EMAIL_ERROR_OUT_OF_MEMORY;
+				goto FINISH_OFF;
+			}
+
+			emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, task_information_stream_length, task_information_stream);
+			em_convert_byte_stream_to_task_information(task_information_stream, task_information_stream_length, output_task_information, output_task_information_count);
+		}
+
+		if(!output_task_information) {
+			EM_DEBUG_EXCEPTION("EMAIL_ERROR_NULL_VALUE");
+			err = EMAIL_ERROR_NULL_VALUE;
+			goto FINISH_OFF;
+		}
+	}
+
+FINISH_OFF:
+	if(hAPI)
+		emipc_destroy_email_api(hAPI);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
 
@@ -942,7 +936,7 @@ EXPORT_API int email_sync_imap_mailbox_list(int account_id, int *handle)
 	int err = EMAIL_ERROR_NONE;
 
 	if(account_id <= 0) {
-		EM_DEBUG_LOG("invalid parameters");
+		EM_DEBUG_EXCEPTION("invalid parameters");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 

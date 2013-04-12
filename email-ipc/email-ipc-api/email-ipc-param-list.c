@@ -73,9 +73,14 @@ EXPORT_API bool emipc_parse_stream_of_param_list(emipc_param_list *param_list, v
 {
 	EM_DEBUG_FUNC_BEGIN();
 	long parameter_count = *((long *)stream + eSTREAM_COUNT);
-	if(parameter_count <= 0) {
-		EM_DEBUG_EXCEPTION("INVALID_PARAM : count %d", parameter_count);
+	if(parameter_count < 0) {
+		EM_DEBUG_LOG("INVALID_PARAM : count %d", parameter_count);
 		return false;
+	}
+
+	if(parameter_count == 0) {
+		EM_DEBUG_LOG("count %d", parameter_count);
+		return true;
 	}
 
 	int stream_len = malloc_usable_size(stream);
@@ -121,16 +126,24 @@ EXPORT_API bool emipc_parse_stream_of_param_list(emipc_param_list *param_list, v
 
 EXPORT_API unsigned char *emipc_serialize_param_list(emipc_param_list *param_list, int *stream_length)
 {
-	EM_DEBUG_FUNC_BEGIN();
-	if(param_list->byte_stream)
-		return param_list->byte_stream;
+	EM_DEBUG_FUNC_BEGIN("param_list [%p] stream_length [%p]", param_list, stream_length);
+
+	if(param_list == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		return NULL;
+	}
+
+	if(param_list->byte_stream) {
+		EM_DEBUG_LOG("param_list->byte_stream exist");
+		goto FINISH_OFF;
+	}
 
 	int stream_len = emipc_sum_param_list_length (param_list);
 
 	if (stream_len <= 0) {
 		EM_DEBUG_EXCEPTION("stream_len error %d", stream_len);
 		EM_SAFE_FREE(param_list->byte_stream);
-		return NULL;
+		goto FINISH_OFF;
 	}
 
 	param_list->byte_stream = (unsigned char*)calloc(1, stream_len);
@@ -139,7 +152,7 @@ EXPORT_API unsigned char *emipc_serialize_param_list(emipc_param_list *param_lis
 	if (pos + (int)sizeof(param_list->param_count) > stream_len ) {
 		EM_DEBUG_EXCEPTION("%d > stream_len", pos + sizeof(param_list->param_count));
 		EM_SAFE_FREE(param_list->byte_stream);
-		return NULL;
+		goto FINISH_OFF;
 	}
 
 	memcpy((param_list->byte_stream + pos), &param_list->param_count, sizeof(param_list->param_count));
@@ -155,13 +168,13 @@ EXPORT_API unsigned char *emipc_serialize_param_list(emipc_param_list *param_lis
 		if (length < 0) {
 		 	EM_DEBUG_EXCEPTION("index = %d, length = %d", index, length);
 			EM_SAFE_FREE(param_list->byte_stream);
-			return NULL;
+			goto FINISH_OFF;
 		}
 
 		if (pos + (int)sizeof(long) > stream_len) {
 		 	EM_DEBUG_EXCEPTION("%d > stream_len", pos + sizeof(long));
 			EM_SAFE_FREE(param_list->byte_stream);
-			return NULL;
+			goto FINISH_OFF;
 		}
 		/* write param i length */
 		memcpy((param_list->byte_stream+pos), &length, sizeof(long));
@@ -170,7 +183,7 @@ EXPORT_API unsigned char *emipc_serialize_param_list(emipc_param_list *param_lis
 		if (pos + length > stream_len) {
 			EM_DEBUG_EXCEPTION("%d > stream_len", pos + length);
 			EM_SAFE_FREE(param_list->byte_stream);
-			return NULL;
+			goto FINISH_OFF;
 		}
 		/* write param i data if length is greater than 0 */
 		if( length > 0 ) {
@@ -180,7 +193,9 @@ EXPORT_API unsigned char *emipc_serialize_param_list(emipc_param_list *param_lis
 	}
 	*stream_length = stream_len;
 
-	EM_DEBUG_FUNC_END();
+FINISH_OFF:
+
+	EM_DEBUG_FUNC_END("param_list->byte_stream [%p]", param_list->byte_stream);
 	return param_list->byte_stream;
 }
 

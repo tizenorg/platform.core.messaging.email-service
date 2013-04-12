@@ -180,12 +180,6 @@ EXPORT_API bool emipc_free_api_info(emipc_email_api_info *api_info);
 			case _EMAIL_API_CANCEL_JOB:\
 					s = "_EMAIL_API_CANCEL_JOB";\
 					break;\
-			case _EMAIL_API_GET_PENDING_JOB:\
-					s = "_EMAIL_API_GET_PENDING_JOB";\
-					break;\
-			case _EMAIL_API_NETWORK_GET_STATUS:\
-					s = "_EMAIL_API_NETWORK_GET_STATUS";\
-					break;\
 			case _EMAIL_API_SEND_RETRY:\
 					s = "_EMAIL_API_SEND_RETRY";\
 					break;\
@@ -207,9 +201,6 @@ EXPORT_API bool emipc_free_api_info(emipc_email_api_info *api_info);
 			case _EMAIL_API_RESTORE_ACCOUNTS :\
 					s = "_EMAIL_API_RESTORE_ACCOUNTS";\
 					break;\
-			case _EMAIL_API_PRINT_RECEIVING_EVENT_QUEUE :\
-					s = "_EMAIL_API_PRINT_RECEIVING_EVENT_QUEUE";\
-					break;\
 			case _EMAIL_API_PING_SERVICE :\
 					s = "_EMAIL_API_PING_SERVICE";\
 					break;\
@@ -224,6 +215,9 @@ EXPORT_API bool emipc_free_api_info(emipc_email_api_info *api_info);
 					break;\
 			case _EMAIL_API_WRITE_MIME_FILE:\
 					s = "_EMAIL_API_WRITE_MIME_FILE";\
+					break;\
+			case _EMAIL_API_GET_TASK_INFORMATION:\
+					s = "_EMAIL_API_GET_TASK_INFORMATION";\
 					break;\
 			default : \
 					s = "UNKNOWN_APIID";\
