@@ -4964,7 +4964,7 @@ INTERNAL_FUNC int emcore_make_mail_data_from_mime_data(struct _m_mesg *mmsg, str
 	if (mmsg->header)
 		content_type = emcore_mime_get_header_value(mmsg->header->part_header, CONTENT_TYPE, &err);
 
-	if (strcasestr(content_type, "PKCS7-MIME"))
+	if (content_type && strcasestr(content_type, "PKCS7-MIME")) /*prevent 50417*/
 		p_mail_data->smime_type = EMAIL_SMIME_ENCRYPTED;
 
 	if (mmsg->rfc822header->date)

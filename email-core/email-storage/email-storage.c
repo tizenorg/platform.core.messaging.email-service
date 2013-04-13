@@ -1423,6 +1423,7 @@ static void *_emstorage_open_once(int *err_code)
 
 	_delete_temp_file(MAILTEMP);
 
+	ENTER_CRITICAL_SECTION(_transactionBeginLock);
 	g_transaction = false;
 
 	if (!emstorage_create_table(EMAIL_CREATE_DB_NORMAL, &error)) {

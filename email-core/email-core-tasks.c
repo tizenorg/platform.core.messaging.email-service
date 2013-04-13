@@ -569,11 +569,14 @@ INTERNAL_FUNC int email_decode_task_parameter_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE(c
 
 FINISH_OFF:
 
+	if(err != EMAIL_ERROR_NONE) /*prevent 50459*/
+		EM_SAFE_FREE(task_parameter);
+
 	if(tn)
 		tpl_free(tn);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
-	return EMAIL_ERROR_NONE;
+	return err;
 }
 
 INTERNAL_FUNC void* task_handler_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE(void *input_param)
