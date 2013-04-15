@@ -208,7 +208,7 @@ FINISH_OFF:
 	return error;
 }
 
-#define LIB_EMAIL_SERVICE_PATH	"/usr/lib/libemail-api.so"
+#define LIB_EMAIL_SERVICE_PATH	LIBPATH "libemail-api.so"
 
 int (*Datastore_FI_EMTB)(char **);
 int (*Datastore_FI_EMSB)(char **);
