@@ -925,6 +925,8 @@ FINISH_OFF:
 	if(hAPI)
 		emipc_destroy_email_api(hAPI);
 
+	EM_SAFE_FREE(task_information_stream); /*prevent 51266*/
+
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }

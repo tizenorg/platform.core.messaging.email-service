@@ -2616,9 +2616,8 @@ FINISH_OFF:
 	if(result)
 		sqlite3_free_table(result);
 
-	if (ret == true) {
-		if (result_mail_text_tbl)
-			*result_mail_text_tbl = p_data_tbl;
+	if (ret == true && result_mail_text_tbl && result_count) { /*prevent 50930*/
+		*result_mail_text_tbl = p_data_tbl;
 		*result_count = count;
 	}
 	else
@@ -14653,6 +14652,8 @@ static int _make_filter_fts_rule_string(email_list_filter_rule_fts_t *input_list
 	cur_query += SNPRINTF_OFFSET(sql_query_string2, cur_query, QUERY_SIZE, "%d ) ", mail_ids[count-1]);
 
 	*output_string = strdup(sql_query_string2);
+
+	EM_SAFE_FREE(mail_ids); /*prevent 50929*/
 
 FINISH_OFF:
 	EM_SAFE_FREE(field_name_string);
