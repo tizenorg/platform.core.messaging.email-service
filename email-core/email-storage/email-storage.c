@@ -187,8 +187,6 @@
 	}
 
 /*  for safety DB operation */
-static pthread_mutex_t _transactionBeginLock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_mutex_t _transactionEndLock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t _db_handle_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static int _get_attribute_type_by_mail_field_name(char *input_mail_field_name, email_mail_attribute_type *output_mail_attribute_type);
@@ -1337,9 +1335,6 @@ static void _emstorage_close_once(void)
 {
 	EM_DEBUG_FUNC_BEGIN();
 
-	DELETE_CRITICAL_SECTION(_transactionBeginLock);
-	DELETE_CRITICAL_SECTION(_transactionEndLock);
-
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1571,9 +1566,6 @@ INTERNAL_FUNC int emstorage_db_close(int *err_code)
 
 	int error = EMAIL_ERROR_NONE;
 	int ret = false;
-
-	DELETE_CRITICAL_SECTION(_transactionBeginLock);
-	DELETE_CRITICAL_SECTION(_transactionEndLock);
 
 	if (_db_handle) {
 		ret = db_util_close(_db_handle);
@@ -10050,8 +10042,6 @@ INTERNAL_FUNC int emstorage_begin_transaction(void *d1, void *d2, int *err_code)
 	EM_PROFILE_BEGIN(emStorageBeginTransaction);
 	int ret = true;
 
-	ENTER_CRITICAL_SECTION(_transactionBeginLock);
-
 	/*  wait for the trnasaction authority to be changed. */
 	while (g_transaction)  {
 		EM_DEBUG_LOG(">>>>>>>> Wait for the transaction authority to be changed");
@@ -10060,8 +10050,6 @@ INTERNAL_FUNC int emstorage_begin_transaction(void *d1, void *d2, int *err_code)
 
 	/*  take the transaction authority. */
 	g_transaction = true;
-
-	LEAVE_CRITICAL_SECTION(_transactionBeginLock);
 
 	sqlite3 *local_db_handle = emstorage_get_db_connection();
 	int rc;
@@ -10082,15 +10070,12 @@ INTERNAL_FUNC int emstorage_commit_transaction(void *d1, void *d2, int *err_code
 	int ret = true;
 	sqlite3 *local_db_handle = emstorage_get_db_connection();
 
-	ENTER_CRITICAL_SECTION(_transactionEndLock);
-
 	int rc;
 	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, "END;", NULL, NULL, NULL), rc);
 	EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {ret = false; }, ("SQL(END) exec error:%d -%s", rc, sqlite3_errmsg(local_db_handle)));
 	/*  release the transaction authority. */
 	g_transaction = false;
 
-	LEAVE_CRITICAL_SECTION(_transactionEndLock);
 	if (ret == false && err_code != NULL)
 		*err_code = EMAIL_ERROR_DB_FAILURE;
 
@@ -10107,14 +10092,11 @@ INTERNAL_FUNC int emstorage_rollback_transaction(void *d1, void *d2, int *err_co
 
 	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_exec(local_db_handle, "ROLLBACK;", NULL, NULL, NULL), rc);
 
-	ENTER_CRITICAL_SECTION(_transactionEndLock);
 	EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {ret = false; },
 		("SQL(ROLLBACK) exec error:%d -%s", rc, sqlite3_errmsg(local_db_handle)));
 
 	/*  release the transaction authority. */
 	g_transaction = false;
-
-	LEAVE_CRITICAL_SECTION(_transactionEndLock);
 
 	if (ret == false && err_code != NULL)
 		*err_code = EMAIL_ERROR_DB_FAILURE;
