@@ -564,6 +564,10 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 	struct stat st_buf = { 0 };
 	char mailbox_id_param_string[10] = {0,};
 
+#ifdef __FEATURE_BODY_SEARCH__
+	char *stripped_text = NULL;
+#endif
+
 	/* Validating parameters */
 	if (!input_mail_data || !(input_mail_data->account_id) || !(input_mail_data->mailbox_id))  {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
@@ -948,7 +952,6 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 
 #ifdef __FEATURE_BODY_SEARCH__
 	/* Insert mail_text to DB */
-	char *stripped_text = NULL;
 	if (!emcore_strip_mail_body_from_file(converted_mail_tbl, &stripped_text, &err) || stripped_text == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_strip_mail_body_from_file failed [%d]", err);
 	}
