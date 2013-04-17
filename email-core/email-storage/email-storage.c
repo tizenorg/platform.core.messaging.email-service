@@ -1418,7 +1418,6 @@ static void *_emstorage_open_once(int *err_code)
 
 	_delete_temp_file(MAILTEMP);
 
-	ENTER_CRITICAL_SECTION(_transactionBeginLock);
 	g_transaction = false;
 
 	if (!emstorage_create_table(EMAIL_CREATE_DB_NORMAL, &error)) {
@@ -10327,9 +10326,7 @@ INTERNAL_FUNC int emstorage_begin_transaction(void *d1, void *d2, int *err_code)
 
 	if (ret == false) {
 		if (err_code != NULL) *err_code = EMAIL_ERROR_DB_FAILURE;
-		ENTER_CRITICAL_SECTION(_transactionEndLock);
 		g_transaction = false;
-		LEAVE_CRITICAL_SECTION(_transactionEndLock);
 	}
 
 	EM_PROFILE_END(emStorageBeginTransaction);
@@ -10367,8 +10364,6 @@ INTERNAL_FUNC int emstorage_rollback_transaction(void *d1, void *d2, int *err_co
 
 	EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {ret = false; },
 		("SQL(ROLLBACK) exec error:%d -%s", rc, sqlite3_errmsg(local_db_handle)));
-
-	ENTER_CRITICAL_SECTION(_transactionEndLock);
 
 	/*  release the transaction authority. */
 	g_transaction = false;
