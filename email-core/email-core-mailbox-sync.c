@@ -3282,7 +3282,7 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 
 	EM_DEBUG_LOG("Content-type: image");
 
-	while (*image_boundary != LF)
+	while (image_boundary && *image_boundary != LF)
 		image_boundary--;
 
 	image_boundary++;
