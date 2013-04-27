@@ -2993,6 +2993,24 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_
 					goto FINISH_OFF;
 				}
 			}
+		} else if (input_mail_tbl_data->smime_type == EMAIL_SMIME_NONE && (input_mail_tbl_data->file_path_plain || input_mail_tbl_data->file_path_html)) {
+			if (input_mail_tbl_data->file_path_plain && EM_SAFE_STRLEN(input_mail_tbl_data->file_path_plain) > 0) {
+				EM_DEBUG_LOG("file_path_plain[%s]", input_mail_tbl_data->file_path_plain);
+				if (!attach_part(root_body, (unsigned char *)input_mail_tbl_data->file_path_plain, 0, NULL, NULL, false, &error)) {
+					EM_DEBUG_EXCEPTION("attach_part failed [%d]", error);
+					goto FINISH_OFF;
+				}
+			}
+
+			if (input_mail_tbl_data->file_path_html && EM_SAFE_STRLEN(input_mail_tbl_data->file_path_html) > 0) {
+				EM_DEBUG_LOG("file_path_html[%s]", input_mail_tbl_data->file_path_html);
+				if (!attach_part(root_body, (unsigned char *)input_mail_tbl_data->file_path_html, 0, NULL, NULL, false, &error)) {
+					EM_DEBUG_EXCEPTION("attach_part failed [%d]", error);
+					goto FINISH_OFF;
+				}
+			}
+		} else {
+			EM_DEBUG_LOG("unkwon case");
 		}
 
 		if (input_mail_tbl_data->file_path_mime_entity && EM_SAFE_STRLEN(input_mail_tbl_data->file_path_mime_entity) > 0) {
