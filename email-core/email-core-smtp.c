@@ -2259,7 +2259,7 @@ static int attach_part(BODY *body, const unsigned char *data, int data_len, char
 			goto FINISH_OFF;
 		}
 
-		result_file_name = em_replace_string(base64_file_name, "\015\012", "");
+		result_file_name = em_replace_all_string(base64_file_name, "\015\012", "");
 
 		EM_DEBUG_LOG("base64_file_name_length [%d]", base64_file_name_length);
 
