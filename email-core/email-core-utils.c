@@ -937,8 +937,8 @@ int emcore_is_storage_full(int *err_code)
 		goto FINISH_OFF;
 	}
 	else  {
-		long i_free = (buf.f_bfree * buf.f_bsize) / (1024 * 1024);
-		EM_DEBUG_LOG("f_bfree[%d] f_bsize[%d]", buf.f_bfree, buf.f_bsize);
+		long i_free = (buf.f_bavail * buf.f_bsize) / (1024 * 1024);
+		EM_DEBUG_LOG("f_bfree[%d] f_bsize[%d]", buf.f_bavail, buf.f_bsize);
 		EM_DEBUG_LOG("Free space of storage is[%ld] MB.", i_free);
 		if (i_free < EMAIL_LIMITATION_FREE_SPACE)
 			err = EMAIL_ERROR_MAIL_MEMORY_FULL;
