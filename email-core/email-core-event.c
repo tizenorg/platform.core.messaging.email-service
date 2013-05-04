@@ -1111,7 +1111,7 @@ int event_handler_EMAIL_EVENT_SYNC_HEADER(int input_account_id, int input_mailbo
 							EM_DEBUG_EXCEPTION("emcore_sync_header for %s(mailbox_id = %d) failed [%d]", mailbox_tbl_list[counter].mailbox_name, mailbox_tbl_list[counter].mailbox_id, err);
 
 #ifndef __FEATURE_KEEP_CONNECTION__
-							if (err == EMAIL_ERROR_CONNECTION_BROKEN || err == EMAIL_ERROR_NO_SUCH_HOST || err == EMAIL_ERROR_SOCKET_FAILURE)
+							if (err == EMAIL_ERROR_CONNECTION_BROKEN || err == EMAIL_ERROR_NO_SUCH_HOST || err == EMAIL_ERROR_SOCKET_FAILURE || err == EMAIL_ERROR_LOGIN_FAILURE)
 								stream = NULL;    /*  Don't retry to connect for broken connection. It might cause crash.  */
 #endif /*  __FEATURE_KEEP_CONNECTION__ */
 							memset(mailbox_id_param_string, 0, 10);
