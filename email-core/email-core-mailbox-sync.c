@@ -3282,8 +3282,14 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 
 	EM_DEBUG_LOG("Content-type: image");
 
-	while (image_boundary && *image_boundary != LF)
+	while ((image_boundary > bufsendforparse) && (*image_boundary != LF)) {
 		image_boundary--;
+	}
+
+	if (image_boundary <= bufsendforparse) {
+		EM_DEBUG_CRITICAL_EXCEPTION("== bufsendforparse ==");
+		EM_DEBUG_CRITICAL_EXCEPTION("%s", bufsendforparse);
+	}
 
 	image_boundary++;
 
@@ -3294,7 +3300,7 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 		return false;
 	}
 
-	if (image_boundary  != NULL && image_boundary_end != NULL)
+	if (image_boundary != NULL && image_boundary_end != NULL)
 		memcpy(temp_image_boundary, image_boundary, image_boundary_end-image_boundary);
 
 	if ((char *)strcasestr((const char *)temp_image_boundary, "Content-type:") == NULL)
