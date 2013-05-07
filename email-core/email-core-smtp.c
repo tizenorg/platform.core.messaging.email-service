@@ -919,15 +919,6 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 				emstorage_rollback_transaction(NULL, NULL, NULL);
 				goto FINISH_OFF;
 			}
-
-			if ((ext = strrchr(attachment_data_list[i].attachment_name, '.'))) {
-				if (!strncmp(ext, ".vcs", strlen(".vcs")))
-					remove(attachment_data_list[i].attachment_path);
-				else if (!strncmp(ext, ".vcf", strlen(".vcf")))
-					remove(attachment_data_list[i].attachment_path);
-				else if (!strncmp(ext, ".vnt", strlen(".vnt")))
-					remove(attachment_data_list[i].attachment_path);
-			}
 		}
 
 		memset(&attachment_tbl, 0, sizeof(emstorage_attachment_tbl_t));
