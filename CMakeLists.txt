@@ -58,7 +58,7 @@ INSTALL(FILES ${CMAKE_BINARY_DIR}/email-service.pc DESTINATION ${LIB_INSTALL_DIR
 
 # LICENSE file
 INSTALL(FILES ${CMAKE_SOURCE_DIR}/LICENSE.BSD DESTINATION /usr/share/license/email-service/LICENSE)
-INSTALL(FILES ${CMAKE_SOURCE_DIR}/email-service.rule DESTINATION /etc/smack/accesses2.d/)
+INSTALL(FILES ${CMAKE_SOURCE_DIR}/email-service.rule DESTINATION /opt/etc/smack/accesses.d/)
 
 INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/res/ DESTINATION /opt/usr/data/email/res/image FILES_MATCHING PATTERN "*.png")
 INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/res/ DESTINATION /opt/usr/data/email/res FILES_MATCHING PATTERN "*.sql")

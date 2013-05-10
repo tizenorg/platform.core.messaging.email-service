@@ -204,7 +204,7 @@ systemctl daemon-reload
 /usr/share/dbus-1/services/email-service.service
 /usr/share/license/email-service/LICENSE
 
-/etc/smack/accesses2.d/email-service.rule
+/opt/etc/smack/accesses.d/email-service.rule
 
 %files devel
 %{_includedir}/email-service/*.h

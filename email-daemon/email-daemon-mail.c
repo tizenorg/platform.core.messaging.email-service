@@ -1135,7 +1135,7 @@ INTERNAL_FUNC int emdaemon_update_mail(email_mail_data_t *input_mail_data, email
 		event_data.event_param_data_4 = input_attachment_count;
 		event_data.event_param_data_5 = input_from_eas;
 
-		if (!emcore_insert_event_for_sending_mails(&event_data, &handle, &err))  {
+		if (!emcore_insert_event(&event_data, &handle, &err)) {
 			EM_DEBUG_EXCEPTION("emcore_insert_event_for_sending_mails failed [%d]", err);
 			err = EMAIL_ERROR_NONE;
 			goto FINISH_OFF;

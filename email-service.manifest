@@ -1,6 +1,10 @@
 <manifest>
         <define>
                 <domain name="email-service"/>
+	        <provide>
+			<label name="email-service::read"/>
+			<label name="email-service::write"/>
+                </provide>
 		<!--
                 <provide>
                         <label name="email-service::db"/>

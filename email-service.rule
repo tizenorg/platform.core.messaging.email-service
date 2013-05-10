@@ -1,6 +1,7 @@
 email-service email-service::db rw
 email-service system::use_internet w
 email-service system::vconf arwxt
+email-service data-provider-master rw
 
 system::use_internet email-service rwx
 webkit2-efl email-service rx
