@@ -4,13 +4,11 @@
 	        <provide>
 			<label name="email-service::read"/>
 			<label name="email-service::write"/>
-                </provide>
-		<!--
-                <provide>
                         <label name="email-service::db"/>
                 </provide>
                 <request>
                         <smack request="email-service::db" type="rw"/>
+			<smack request="system::share" type="rwx"/>
                         <smack request="system::use_internet" type="w"/>
                         <smack request="system::vconf" type="arwxt"/>
                 </request>
@@ -18,7 +16,6 @@
                         <smack permit="system::use_internet" type="rwx"/>
                         <smack permit="webkit2-efl" type="rx"/>
                 </permit>
-		-->
         </define>
         <assign>
                 <filesystem path="/usr/lib/libemail-api.so.1.1.0" label="_"/>
