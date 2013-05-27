@@ -3,7 +3,7 @@ Summary:    E-mail Framework Middleware package
 Version:    0.10.101
 Release:    1
 Group:      System/Libraries
-License:    TBD
+License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1:    email.service
 Requires: connman
@@ -50,6 +50,13 @@ BuildRequires:  pkgconfig(msg-service)
 %description
 E-mail Framework Middleware Library/Binary package
 
+%package tests
+Summary:    E-mail Framework Middleware - Test Applications
+Group:      Development/Libraries
+Requires:   %{name} = %{version}-%{release}
+
+%description tests
+E-mail Framework Middleware test application
 
 %package devel
 Summary:    E-mail Framework Middleware Development package
@@ -195,7 +202,6 @@ systemctl daemon-reload
 
 %files
 %manifest email-service.manifest
-%exclude /usr/bin/email-test-app
 %{_bindir}/email-service
 /opt/usr/data/email/res/*
 %{_libdir}/lib*.so.*
@@ -205,6 +211,9 @@ systemctl daemon-reload
 /usr/share/license/email-service/LICENSE
 
 /opt/etc/smack/accesses.d/email-service.rule
+
+%files tests
+/usr/bin/email-test-app
 
 %files devel
 %{_includedir}/email-service/*.h
