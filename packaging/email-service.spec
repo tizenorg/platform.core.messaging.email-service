@@ -52,7 +52,7 @@ E-mail Framework Middleware Library/Binary package
 
 %package tests
 Summary:    E-mail Framework Middleware - Test Applications
-Group:      Messaging/Tests
+Group:      Messaging/Testing
 Requires:   %{name} = %{version}-%{release}
 
 %description tests

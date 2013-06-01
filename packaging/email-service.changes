@@ -1,3 +1,7 @@
+* Sat Jun 01 2013 Anas Nashif <anas.nashif@intel.com> submit/tizen/20130527.191630@14a0320
+- Remove license/group placeholders
+- Disable manifests temporarily
+
 * Mon May 27 2013 Anas Nashif <anas.nashif@intel.com> accepted/tizen/20130520.101100@9fed1bb
 - move test app to a sub-package
 
