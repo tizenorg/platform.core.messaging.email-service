@@ -2,7 +2,7 @@ Name:       email-service
 Summary:    E-mail Framework Middleware package
 Version:    0.10.101
 Release:    1
-Group:      System/Libraries
+Group:      Messaging/Service
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1:    email.service
@@ -52,7 +52,7 @@ E-mail Framework Middleware Library/Binary package
 
 %package tests
 Summary:    E-mail Framework Middleware - Test Applications
-Group:      Development/Libraries
+Group:      Messaging/Tests
 Requires:   %{name} = %{version}-%{release}
 
 %description tests
@@ -60,7 +60,7 @@ E-mail Framework Middleware test application
 
 %package devel
 Summary:    E-mail Framework Middleware Development package
-Group:      Development/Libraries
+Group:      Development/Messaging
 Requires:   %{name} = %{version}-%{release}
 
 %description devel
@@ -74,7 +74,6 @@ E-mail Framework Middleware Development package
 
 export CFLAGS="${CFLAGS} -fPIC -Wall -g -fvisibility=hidden"
 export CXXFLAGS="${CXXFLAGS} -fPIC -Wall -g -fvisibility=hidden"
-export LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--rpath=%{_libdir} -Wl,--as-needed"
 
 %cmake .
 
@@ -201,7 +200,7 @@ systemctl daemon-reload
 
 
 %files
-%manifest email-service.manifest
+#%manifest email-service.manifest
 %{_bindir}/email-service
 /opt/usr/data/email/res/*
 %{_libdir}/lib*.so.*
