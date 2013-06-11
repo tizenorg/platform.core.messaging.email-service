@@ -1,0 +1,9 @@
+Change-Id: I5b47f61d62b9637cfb77a3cfc8e4fae4b0fee361
+Code-Review+2: Anas Nashif <anas.nashif@intel.com>
+Verified+1: Rusty Lynch <rusty.lynch@intel.com>
+Verified+1: Xavier Roche <xavier.roche@eurogiciel.fr>
+Submitted-by: Anas Nashif <anas.nashif@intel.com>
+Submitted-at: Tue, 11 Jun 2013 11:09:45 -0700
+Reviewed-on: https://review.tizen.org/gerrit/3842
+Project: platform/core/messaging/email-service
+Branch: refs/heads/tizen
