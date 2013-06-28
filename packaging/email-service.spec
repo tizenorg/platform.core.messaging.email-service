@@ -6,6 +6,7 @@ Group:      Messaging/Service
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1:    email.service
+Source1001: 	email-service.manifest
 Requires: connman
 Requires: webkit2-efl
 Requires(post):    /sbin/ldconfig
@@ -69,6 +70,7 @@ E-mail Framework Middleware Development package
 
 %prep
 %setup -q
+cp %{SOURCE1001} .
 
 %build
 
@@ -200,6 +202,7 @@ systemctl daemon-reload
 
 
 %files
+%manifest %{name}.manifest
 #%manifest email-service.manifest
 %{_bindir}/email-service
 /opt/usr/data/email/res/*
@@ -212,9 +215,11 @@ systemctl daemon-reload
 /opt/etc/smack/accesses.d/email-service.rule
 
 %files tests
+%manifest %{name}.manifest
 /usr/bin/email-test-app
 
 %files devel
+%manifest %{name}.manifest
 %{_includedir}/email-service/*.h
 %{_libdir}/lib*.so
 %{_libdir}/pkgconfig/*.pc
