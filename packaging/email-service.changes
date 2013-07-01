@@ -1,3 +1,6 @@
+* Mon Jul 01 2013 Anas Nashif <anas.nashif@intel.com> accepted/tizen/20130602.015250@d13cb47
+- we do not actually depend on gconf
+
 * Wed Jun 05 2013 Xavier Roche <xavrock.os@gmail.com> accepted/tizen/20130602.015250@5b47f61
 - Replace manifest with default floor
 
