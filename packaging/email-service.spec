@@ -172,18 +172,18 @@ chmod 664 /opt/usr/dbspace/.email-service.db-journal
 
 mkdir -m775 -p /opt/usr/data/email/.email_data
 chgrp 6006 /opt/usr/data/email/.email_data
-chsmack -a 'email-service' /opt/usr/data/email/.email_data
+#chsmack -a 'email-service' /opt/usr/data/email/.email_data
 
 mkdir -m775 -p /opt/usr/data/email/.email_data/tmp
 chgrp 6006 /opt/usr/data/email/.email_data/tmp
-chsmack -a 'email-service' /opt/usr/data/email/.email_data/tmp
+#chsmack -a 'email-service' /opt/usr/data/email/.email_data/tmp
 
 mkdir -p /opt/share/cert-svc/certs/trusteduser/email
 chgrp 6006 /opt/share/cert-svc/certs/trusteduser/email
 
 if [ -f /opt/usr/dbspace/.email-service.db ]
 then
-	chsmack -a 'email-service::db' /opt/usr/dbspace/.email-service.db*
+#	chsmack -a 'email-service::db' /opt/usr/dbspace/.email-service.db*
 fi
 
 systemctl daemon-reload
