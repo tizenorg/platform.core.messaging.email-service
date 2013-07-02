@@ -1,0 +1,10 @@
+Change-Id: Ibf741b9b8e80aee446b466cd7ef3d38aabf59820
+Code-Review+1: Patrick McCarty <patrick.mccarty@linux.intel.com>
+Code-Review+2: Anas Nashif <anas.nashif@intel.com>
+Verified+1: Anas Nashif <anas.nashif@intel.com>
+Code-Review+1: William Douglas <william.douglas@intel.com>
+Submitted-by: Anas Nashif <anas.nashif@intel.com>
+Submitted-at: Tue, 02 Jul 2013 11:22:48 -0700
+Reviewed-on: https://review.tizen.org/gerrit/5300
+Project: platform/core/messaging/email-service
+Branch: refs/heads/tizen
