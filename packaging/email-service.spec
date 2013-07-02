@@ -181,10 +181,10 @@ chgrp 6006 /opt/usr/data/email/.email_data/tmp
 mkdir -p /opt/share/cert-svc/certs/trusteduser/email
 chgrp 6006 /opt/share/cert-svc/certs/trusteduser/email
 
-if [ -f /opt/usr/dbspace/.email-service.db ]
-then
+#if [ -f /opt/usr/dbspace/.email-service.db ]
+#then
 #	chsmack -a 'email-service::db' /opt/usr/dbspace/.email-service.db*
-fi
+#fi
 
 systemctl daemon-reload
 if [ $1 == 1 ]; then
