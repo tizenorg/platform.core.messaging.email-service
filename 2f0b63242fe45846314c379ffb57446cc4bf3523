@@ -1,0 +1,10 @@
+Change-Id: I2f0b63242fe45846314c379ffb57446cc4bf3523
+Code-Review+2: Ryan Ware <ware@linux.intel.com>
+Verified+1: Ryan Ware <ware@linux.intel.com>
+Code-Review+1: Elena Reshetova <elena.reshetova@intel.com>
+Verified+1: Elena Reshetova <elena.reshetova@intel.com>
+Submitted-by: Ryan Ware <ware@linux.intel.com>
+Submitted-at: Mon, 08 Jul 2013 09:36:24 -0700
+Reviewed-on: https://review.tizen.org/gerrit/5441
+Project: platform/core/messaging/email-service
+Branch: refs/heads/tizen
