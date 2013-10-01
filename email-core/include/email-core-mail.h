@@ -152,7 +152,7 @@ INTERNAL_FUNC int emcore_set_sent_contacts_log(emstorage_mail_tbl_t *input_mail_
 INTERNAL_FUNC int emcore_set_received_contacts_log(emstorage_mail_tbl_t *input_mail_data);
 INTERNAL_FUNC int emcore_delete_contacts_log(int input_account_id);
 
-INTERNAL_FUNC int emcore_get_mail_display_name(char *email_address, char **contact_display_name, int *err_code);
+INTERNAL_FUNC int emcore_get_mail_display_name(char *email_address, char **contact_display_name, int *person_id, int *err_code);
 INTERNAL_FUNC int emcore_get_mail_data(int input_mail_id, email_mail_data_t **output_mail_data);
 
 INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t* input_meeting_request, int sync_server);

@@ -3149,7 +3149,7 @@ FINISH_OFF:
 	return err;
 }
 
-INTERNAL_FUNC int emcore_get_mail_display_name(char *email_address, char **contact_display_name, int *err_code)
+INTERNAL_FUNC int emcore_get_mail_display_name(char *email_address, char **contact_display_name, int *person_id, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("contact_name_value[%s], contact_display_name[%p]", email_address, contact_display_name);
 
@@ -3190,7 +3190,14 @@ INTERNAL_FUNC int emcore_get_mail_display_name(char *email_address, char **conta
 		goto FINISH_OFF;
 	}
 
-	ret = true;
+  if (person_id &&
+      contacts_record_get_int(record, _contacts_contact_email.person_id, person_id) != CONTACTS_ERROR_NONE)
+  {
+    EM_DEBUG_EXCEPTION("contacts_record_get_int failed when retrieving person_id");
+    *person_id = -1;
+  }
+
+  ret = true;
 
 FINISH_OFF:
 

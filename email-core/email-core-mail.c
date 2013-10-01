@@ -1067,7 +1067,7 @@ int emcore_get_mail_contact_info_with_update(email_mail_contact_info_t *contact_
 		is_searched = false;
 		EM_DEBUG_LOG(" >>>>> emcore_get_mail_contact_info - 10");
 	
-		if (emcore_get_mail_display_name(email_address, &contact_display_name_from_contact_info, &err) && err == EMAIL_ERROR_NONE) {
+		if (emcore_get_mail_display_name(email_address, &contact_display_name_from_contact_info, NULL, &err) && err == EMAIL_ERROR_NONE) {
 			contact_display_name = contact_display_name_from_contact_info;
 
 			EM_DEBUG_LOG(">>> contact_name[%s]", contact_display_name);
@@ -1443,7 +1443,7 @@ static int emcore_sync_address_info(email_address_type_t address_type, char *ful
 
 		is_search = false;
 
-		if (emcore_get_mail_display_name(email_address, &contact_display_name_from_contact_info, &error) && error == EMAIL_ERROR_NONE) {
+		if (emcore_get_mail_display_name(email_address, &contact_display_name_from_contact_info, &contact_index, &error) && error == EMAIL_ERROR_NONE) {
 			EM_DEBUG_LOG(">>> contact display name[%s]", contact_display_name_from_contact_info);
 
 			is_search = true;
@@ -1594,7 +1594,7 @@ INTERNAL_FUNC GList *emcore_get_recipients_list(GList *old_recipients_list, char
 
 		EM_DEBUG_LOG("Search a contact : address[%s]", email_address);
 
-		if (emcore_get_mail_display_name(email_address, &display_name, &err) && err == EMAIL_ERROR_NONE) {
+		if (emcore_get_mail_display_name(email_address, &display_name, NULL, &err) && err == EMAIL_ERROR_NONE) {
 			EM_DEBUG_LOG(">>> contact display name[%s]", display_name);
 			is_search = true;
 		} else {
