@@ -1233,6 +1233,7 @@ typedef struct
 	char                        *certificate_path;                         /**< Specifies the certificate path of private*/
 	email_cipher_type            cipher_type;                              /**< Specifies the encryption algorithm*/
 	email_digest_type            digest_type;                              /**< Specifies the digest algorithm*/
+	int                          notification;                             /**< Specifies whether this account will generate notifications for new email */
 } email_account_t;
 
 /**

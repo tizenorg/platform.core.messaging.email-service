@@ -116,6 +116,7 @@ typedef struct
 	char                              *certificate_path;                         /* Sepeifies the certificate path of private*/
 	email_cipher_type                  cipher_type;                              /* Sepeifies the encryption algorithm*/
 	email_digest_type                  digest_type;                              /* Sepeifies the digest algorithm*/
+	int                                notification;                             /* Specifies whether this account will generate notifications on new emails */
 } emstorage_account_tbl_t;
 
 typedef struct 

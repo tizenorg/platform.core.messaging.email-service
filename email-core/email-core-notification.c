@@ -110,6 +110,19 @@ static void _notification_create(email_mail_data_t *mail, email_mail_person_info
 	char buf[1024];
 	int ret;
 
+	if (!emstorage_get_account_by_id(mail->account_id, EMAIL_ACC_GET_OPT_ACCOUNT_NAME, &account_tbl, true, &ret))
+	{
+		EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed - %d", ret);
+		notification_free(noti);
+		return;
+	}
+
+	if (!account_tbl->notification) {
+		EM_DEBUG_LOG("account has disabled email notification.");
+		emstorage_free_account(&account_tbl, 1, NULL);
+		return;
+	}
+
 	noti = notification_create(NOTIFICATION_TYPE_NOTI);
 	if (!noti)
 	{
@@ -119,13 +132,6 @@ static void _notification_create(email_mail_data_t *mail, email_mail_person_info
 
 	notification_set_layout(noti, NOTIFICATION_LY_NOTI_EVENT_SINGLE);
 	notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, "Email", NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
-
-	if (!emstorage_get_account_by_id(mail->account_id, EMAIL_ACC_GET_OPT_ACCOUNT_NAME, &account_tbl, true, &ret))
-	{
-		EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed - %d", ret);
-		notification_free(noti);
-		return;
-	}
 
 	notification_set_text(noti, NOTIFICATION_TEXT_TYPE_CONTENT, account_tbl->account_name, NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
 	emstorage_free_account(&account_tbl, 1, NULL);

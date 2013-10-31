@@ -765,6 +765,7 @@ static char *g_test_query[] = {
 		", certificate_path"
 		", cipher_type"
 		", digest_type"
+		", notification"
 		" FROM mail_account_tbl",
 		/*  2. select mail_box_tbl */
 		"SELECT "
@@ -2974,6 +2975,7 @@ INTERNAL_FUNC int emstorage_get_account_list(int *select_num, emstorage_account_
 		_get_stmt_field_data_string(hStmt, &(p_data_tbl[i].certificate_path), 0, field_index++);
 		_get_stmt_field_data_int(hStmt, (int *)&(p_data_tbl[i].cipher_type), field_index++);
 		_get_stmt_field_data_int(hStmt, (int *)&(p_data_tbl[i].digest_type), field_index++);
+		_get_stmt_field_data_int(hStmt, (int *)&(p_data_tbl[i].notification), field_index++);
 
 		if (with_password == true) {
 			/*  get password from the secure storage */
@@ -3499,12 +3501,12 @@ INTERNAL_FUNC int emstorage_get_account_by_id(int account_id, int pulloption, em
 			"user_data,"
 			"user_data_length,"
 			"check_interval,"
-			"sync_status,");
+			"sync_status, notification,");
 		sql_len = EM_SAFE_STRLEN(sql_query_string);
 	}
 
 	if (pulloption & EMAIL_ACC_GET_OPT_ACCOUNT_NAME) {
-		SNPRINTF(sql_query_string + sql_len, sizeof(sql_query_string) - sql_len, " account_name, ");
+		SNPRINTF(sql_query_string + sql_len, sizeof(sql_query_string) - sql_len, " account_name, notification, ");
 		sql_len = EM_SAFE_STRLEN(sql_query_string);
 	}
 
@@ -3531,7 +3533,7 @@ INTERNAL_FUNC int emstorage_get_account_by_id(int account_id, int pulloption, em
 			"smime_type,"
 			"certificate_path,"
 			"cipher_type,"
-			"digest_type,");
+			"digest_type, notification,");
 
 		sql_len = EM_SAFE_STRLEN(sql_query_string);
 	}
@@ -3595,10 +3597,13 @@ INTERNAL_FUNC int emstorage_get_account_by_id(int account_id, int pulloption, em
 		_get_stmt_field_data_int(hStmt, &p_data_tbl->user_data_length, col_index++);
 		_get_stmt_field_data_int(hStmt, &(p_data_tbl->check_interval), col_index++);
 		_get_stmt_field_data_int(hStmt, &(p_data_tbl->sync_status), col_index++);
+		_get_stmt_field_data_int(hStmt, &(p_data_tbl->notification), col_index++);
 	}
 
-	if (pulloption & EMAIL_ACC_GET_OPT_ACCOUNT_NAME)
+	if (pulloption & EMAIL_ACC_GET_OPT_ACCOUNT_NAME) {
 		_get_stmt_field_data_string(hStmt, &(p_data_tbl->account_name), 0, col_index++);
+		_get_stmt_field_data_int(hStmt, &(p_data_tbl->notification), col_index++);
+	}
 
 	if (pulloption & EMAIL_ACC_GET_OPT_PASSWORD) {
 		/*  get password file name */
@@ -3644,6 +3649,7 @@ INTERNAL_FUNC int emstorage_get_account_by_id(int account_id, int pulloption, em
 		_get_stmt_field_data_string(hStmt, &(p_data_tbl->certificate_path), 0, col_index++);
 		_get_stmt_field_data_int(hStmt, (int *)&(p_data_tbl->cipher_type), col_index++);
 		_get_stmt_field_data_int(hStmt, (int *)&(p_data_tbl->digest_type), col_index++);
+		_get_stmt_field_data_int(hStmt, (int *)&(p_data_tbl->notification), col_index++);
 	}
 
 	ret = true;
@@ -3791,6 +3797,7 @@ INTERNAL_FUNC int emstorage_update_account(int account_id, emstorage_account_tbl
 		", certificate_path = ?"
 		", cipher_type = ?"
 		", digest_type = ?"
+		", notification = ?"
 		" WHERE account_id = ?");
 
 	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
@@ -3849,6 +3856,7 @@ INTERNAL_FUNC int emstorage_update_account(int account_id, emstorage_account_tbl
 	_bind_stmt_field_data_string(hStmt, i++, account_tbl->certificate_path, 0, CERTIFICATE_PATH_LEN_IN_MAIL_ACCOUNT_TBL);
 	_bind_stmt_field_data_int(hStmt, i++, account_tbl->cipher_type);
 	_bind_stmt_field_data_int(hStmt, i++, account_tbl->digest_type);
+	_bind_stmt_field_data_int(hStmt, i++, account_tbl->notification);
 	_bind_stmt_field_data_int(hStmt, i++, account_id);
 
 	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_step(hStmt), rc);
@@ -4178,6 +4186,7 @@ INTERNAL_FUNC int emstorage_add_account(emstorage_account_tbl_t* account_tbl, in
 		"  , ? "  /*   certificate_path */
 		"  , ? "  /*   cipher_type */
 		"  , ? "  /*   digest_type */
+		"  , ? "  /*   notification */
 		") ");
 
 	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_prepare_v2(local_db_handle, sql_query_string, EM_SAFE_STRLEN(sql_query_string), &hStmt, NULL), rc);
@@ -4238,6 +4247,7 @@ INTERNAL_FUNC int emstorage_add_account(emstorage_account_tbl_t* account_tbl, in
 	_bind_stmt_field_data_string(hStmt, i++, account_tbl->certificate_path, 0, FILE_NAME_LEN_IN_MAIL_CERTIFICATE_TBL);
 	_bind_stmt_field_data_int(hStmt, i++, account_tbl->cipher_type);
 	_bind_stmt_field_data_int(hStmt, i++, account_tbl->digest_type);
+	_bind_stmt_field_data_int(hStmt, i++, account_tbl->notification);
 
 	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_step(hStmt), rc);
 

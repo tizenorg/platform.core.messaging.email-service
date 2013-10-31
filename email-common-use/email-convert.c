@@ -98,6 +98,7 @@ INTERNAL_FUNC int em_convert_account_to_account_tbl(email_account_t *account, em
 	account_tbl->certificate_path                         = EM_SAFE_STRDUP(account->certificate_path);
 	account_tbl->cipher_type                              = account->cipher_type;
 	account_tbl->digest_type                              = account->digest_type;
+	account_tbl->notification                             = account->notification;
 
 
 	EM_DEBUG_FUNC_END();
@@ -160,6 +161,7 @@ INTERNAL_FUNC int em_convert_account_tbl_to_account(emstorage_account_tbl_t *acc
 	account->certificate_path                         = EM_SAFE_STRDUP(account_tbl->certificate_path);
 	account->cipher_type                              = account_tbl->cipher_type;
 	account->digest_type                              = account_tbl->digest_type;
+	account->notification                             = account_tbl->notification;
 
 	EM_DEBUG_FUNC_END();
 	return ret;
@@ -616,7 +618,7 @@ static int fetch_string_from_stream(char *input_stream, int *input_output_stream
 }
                                     /* divide struct at binary field (void* user_data)*/
 #define EMAIL_ACCOUNT_FMT   "S(" "isiii" "is" ")" "B" "S(" "issss"  "isiss" "iiiii" "isiss" "iii"\
-                                 "$(" "iiiii" "iisii" "iisi" ")" "iiisii" ")"
+                                 "$(" "iiiii" "iisii" "iisi" ")" "iiisiii" ")"
 
 
 INTERNAL_FUNC char* em_convert_account_to_byte_stream(email_account_t* account, int *stream_len)

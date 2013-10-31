@@ -50,7 +50,8 @@ CREATE TABLE mail_account_tbl
 	smime_type                               INTEGER,
 	certificate_path                         VARCHAR(256),
 	cipher_type                              INTEGER,
-	digest_type                              INTEGER
+	digest_type                              INTEGER,
+	notification                             INTEGER
 );
 CREATE TABLE mail_box_tbl 
 (    
