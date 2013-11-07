@@ -3563,7 +3563,7 @@ static int emcore_parse_body_for_imap(char *body_str, int body_size, struct _m_c
 		goto FINISH_OFF;
 	}
 
-	if (!strcasestr(p_body_str, "Content-Type: ") && (cnt_info->text.plain || cnt_info->text.html)) {
+	if (!cnt_info->multipart && (cnt_info->text.plain || cnt_info->text.html)) {
 		/*  Encoded Content-Type: text/html or Content-Type: text/plain  */
 		/*  No Partial body has No headers with Content-Type: text/html or Content-Type: text/plain  */
 

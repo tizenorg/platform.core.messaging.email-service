@@ -4504,6 +4504,7 @@ INTERNAL_FUNC int emcore_get_body(MAILSTREAM *stream, int account_id, int mail_i
 
 	switch (body->type)  {
 		case TYPEMULTIPART:
+			cnt_info->multipart = TRUE;
 			return emcore_get_multi_part(stream, account_id, mail_id, msg_uid, body, cnt_info, err_code);
 
 		case TYPEMESSAGE:  /*  not support */

@@ -66,6 +66,8 @@ struct _m_content_info
 	int file_no;                /*  attachment no to be download (min : 1) */
 	int report;                 /*  0 : Non 1 : DSN mail 2 : MDN mail 3 : mail to require MDN */
 
+	int multipart;
+
 	struct text_data 
 	{
 		char *plain;            /*  body plain text */
