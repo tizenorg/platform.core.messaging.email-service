@@ -634,7 +634,8 @@ INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_atta
 			input_mail_data->full_address_from = EM_SAFE_STRDUP(account_tbl_item->user_email_address);
 
 		/* check for email_address validation */
-		if (!em_verify_email_address_of_mail_data(mail_data, false, &err)) {
+		if (input_mail_data->mailbox_type != EMAIL_MAILBOX_TYPE_DRAFT &&
+		    !em_verify_email_address_of_mail_data (mail_data, false, &err)) {
 			EM_DEBUG_EXCEPTION("em_verify_email_address_of_mail_data failed [%d]", err);
 			goto FINISH_OFF;
 		}

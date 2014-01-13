@@ -1362,7 +1362,7 @@ FINISH_OFF:
 /*  1. parsing  :  alias and address */
 /*  2. sync with contact */
 /*  3. make glist of address info */
-static int emcore_sync_address_info(email_address_type_t address_type, char *full_address, GList **address_info_list, int *err_code)
+static int emcore_sync_address_info(bool is_draft, email_address_type_t address_type, char *full_address, GList **address_info_list, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("address type[%d], address_info_list[%p], full_address[%p]", address_type, address_info_list, full_address);
 
@@ -1419,7 +1419,7 @@ static int emcore_sync_address_info(email_address_type_t address_type, char *ful
 				continue;
 			}
 		}
-		else  {
+		else  if (!is_draft && !addr->mailbox && !addr->host) {
 			EM_DEBUG_LOG("Error in parsing..! ");
 			addr = addr->next;
 			continue;
@@ -1437,8 +1437,12 @@ static int emcore_sync_address_info(email_address_type_t address_type, char *ful
 		}	
 		memset(p_address_info, 0x00, sizeof(email_address_info_t)); 
 
-		SNPRINTF(email_address, MAX_EMAIL_ADDRESS_LENGTH, "%s@%s", addr->mailbox ? addr->mailbox  :  "", addr->host ? addr->host  :  "");
- 
+		if (addr->host) {
+			SNPRINTF(email_address, MAX_EMAIL_ADDRESS_LENGTH, "%s@%s",
+				 addr->mailbox, addr->host);
+		} else
+			SNPRINTF(email_address, MAX_EMAIL_ADDRESS_LENGTH, "%s", addr->mailbox);
+
 		EM_DEBUG_LOG("Search a contact  :  address[%s]", email_address);
 
 		is_search = false;
@@ -1667,6 +1671,7 @@ INTERNAL_FUNC int emcore_get_mail_address_info_list(int mail_id, email_address_i
 	int ret = false, err = EMAIL_ERROR_NONE;
 	int failed = true;
 	int contact_error;
+	bool is_draft = false;
 
 	emstorage_mail_tbl_t *mail = NULL;
 	email_address_info_list_t *p_address_info_list = NULL;
@@ -1701,13 +1706,16 @@ INTERNAL_FUNC int emcore_get_mail_address_info_list(int mail_id, email_address_i
 		goto FINISH_OFF;
 	}
 
-	if (mail->full_address_from && emcore_sync_address_info(EMAIL_ADDRESS_TYPE_FROM, mail->full_address_from, &p_address_info_list->from, &err))
+	if (mail->mailbox_type == EMAIL_MAILBOX_TYPE_DRAFT)
+		is_draft = true;
+
+	if (mail->full_address_from && emcore_sync_address_info(is_draft, EMAIL_ADDRESS_TYPE_FROM, mail->full_address_from, &p_address_info_list->from, &err))
 		failed = false;
-	if (mail->full_address_to && emcore_sync_address_info(EMAIL_ADDRESS_TYPE_TO, mail->full_address_to, &p_address_info_list->to, &err))
+	if (mail->full_address_to && emcore_sync_address_info(is_draft, EMAIL_ADDRESS_TYPE_TO, mail->full_address_to, &p_address_info_list->to, &err))
 		failed = false;
-	if (mail->full_address_cc && emcore_sync_address_info(EMAIL_ADDRESS_TYPE_CC, mail->full_address_cc, &p_address_info_list->cc, &err))
+	if (mail->full_address_cc && emcore_sync_address_info(is_draft, EMAIL_ADDRESS_TYPE_CC, mail->full_address_cc, &p_address_info_list->cc, &err))
 		failed = false;
-	if (mail->full_address_bcc && emcore_sync_address_info(EMAIL_ADDRESS_TYPE_BCC, mail->full_address_bcc, &p_address_info_list->bcc, &err))
+	if (mail->full_address_bcc && emcore_sync_address_info(is_draft, EMAIL_ADDRESS_TYPE_BCC, mail->full_address_bcc, &p_address_info_list->bcc, &err))
 		failed = false;
 
 	if ((contact_error = contacts_disconnect2()) == CONTACTS_ERROR_NONE)
