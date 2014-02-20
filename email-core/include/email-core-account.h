@@ -42,7 +42,7 @@ extern "C"
 
 INTERNAL_FUNC int emcore_validate_account(int account_id, int *err_code);
 
-INTERNAL_FUNC int emcore_validate_account_with_account_info(email_account_t *account, int *err_code);
+INTERNAL_FUNC int emcore_validate_account_with_account_info(email_account_t *account, email_event_type_t event_type, int *err_code);
 
 INTERNAL_FUNC int emcore_create_account(email_account_t *account, int *err_code);
 
@@ -75,6 +75,8 @@ INTERNAL_FUNC int emcore_load_default_account_id(int *output_account_id);
 INTERNAL_FUNC int emcore_recover_from_secured_storage_failure();
 
 INTERNAL_FUNC int emcore_update_sync_status_of_account(int input_account_id, email_set_type_t input_set_operator, int input_sync_status);
+
+INTERNAL_FUNC int emcore_refresh_xoauth2_access_token(int input_account_id);
 
 
 #ifdef __FEATURE_BACKUP_ACCOUNT__

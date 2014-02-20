@@ -41,6 +41,9 @@
 #include "testapp-rule.h"
 #include "testapp-thread.h"
 #include "testapp-others.h"
+#ifdef __FEATURE_USE_GMIME__
+#include "testapp-gmime.h"
+#endif /* __FEATURE_USE_GMIME__ */
 #include "db-util.h"
 
 /* function prototype */
@@ -162,6 +165,11 @@ static gboolean testapp_interpret_command (int menu_number)
 		case 7:
 			testapp_others_main();
 			break;
+#ifdef __FEATURE_USE_GMIME__
+		case 8:
+			testapp_gmime_main();
+			break;
+#endif /* __FEATURE_USE_GMIME__ */
 		case 0:
 			go_to_loop = FALSE;
 			break;

@@ -44,6 +44,7 @@
 #include "email-debug-log.h"
 #include "email-storage.h"
 #include "email-network.h"
+#include "email-device.h"
 #include "email-utilities.h"
 #include "email-core-utils.h"
 #include "email-core-global.h"
@@ -54,9 +55,7 @@
 #endif
 
 
-#define EMAIL_ALARM_DESTINATION "email-service-0"
-
-GList *alarm_data_list = NULL;
+INTERNAL_FUNC GList *alarm_data_list = NULL;
 
 INTERNAL_FUNC int emcore_get_alarm_data_by_alarm_id(alarm_id_t input_alarm_id, email_alarm_data_t **output_alarm_data)
 {
@@ -90,7 +89,7 @@ FINISH_OFF:
 	return err;
 }
 
-INTERNAL_FUNC int emcore_get_alarm_data_by_reference_id(int input_class_id, int input_reference_id, email_alarm_data_t **output_alarm_data)
+INTERNAL_FUNC int emcore_get_alarm_data_by_reference_id(email_alarm_class_t input_class_id, int input_reference_id, email_alarm_data_t **output_alarm_data)
 {
 	EM_DEBUG_FUNC_BEGIN("input_class_id [%d] input_reference_id [%d] output_alarm_data [%p]", input_class_id, input_reference_id, output_alarm_data);
 	int err = EMAIL_ERROR_NONE;
@@ -123,8 +122,30 @@ FINISH_OFF:
 	return err;
 }
 
+INTERNAL_FUNC int emcore_check_alarm_by_class_id(email_alarm_class_t input_class_id)
+{
+	EM_DEBUG_FUNC_BEGIN("input_class_id [%d]", input_class_id);
+	int err = EMAIL_ERROR_NONE;
+	GList *index = g_list_first(alarm_data_list);
+	email_alarm_data_t *alarm_data = NULL;
 
-static int emcore_add_alarm_data_to_alarm_data_list(alarm_id_t input_alarm_id, int input_class_id, int input_reference_id, time_t input_trigger_at_time, int (*input_alarm_callback)(int, void *), void *user_data)
+	while(index) {
+		alarm_data = index->data;
+		if(alarm_data->class_id == input_class_id) {
+			EM_DEBUG_LOG("found");
+			break;
+		}
+		index = g_list_next(index);
+	}
+
+	if(!index)
+		err = EMAIL_ERROR_ALARM_DATA_NOT_FOUND;
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
+
+static int emcore_add_alarm_data_to_alarm_data_list(alarm_id_t input_alarm_id, email_alarm_class_t input_class_id, int input_reference_id, time_t input_trigger_at_time, int (*input_alarm_callback)(int, void *), void *user_data)
 {
 	EM_DEBUG_FUNC_BEGIN("input_alarm_id [%d] input_class_id[%d] input_reference_id[%d] input_trigger_at_time[%d] input_alarm_callback [%p] user_data[%p]", input_alarm_id, input_class_id, input_reference_id, input_trigger_at_time, input_alarm_callback, user_data);
 	int err = EMAIL_ERROR_NONE;
@@ -167,12 +188,12 @@ static int emcore_remove_alarm(email_alarm_data_t *input_alarm_data)
 
 	EM_DEBUG_LOG("alarm_id [%d]", input_alarm_data->alarm_id);
 	if ((ret = alarmmgr_remove_alarm(input_alarm_data->alarm_id)) != ALARMMGR_RESULT_SUCCESS) {
-		EM_DEBUG_EXCEPTION("delete of alarm id failed [%d]", ret);
+		EM_DEBUG_EXCEPTION ("alarmmgr_remove_alarm failed [%d]", ret);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 	}
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
-	return EMAIL_ERROR_NONE;
+	return err;
 }
 
 INTERNAL_FUNC int emcore_delete_alram_data_from_alarm_data_list(email_alarm_data_t *input_alarm_data)
@@ -181,86 +202,36 @@ INTERNAL_FUNC int emcore_delete_alram_data_from_alarm_data_list(email_alarm_data
 	int err = EMAIL_ERROR_NONE;
 
 	if ((err = emcore_remove_alarm(input_alarm_data)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emcore_remove_alarm failed[%d]", err);
+		EM_DEBUG_EXCEPTION ("emcore_remove_alarm failed [%d]", err);
 	}
 
 	alarm_data_list = g_list_remove(alarm_data_list, input_alarm_data);
 
-	EM_DEBUG_FUNC_END("err [%d]", EMAIL_ERROR_NONE);
-	return EMAIL_ERROR_NONE;
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
 }
 
-INTERNAL_FUNC int emcore_delete_alram_data_by_reference_id(int input_class_id, int input_reference_id)
+INTERNAL_FUNC int emcore_delete_alram_data_by_reference_id(email_alarm_class_t input_class_id, int input_reference_id)
 {
 	EM_DEBUG_FUNC_BEGIN("input_class_id[%d] input_reference_id[%d]", input_class_id, input_reference_id);
 	int err = EMAIL_ERROR_NONE;
 	email_alarm_data_t *alarm_data = NULL;
 
 	if ((err = emcore_get_alarm_data_by_reference_id(input_class_id, input_reference_id, &alarm_data)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emcore_remove_alarm failed[%d]", err);
+		EM_DEBUG_LOG ("emcore_remove_alarm return [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	if ((err = emcore_delete_alram_data_from_alarm_data_list(alarm_data)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emcore_delete_alram_data_from_alarm_data_list failed[%d]", err);
+		EM_DEBUG_LOG ("emcore_delete_alram_data_from_alarm_data_list return [%d]", err);
 	}
-FINISH_OFF:
-	EM_DEBUG_FUNC_END("err [%d]", EMAIL_ERROR_NONE);
-	return EMAIL_ERROR_NONE;
-}
-
-static int default_alarm_callback(int input_timer_id, void *user_parameter)
-{
-	EM_DEBUG_FUNC_BEGIN("input_timer_id [%d] user_parameter [%p]", input_timer_id, user_parameter);
-	int err = EMAIL_ERROR_NONE;
-	email_alarm_data_t *alarm_data = NULL;
-
-	if ((err = emcore_get_alarm_data_by_alarm_id(input_timer_id, &alarm_data)) != EMAIL_ERROR_NONE || alarm_data == NULL) {
-		EM_DEBUG_EXCEPTION("emcore_get_alarm_data_by_alarm_id failed [%d]", err);
-		goto FINISH_OFF;
-	}
-
-	if ((err = alarm_data->alarm_callback(input_timer_id, user_parameter)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("alarm_callback failed [%d]", err);
-		goto FINISH_OFF;
-	}
-
-	emcore_delete_alram_data_from_alarm_data_list(alarm_data);
-	EM_SAFE_FREE(alarm_data);
 
 FINISH_OFF:
-
-
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
 
-INTERNAL_FUNC int emcore_init_alarm_data_list()
-{
-	EM_DEBUG_FUNC_BEGIN();
-	int ret = ALARMMGR_RESULT_SUCCESS;
-	int err = EMAIL_ERROR_NONE;
-	alarm_data_list = NULL;
-
-	if ((ret = alarmmgr_init(EMAIL_ALARM_DESTINATION)) != ALARMMGR_RESULT_SUCCESS) {
-		EM_DEBUG_EXCEPTION("alarmmgr_init failed [%d]",ret);
-		err = EMAIL_ERROR_SYSTEM_FAILURE;
-		goto FINISH_OFF;
-	}
-
-	if ((ret = alarmmgr_set_cb(default_alarm_callback, NULL)) != ALARMMGR_RESULT_SUCCESS) {
-		EM_DEBUG_EXCEPTION("alarmmgr_set_cb() failed [%d]", ret);
-		err = EMAIL_ERROR_SYSTEM_FAILURE;
-		goto FINISH_OFF;
-	}
-
-FINISH_OFF:
-
-	EM_DEBUG_FUNC_END("err [%d]", err);
-	return err;
-}
-
-INTERNAL_FUNC int emcore_add_alarm(time_t input_trigger_at_time, int input_class_id, int input_reference_id, int (*input_alarm_callback)(int, void *), void *input_user_data)
+INTERNAL_FUNC int emcore_add_alarm(time_t input_trigger_at_time, email_alarm_class_t input_class_id, int input_reference_id, int (*input_alarm_callback)(int, void *), void *input_user_data)
 {
 	EM_DEBUG_FUNC_BEGIN("input_trigger_at_time[%d] input_class_id[%d] input_reference_id[%d] input_alarm_callback[%p] input_user_data[%p]", input_trigger_at_time, input_class_id, input_reference_id, input_alarm_callback, input_user_data);
 
@@ -274,7 +245,8 @@ INTERNAL_FUNC int emcore_add_alarm(time_t input_trigger_at_time, int input_class
 
 	alarm_interval = input_trigger_at_time - current_time;
 
-	/* old style */
+	EM_DEBUG_ALARM_LOG("alarm_interval [%d]", (int)alarm_interval);
+
 #ifdef __FEATURE_USE_APPSYNC__
 	if(input_class_id == EMAIL_ALARM_CLASS_AUTO_POLLING) {
 		if ((ret = appsync_daemon_schedule_after_delay(alarm_interval, 0, &alarm_id)) != APPSYNC_ERROR_NONE) {

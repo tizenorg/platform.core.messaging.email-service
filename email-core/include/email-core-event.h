@@ -40,21 +40,21 @@ extern "C"
 {
 #endif /* __cplusplus */
 
-void emcore_execute_event_callback(email_action_t action, int total, int done, int status, int account_id, int mail_id, int handle, int error);
-int  emcore_get_active_queue_idx(void);
-int  emcore_check_send_mail_thread_status();
+#define TOTAL_PARTIAL_BODY_EVENTS 100
 
-INTERNAL_FUNC int          emcore_get_current_thread_type();
+void emcore_execute_event_callback(email_action_t action, int total, int done, int status, int account_id, int mail_id, int handle, int error);
+
 INTERNAL_FUNC int          emcore_register_event_callback(email_action_t action, email_event_callback callback, void *event_data);
 INTERNAL_FUNC int          emcore_unregister_event_callback(email_action_t action, email_event_callback callback);
-INTERNAL_FUNC int          emcore_start_event_loop(int *err_code);
 INTERNAL_FUNC int          emcore_stop_event_loop(int *err_code);
 INTERNAL_FUNC int          emcore_insert_event(email_event_t *event_data, int *handle, int *err_code);
 INTERNAL_FUNC int          emcore_cancel_thread(int handle, void *arg, int *err_code);
-INTERNAL_FUNC int          emcore_start_event_loop_for_sending_mails(int *err_code);
+INTERNAL_FUNC int          emcore_cancel_all_thread(int *err_code);
 INTERNAL_FUNC int          emcore_send_event_loop_stop(int *err_code);
 INTERNAL_FUNC int          emcore_cancel_send_mail_thread(int handle, void *arg, int *err_code);
+INTERNAL_FUNC int          emcore_cancel_all_send_mail_thread(int *err_code);
 INTERNAL_FUNC int          emcore_check_thread_status(void);
+INTERNAL_FUNC int          emcore_check_send_mail_thread_status(void);
 INTERNAL_FUNC void         emcore_get_event_queue_status(int *on_sending, int *on_receiving);
 INTERNAL_FUNC int          emcore_insert_event_for_sending_mails(email_event_t *event_data, int *handle, int *err_code);
 INTERNAL_FUNC int          emcore_get_receiving_event_queue(email_event_t **event_queue, int *event_count, int *err);
@@ -62,12 +62,24 @@ INTERNAL_FUNC int          emcore_cancel_all_threads_of_an_account(int account_i
 INTERNAL_FUNC int          emcore_free_event(email_event_t *event_data);
 INTERNAL_FUNC int          emcore_get_task_information(email_task_information_t **output_task_information, int *output_task_information_count);
 
+INTERNAL_FUNC void emcore_initialize_event_callback_table();
+INTERNAL_FUNC int emcore_event_loop_continue(void);
+INTERNAL_FUNC int emcore_retrieve_event(email_event_t **event_data, int *err_code);
+INTERNAL_FUNC int emcore_return_handle(int handle);
+INTERNAL_FUNC int emcore_retrieve_send_event(email_event_t **event_data, int *err_code);
+INTERNAL_FUNC int emcore_return_send_handle(int handle);
+INTERNAL_FUNC int emcore_retrieve_partial_body_thread_event(email_event_partial_body_thd *partial_body_thd_event, int *error_code);
+INTERNAL_FUNC int emcore_mail_partial_body_download(email_event_partial_body_thd *pbd_event, int *error_code);
+INTERNAL_FUNC void emcore_pb_thd_set_local_activity_continue(int flag);
+INTERNAL_FUNC int emcore_pb_thd_can_local_activity_continue();
+INTERNAL_FUNC int emcore_set_pbd_thd_state(int flag);
+
+
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
 /*  Please contact -> Himanshu [h.gahlaut@samsung.com] for any explanation in code here under this MACRO */
 INTERNAL_FUNC int          emcore_insert_partial_body_thread_event(email_event_partial_body_thd *partial_body_thd_event, int *error_code);
 INTERNAL_FUNC int          emcore_is_partial_body_thd_que_empty();
 INTERNAL_FUNC int          emcore_is_partial_body_thd_que_full();
-INTERNAL_FUNC int          emcore_start_thread_for_downloading_partial_body(int *err_code);
 INTERNAL_FUNC int          emcore_clear_partial_body_thd_event_que(int *err_code);
 INTERNAL_FUNC int          emcore_free_partial_body_thd_event(email_event_partial_body_thd *partial_body_thd_event, int *error_code);
 INTERNAL_FUNC unsigned int emcore_get_partial_body_thd_id();

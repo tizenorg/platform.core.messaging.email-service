@@ -41,7 +41,7 @@ EXPORT_API bool emipc_finalize_stub()
 
 EXPORT_API bool emipc_execute_stub_api(HIPC_API api)
 {
-	EM_DEBUG_LOG("ipcEmailStub_ExecuteAPI [%x]", api);
+	EM_DEBUG_LOG_DEV ("ipcEmailStub_ExecuteAPI [%x]", api);
 	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
 	if (api_info == NULL)
 		return false;

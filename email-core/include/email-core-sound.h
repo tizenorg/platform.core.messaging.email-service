@@ -22,10 +22,6 @@
 
 #include <vconf-keys.h>
 #include <vconf.h>
-#include <mm_player.h>
-#include <mm_error.h>
-#include <mm_session_private.h>
-#include <feedback.h>
 
 typedef enum
 {
@@ -42,6 +38,7 @@ typedef enum
 	EMAIL_ALERT_TYPE_VIB, 
 	EMAIL_ALERT_TYPE_MELODY_AND_VIB, 
 	EMAIL_ALERT_TYPE_MUTE, 
+	EMAIL_ALERT_TYPE_NONE,
 } EMAIL_ALERT_TYPE;
 
 typedef enum
@@ -63,5 +60,5 @@ typedef enum
 #undef Min
 #endif
 
-INTERNAL_FUNC int  emcore_start_thread_for_alerting_new_mails(int *err_code);
-INTERNAL_FUNC void emcore_start_alert();
+INTERNAL_FUNC int emcore_get_alert_policy(EMAIL_ALERT_TYPE *output_alert_type, char **output_alert_tone_path);
+

@@ -36,6 +36,8 @@ INTERNAL_FUNC int emcore_initialize_signal();
 
 INTERNAL_FUNC int emcore_finalize_signal();
 
+INTERNAL_FUNC int em_send_notification_to_active_sync_engine(int subType, ASNotiData *data);
+
 /* emcore_notify_storage_event - Notification for storage related operations */
 INTERNAL_FUNC int emcore_notify_storage_event(email_noti_on_storage_event event_type, int data1, int data2 , char *data3, int data4);
 

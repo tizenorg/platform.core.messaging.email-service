@@ -50,7 +50,7 @@ static void _cb_parser_start_document(void* ctx, WB_LONG charset, const WBXMLLan
 {
 	EM_DEBUG_FUNC_BEGIN();
 	EM_DEBUG_LOG("Root Element: %s", lang->publicID->xmlRootElt);
-	EM_DEBUG_LOG("Public ID: %s",	 lang->publicID->xmlPublicID);
+	EM_DEBUG_LOG_SEC("Public ID: %s",	 lang->publicID->xmlPublicID);
 	EM_DEBUG_LOG("DTD: %s",			 lang->publicID->xmlDTD);
 	EM_DEBUG_FUNC_END();
 }
@@ -89,12 +89,12 @@ static void _cb_parser_start_element(void* ctx, WBXMLTag* element, WBXMLAttribut
 		return ;
 	}
 
-	EM_DEBUG_LOG("<%s", (char *)wbxml_tag_get_xml_name(element));
+	EM_DEBUG_LOG_SEC("<%s", (char *)wbxml_tag_get_xml_name(element));
 	sprintf((char *)p, "<%s", (char *)wbxml_tag_get_xml_name(element));
 
 	j = 0;
 	while (atts[j] != NULL) {
-		EM_DEBUG_LOG(" %s=\"%s\"", (char *)wbxml_attribute_get_xml_name(atts[j]), (char *)wbxml_attribute_get_xml_value(atts[j]));
+		EM_DEBUG_LOG_SEC(" %s=\"%s\"", (char *)wbxml_attribute_get_xml_name(atts[j]), (char *)wbxml_attribute_get_xml_value(atts[j]));
 		strcat((char *)p, " ");
 		strcat((char *)p, (char *)wbxml_attribute_get_xml_name(atts[j]));
 		strcat((char *)p, "=");
@@ -105,11 +105,11 @@ static void _cb_parser_start_element(void* ctx, WBXMLTag* element, WBXMLAttribut
 	}
 
 	if (empty) {
-		EM_DEBUG_LOG("/>");
+		EM_DEBUG_LOG_SEC("/>");
 		strcat((char *)p, "/>");
 	}
 	else {
-		EM_DEBUG_LOG(">");
+		EM_DEBUG_LOG_SEC(">");
 		strcat((char *)p, ">");
 	}
 
@@ -351,6 +351,7 @@ static int _get_emn_account(unsigned char *input_wbxml, int input_wbxml_length, 
 	unsigned char*	mbox_name = NULL;
 	unsigned char*	auth_type = NULL;
 	unsigned char*	time_stamp = NULL;
+	unsigned char   email_address[MAX_EMAIL_ADDRESS_LENGTH] = { 0, };
 	int				type = 0;
 	int				i = 0;
 	int				count = 0;
@@ -416,11 +417,14 @@ static int _get_emn_account(unsigned char *input_wbxml, int input_wbxml_length, 
 	EM_SAFE_FREE(elm);
 
 	EM_DEBUG_LOG("user_type = [%d]", type);
-	EM_DEBUG_LOG("incoming_server_user_name = [%s]", (char *)incoming_server_user_name ? (char*)incoming_server_user_name : "NIL");
+	EM_DEBUG_LOG_SEC("incoming_server_user_name = [%s]", (char *)incoming_server_user_name ? (char*)incoming_server_user_name : "NIL");
 	EM_DEBUG_LOG("host_addr = [%s]", (char *)host_addr ? (char*)host_addr : "NIL");
-	EM_DEBUG_LOG("mbox_name = [%s]", (char *)mbox_name ? (char*)mbox_name : "NIL");
+	EM_DEBUG_LOG_SEC("mbox_name = [%s]", (char *)mbox_name ? (char*)mbox_name : "NIL");
 	EM_DEBUG_LOG("auth_type = [%s]", (char *)auth_type ? (char*)auth_type : "NIL");
 	EM_DEBUG_LOG("time_stamp= [%s]", (char *)time_stamp? (char*)time_stamp: "NIL");
+
+	if(incoming_server_user_name && host_addr)
+		SNPRINTF((char*)email_address, MAX_EMAIL_ADDRESS_LENGTH, "%s@%s", incoming_server_user_name, host_addr);
 
 	if (!emdaemon_get_account_list(&accounts, &count, &err)) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_DB_FAILURE");
@@ -440,15 +444,14 @@ static int _get_emn_account(unsigned char *input_wbxml, int input_wbxml_length, 
 			accounts[i].incoming_server_user_name  = (char*)EM_SAFE_STRDUP((char *)temp_account_name);
 		}
 		EM_SAFE_FREE(temp_account_name);
-		if (incoming_server_user_name)	{
-			if (strcmp(accounts[i].incoming_server_user_name, (char *)incoming_server_user_name) == 0 &&
-				strstr(accounts[i].user_email_address, (char *)host_addr)) {
+		if (incoming_server_user_name && host_addr)	{
+			if (strstr(accounts[i].user_email_address, (char*)email_address)) {
 				EM_DEBUG_LOG(">>>> Account Match >>> ");
 				if ((type == 1) ||
 					(type == 2 && accounts[i].incoming_server_type == EMAIL_SERVER_TYPE_POP3) ||
 					(type == 3 && accounts[i].incoming_server_type == EMAIL_SERVER_TYPE_IMAP4)) {
 					/* accounts[i].flag2 = type; */
-					EM_DEBUG_LOG("found target account id[%d] name[%s]", accounts[i].account_id, accounts[i].incoming_server_user_name);
+					EM_DEBUG_LOG_SEC("found target account id[%d] name[%s]", accounts[i].account_id, accounts[i].incoming_server_user_name);
 					break;
 				}
 			}
@@ -503,7 +506,8 @@ static int emdaemon_handle_emn_notification(unsigned char* wbxml_b64, int input_
 {
 	EM_DEBUG_FUNC_BEGIN("wbxml_b64[%p] input_body_lenth[%d]", wbxml_b64, input_body_lenth);
 
-	int err = EMAIL_ERROR_NONE;;
+	int err = EMAIL_ERROR_NONE;
+	int handle = 0;
 	char* mailbox_name = NULL;
 	email_account_t account = { 0 };
 	emstorage_mailbox_tbl_t *mailbox_tbl = NULL;
@@ -532,7 +536,7 @@ static int emdaemon_handle_emn_notification(unsigned char* wbxml_b64, int input_
 		}
 	}
 
-	if (!emdaemon_sync_header(mailbox_tbl->account_id, mailbox_tbl->mailbox_id, NULL, &err))  {
+	if (!emdaemon_sync_header(mailbox_tbl->account_id, mailbox_tbl->mailbox_id, &handle, &err))  {
 		EM_DEBUG_EXCEPTION("emdaemon_sync_header failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -552,9 +556,9 @@ void oma_emn_push_cb(msg_handle_t input_handle, const char *input_push_header, c
 	EM_DEBUG_FUNC_BEGIN("input_handle[%d] input_push_header[%p] input_push_body[%p] input_push_body_lenth[%d] input_user_param[%p]", input_handle, input_push_header, input_push_body, input_push_body_lenth, input_user_param);
 	int err = EMAIL_ERROR_NONE;
 
-	EM_DEBUG_EXCEPTION("input_push_header [%s]", input_push_header);
-	EM_DEBUG_EXCEPTION("input_push_body [%s]", input_push_body);
-	EM_DEBUG_EXCEPTION("input_push_body_lenth [%d]", input_push_body_lenth);
+	EM_DEBUG_LOG("input_push_header [%s]", input_push_header);
+	EM_DEBUG_LOG("input_push_body [%s]", input_push_body);
+	EM_DEBUG_LOG("input_push_body_lenth [%d]", input_push_body_lenth);
 
 	if((err = emdaemon_handle_emn_notification((unsigned char*)input_push_body, input_push_body_lenth)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emdaemon_handle_emn_notification failed [%d]", err);
@@ -595,7 +599,7 @@ static int emdaemon_register_wap_push_callback(msg_handle_t *input_msg_handle, c
 	msg_add_push_event(*input_msg_handle, msg_struct);
 
 	if ((msg_err = msg_reg_push_message_callback(*input_msg_handle, &oma_emn_push_cb, input_app_id, NULL)) != MSG_SUCCESS) {
-		EM_DEBUG_EXCEPTION("msg_reg_push_message_callback() for %s failed [%d]", msg_err, input_app_id);
+		EM_DEBUG_EXCEPTION_SEC("msg_reg_push_message_callback() for %s failed [%d]", msg_err, input_app_id);
 		err = EMAIL_ERROR_INPROPER_RESPONSE_FROM_MSG_SERVICE;
 		goto FINISH_OFF;
 	}

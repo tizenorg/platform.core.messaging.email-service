@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/types.h>
-
+#include "pmapi.h"
 #include "email-device.h"
 #include "email-debug-log.h"
 
@@ -34,6 +34,17 @@
 INTERNAL_FUNC int emdevice_set_sleep_on_off(int on, int *error_code)
 {
 	EM_DEBUG_FUNC_BEGIN("on[%d], err_code[%p]", on, error_code);
+	int result_from_pm_api = 0;
+
+	if(on == 1) {
+		result_from_pm_api = pm_unlock_state(LCD_OFF, PM_SLEEP_MARGIN);
+		EM_DEBUG_LOG("pm_unlock_state() returns [%d]", result_from_pm_api);
+	}
+	else {
+		result_from_pm_api = pm_lock_state(LCD_OFF, STAY_CUR_STATE, 0);
+		EM_DEBUG_LOG("pm_lock_state() returns [%d]", result_from_pm_api);
+	}
+
 	EM_DEBUG_FUNC_END();
 	return true;
 }

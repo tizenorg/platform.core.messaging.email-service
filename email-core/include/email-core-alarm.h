@@ -39,24 +39,26 @@ extern "C"
 {
 #endif /* __cplusplus */
 
+#define EMAIL_ALARM_DESTINATION "email-service-0"
+
 typedef struct _email_alarm_data_t {
 	alarm_id_t                  alarm_id;
-	int                         class_id;
+	email_alarm_class_t           class_id;
 	int                         reference_id;
 	time_t                      trigger_at_time;
 	int                       (*alarm_callback)(int, void *);
 	void                       *user_data;
 } email_alarm_data_t;
 
-INTERNAL_FUNC int emcore_init_alarm_data_list();
 
-INTERNAL_FUNC int emcore_add_alarm(time_t input_trigger_at_time, int input_class_id, int input_reference_id, int (*input_alarm_callback)(int, void *), void *input_user_data);
+INTERNAL_FUNC int emcore_add_alarm(time_t input_trigger_at_time, email_alarm_class_t input_class_id, int input_reference_id, int (*input_alarm_callback)(int, void *), void *input_user_data);
 
 INTERNAL_FUNC int emcore_delete_alram_data_from_alarm_data_list(email_alarm_data_t *input_alarm_data);
-INTERNAL_FUNC int emcore_delete_alram_data_by_reference_id(int input_class_id, int input_reference_id);
+INTERNAL_FUNC int emcore_delete_alram_data_by_reference_id(email_alarm_class_t input_class_id, int input_reference_id);
 
 INTERNAL_FUNC int emcore_get_alarm_data_by_alarm_id(alarm_id_t input_alarm_id, email_alarm_data_t **output_alarm_data);
-INTERNAL_FUNC int emcore_get_alarm_data_by_reference_id(int input_class_id, int input_reference_id, email_alarm_data_t **output_alarm_data);
+INTERNAL_FUNC int emcore_get_alarm_data_by_reference_id(email_alarm_class_t input_class_id, int input_reference_id, email_alarm_data_t **output_alarm_data);
+INTERNAL_FUNC int emcore_check_alarm_by_class_id(email_alarm_class_t input_class_id);
 
 #ifdef __cplusplus
 }

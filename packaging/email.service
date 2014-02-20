@@ -1,11 +1,10 @@
-
 [Unit]
 Description=Start the Email service
 
 [Service]
-EnvironmentFile=/run/tizen-mobile-ui
 ExecStart=/usr/bin/email-service
 Nice=5
+EnvironmentFile=/run/tizen-mobile-ui
 OOMScoreAdjust=100
 Restart=always
 

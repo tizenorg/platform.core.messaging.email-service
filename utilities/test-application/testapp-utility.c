@@ -56,6 +56,7 @@ void testapp_show_menu (eEMAIL_MENU menu)
 			testapp_print ("5. Rule Test\n");
 			testapp_print ("6. Thread Test\n");
 			testapp_print ("7. Others\n");
+			testapp_print ("8. Gmime test\n");
 			testapp_print ("0. Exit \n");
 			testapp_print ("------------------------------------------\n");
 			break;
@@ -83,6 +84,7 @@ void testapp_show_menu (eEMAIL_MENU menu)
 			testapp_print (" 17. Get certificate\n");
 			testapp_print (" 18. Delete certificate\n");
 			testapp_print (" 19. Add Account\n");
+			testapp_print (" 20. Update peak schedule\n");
 			testapp_print (" 0.  Go to Main Menu\n");
 			testapp_print ("------------------------------------------\n");
 			break;
@@ -108,9 +110,12 @@ void testapp_show_menu (eEMAIL_MENU menu)
 			testapp_print ("15. Update mail attribute \n");
 			testapp_print ("16. Download mail body\n");
 			testapp_print ("17. Download an attachment\n");
+			testapp_print ("18. Get attachment list\n");
+			testapp_print ("19. Get meeting request\n");
 			testapp_print ("20. Delete all mail\n");
 			testapp_print ("21. Move Mail \n");
 			testapp_print ("23. Resend Mail \n");
+			testapp_print ("24. Get attachment data \n");
 			testapp_print ("27. Move all mails to mailbox\n");
 			testapp_print ("38. Get total email disk usage \n");	
 			testapp_print ("40. Verify Email Address Format\n");
@@ -149,6 +154,8 @@ void testapp_show_menu (eEMAIL_MENU menu)
 			testapp_print ("10. Get mailbox list\n");
 			testapp_print ("11. Sync mailbox\n");
 			testapp_print ("12. Stamp sync time\n");
+			testapp_print ("13. Raname mailbox ex\n");
+			testapp_print ("14. Get mailbox list by keyword\n");
 			testapp_print ("0. Go to Main Menu\n");
 			testapp_print ("------------------------------------------\n");
 			break;
@@ -181,6 +188,7 @@ void testapp_show_menu (eEMAIL_MENU menu)
 			testapp_print ("==========================================\n");
 			testapp_print ("   OTHERS\n");
 			testapp_print ("==========================================\n");
+			testapp_print ("1.  Ping service\n");
 			testapp_print ("3.  Cancel Job\n");
 			testapp_print ("5.  Set DNET Proper Profile Type\n");
 			testapp_print ("6.  Get DNET Proper Profile Type\n");
@@ -191,10 +199,20 @@ void testapp_show_menu (eEMAIL_MENU menu)
 			testapp_print ("14. DTT Test\n");
 			testapp_print ("15. Show User Message\n");
 			testapp_print ("16. Get mime entity in signed file\n");
+			testapp_print ("17. Query SMTP mail size limit\n");
 			testapp_print ("0.  Go to Main Menu\n");
 			testapp_print ("------------------------------------------\n");
 			break;
 			
+		case EMAIL_GMIME_MENU:
+			testapp_print ("==========================================\n");
+			testapp_print ("   Gmime Test\n");
+			testapp_print ("==========================================\n");
+			testapp_print ("1. Parsing eml\n");
+			testapp_print ("0.  Go to Main Menu\n");
+			testapp_print ("------------------------------------------\n");
+			break;
+
 		default:
 			break;
 	}
@@ -230,6 +248,10 @@ void testapp_show_prompt (eEMAIL_MENU menu)
 			testapp_print ("[OTHERS]# ");
 			break;
 			
+		case EMAIL_GMIME_MENU:
+			testapp_print ("[Gmime Test]# ");
+			break;
+
 		default:
 			break;
 	}

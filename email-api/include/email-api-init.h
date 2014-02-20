@@ -45,7 +45,7 @@
  * @author	Kyuho Jo <kyuho.jo@samsung.com>
  * @author	Sunghyun Kwon <sh0701.kwon@samsung.com>
  * @version	0.1
- * @brief 		This file contains the data structures and interfaces of Email FW Initialization provided by
+ * @brief 	This file contains the data structures and interfaces of Email FW Initialization provided by
  *			email-service .
  *@{
  *@code
@@ -97,8 +97,6 @@ extern "C" {
 #endif /* __cplusplus */
 
 /**
-
-
  * @fn email_init_storage(void)
  * @brief	Create all tables for email.
  *
@@ -110,8 +108,6 @@ extern "C" {
 EXPORT_API int email_init_storage(void);
 
 /**
-
-
  * @fn email_open_db(void)
  * @brief This function Open the email DB and register busy handler
  *
@@ -124,8 +120,6 @@ EXPORT_API int email_open_db(void);
 
 
 /**
-
-
  * @fn email_close_db(void)
  * @brief	This function closes the connection of  the email DB
  *
@@ -137,8 +131,6 @@ EXPORT_API int email_open_db(void);
 EXPORT_API int email_close_db(void);
 
 /**
-
-
  * @fn email_service_begin(void)
  * @brief	Does the IPC Proxy Initialization by the Application which used the Email FW API's
  *
@@ -150,8 +142,6 @@ EXPORT_API int email_close_db(void);
 EXPORT_API int email_service_begin(void);
 
 /**
-
-
  * @fn email_service_end(void)
  * @brief	This function does the IPC Proxy Finaization by the Application which used the Email FW API's
  *
@@ -161,6 +151,17 @@ EXPORT_API int email_service_begin(void);
  * @remarks N/A
  */
 EXPORT_API int email_service_end(void);
+
+/**
+ * @fn email_ping_service(void)
+ * @brief	This function check email-service process is running or not
+ *
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
+ * @exception 	none
+ * @see 	none
+ * @remarks N/A
+ */
+EXPORT_API int email_ping_service(void);
 
 #ifdef __cplusplus
 }

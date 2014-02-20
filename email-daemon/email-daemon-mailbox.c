@@ -42,6 +42,8 @@
 #include "email-core-account.h"
 #include "email-core-global.h"
 #include "email-core-utils.h"
+#include "email-core-signal.h"
+#include "email-utilities.h"
 
 #ifdef __FEATURE_LOCAL_ACTIVITY__
 extern int g_local_activity_run;
@@ -51,10 +53,10 @@ INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(int account_id, char* mailbox, 
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d] mailbox[%p] err_code[%p]", account_id, mailbox, err_code);
 
-	/*  default variable */
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	email_account_t* ref_account = NULL;
+	email_account_t *ref_account = NULL;
+	email_event_t *event_data = NULL;
 
 	if (account_id <= 0 ||!mailbox)  {
 		EM_DEBUG_EXCEPTION("account_id[%d], mailbox[%p]", account_id, mailbox);
@@ -64,20 +66,18 @@ INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(int account_id, char* mailbox, 
 
 	ref_account = emcore_get_account_reference(account_id);
 
-	if (!ref_account)  {
+	if (!ref_account) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
 
-	email_event_t event_data;
-	memset(&event_data, 0x00, sizeof(email_event_t));
+	event_data = em_malloc(sizeof(email_event_t));
+	event_data->type = EMAIL_EVENT_SYNC_IMAP_MAILBOX;
+	event_data->account_id = account_id;
+	event_data->event_param_data_3 = EM_SAFE_STRDUP(mailbox);
 
-	event_data.type = EMAIL_EVENT_SYNC_IMAP_MAILBOX;
-	event_data.account_id = account_id;
-	event_data.event_param_data_3 = EM_SAFE_STRDUP(mailbox);
-
-	if (!emcore_insert_event(&event_data, (int*)handle, &err))  {
+	if (!emcore_insert_event(event_data, (int*)handle, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -85,6 +85,11 @@ INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(int account_id, char* mailbox, 
 	ret = true;
 
 FINISH_OFF:
+
+	if (ret == false && event_data) {
+		emcore_free_event(event_data);
+		EM_SAFE_FREE(event_data);
+	}
 
 	if (ref_account) {
 		emcore_free_account(ref_account);
@@ -187,11 +192,13 @@ INTERNAL_FUNC int emdaemon_add_mailbox(email_mailbox_t* new_mailbox, int on_serv
 {
 	EM_DEBUG_FUNC_BEGIN("new_mailbox[%p], err_code[%p]", new_mailbox, err_code);
 
-	int ret = false;;
+	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	email_account_t* ref_account = NULL;
+	email_account_t *ref_account = NULL;
+	email_event_t   *event_data  = NULL;
+	email_mailbox_t *mailbox     = NULL;
 
-	if (!new_mailbox || new_mailbox->account_id <= 0 || !new_mailbox->mailbox_name)  {
+	if (!new_mailbox || new_mailbox->account_id <= 0 || !new_mailbox->mailbox_name) {
 		if (new_mailbox != NULL)
 			EM_DEBUG_EXCEPTION("new_mailbox->account_id[%d], new_mailbox->mailbox_name[%p]", new_mailbox->account_id, new_mailbox->mailbox_name);
 		err = EMAIL_ERROR_INVALID_PARAM;
@@ -206,27 +213,45 @@ INTERNAL_FUNC int emdaemon_add_mailbox(email_mailbox_t* new_mailbox, int on_serv
 		goto FINISH_OFF;
 	}
 
-	email_event_t event_data;
-	memset(&event_data, 0x00, sizeof(email_event_t));
-
-
 	/*  on_server is allowed to be only 0 when server_type is EMAIL_SERVER_TYPE_ACTIVE_SYNC */
 	if ( ref_account->incoming_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC )
 		on_server = 0;
 
-	if ( on_server ) {	/*  async */
-		event_data.type               = EMAIL_EVENT_CREATE_MAILBOX;
-		event_data.account_id         = new_mailbox->account_id;
-		event_data.event_param_data_1 = EM_SAFE_STRDUP(new_mailbox->mailbox_name);
-		event_data.event_param_data_2 = EM_SAFE_STRDUP(new_mailbox->alias);
-		event_data.event_param_data_4 = on_server;
-		event_data.event_param_data_3 = GINT_TO_POINTER(new_mailbox->mailbox_type);
-		if(!emcore_insert_event(&event_data, (int*)handle, &err))    {
+	if ( on_server ) {	/* async */
+
+		mailbox = em_malloc(sizeof(email_mailbox_t));
+
+		if(mailbox == NULL) {
+			EM_DEBUG_EXCEPTION("em_malloc failed");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
+		memcpy(mailbox, new_mailbox, sizeof(email_mailbox_t));
+		mailbox->mailbox_name  = EM_SAFE_STRDUP(new_mailbox->mailbox_name);
+		mailbox->alias         = EM_SAFE_STRDUP(new_mailbox->alias);
+
+		if(new_mailbox->eas_data_length > 0 && new_mailbox->eas_data) {
+			mailbox->eas_data = em_malloc(new_mailbox->eas_data_length);
+			if(mailbox->eas_data == NULL) {
+				EM_DEBUG_EXCEPTION("em_malloc failed");
+				err = EMAIL_ERROR_OUT_OF_MEMORY;
+				goto FINISH_OFF;
+			}
+			memcpy(mailbox->eas_data, new_mailbox->eas_data, new_mailbox->eas_data_length);
+		}
+
+		event_data                     = em_malloc(sizeof(email_event_t));
+		event_data->type               = EMAIL_EVENT_CREATE_MAILBOX;
+		event_data->account_id         = new_mailbox->account_id;
+		event_data->event_param_data_1 = (char*)mailbox;
+		event_data->event_param_data_4 = on_server;
+
+		if(!emcore_insert_event(event_data, (int*)handle, &err)) {
 			EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", err);
 			goto FINISH_OFF;
 		}
-	}
-	else {	/*  sync */
+	} else {	/* sync */
 		if (!emcore_create_mailbox(new_mailbox, on_server, &err))  {
 			EM_DEBUG_EXCEPTION("emcore_create failed [%d]", err);
 			goto FINISH_OFF;
@@ -236,6 +261,17 @@ INTERNAL_FUNC int emdaemon_add_mailbox(email_mailbox_t* new_mailbox, int on_serv
 	ret = true;
 
 FINISH_OFF:
+
+	if (ret == false) {
+		if(event_data) {
+			emcore_free_event(event_data);
+			EM_SAFE_FREE(event_data);
+		}
+		if(mailbox) {
+			emcore_free_mailbox(mailbox);
+			EM_SAFE_FREE(mailbox);
+		}
+	}
 
 	if (ref_account) {
 		emcore_free_account(ref_account);
@@ -267,7 +303,7 @@ INTERNAL_FUNC int emdaemon_set_mailbox_type(int input_mailbox_id, email_mailbox_
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_update_mailbox_type(mailbox_tbl->account_id, -1, mailbox_tbl->mailbox_name, input_mailbox_type, true, &err))  {
+	if (!emstorage_update_mailbox_type(mailbox_tbl->account_id, -1, input_mailbox_id, input_mailbox_type, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_update_mailbox failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -310,19 +346,19 @@ INTERNAL_FUNC int emdaemon_delete_mailbox(int input_mailbox_id, int on_server, i
 {
 	EM_DEBUG_FUNC_BEGIN("input_mailbox_id[%d], err_code[%p]", input_mailbox_id, err_code);
 
-	/*  default variable */
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 	int recursive = 1;
 	emstorage_mailbox_tbl_t *mailbox_tbl = NULL;
-	email_account_t* ref_account = NULL;
+	email_account_t *ref_account = NULL;
+	email_event_t *event_data = NULL;
 
 	if ((err = emstorage_get_mailbox_by_id(input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE || !mailbox_tbl) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed. [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	if (!input_mailbox_id || mailbox_tbl->account_id <= 0)  {
+	if (!input_mailbox_id || mailbox_tbl->account_id <= 0) {
 		if (input_mailbox_id != 0)
 			EM_DEBUG_EXCEPTION("mailbox_tbl->account_id[%d]", mailbox_tbl->account_id);
 		err = EMAIL_ERROR_INVALID_PARAM;
@@ -331,33 +367,29 @@ INTERNAL_FUNC int emdaemon_delete_mailbox(int input_mailbox_id, int on_server, i
 
 	ref_account = emcore_get_account_reference(mailbox_tbl->account_id);
 
-	if (!ref_account)  {
+	if (!ref_account) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", mailbox_tbl->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
 
-	email_event_t event_data;
-	memset(&event_data, 0x00, sizeof(email_event_t));
-
 	/*  on_server is allowed to be only 0 when server_type is EMAIL_SERVER_TYPE_ACTIVE_SYNC */
 	if ( ref_account->incoming_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC ) {
 		on_server = 0;
-		recursive = 0;
 	}
 
 	if ( on_server ) {	/*  async */
-		event_data.type = EMAIL_EVENT_DELETE_MAILBOX;
-		event_data.account_id = mailbox_tbl->account_id;
-		event_data.event_param_data_4 = input_mailbox_id;
-		event_data.event_param_data_5 = on_server;
-		event_data.event_param_data_6 = recursive;
-		if(!emcore_insert_event(&event_data, (int*)handle, &err))    {
+		event_data = em_malloc(sizeof(email_event_t));
+		event_data->type = EMAIL_EVENT_DELETE_MAILBOX;
+		event_data->account_id = mailbox_tbl->account_id;
+		event_data->event_param_data_4 = input_mailbox_id;
+		event_data->event_param_data_5 = on_server;
+		event_data->event_param_data_6 = recursive;
+		if(!emcore_insert_event(event_data, (int*)handle, &err)) {
 			EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", err);
 			goto FINISH_OFF;
 		}
-	}
-	else {
+	} else {
 		if (!emcore_delete_mailbox(input_mailbox_id, on_server, recursive))  {
 			EM_DEBUG_EXCEPTION("emcore_delete failed [%d]", err);
 			goto FINISH_OFF;
@@ -367,6 +399,11 @@ INTERNAL_FUNC int emdaemon_delete_mailbox(int input_mailbox_id, int on_server, i
 	ret = true;
 
 FINISH_OFF:
+
+	if (ret == false && event_data) {
+		emcore_free_event(event_data);
+		EM_SAFE_FREE(event_data);
+	}
 
 	if (ref_account) {
 		emcore_free_account(ref_account);
@@ -432,48 +469,57 @@ INTERNAL_FUNC int emdaemon_sync_header(int input_account_id, int input_mailbox_i
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id[%d], input_mailbox_id[%d], handle[%p], err_code[%p]", input_account_id, input_mailbox_id, handle, err_code);
 
-	/*  default variable */
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
+	email_event_t *event_data = NULL;
 
-	email_event_t event_data;
-
-	memset(&event_data, 0x00, sizeof(email_event_t));
-
-	if (input_mailbox_id < 0) {
+	if (input_mailbox_id < 0 || handle == NULL) {
 		EM_DEBUG_EXCEPTION("parameter is invalid");
-		err = EMAIL_ERROR_INVALID_ACCOUNT;
+		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
+	event_data = em_malloc(sizeof(email_event_t));
+
 	if(input_account_id == ALL_ACCOUNT) {
-		EM_DEBUG_LOG(">>>> emdaemon_sync_header for all account event_data.event_param_data_4 [%d]", event_data.event_param_data_4);
-		event_data.type               = EMAIL_EVENT_SYNC_HEADER;
-		event_data.account_id         = input_account_id;
-		event_data.event_param_data_5 = input_mailbox_id;
+		EM_DEBUG_LOG(">>>> emdaemon_sync_header for all account event_data.event_param_data_4 [%d]", event_data->event_param_data_4);
+		event_data->type               = EMAIL_EVENT_SYNC_HEADER;
+		event_data->account_id         = input_account_id;
+		event_data->event_param_data_5 = input_mailbox_id;
 		/* In case of Mailbox NULL, we need to set arg as EMAIL_SYNC_ALL_MAILBOX */
 		if (input_mailbox_id == 0)
-			event_data.event_param_data_4 = EMAIL_SYNC_ALL_MAILBOX;
+			event_data->event_param_data_4 = EMAIL_SYNC_ALL_MAILBOX;
 
-		if (!emcore_insert_event(&event_data, (int*)handle, &err))   {
+		if (!emcore_insert_event(event_data, (int*)handle, &err)) {
 			EM_DEBUG_EXCEPTION("emcore_insert_event falied [%d]", err);
 			goto FINISH_OFF;
 		}
 	} else {
 		/* Modified the code to sync all mailbox in a Single Event */
-		event_data.type               = EMAIL_EVENT_SYNC_HEADER;
-		event_data.account_id         = input_account_id;
-		event_data.event_param_data_5 = input_mailbox_id;
+		event_data->type               = EMAIL_EVENT_SYNC_HEADER;
+		event_data->account_id         = input_account_id;
+		event_data->event_param_data_5 = input_mailbox_id;
 		/* In case of Mailbox NULL, we need to set arg as EMAIL_SYNC_ALL_MAILBOX */
 		if (input_mailbox_id == 0)
-			event_data.event_param_data_4 = EMAIL_SYNC_ALL_MAILBOX;
-		EM_DEBUG_LOG(">>>> EVENT ARG [ %d ] ", event_data.event_param_data_4);
+			event_data->event_param_data_4 = EMAIL_SYNC_ALL_MAILBOX;
+		EM_DEBUG_LOG(">>>> EVENT ARG [ %d ] ", event_data->event_param_data_4);
 
-		if (!emcore_insert_event(&event_data, (int*)handle, &err))   {
+		if (!emcore_insert_event(event_data, (int*)handle, &err)) {
 			EM_DEBUG_EXCEPTION("emcore_insert_event falied [%d]", err);
 			goto FINISH_OFF;
 		}
 	}
+
+	/* Due to fast response, event noti is moved here from worker_event_queue */
+	char input_mailbox_id_str[10] = {0};
+	snprintf(input_mailbox_id_str, 10, "%d ", input_mailbox_id);
+	if (!emcore_notify_network_event(NOTI_DOWNLOAD_START, input_account_id, ((input_mailbox_id==0)? NULL:input_mailbox_id_str), *handle, 0))
+		EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_DOWNLOAD_START] Failed >>>> ");
+
+/*	if ((err = emcore_update_sync_status_of_account(input_account_id, SET_TYPE_SET, SYNC_STATUS_SYNCING)) != EMAIL_ERROR_NONE)
+		EM_DEBUG_EXCEPTION("emcore_update_sync_status_of_account failed [%d]", err);
+*/
+
 
 #ifdef __FEATURE_LOCAL_ACTIVITY__
 	EM_DEBUG_LOG("Setting g_local_activity_run ");
@@ -483,6 +529,11 @@ INTERNAL_FUNC int emdaemon_sync_header(int input_account_id, int input_mailbox_i
 	ret = true;
 
 FINISH_OFF:
+
+	if (ret == false && event_data) {
+		emcore_free_event(event_data);
+		EM_SAFE_FREE(event_data);
+	}
 
 	if (err_code)
 		*err_code = err;
@@ -496,7 +547,7 @@ INTERNAL_FUNC int emdaemon_set_mail_slot_size_of_mailbox(int account_id, int mai
 
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	email_event_t event_data;
+	email_event_t *event_data = NULL;
 
 	if(handle == NULL) {
 		EM_DEBUG_EXCEPTION("handle is required");
@@ -504,14 +555,13 @@ INTERNAL_FUNC int emdaemon_set_mail_slot_size_of_mailbox(int account_id, int mai
 		goto FINISH_OFF;
 	}
 
-	memset(&event_data, 0x00, sizeof(email_event_t));
+	event_data = em_malloc(sizeof(email_event_t));
+	event_data->type = EMAIL_EVENT_SET_MAIL_SLOT_SIZE;
+	event_data->account_id = account_id;
+	event_data->event_param_data_4 = mailbox_id;
+	event_data->event_param_data_5 = new_slot_size;
 
-	event_data.type = EMAIL_EVENT_SET_MAIL_SLOT_SIZE;
-	event_data.account_id = account_id;
-	event_data.event_param_data_4 = mailbox_id;
-	event_data.event_param_data_5 = new_slot_size;
-
-	if (!emcore_insert_event(&event_data, (int*)handle, &err))   {
+	if (!emcore_insert_event(event_data, (int*)handle, &err))   {
 		EM_DEBUG_EXCEPTION("emcore_insert_event falied [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -519,20 +569,27 @@ INTERNAL_FUNC int emdaemon_set_mail_slot_size_of_mailbox(int account_id, int mai
 	ret = true;
 
 FINISH_OFF:
+
+	if (ret == false && event_data) {
+		emcore_free_event(event_data);
+		EM_SAFE_FREE(event_data);
+	}
+
 	if (err_code)
 		*err_code = err;
 	EM_DEBUG_FUNC_END();
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_rename_mailbox(int input_mailbox_id, char *input_mailbox_path, char *input_mailbox_alias, int input_on_server, int *output_handle)
+INTERNAL_FUNC int emdaemon_rename_mailbox(int input_mailbox_id, char *input_mailbox_path, char *input_mailbox_alias, void *input_eas_data, int input_eas_data_length, int input_on_server, int *output_handle)
 {
-	EM_DEBUG_FUNC_BEGIN("input_mailbox_id [%d], input_mailbox_path [%p], input_mailbox_alias[%p], input_on_server [%d], output_handle[%p]", input_mailbox_id, input_mailbox_path, input_mailbox_alias, input_on_server, output_handle);
+	EM_DEBUG_FUNC_BEGIN("input_mailbox_id[%d] input_mailbox_path[%p] input_mailbox_alias[%p] input_eas_data[%p] input_eas_data_length[%d] input_on_server[%d] output_handle[%p]", input_mailbox_id, input_mailbox_path, input_mailbox_alias, input_eas_data, input_eas_data_length, input_on_server, output_handle);
 
+	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 	emstorage_account_tbl_t *account_data = NULL;
 	emstorage_mailbox_tbl_t *old_mailbox_data = NULL;
-	email_event_t event_data;
+	email_event_t *event_data = NULL;
 
 	if(input_mailbox_id <= 0 || output_handle == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
@@ -552,29 +609,35 @@ INTERNAL_FUNC int emdaemon_rename_mailbox(int input_mailbox_id, char *input_mail
 		}
 
 		if (account_data->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
-			memset(&event_data, 0x00, sizeof(email_event_t));
+			event_data = em_malloc(sizeof(email_event_t));
+			event_data->type               = EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER;
+			event_data->event_param_data_1 = EM_SAFE_STRDUP(old_mailbox_data->mailbox_name);
+			event_data->event_param_data_2 = EM_SAFE_STRDUP(input_mailbox_path);
+			event_data->event_param_data_3 = EM_SAFE_STRDUP(input_mailbox_alias);
+			event_data->event_param_data_4 = input_mailbox_id;
+			event_data->account_id         = old_mailbox_data->account_id;
 
-			event_data.type               = EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER;
-			event_data.event_param_data_1 = EM_SAFE_STRDUP(old_mailbox_data->mailbox_name);
-			event_data.event_param_data_2 = EM_SAFE_STRDUP(input_mailbox_path);
-			event_data.event_param_data_3 = EM_SAFE_STRDUP(input_mailbox_alias);
-			event_data.event_param_data_4 = input_mailbox_id;
-			event_data.account_id         = old_mailbox_data->account_id;
-
-			if (!emcore_insert_event(&event_data, (int*)output_handle, &err)) {
+			if (!emcore_insert_event(event_data, (int*)output_handle, &err)) {
 				EM_DEBUG_EXCEPTION("emcore_insert_event falied [%d]", err);
 				goto FINISH_OFF;
 			}
 		}
-	}
-	else {
-		if ((err = emcore_rename_mailbox(input_mailbox_id, input_mailbox_path, input_mailbox_alias, false, true, 0)) != EMAIL_ERROR_NONE) {
+	} else {
+		if ((err = emcore_rename_mailbox(input_mailbox_id, input_mailbox_path, input_mailbox_alias, input_eas_data, input_eas_data_length, false, true, 0)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_rename_mailbox failed [%d]", err);
 			goto FINISH_OFF;
 		}
 	}
 
+	ret = true;
+
 FINISH_OFF:
+
+	if (ret == false && event_data) {
+		emcore_free_event(event_data);
+		EM_SAFE_FREE(event_data);
+	}
+
 	if (old_mailbox_data)
 		emstorage_free_mailbox(&old_mailbox_data, 1, NULL);
 

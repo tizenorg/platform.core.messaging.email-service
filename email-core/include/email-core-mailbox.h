@@ -69,7 +69,7 @@ INTERNAL_FUNC int  emcore_create_mailbox(email_mailbox_t *new_mailbox, int on_se
 INTERNAL_FUNC int  emcore_delete_mailbox(int input_mailbox_id, int input_on_server, int input_recursive);
 INTERNAL_FUNC int  emcore_delete_mailbox_ex(int input_account_id, int *input_mailbox_id_array, int input_mailbox_id_count, int input_on_server, int input_recursive);
 INTERNAL_FUNC int  emcore_delete_mailbox_all(email_mailbox_t *mailbox, int *err_code);
-INTERNAL_FUNC int  emcore_rename_mailbox(int input_mailbox_id, char *input_new_mailbox_name, char *input_new_mailbox_alias, int input_on_server, int input_recursive, int handle_to_be_published);
+INTERNAL_FUNC int  emcore_rename_mailbox(int input_mailbox_id, char *input_new_mailbox_name, char *input_new_mailbox_alias, void *input_eas_data, int input_eas_data_length, int input_on_server, int input_recursive, int handle_to_be_published);
 INTERNAL_FUNC int  emcore_save_local_activity_sync(int account_id, int *err_code);
 INTERNAL_FUNC int  emcore_send_mail_event(email_mailbox_t *mailbox, int mail_id , int *err_code);
 INTERNAL_FUNC int  emcore_partial_body_thd_local_activity_sync(int *is_event_inserted, int *err_code);

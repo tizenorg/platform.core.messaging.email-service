@@ -36,39 +36,47 @@
 #include "email-storage.h"
 #include "email-ipc.h"
 #include "email-core-task-manager.h"
+#include "email-utilities.h"
 #include <sqlite3.h>
 
 
 EXPORT_API int email_open_db(void)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_API_BEGIN ();
 	int error  = EMAIL_ERROR_NONE;
 	
+#ifdef __FEATURE_ACCESS_CONTROL__
+	error = em_check_db_privilege_by_pid(getpid());
+	if (error == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_EXCEPTION ("permission denied");
+		return error;
+	}
+#endif
+
 	if (emstorage_db_open(&error) == NULL)
 		EM_DEBUG_EXCEPTION("emstorage_db_open failed [%d]", error);
-
 	
-	EM_DEBUG_FUNC_END("error [%d]", error);
+	EM_DEBUG_API_END ("err[%d]", error);
 
 	return error;	
 }
 
 EXPORT_API int email_close_db(void)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_API_BEGIN ();
 	int error  = EMAIL_ERROR_NONE;
 
 	if ( !emstorage_db_close(&error)) 
 		EM_DEBUG_EXCEPTION("emstorage_db_close failed [%d]", error);
 
-	EM_DEBUG_FUNC_END("error [%d]", error);
+	EM_DEBUG_API_END ("err[%d]", error);
 	return error;	
 }
 
 
 EXPORT_API int email_service_begin(void)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_API_BEGIN ();
 	int ret = -1;
 
 	signal(SIGPIPE, SIG_IGN); /* to ignore signal 13(SIGPIPE) */
@@ -77,19 +85,19 @@ EXPORT_API int email_service_begin(void)
 
 	emcore_init_task_handler_array();
 
-	EM_DEBUG_FUNC_END("err[%d]", ret);
+	EM_DEBUG_API_END ("err[%d]", ret);
 	return ret;
 }
 
 
 EXPORT_API int email_service_end(void)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_API_BEGIN ();
 	int ret = -1;
 	
 	ret = emipc_finalize_proxy();
-	if (ret != EMAIL_ERROR_NONE)
-		EM_DEBUG_FUNC_END("err[%d]", ret);
+
+	EM_DEBUG_API_END ("err[%d]", ret);
 	
 	return ret;
 }
@@ -99,20 +107,28 @@ EXPORT_API int email_service_end(void)
 
 EXPORT_API int email_init_storage(void)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_API_BEGIN ();
 	int error  = EMAIL_ERROR_NONE;
 	
+#ifdef __FEATURE_ACCESS_CONTROL__
+	error = em_check_db_privilege_by_pid(getpid());
+	if (error == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		return error;
+	}
+#endif
+
 	if (!emstorage_create_table(EMAIL_CREATE_DB_CHECK, &error))  {
 		EM_DEBUG_EXCEPTION("emstorage_create_table failed [%d]", error);
 	}
 
-	EM_DEBUG_FUNC_END("error[%d]", error);
+	EM_DEBUG_API_END ("err[%d]", error);
 	return error;
 }
 
 EXPORT_API int email_ping_service(void)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_API_BEGIN ();
 	int error  = EMAIL_ERROR_NONE;
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_PING_SERVICE);
 
@@ -129,6 +145,6 @@ EXPORT_API int email_ping_service(void)
 
 	hAPI = NULL;
 
-	EM_DEBUG_FUNC_END("err[%d]", error);
+	EM_DEBUG_API_END ("err[%d]", error);
 	return error;
 }

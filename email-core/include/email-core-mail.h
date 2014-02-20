@@ -84,6 +84,7 @@ struct _m_content_info
 		int   drm2;                 /*  0 : none 1 : FL 2 : CD 3 : SSD 4 : SD */
 		char *attachment_mime_type; /*  attachment mime type */
 		char *content_id;           /*  mime content id */
+		int   save_status;
 #ifdef __ATTACHMENT_OPTI__
 		int   encoding;         /*  encoding  */
 		char *section;          /*  section number */
@@ -124,8 +125,8 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk(void *mail_stream, in
  * @return This function returns true on success or false on failure.
  */
 INTERNAL_FUNC int emcore_download_attachment(int acconut_id, int mail_id, int nth, int *err_code);
-INTERNAL_FUNC int emcore_mail_add_attachment(int mail_id, email_attachment_data_t *attachment, int *err_code);        /* TODO : Remove duplicated function */
-INTERNAL_FUNC int emcore_mail_add_attachment_data(int input_mail_id, email_attachment_data_t *input_attachment_data); /* TODO : Remove duplicated function */
+INTERNAL_FUNC int emcore_add_attachment(int mail_id, email_attachment_data_t *attachment, int *err_code);        /* TODO : Remove duplicated function */
+INTERNAL_FUNC int emcore_add_attachment_data(int input_mail_id, email_attachment_data_t *input_attachment_data); /* TODO : Remove duplicated function */
 INTERNAL_FUNC int emcore_delete_mail_attachment(int attachment_id, int *err_code);
 INTERNAL_FUNC int emcore_get_attachment_info(int attachment_id, email_attachment_data_t **attachment, int *err_code);
 INTERNAL_FUNC int emcore_get_attachment_data_list(int input_mail_id, email_attachment_data_t **output_attachment_data, int *output_attachment_count);
@@ -215,6 +216,12 @@ INTERNAL_FUNC int   emcore_mail_filter_by_rule(email_rule_t *filter_info, int *e
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+
+
+#define	EMAIL_SIGNAL_FILE_DELETED	1
+#define	EMAIL_SIGNAL_DB_DELETED	2
+INTERNAL_FUNC int *emcore_init_pipe_for_del_account ();
+INTERNAL_FUNC void emcore_send_signal_for_del_account (int signal);
 
 #endif
 /* EOF */

@@ -69,7 +69,7 @@ static int emcore_send_signal(enotitype_t notiType, int subType, int data1, int 
 	DBusConnection *connection;
 	DBusMessage	*signal = NULL;
 	DBusError	   dbus_error;
-	dbus_uint32_t   error;
+	dbus_uint32_t   error = 0;
 	const char	 *nullString = "";
 
 	ENTER_CRITICAL_SECTION(_dbus_noti_lock);
@@ -77,8 +77,9 @@ static int emcore_send_signal(enotitype_t notiType, int subType, int data1, int 
 	dbus_error_init (&dbus_error);
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error);
 
-	if (connection == NULL) {
-		EM_DEBUG_LOG("dbus_bus_get is failed");
+	if (dbus_error_is_set (&dbus_error)) {
+		EM_DEBUG_EXCEPTION ("dbus_bus_get failed: [%s]", dbus_error.message);
+		dbus_error_free (&dbus_error);
 		goto FINISH_OFF;
 	}
 
@@ -140,10 +141,10 @@ static int emcore_send_signal(enotitype_t notiType, int subType, int data1, int 
 	}
 
 	if (!dbus_connection_send(connection, signal, &error)) {
-		EM_DEBUG_LOG("dbus_connection_send is failed [%d]", error);
+		EM_DEBUG_EXCEPTION ("dbus_connection_send failed [%d]", error);
 	}
 	else {
-		EM_DEBUG_LOG("dbus_connection_send is successful");
+		EM_DEBUG_LOG_DEV ("dbus_connection_send done");
 		ret = 1;
 	}
 
@@ -162,6 +163,248 @@ FINISH_OFF:
 	return ret;
 }
 
+
+
+INTERNAL_FUNC int em_send_notification_to_active_sync_engine(int subType, ASNotiData *data)
+{
+	EM_DEBUG_FUNC_BEGIN("subType [%d], data [%p]", subType, data);
+
+	DBusConnection     *connection;
+	DBusMessage        *signal = NULL;
+	DBusError           dbus_error;
+	int                 i = 0;
+	dbus_uint32_t   error = 0;
+	int ret = true;
+
+	ENTER_CRITICAL_SECTION(_dbus_noti_lock);
+
+	dbus_error_init (&dbus_error);
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error);
+	if (dbus_error_is_set (&dbus_error)) {
+		EM_DEBUG_EXCEPTION("dbus_bus_get failed: [%s]", dbus_error.message);
+		dbus_error_free (&dbus_error);
+		ret = false;
+		goto FINISH_OFF;
+	}
+
+	signal = dbus_message_new_signal("/User/Email/ActiveSync", EMAIL_ACTIVE_SYNC_NOTI, "email");
+
+	dbus_message_append_args(signal, DBUS_TYPE_INT32, &subType, DBUS_TYPE_INVALID);
+	switch ( subType ) {
+		case ACTIVE_SYNC_NOTI_SEND_MAIL:
+			EM_DEBUG_LOG("handle:[%d]", data->send_mail.handle);
+			EM_DEBUG_LOG("account_id:[%d]", data->send_mail.account_id);
+			EM_DEBUG_LOG("mail_id:[%d]", data->send_mail.mail_id);
+
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.handle), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.mail_id), DBUS_TYPE_INVALID);
+			break;
+		case ACTIVE_SYNC_NOTI_SEND_SAVED:				/*  publish a send notification to ASE (active sync engine) */
+			EM_DEBUG_EXCEPTION("Not support yet : subType[ACTIVE_SYNC_NOTI_SEND_SAVED]", subType);
+			break;
+		case ACTIVE_SYNC_NOTI_SEND_REPORT:
+			EM_DEBUG_EXCEPTION("Not support yet : subType[ACTIVE_SYNC_NOTI_SEND_REPORT]", subType);
+			break;
+		case ACTIVE_SYNC_NOTI_SYNC_HEADER:
+			EM_DEBUG_LOG("handle:[%d]", data->sync_header.handle);
+			EM_DEBUG_LOG("account_id:[%d]", data->sync_header.account_id);
+			EM_DEBUG_LOG("mailbox_id:[%d]", data->sync_header.mailbox_id);
+
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->sync_header.handle ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->sync_header.account_id ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->sync_header.mailbox_id ), DBUS_TYPE_INVALID);
+			break;
+		case ACTIVE_SYNC_NOTI_DOWNLOAD_BODY:			/*  publish a download body notification to ASE */
+			EM_DEBUG_LOG("handle:[%d]", data->download_body.handle);
+			EM_DEBUG_LOG("account_id:[%d]", data->download_body.account_id);
+			EM_DEBUG_LOG("mail_id:[%d]", data->download_body.mail_id);
+			EM_DEBUG_LOG("with_attachment:[%d]", data->download_body.with_attachment);
+
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_body.handle  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_body.account_id  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_body.mail_id ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_body.with_attachment  ), DBUS_TYPE_INVALID);
+			break;
+		case ACTIVE_SYNC_NOTI_DOWNLOAD_ATTACHMENT:
+			EM_DEBUG_LOG("handle:[%d]", data->download_attachment.handle);
+			EM_DEBUG_LOG("account_id:[%d]", data->download_attachment.account_id );
+			EM_DEBUG_LOG("mail_id:[%d]", data->download_attachment.mail_id);
+			EM_DEBUG_LOG("with_attachment:[%d]", data->download_attachment.attachment_order );
+
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_attachment.handle  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_attachment.account_id  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_attachment.mail_id ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_attachment.attachment_order), DBUS_TYPE_INVALID);
+			break;
+		case ACTIVE_SYNC_NOTI_VALIDATE_ACCOUNT:
+			EM_DEBUG_EXCEPTION("Not support yet : subType[ACTIVE_SYNC_NOTI_VALIDATE_ACCOUNT]", subType);
+			break;
+		case ACTIVE_SYNC_NOTI_CANCEL_JOB:
+			EM_DEBUG_LOG("account_id:[%d]",       data->cancel_job.account_id );
+			EM_DEBUG_LOG("handle to cancel:[%d]", data->cancel_job.handle);
+			EM_DEBUG_LOG("cancel_type:[%d]",      data->cancel_job.cancel_type);
+
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_job.account_id  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_job.handle  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_job.cancel_type  ), DBUS_TYPE_INVALID);
+			break;
+		case ACTIVE_SYNC_NOTI_SEARCH_ON_SERVER:
+			EM_DEBUG_LOG("account_id:[%d]",          data->search_mail_on_server.account_id );
+			EM_DEBUG_LOG("mailbox_id:[%d]",        data->search_mail_on_server.mailbox_id );
+			EM_DEBUG_LOG("search_filter_count:[%d]", data->search_mail_on_server.search_filter_count );
+			EM_DEBUG_LOG("handle to cancel:[%d]",    data->search_mail_on_server.handle);
+
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->search_mail_on_server.mailbox_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.search_filter_count), DBUS_TYPE_INVALID);
+			for(i = 0; i < data->search_mail_on_server.search_filter_count; i++) {
+				dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.search_filter_list[i].search_filter_type), DBUS_TYPE_INVALID);
+				switch(data->search_mail_on_server.search_filter_list[i].search_filter_type) {
+					case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO       :
+					case EMAIL_SEARCH_FILTER_TYPE_UID              :
+					case EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER      :
+					case EMAIL_SEARCH_FILTER_TYPE_SIZE_SMALLER     :
+					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED   :
+					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED    :
+					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT      :
+					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED     :
+					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT     :
+					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN       :
+						dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->search_mail_on_server.search_filter_list[i].search_filter_key_value.integer_type_key_value), DBUS_TYPE_INVALID);
+						break;
+
+					case EMAIL_SEARCH_FILTER_TYPE_BCC              :
+					case EMAIL_SEARCH_FILTER_TYPE_CC               :
+					case EMAIL_SEARCH_FILTER_TYPE_FROM             :
+					case EMAIL_SEARCH_FILTER_TYPE_KEYWORD          :
+					case EMAIL_SEARCH_FILTER_TYPE_SUBJECT          :
+					case EMAIL_SEARCH_FILTER_TYPE_TO               :
+					case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
+						dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->search_mail_on_server.search_filter_list[i].search_filter_key_value.string_type_key_value), DBUS_TYPE_INVALID);
+						break;
+
+					case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :
+					case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON     :
+					case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE  :
+						dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->search_mail_on_server.search_filter_list[i].search_filter_key_value.time_type_key_value), DBUS_TYPE_INVALID);
+						break;
+					default :
+						EM_DEBUG_EXCEPTION("Invalid filter type [%d]", data->search_mail_on_server.search_filter_list[i].search_filter_type);
+						break;
+				}
+			}
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.handle), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_CLEAR_RESULT_OF_SEARCH_ON_SERVER :
+			EM_DEBUG_LOG("account_id:[%d]",          data->clear_result_of_search_mail_on_server.account_id );
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.account_id), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_EXPUNGE_MAILS_DELETED_FLAGGED :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->expunge_mails_deleted_flagged.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->expunge_mails_deleted_flagged.mailbox_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->expunge_mails_deleted_flagged.on_server), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->expunge_mails_deleted_flagged.handle), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_RESOLVE_RECIPIENT :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->get_resolve_recipients.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->get_resolve_recipients.email_address), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->get_resolve_recipients.handle), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_VALIDATE_CERTIFICATE :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->validate_certificate.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->validate_certificate.email_address), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->validate_certificate.handle), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_ADD_MAILBOX :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->add_mailbox.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->add_mailbox.mailbox_path), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->add_mailbox.mailbox_alias), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->add_mailbox.handle), DBUS_TYPE_INVALID);
+			/* eas is not ready to use void array and length */
+			dbus_message_append_args (signal, DBUS_TYPE_STRING, &(data->add_mailbox.eas_data), DBUS_TYPE_INVALID);
+/*			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->add_mailbox.eas_data_length), DBUS_TYPE_INVALID);
+			if (data->add_mailbox.eas_data_length > 0) {
+				dbus_message_append_args (signal, DBUS_TYPE_ARRAY,  DBUS_TYPE_INT32, &(data->add_mailbox.eas_data),\
+												data->add_mailbox.eas_data_length,DBUS_TYPE_INVALID);
+			} */
+			break;
+
+		case ACTIVE_SYNC_NOTI_RENAME_MAILBOX :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->rename_mailbox.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->rename_mailbox.mailbox_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->rename_mailbox.mailbox_name), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->rename_mailbox.mailbox_alias), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->rename_mailbox.handle), DBUS_TYPE_INVALID);
+			/* eas is not ready to use void array and length */
+			dbus_message_append_args (signal, DBUS_TYPE_STRING, &(data->rename_mailbox.eas_data), DBUS_TYPE_INVALID);
+/*			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->rename_mailbox.eas_data_length), DBUS_TYPE_INVALID);
+			if (data->rename_mailbox.eas_data_length > 0) {
+				dbus_message_append_args (signal, DBUS_TYPE_ARRAY,  DBUS_TYPE_INT32, &(data->rename_mailbox.eas_data),\
+											   data->rename_mailbox.eas_data_length, DBUS_TYPE_INVALID);
+			}*/
+			break;
+
+		case ACTIVE_SYNC_NOTI_DELETE_MAILBOX :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox.mailbox_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox.handle), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_DELETE_MAILBOX_EX :
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox_ex.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox_ex.mailbox_id_count), DBUS_TYPE_INVALID);
+			for(i = 0; i <data->delete_mailbox_ex.mailbox_id_count; i++)
+				dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->delete_mailbox_ex.mailbox_id_array[i]), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox_ex.handle), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_SEND_MAIL_WITH_DOWNLOADING_OF_ORIGINAL_MAIL:
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail_with_downloading_attachment_of_original_mail.handle), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail_with_downloading_attachment_of_original_mail.mail_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail_with_downloading_attachment_of_original_mail.account_id), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_SCHEDULE_SENDING_MAIL:
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->schedule_sending_mail.handle), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->schedule_sending_mail.account_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->schedule_sending_mail.mail_id), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->schedule_sending_mail.scheduled_time), DBUS_TYPE_INVALID);
+			break;
+
+		case ACTIVE_SYNC_NOTI_CANCEL_SENDING_MAIL:
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_sending_mail.handle), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_sending_mail.account_id  ), DBUS_TYPE_INVALID);
+			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_sending_mail.mail_id), DBUS_TYPE_INVALID);
+			break;
+
+		default:
+			EM_DEBUG_EXCEPTION("Invalid Notification type of Active Sync : subType[%d]", subType);
+			ret = false;
+			goto FINISH_OFF;
+	}
+
+	if (!dbus_connection_send (connection, signal, &error)) {
+		EM_DEBUG_EXCEPTION ("dbus_connection_send failed [%d]", error);
+		ret = false;
+	}
+
+	/*dbus_connection_flush(connection);*/
+
+FINISH_OFF:
+
+	if(signal)
+		dbus_message_unref(signal);
+
+	LEAVE_CRITICAL_SECTION(_dbus_noti_lock);
+	EM_DEBUG_FUNC_END();
+	return ret;
+}
 
 INTERNAL_FUNC int emcore_notify_storage_event(email_noti_on_storage_event transaction_type, int data1, int data2 , char *data3, int data4)
 {
@@ -189,15 +432,16 @@ INTERNAL_FUNC int emcore_send_task_status_signal(email_task_type_t input_task_ty
 	DBusConnection *connection;
 	DBusMessage	   *signal = NULL;
 	DBusError	    dbus_error;
-	dbus_uint32_t   error;
+	dbus_uint32_t   error = 0;
 
 	ENTER_CRITICAL_SECTION(_dbus_noti_lock);
 
 	dbus_error_init (&dbus_error);
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_error);
-
-	if (connection == NULL) {
-		EM_DEBUG_LOG("dbus_bus_get is failed");
+	if (dbus_error_is_set (&dbus_error)) {
+		EM_DEBUG_EXCEPTION("dbus_bus_get failed: [%s]", dbus_error.message);
+		dbus_error_free (&dbus_error);
+		err = EMAIL_ERROR_IPC_CONNECTION_FAILURE;
 		goto FINISH_OFF;
 	}
 
@@ -205,6 +449,7 @@ INTERNAL_FUNC int emcore_send_task_status_signal(email_task_type_t input_task_ty
 
 	if (signal == NULL) {
 		EM_DEBUG_EXCEPTION("dbus_message_new_signal is failed");
+		err = EMAIL_ERROR_IPC_CONNECTION_FAILURE;
 		goto FINISH_OFF;
 	}
 	EM_DEBUG_LOG("Signal for task status has been created by dbus_message_new_signal");
@@ -216,10 +461,11 @@ INTERNAL_FUNC int emcore_send_task_status_signal(email_task_type_t input_task_ty
 	dbus_message_append_args(signal, DBUS_TYPE_INT32, &input_param_2, DBUS_TYPE_INVALID);
 
 	if (!dbus_connection_send(connection, signal, &error)) {
-		EM_DEBUG_LOG("dbus_connection_send is failed [%d]", error);
+		EM_DEBUG_EXCEPTION("dbus_connection_send failed: [%d]", error);
+		err = EMAIL_ERROR_IPC_CONNECTION_FAILURE;
 	}
 	else {
-		EM_DEBUG_LOG("dbus_connection_send is successful");
+		EM_DEBUG_LOG("dbus_connection_send done");
 	}
 
 /* 	EM_DEBUG_LOG("Before dbus_connection_flush");	 */

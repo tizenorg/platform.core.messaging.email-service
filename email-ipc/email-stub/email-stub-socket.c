@@ -36,12 +36,15 @@
 #include "email-stub-socket.h"
 
 #include "email-debug-log.h"
+#include "email-proxy-socket.h"
 
-#define MAX_EPOLL_EVENT 50
+#define MAX_EPOLL_EVENT 100
 
 static int stub_socket = 0;
 static pthread_t stub_socket_thread = 0;
 static bool stop_thread = false;
+
+GList *connected_fd = NULL;
 
 static void *emipc_stub_socket_thread_proc();
 
@@ -101,12 +104,22 @@ static void *emipc_stub_socket_thread_proc()
 	return NULL;
 }
 
+static int emipc_check_connected(int fd)
+{
+	EM_DEBUG_FUNC_BEGIN ("fd[%d]", fd);
+	int found = (g_list_find (connected_fd, (gpointer)fd))? true : false;
+	EM_DEBUG_FUNC_END ("fd found?? [%d]", found);
+	return found;
+}
+
+
 EXPORT_API void emipc_wait_for_ipc_request()
 {
 	struct epoll_event ev = {0};
-	struct epoll_event events[MAX_EPOLL_EVENT] = {{0}, };
 	int epfd = 0;
 	int event_num = 0;
+	char errno_buf[ERRNO_BUF_SIZE] = {0};
+	struct epoll_event events[MAX_EPOLL_EVENT] = {{0}, };
 
 	if (!stub_socket) {
 		EM_DEBUG_EXCEPTION("Server Socket is not initialized");
@@ -117,45 +130,48 @@ EXPORT_API void emipc_wait_for_ipc_request()
 	
 	epfd = epoll_create(MAX_EPOLL_EVENT);
 	if (epfd < 0) {
-		EM_DEBUG_EXCEPTION("epoll_ctl: %s[%d]", strerror(errno), errno);
-		EM_DEBUG_CRITICAL_EXCEPTION("epoll_create: %s[%d]", strerror(errno), errno);
-		abort();
+		EM_DEBUG_EXCEPTION("epoll_ctl failed: %s[%d]", EM_STRERROR(errno_buf), errno);
+		EM_DEBUG_CRITICAL_EXCEPTION("epoll_create failed: %s[%d]", EM_STRERROR(errno_buf), errno);
+		return;
 	}
 
 	ev.events = EPOLLIN;
 	ev.data.fd = stub_socket;
 	
 	if (epoll_ctl(epfd, EPOLL_CTL_ADD, stub_socket, &ev) == -1) {
-		EM_DEBUG_EXCEPTION("epoll_ctl: %s[%d]", strerror(errno), errno);
-		EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl:%s[%d]", strerror(errno), errno); 	
+		EM_DEBUG_EXCEPTION("epoll_ctl failed: %s[%d]", EM_STRERROR(errno_buf), errno);
+		EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl failed:%s[%d]", EM_STRERROR(errno_buf), errno); 	
 	}
-	while (1) {
+	while (!stop_thread) {
 		int i = 0;
 
 		event_num = epoll_wait(epfd, events, MAX_EPOLL_EVENT, -1);
 		
+		if (stop_thread) {
+			EM_DEBUG_LOG ("IPC hanlder thread is going to be shut down");
+			break;
+		}
+
 		if (event_num == -1) {
-			EM_DEBUG_EXCEPTION("epoll_wait: %s[%d]", strerror(errno), errno);
-			EM_DEBUG_CRITICAL_EXCEPTION("epoll_wait: %s[%d]", strerror(errno), errno);
-			if (errno == EINTR) continue; /* resume when interrupted system call*/
-			else abort();
+			EM_DEBUG_EXCEPTION("epoll_wait failed: %s[%d]", EM_STRERROR(errno_buf), errno);
+			EM_DEBUG_CRITICAL_EXCEPTION("epoll_wait failed: %s[%d]", EM_STRERROR(errno_buf), errno);
 		} else {
 			for (i = 0; i < event_num; i++) {
 				int event_fd = events[i].data.fd;
 
 				if (event_fd == stub_socket) { /*  if it is socket connection request */
-					int cfd = emipc_accept_email_socket(stub_socket);
+					int cfd = emipc_accept_email_socket (stub_socket);
 					if (cfd < 0) {
-						EM_DEBUG_EXCEPTION("accept error: %s[%d]", strerror(errno), errno);
-						EM_DEBUG_CRITICAL_EXCEPTION("accept error: %s[%d]", strerror(errno), errno);
-						/*  abort(); */
+						EM_DEBUG_EXCEPTION ("emipc_accept_email_socket failed [%d]", cfd);
+						/* EM_DEBUG_CRITICAL_EXCEPTION ("accept failed: %s[%d]", EM_STRERROR(errno_buf), errno);*/
 					}
 					ev.events = EPOLLIN;
 					ev.data.fd = cfd;
 					if (epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &ev) == -1) {
-						EM_DEBUG_EXCEPTION("epoll_ctl: %s[%d]", strerror(errno), errno);
-						EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl:%s[%d]", strerror(errno), errno);
+						EM_DEBUG_EXCEPTION("epoll_ctl failed [%s][%d]", EM_STRERROR(errno_buf), errno);
+						/*EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl failed:%s[%d]", EM_STRERROR(errno_buf), errno);*/
 					}
+					connected_fd = g_list_prepend (connected_fd, (gpointer)cfd);
 				} else {
 					int recv_len;
 					char *sz_buf = NULL;
@@ -163,9 +179,7 @@ EXPORT_API void emipc_wait_for_ipc_request()
 					recv_len = emipc_recv_email_socket(event_fd, &sz_buf);
 					
 					if(recv_len > 0) {
-						EM_DEBUG_LOG("====================================================================");
 						EM_DEBUG_LOG("[IPCLib]Stub Socket Recv [Socket ID = %d], [recv_len = %d]", event_fd, recv_len);
-						EM_DEBUG_LOG("====================================================================");
 
 						/* IPC request stream is at least 16byte */
 						if (recv_len >= sizeof(long) * eSTREAM_DATA) {
@@ -175,9 +189,10 @@ EXPORT_API void emipc_wait_for_ipc_request()
 					} else if( recv_len == 0 ) {
 						EM_DEBUG_LOG("[IPCLib] Client closed connection [%d]", event_fd);
 						if (epoll_ctl(epfd, EPOLL_CTL_DEL, event_fd, events) == -1) {
-							EM_DEBUG_EXCEPTION("epoll_ctl: %s[%d]", strerror(errno), errno);
-							EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl:%s[%d]", strerror(errno), errno);
+							EM_DEBUG_EXCEPTION("epoll_ctl failed: %s[%d]", EM_STRERROR(errno_buf), errno);
+							EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl failed: %s[%d]", EM_STRERROR(errno_buf), errno);
 						}
+						connected_fd = g_list_remove (connected_fd, (gpointer)event_fd);
 						close(event_fd);
 					} 
 					EM_SAFE_FREE(sz_buf);
@@ -185,27 +200,23 @@ EXPORT_API void emipc_wait_for_ipc_request()
 			}
 		}
 	}	
+	emipc_end_all_proxy_sockets ();
+	emipc_close_email_socket(&stub_socket);
+	EM_DEBUG_LOG ("IPC hanlder thread is shut down");
 }
 
 EXPORT_API bool emipc_end_stub_socket()
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_FUNC_BEGIN ();
 	
-	if (stub_socket) {
-		emipc_close_email_socket(&stub_socket);
-	}
+	/* stop IPC handler thread */
+	emipc_stop_stub_socket_thread (stub_socket_thread);
+	stub_socket_thread = 0;
 
-	if (stub_socket_thread) {
-		emipc_stop_stub_socket_thread(stub_socket_thread);
-		pthread_cancel(stub_socket_thread);
-		stub_socket_thread = 0;
-	}
+	/* stop task thread */
+	emipc_stop_task_thread ();
 
-	if (!emipc_stop_task_thread()) {
-		EM_DEBUG_EXCEPTION("emipc_stop_task_thread failed");
-		return false;	
-	}
-		
+	EM_DEBUG_FUNC_END ();		
 	return true;
 }
 
@@ -213,8 +224,15 @@ EXPORT_API int emipc_send_stub_socket(int sock_fd, void *data, int len)
 {
 	EM_DEBUG_FUNC_BEGIN("Stub socket sending %d bytes", len);
 
-	int sending_bytes = emipc_send_email_socket(sock_fd, data, len);
-	
+	int sending_bytes = 0;
+	if (emipc_check_connected(sock_fd)) { /* client may be shut down and the sock_fd can be reused by another module */
+		sending_bytes = emipc_send_email_socket(sock_fd, data, len);
+	}
+
+	if (sending_bytes == 0) {
+		EM_DEBUG_LOG ("sending byte for fd [%d] is zero", sock_fd);
+	}
+
 	EM_DEBUG_FUNC_END("sending_bytes = %d", sending_bytes);
 	return sending_bytes;
 }

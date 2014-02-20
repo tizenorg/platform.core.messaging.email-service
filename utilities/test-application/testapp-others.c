@@ -42,6 +42,14 @@
 #include "email-ipc.h"
 #include "email-core-utils.h"
 
+static gboolean testapp_test_ping_service()
+{
+	if(email_ping_service() < 0)
+		testapp_print("email_ping_service failed..!");
+
+	return FALSE;
+}
+
 static gboolean testapp_test_cancel_job	()
 {
 	int account_id = 0;
@@ -208,7 +216,7 @@ FINISH_OFF:
 	return error;
 }
 
-#define LIB_EMAIL_SERVICE_PATH	LIBPATH "libemail-api.so"
+#define LIB_EMAIL_SERVICE_PATH	"/usr/lib/libemail-api.so"
 
 int (*Datastore_FI_EMTB)(char **);
 int (*Datastore_FI_EMSB)(char **);
@@ -377,11 +385,25 @@ static gboolean testapp_test_get_mime_entity()
 	return true;
 }
 
+static gboolean testapp_test_query_smtp_mail_size_limit()
+{
+	int result_from_scanf = 0;
+	int account_id = 0;
+	testapp_print("\n > Enter account id : ");
+	result_from_scanf = scanf("%d", &account_id);
+
+	email_query_smtp_mail_size_limit(account_id, NULL);
+	return true;
+}
+
 static gboolean testapp_test_interpret_command (int menu_number)
 {
 	gboolean go_to_loop = TRUE;
 
 	switch (menu_number) {
+		case 1:
+			testapp_test_ping_service();
+			break;
 		case 3:
 			testapp_test_cancel_job ();
 			break;
@@ -413,6 +435,9 @@ static gboolean testapp_test_interpret_command (int menu_number)
 			break;
 		case 16:
 			testapp_test_get_mime_entity();
+			break;
+		case 17:
+			testapp_test_query_smtp_mail_size_limit();
 			break;
 		case 0:
 			go_to_loop = FALSE;

@@ -75,7 +75,7 @@ static int emcore_get_certificate_type(char *extension, int *err_code)
 	}
 	
 	while(supported_file_type[index]) {
-		EM_DEBUG_LOG("certificate extension[%d]:[%s]", index, supported_file_type[index]);
+		EM_DEBUG_LOG_SEC("certificate extension[%d]:[%s]", index, supported_file_type[index]);
 		if (strcasecmp(extension, supported_file_type[index]) == 0) {
 			switch (index) {
 			case 0:
@@ -113,7 +113,7 @@ FINISH_OFF:
 /*	
 static GList *emcore_make_glist_from_string(char *email_address_list)
 {
-	EM_DEBUG_FUNC_BEGIN("email_address list : [%s]", email_address_list);
+	EM_DEBUG_FUNC_BEGIN_SEC("email_address list : [%s]", email_address_list);
 	int index = 0;
 	const gchar seperator = 0x01;
 	GList *email_list = NULL;
@@ -175,7 +175,7 @@ FINISH_OFF:
 #if 0
 INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, char *password, EVP_PKEY **pri_key, X509 **cert, STACK_OF(X509) **ca, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("Certificate path : [%s], password : [%s]", certificate, password);
+	EM_DEBUG_FUNC_BEGIN_SEC("Certificate path : [%s], password : [%s]", certificate, password);
 
 	int err = EMAIL_ERROR_NONE;
 	int ret = false;
@@ -185,7 +185,7 @@ INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, char *password, EVP_PK
 	OpenSSL_add_all_algorithms();
 	ERR_load_crypto_strings();
 	if (!(fp = fopen(certificate, "rb"))) {
-		EM_DEBUG_EXCEPTION("fopen failed : [%s]", certificate);
+		EM_DEBUG_EXCEPTION_SEC("fopen failed : [%s]", certificate);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
@@ -222,7 +222,7 @@ FINISH_OFF:
 
 INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X509 **cert, STACK_OF(X509) **ca, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("certificate : [%s]", certificate);
+	EM_DEBUG_FUNC_BEGIN_SEC("certificate : [%s]", certificate);
 	int err = EMAIL_ERROR_NONE;
 	int ret = false;
 	size_t key_size = 0;
@@ -295,7 +295,7 @@ INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X5
 		goto FINISH_OFF;
 	}
 
-	EM_DEBUG_LOG("key_size : [%d], private_key : [%s]", key_size, private_key);
+	EM_DEBUG_LOG_DEV("key_size : [%d], private_key : [%s]", key_size, private_key);
 
 	/* Convert char to pkey */
 	bio_mem = BIO_new(BIO_s_mem());
@@ -347,7 +347,7 @@ FINISH_OFF:
 
 INTERNAL_FUNC int emcore_add_public_certificate(char *public_cert_path, char *save_name, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("Path [%s], filename [%s]", public_cert_path, save_name);
+	EM_DEBUG_FUNC_BEGIN_SEC("Path [%s], filename [%s]", public_cert_path, save_name);
 	int err = EMAIL_ERROR_NONE;	
 	int ret = false;
 	int validity = 0;
@@ -465,6 +465,8 @@ INTERNAL_FUNC int emcore_add_public_certificate(char *public_cert_path, char *sa
 	ret = true;
 
 FINISH_OFF:
+
+	emstorage_delete_file(temp_file, NULL);
 	
 	emstorage_free_certificate(&cert, 1, NULL);
 
@@ -499,7 +501,7 @@ INTERNAL_FUNC int emcore_delete_public_certificate(char *email_address, int *err
 	}
 
 	if (remove(certificate->filepath) < 0) {
-		EM_DEBUG_EXCEPTION("remove failed : [%s]", certificate->filepath);
+		EM_DEBUG_EXCEPTION_SEC("remove failed : [%s]", certificate->filepath);
 		goto FINISH_OFF;
 	}
 
@@ -524,7 +526,7 @@ FINISH_OFF:
 
 INTERNAL_FUNC int emcore_verify_signature(char *p7s_file_path, char *mime_entity, int *validity, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("path : [%s], mime_entity : [%s]", p7s_file_path, mime_entity);
+	EM_DEBUG_FUNC_BEGIN_SEC("path : [%s], mime_entity : [%s]", p7s_file_path, mime_entity);
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 	int t_validity = 0;

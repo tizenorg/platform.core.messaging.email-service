@@ -34,6 +34,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <vconf.h>
+#include <vconf-keys.h>
+#include <glib.h>
+#include <glib-object.h>
+#include <sys/smack.h>
+#include <notification.h>
+#include <notification_type.h>
+
 #include "email-daemon.h"
 #include "email-daemon-account.h"
 #include "email-debug-log.h"
@@ -43,9 +50,13 @@
 #include "email-core-utils.h"
 #include "email-core-alarm.h"
 #include "email-core-smtp.h"
+#include "email-core-sound.h"
 #include "email-utilities.h"
 #include "email-storage.h"
+#include "email-ipc.h"
 
+extern pthread_mutex_t sound_mutex;
+extern pthread_cond_t sound_condition;
 
 int emdaemon_register_event_callback(email_action_t action, email_event_callback callback, void* event_data)
 {
@@ -312,6 +323,7 @@ INTERNAL_FUNC int emdaemon_search_mail_on_server(int input_account_id, int input
 	int error = EMAIL_ERROR_NONE;
 	int ret = false;
 	char *criteria = NULL;
+	email_event_t *event_data = NULL;
 	
 	if (input_mailbox_id == 0 || input_account_id < 0) {
 		EM_DEBUG_EXCEPTION("Invalid parameter");
@@ -319,22 +331,19 @@ INTERNAL_FUNC int emdaemon_search_mail_on_server(int input_account_id, int input
 		return false;
 	}
 
-	email_event_t event_data;
-
-	memset(&event_data, 0x00, sizeof(email_event_t));
-
 	criteria = _make_criteria_to_search_filter(input_search_filter, input_search_filter_count, &error);
 	if (criteria == NULL) {
 		EM_DEBUG_EXCEPTION("_make_criteria_to_search_filter failed");
 		goto FINISH_OFF;
 	}
-		
-	event_data.type = EMAIL_EVENT_SEARCH_ON_SERVER;
-	event_data.account_id = input_account_id;
-	event_data.event_param_data_1 = EM_SAFE_STRDUP(criteria);
-	event_data.event_param_data_4 = input_mailbox_id;
 
-	if (!emcore_insert_event(&event_data, (int *)output_handle, &error)) {
+	event_data = em_malloc(sizeof(email_event_t));
+	event_data->type = EMAIL_EVENT_SEARCH_ON_SERVER;
+	event_data->account_id = input_account_id;
+	event_data->event_param_data_1 = EM_SAFE_STRDUP(criteria);
+	event_data->event_param_data_4 = input_mailbox_id;
+
+	if (!emcore_insert_event(event_data, (int *)output_handle, &error)) {
 		EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", error);
 		error = EMAIL_ERROR_NONE;
 		goto FINISH_OFF;
@@ -343,8 +352,10 @@ INTERNAL_FUNC int emdaemon_search_mail_on_server(int input_account_id, int input
 	ret = true;
 
 FINISH_OFF:
-	if (!ret) {
-		EM_SAFE_FREE(event_data.event_param_data_1);
+
+	if (ret == false && event_data) {
+		emcore_free_event(event_data);
+		EM_SAFE_FREE(event_data);
 	}
 
 	EM_SAFE_FREE(criteria);
@@ -361,9 +372,9 @@ INTERNAL_FUNC int emdaemon_reschedule_sending_mail()
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
 	char *conditional_clause_string = NULL;
-	email_list_filter_t filter_list[3];
+	email_list_filter_t filter_list[7];
 	email_mail_list_item_t *result_mail_list = NULL;
-	int filter_rule_count = 3;
+	int filter_rule_count = 7;
 	int result_mail_count = 0;
 	int i = 0;
 
@@ -377,10 +388,24 @@ INTERNAL_FUNC int emdaemon_reschedule_sending_mail()
 	filter_list[1].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_OPERATOR;
 	filter_list[1].list_filter_item.operator_type                      = EMAIL_LIST_FILTER_OPERATOR_AND;
 
-	filter_list[2].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_RULE;
-	filter_list[2].list_filter_item.rule.target_attribute              = EMAIL_MAIL_ATTRIBUTE_SAVE_STATUS;
-	filter_list[2].list_filter_item.rule.rule_type                     = EMAIL_LIST_FILTER_RULE_EQUAL;
-	filter_list[2].list_filter_item.rule.key_value.integer_type_value  = EMAIL_MAIL_STATUS_SEND_SCHEDULED;
+	filter_list[2].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_OPERATOR;
+	filter_list[2].list_filter_item.operator_type                      = EMAIL_LIST_FILTER_OPERATOR_LEFT_PARENTHESIS;
+
+	filter_list[3].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_RULE;
+	filter_list[3].list_filter_item.rule.target_attribute              = EMAIL_MAIL_ATTRIBUTE_SAVE_STATUS;
+	filter_list[3].list_filter_item.rule.rule_type                     = EMAIL_LIST_FILTER_RULE_EQUAL;
+	filter_list[3].list_filter_item.rule.key_value.integer_type_value  = EMAIL_MAIL_STATUS_SEND_SCHEDULED;
+
+	filter_list[4].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_OPERATOR;
+	filter_list[4].list_filter_item.operator_type                      = EMAIL_LIST_FILTER_OPERATOR_OR;
+
+	filter_list[5].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_RULE;
+	filter_list[5].list_filter_item.rule.target_attribute              = EMAIL_MAIL_ATTRIBUTE_SAVE_STATUS;
+	filter_list[5].list_filter_item.rule.rule_type                     = EMAIL_LIST_FILTER_RULE_EQUAL;
+	filter_list[5].list_filter_item.rule.key_value.integer_type_value  = EMAIL_MAIL_STATUS_SEND_DELAYED;
+
+	filter_list[6].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_OPERATOR;
+	filter_list[6].list_filter_item.operator_type                      = EMAIL_LIST_FILTER_OPERATOR_RIGHT_PARENTHESIS;
 
 	/* Get scheduled mail list */
 	if( (err = emstorage_write_conditional_clause_for_getting_mail_list(filter_list, filter_rule_count, NULL, 0, -1, -1, &conditional_clause_string)) != EMAIL_ERROR_NONE) {
@@ -442,5 +467,174 @@ INTERNAL_FUNC int emdaemon_clear_all_mail_data(int* err_code)
 	EM_DEBUG_FUNC_END();
     return ret;
 }
-	
+
+INTERNAL_FUNC int emdaemon_kill_daemon_if_no_account()
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int err = EMAIL_ERROR_NONE;
+	email_account_t *account_list = NULL;
+	int account_count = 0;
+
+	if (!emcore_get_account_reference_list(&account_list, &account_count, &err)) {
+		EM_DEBUG_LOG("emcore_get_account_reference_list failed [%d]", err);
+	}
+
+	EM_DEBUG_LOG("account_count [%d]", account_count);
+
+	if (account_count == 0) {
+		EM_DEBUG_LOG("kill email-service daemon");
+		exit(44); /* exit with exit code 44 to prevent restarting */
+	}
+
+	if(account_list)
+		emcore_free_account_list(&account_list, account_count, NULL);
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
+
+INTERNAL_FUNC int emdaemon_check_smack_rule(int app_sockfd, char *file_path)
+{
+	EM_DEBUG_FUNC_BEGIN_SEC("app_sockfd[%d], file_path[%s]", app_sockfd, file_path);
+
+	if (app_sockfd <= 0 || !file_path) {
+		EM_DEBUG_LOG("Invalid parameter");
+		return false;
+	}
+
+	char *app_label = NULL;
+	char *file_label = NULL;
+	char *real_file_path = NULL;
+	int ret = 0;
+	int result = false;
+
+	static int have_smack = -1;
+
+	if (-1 == have_smack) {
+		if (NULL == smack_smackfs_path()) {
+			have_smack = 0;
+		} else {
+			have_smack = 1;
+		}
+	}
+
+	if(!have_smack) {
+		EM_DEBUG_LOG("smack is disabled");
+		result = true;
+		goto FINISH_OFF;
+	}
+
+	/* Smack is enabled */
+
+	ret = smack_new_label_from_socket(app_sockfd, &app_label);
+	if (ret < 0) {
+		EM_DEBUG_LOG("smack_new_label_from_socket failed");
+		result = false;
+		goto FINISH_OFF;
+	}
+
+	real_file_path = realpath(file_path, NULL);
+	if (!real_file_path) {
+		EM_DEBUG_LOG("realpath failed");
+		result = false;
+		goto FINISH_OFF;
+	}
+
+	ret = smack_getlabel(real_file_path, &file_label, SMACK_LABEL_ACCESS);
+	if (ret < 0) {
+		EM_DEBUG_LOG("smack_getlabel failed");
+		result = false;
+		goto FINISH_OFF;
+	}
+
+	EM_DEBUG_LOG("APP_LABEL[%s], FILE_LABEL[%s]", app_label, file_label);
+
+	ret = smack_have_access(app_label, file_label, "r");
+	if (ret == 0) {
+		/* Access Denied */
+		result = false;
+		goto FINISH_OFF;
+	}
+
+	/* Access granted */
+	result = true;
+
+FINISH_OFF:
+
+	EM_SAFE_FREE(app_label);
+	EM_SAFE_FREE(file_label);
+	EM_SAFE_FREE(real_file_path);
+
+	EM_DEBUG_FUNC_END();
+	return result;
+}
+
+INTERNAL_FUNC int emdaemon_set_smack_label(char *file_path, char *label)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int ret = 0;
+	int result = true;
+
+	if ((ret = smack_setlabel(file_path, label, SMACK_LABEL_ACCESS)) < 0) {
+		EM_DEBUG_LOG("smack_setlabel failed");
+		result = false;
+	}
+
+	EM_DEBUG_FUNC_END();
+	return result;
+}
+
+INTERNAL_FUNC int emdaemon_finalize_sync(int account_id, int total_mail_count, int unread_mail_count, int *error)
+{
+	EM_DEBUG_FUNC_BEGIN("account_id [%d], total_mail_count [%d], unread_mail_count [%d], error [%p]", account_id, total_mail_count, unread_mail_count, error);
+	int err = EMAIL_ERROR_NONE, ret = true, result_sync_status = SYNC_STATUS_FINISHED;
+	int topmost = false;
+
+	if ((err = emcore_update_sync_status_of_account(account_id, SET_TYPE_MINUS, SYNC_STATUS_SYNCING)) != EMAIL_ERROR_NONE)
+		EM_DEBUG_EXCEPTION("emcore_update_sync_status_of_account failed [%d]", err);
+
+	if (!emstorage_get_sync_status_of_account(ALL_ACCOUNT, &result_sync_status, &err))
+		EM_DEBUG_EXCEPTION("emstorage_get_sync_status_of_account failed [%d]", err);
+
+	/* Check the topmost of email app */
+	if (vconf_get_int(VCONF_KEY_TOPMOST_WINDOW, &topmost) != 0) {
+		EM_DEBUG_EXCEPTION("vconf_get_int failed");
+	}
+
+	if (result_sync_status == SYNC_STATUS_SYNCING) {
+		if (topmost) {
+			EM_DEBUG_LOG("The email app is topmost");
+		} else {
+			if ((err = emcore_add_notification(account_id, 0, total_mail_count, 0, EMAIL_ERROR_NONE, NOTIFICATION_DISPLAY_APP_ALL^NOTIFICATION_DISPLAY_APP_TICKER)) != EMAIL_ERROR_NONE)
+				EM_DEBUG_EXCEPTION("emcore_add_notification failed : [%d]", err);
+		}
+	} else if (result_sync_status == SYNC_STATUS_HAVE_NEW_MAILS) {
+		if (topmost) {
+			EM_DEBUG_LOG("The email app is topmost");
+		} else {
+
+			if ((err = emcore_add_notification(account_id, 0, total_mail_count, 1, EMAIL_ERROR_NONE, NOTIFICATION_DISPLAY_APP_ALL)) != EMAIL_ERROR_NONE)
+				EM_DEBUG_EXCEPTION("emcore_add_notification failed : [%d]", err);
+
+#ifdef __FEATURE_BLOCKING_MODE__
+			emcore_set_blocking_mode_status(false);
+#endif /* __FEATURE_BLOCKING_MODE__ */
+
+			if ((err = emcore_start_driving_mode(account_id)) != EMAIL_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("emcore_start_driving_mode failed : [%d]", err);
+			}
+		}
+
+		if (!emcore_display_unread_in_badge())
+			EM_DEBUG_EXCEPTION("emcore_display_unread_in_badge failed");
+
+		if ((err = emcore_update_sync_status_of_account(account_id, SET_TYPE_MINUS, SYNC_STATUS_HAVE_NEW_MAILS)) != EMAIL_ERROR_NONE)
+			EM_DEBUG_EXCEPTION("emcore_update_sync_status_of_account failed [%d]", err);
+	} else {
+		EM_DEBUG_LOG("sync status : [%d]", result_sync_status);
+	}
+
+	EM_DEBUG_FUNC_END();
+	return ret;
+}
 /* --------------------------------------------------------------------------------*/

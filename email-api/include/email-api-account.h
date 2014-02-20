@@ -85,10 +85,10 @@
 *	account->outgoing_server_need_authentication           = 1;
 *	account->outgoing_server_user_name           = strdup("tom@gmail.com");
 *	account->sending_password       = strdup("password");
+*	account->auto_resend_times        = 0;
 *	account->pop_before_smtp        = 0;
 *	account->incoming_server_requires_apop                   = 0;
-*	account->flag1                  = 2;
-*	account->flag2                  = 1;
+*	account->incoming_server_authentication_method                   = 0;
 *	account->is_preset_account         = 1;
 *	account->logo_icon_path         = strdup("Logo Icon Path");
 *	account->options.priority = 3;
@@ -158,7 +158,6 @@ extern "C" {
 #endif /* __cplusplus */
 
 /**
-
  * @fn email_add_account(email_account_t* account)
  * @brief	Create a new email account.This function is invoked when user wants to add new email account
  *
@@ -171,7 +170,6 @@ extern "C" {
 EXPORT_API int email_add_account(email_account_t* account);
 
 /**
-
  * @fn email_delete_account(int account_id)
  * @brief	 Delete a email account.This function is invoked when user wants to delete an existing email account
  *
@@ -184,7 +182,6 @@ EXPORT_API int email_add_account(email_account_t* account);
 EXPORT_API int email_delete_account(int account_id);
 
 /**
-
  * @fn email_update_account(int account_id, email_account_t* new_account)
  * @brief	Change the information of a email account.This function is getting invoked when user wants to change some information of existing email account.
  *
@@ -199,7 +196,6 @@ EXPORT_API int email_delete_account(int account_id);
 EXPORT_API int email_update_account(int account_id, email_account_t* new_account);
 
 /**
-
  * @fn email_update_account_with_validation(int account_id, email_account_t* new_account)
  * @brief	Change the information of a email account.This function is getting invoked when user wants to change some information of existing email account.
  *
@@ -214,7 +210,6 @@ EXPORT_API int email_update_account(int account_id, email_account_t* new_account
 EXPORT_API int email_update_account_with_validation(int account_id, email_account_t* new_account);
 
 /**
-
  * @fn  email_get_account(int account_id, int pulloption, email_account_t** account)
  * @brief	Get an email account by ID. This function is getting invoked when user wants to get the account informantion based on account id and option (GET_FULL_DATA/WITHOUT_OPTION/ONLY_OPTION).<br>
  * 			Memory for account information will be allocated to 3rd param(account). The allocated memory should be freed by email_free_account().
@@ -227,11 +222,9 @@ EXPORT_API int email_update_account_with_validation(int account_id, email_accoun
  * @see email_account_t
  * @remarks N/A
  */
-
 EXPORT_API int email_get_account(int account_id, int pulloption, email_account_t** account);
 
 /**
-
  * @fn email_get_account_list(email_account_t** account_list, int* count);
  * @brief	Get Account List.This function is getting invoked when user wants to get all account information based on the count of accounts provided by user.<br>
  * 			Memory for account information will be allocated to 3rd param(account). The allocated memory should be freed by email_free_account().
@@ -245,8 +238,7 @@ EXPORT_API int email_get_account(int account_id, int pulloption, email_account_t
  */
 EXPORT_API int email_get_account_list(email_account_t** account_list, int* count);
 
- /**
-
+/**
  * @fn   email_free_account(email_account_t** account_list, int count);
  * @brief	Free allocated memory.This function is getting invoked when user wants to delete all account information.
  *
@@ -261,7 +253,6 @@ EXPORT_API int email_free_account(email_account_t** account_list, int count);
 
 
 /**
-
  * @fn email_validate_account(int account_id, int *handle)
  * @brief	Validate account.This function is getting invoked  after adding one account to validate it.If account is not validated then user should retry once again to add the account .
  *
@@ -275,10 +266,21 @@ EXPORT_API int email_free_account(email_account_t** account_list, int count);
  */
 EXPORT_API int email_validate_account(int account_id, int *handle) DEPRECATED; /* Will be replaced with email_validate_account_ex */
 
+/**
+ * @fn email_validate_account_ex(email_account_t* account, int *handle)
+ * @brief	Validate account.This function is getting invoked after adding one account to validate it.If account is not validated then user should retry once again to add the account .
+ *
+ * @param[in] account	Specifies the account structure
+ * @param[out] handle	Specifies the sending handle.
+ * @remarks N/A
+ * @exception EMAIL_ERROR_INVALID_PARAM - Invalid argument
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
+ * @see		email_account_t
+ * @remarks N/A
+ */
 EXPORT_API int email_validate_account_ex(email_account_t* account, int *handle);
 
 /**
-
  * @fn email_add_account_with_validation(email_account_t* account, int *handle)
  * @brief	Add an account when the account is validated. This function is getting invoked when user want to validate an account. If account is not validated then user should retry once again to add the account.<br>
  *              Validation is executed without saving an account to DB
@@ -292,7 +294,6 @@ EXPORT_API int email_add_account_with_validation(email_account_t* account, int *
 
 
 /**
-
  * @fn email_backup_accounts_into_secure_storage(const char *file_name)
  * @brief	Back up information of all accounts into secure storage.
  *          This function is getting invoked when user want to backup account information safely.
@@ -304,7 +305,6 @@ EXPORT_API int email_add_account_with_validation(email_account_t* account, int *
 EXPORT_API int email_backup_accounts_into_secure_storage(const char *file_name);
 
 /**
-
  * @fn email_restore_accounts_from_secure_storage(const char *file_name)
  * @brief	Restore accounts from stored file in secure storage.
  *          This function is getting invoked when user want to restore accounts.
@@ -316,21 +316,20 @@ EXPORT_API int email_backup_accounts_into_secure_storage(const char *file_name);
 EXPORT_API int email_restore_accounts_from_secure_storage(const char * file_name);
 
 /**
-
  * @fn email_get_password_length_of_account(const int account_id, int *password_length)
  * @brief	Get password length of an account.
  *          This function is getting invoked when user want to know the length of an account.
  *
  * @param[in] account_id    Specifies the account id
- * @param[out] handle 		Specifies the password length.
+ * @param[in] password_type Specifies the password type
+ * @param[out] password_length 	Specifies the password length.
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-EXPORT_API int email_get_password_length_of_account(const int account_id, int *password_length);
+EXPORT_API int email_get_password_length_of_account(int account_id, int *password_length);
 
 
 /**
-
  * @fn email_query_server_info(const char* domain_name, email_server_info_t **result_server_info)
  * @brief	Query email server information.
  *          This function is getting invoked when user want to get email server information.
@@ -343,7 +342,6 @@ EXPORT_API int email_get_password_length_of_account(const int account_id, int *p
 EXPORT_API int email_query_server_info(const char* domain_name, email_server_info_t **result_server_info);
 
 /**
-
  * @fn email_free_server_info(email_server_info_t **result_server_info)
  * @brief	Free email_server_info_t.
  *          This function is getting invoked when user want to free email_server_info_t.
@@ -355,7 +353,6 @@ EXPORT_API int email_query_server_info(const char* domain_name, email_server_inf
 EXPORT_API int email_free_server_info(email_server_info_t **result_server_info);
 
 /**
-
  * @fn email_update_notification_bar(int account_id)
  * @brief	Update notifications on notification bar.
  *          This function is getting invoked when user want to update notification bar.
@@ -367,7 +364,6 @@ EXPORT_API int email_free_server_info(email_server_info_t **result_server_info);
 EXPORT_API int email_update_notification_bar(int account_id);
 
 /**
-
  * @fn email_clear_all_notification_bar()
  * @brief	Clear all notification on notification bar.
  *          This function is getting invoked when user want to clear notification bar.
@@ -379,7 +375,6 @@ EXPORT_API int email_clear_all_notification_bar();
 
 
 /**
-
  * @fn email_save_default_account_id()
  * @brief	Save default account id to vconf storage.
  *          This function is getting invoked when user want to save default account id.
@@ -390,7 +385,6 @@ EXPORT_API int email_clear_all_notification_bar();
 EXPORT_API int email_save_default_account_id(int input_account_id);
 
 /**
-
  * @fn email_load_default_account_id()
  * @brief	Load default account id to vconf storage.
  *          This function is getting invoked when user want to load default account id.

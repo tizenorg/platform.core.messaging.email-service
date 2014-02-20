@@ -102,7 +102,7 @@ static int  _get_sim_status(int *sim_status)
 	return EMAIL_ERROR_NONE;
 }
 
-static int _get_wifi_status(int *wifi_status)
+INTERNAL_FUNC int emnetwork_get_wifi_status(int *wifi_status)
 {
  	EM_DEBUG_FUNC_BEGIN();
 
@@ -113,7 +113,7 @@ static int _get_wifi_status(int *wifi_status)
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
-	if (vconf_get_int(VCONFKEY_WIFI_STATE, &value)  != 0) {
+	if (vconf_get_int(VCONFKEY_WIFI_STATE, &value) != 0) {
 		EM_DEBUG_EXCEPTION("vconf_get_int failed");
 		return EMAIL_ERROR_SYSTEM_FAILURE;
 	}
@@ -142,8 +142,8 @@ INTERNAL_FUNC int emnetwork_check_network_status(int *err_code)
 	if(network_status == 0) {
 		EM_DEBUG_LOG("VCONFKEY_NETWORK_STATUS is 0");
 
-		if ( (err = _get_wifi_status(&wifi_status)) != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("_get_wifi_status failed [%d]", err);
+		if ( (err = emnetwork_get_wifi_status(&wifi_status)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emnetwork_get_wifi_status failed [%d]", err);
 			goto FINISH_OFF;
 		}
 
@@ -182,6 +182,33 @@ FINISH_OFF:
 	return ret;
 }
 
+INTERNAL_FUNC int emnetwork_get_roaming_status(int *output_roaming_status)
+{
+	EM_DEBUG_FUNC_BEGIN("output_roaming_status [%p]", output_roaming_status);
+
+	int value;
+
+	if(!output_roaming_status) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		return EMAIL_ERROR_INVALID_PARAM;
+	}
+
+	if (vconf_get_int(VCONFKEY_TELEPHONY_SVC_ROAM, &value)  != 0) {
+		EM_DEBUG_EXCEPTION("vconf_get_int failed");
+		return EMAIL_ERROR_SYSTEM_FAILURE;
+	}
+
+	/* VCONFKEY_TELEPHONY_SVC_ROAM or VCONFKEY_TELEPHONY_SVC_ROAM_OFF */
+	if(value == VCONFKEY_TELEPHONY_SVC_ROAM_ON)
+		*output_roaming_status = 1;
+	else
+		*output_roaming_status = 0;
+	*output_roaming_status = value;
+
+	EM_DEBUG_FUNC_END("output_roaming_status[%d]", *output_roaming_status);
+	return EMAIL_ERROR_NONE;
+}
+
 INTERNAL_FUNC long emnetwork_callback_ssl_cert_query(char *reason, char *host, char *cert)
 {
 	EM_DEBUG_FUNC_BEGIN("reason[%s], host[%s], cert[%s]", reason, host, cert);
@@ -197,11 +224,6 @@ INTERNAL_FUNC long emnetwork_callback_ssl_cert_query(char *reason, char *host, c
 }
 
 /* ------ socket read/write handle ---------------------------------------- */
-int _g_canceled = 0;
-/*  TCPSTREAM = SENDSTREAM->netstream->stream; socket-id = TCPSTREAM->tcpsi, tcpso; */
-/*  sockid_in  = ((TCPSTREAM*)send_stream->netstream->stream)->tcpsi; */
-/*  sockid_out = ((TCPSTREAM*)send_stream->netstream->stream)->tcpso; */
-
 INTERNAL_FUNC long tcp_getbuffer_lnx(TCPSTREAM *stream, unsigned long size, char *s)
 {
 	struct timeval tmout;
@@ -211,7 +233,7 @@ INTERNAL_FUNC long tcp_getbuffer_lnx(TCPSTREAM *stream, unsigned long size, char
 	int max_timeout = 0;
 	sockid = stream->tcpsi;
 	maxfd = sockid + 1;
-/* EM_DEBUG_LOG("start sockid %d", sockid);	*/
+	/* EM_DEBUG_LOG("start sockid %d", sockid); */
 	if (sockid < 0) return 0;
 
 	if (stream->ictr > 0) {
@@ -231,7 +253,6 @@ INTERNAL_FUNC long tcp_getbuffer_lnx(TCPSTREAM *stream, unsigned long size, char
 
 		if (nleave <= 0) {
 			*p = '\0';
-			/* EM_DEBUG_LOG("end");	*/
 			return 1;
 		}
 	}
@@ -240,19 +261,6 @@ INTERNAL_FUNC long tcp_getbuffer_lnx(TCPSTREAM *stream, unsigned long size, char
 	}
 
 	while (nleave > 0) {
-#ifdef TEST_CANCEL_JOB
-		if (!emcore_check_thread_status()) {
-			EM_DEBUG_EXCEPTION("thread canceled");
-			tcp_abort(stream);
-			goto JOB_CANCEL;
-		}
-#endif
-		/* if (_g_canceled){ */
-		/* 	EM_DEBUG_LOG1("thread canceled\n"); */
-		/* 	tcp_abort(stream); */
-		/* 	return 0; */
-		/* } */
-
 		tmout.tv_usec = 0;
 		tmout.tv_sec = 1;
 		FD_ZERO(&readfds);
@@ -278,7 +286,6 @@ INTERNAL_FUNC long tcp_getbuffer_lnx(TCPSTREAM *stream, unsigned long size, char
 		nread = read(sockid, p, nleave);
 		if (nread < 0) {
 			EM_DEBUG_EXCEPTION("socket read error");
-/* 			if (errno == EINTR) continue; */
 			tcp_abort(stream);
 			return 0;
 		}
@@ -294,114 +301,7 @@ INTERNAL_FUNC long tcp_getbuffer_lnx(TCPSTREAM *stream, unsigned long size, char
 	}
 
 	*p = '\0';
-
-	if (_g_canceled) {
-		EM_DEBUG_EXCEPTION("thread canceled");
-		tcp_abort(stream);
-		return 0;
-	}
-
 	return 1;
-/* 	EM_DEBUG_LOG("end"); */
-#ifdef TEST_CANCEL_JOB
-JOB_CANCEL:
-	return 0;
-#endif
-}
-
-long tcp_getdata_lnx(TCPSTREAM *stream)
-{
-	struct timeval tmout;
-	fd_set readfds;
-	int nread, sret, sockid, maxfd;
-	int max_timeout = 0;
-	
-	sockid = stream->tcpsi;
-	maxfd = sockid + 1;
-	
-	/* EM_DEBUG_LOG("start sockid %d", sockid);	*/
-	if (sockid < 0) return false;
-	
-	while (stream->ictr < 1)  {
-#ifdef TEST_CANCEL_JOB
-		if (!emcore_check_thread_status())  {
-			EM_DEBUG_EXCEPTION("thread canceled...");
-			tcp_abort(stream);
-			goto JOB_CANCEL;
-		}
-#endif
-		
-		/* if (_g_canceled){ */
-		/* 	EM_DEBUG_LOG1("thread canceled\n"); */
-		/* 	tcp_abort(stream); */
-		/* 	return 0; */
-		/* } */
-		
-		tmout.tv_usec = 0;/* 1000*10; */
-		tmout.tv_sec = 1;
-		
-		FD_ZERO(&readfds);
-		FD_SET(sockid, &readfds);
-		
-		sret = select(maxfd, &readfds, NULL, NULL, &tmout);
-		
-		if (sret < 0) {
-			EM_DEBUG_LOG("select error[%d]", errno);
-			
-			tcp_abort(stream);
-			return false;
-		}
-		else if (!sret) {
-			if (max_timeout >= 50) {
-				EM_DEBUG_EXCEPTION("max select timeout %d", max_timeout);
-				
-				emcore_set_network_error(EMAIL_ERROR_NO_RESPONSE);
-				return false;
-			}
-			
-			EM_DEBUG_EXCEPTION("%d select timeout", max_timeout);
-			
-			++max_timeout;
-			continue;
-		}
-		
-		if ((nread = read(sockid, stream->ibuf, BUFLEN)) < 0) {
-			EM_DEBUG_EXCEPTION("socket read failed...");
-			
-			emcore_set_network_error(EMAIL_ERROR_SOCKET_FAILURE);
-			
-			/* if (errno == EINTR) contine; */
-			tcp_abort(stream);
-			return false;
-		}
-		
-		if (!nread) {
-			EM_DEBUG_EXCEPTION("socket read no data...");
-			
-			emcore_set_network_error(EMAIL_ERROR_INVALID_RESPONSE);
-			
-			tcp_abort(stream);
-			return false;
-		}
-		
-		stream->ictr = nread;
-		stream->iptr = stream->ibuf;
-	}
-	
-	if (_g_canceled) {
-		EM_DEBUG_EXCEPTION("\t thread canceled...\n");
-		
-		tcp_abort(stream);
-		return false;
-	}
-	
-	/* EM_DEBUG_LOG("end");	*/
-	return true;
-	
-#ifdef TEST_CANCEL_JOB
-JOB_CANCEL:
-	return false;
-#endif
 }
 
 INTERNAL_FUNC long tcp_sout_lnx(TCPSTREAM *stream, char *string, unsigned long size)
@@ -410,26 +310,13 @@ INTERNAL_FUNC long tcp_sout_lnx(TCPSTREAM *stream, char *string, unsigned long s
 	fd_set writefds;
 	int sret, nwrite, maxfd, sockid;
 	int max_timeout = 0;
-	
+
 	sockid = stream->tcpso;
 	maxfd = sockid + 1;
-/* EM_DEBUG_LOG("start sockid %d", sockid); */
+	/* EM_DEBUG_LOG("start sockid %d", sockid); */
 	if (sockid < 0) return 0;
 
 	while (size > 0) {
-#ifdef TEST_CANCEL_JOB
-		if (!emcore_check_thread_status()) {
-			EM_DEBUG_EXCEPTION("thread canceled");
-			tcp_abort(stream);
-			goto JOB_CANCEL;
-		}
-#endif
-		/* if (_g_canceled){ */
-		/* 	EM_DEBUG_LOG1("thread canceled"); */
-		/* 	tcp_abort(stream); */
-		/* 	return 0; */
-		/* } */
-
 		tmout.tv_usec = 0;
 		tmout.tv_sec = 1;
 		FD_ZERO(&writefds);
@@ -469,18 +356,7 @@ INTERNAL_FUNC long tcp_sout_lnx(TCPSTREAM *stream, char *string, unsigned long s
 		size -= nwrite;
 	}
 
-	if (_g_canceled) {
-		EM_DEBUG_EXCEPTION("thread canceled");
-		tcp_abort(stream);
-		return 0;
-	}
-/* EM_DEBUG_LOG("end"); */
 	return 1;
-
-#ifdef TEST_CANCEL_JOB
-JOB_CANCEL:
-	return 0;
-#endif
 }
 
 INTERNAL_FUNC long tcp_soutr_lnx(TCPSTREAM *stream, char *string)

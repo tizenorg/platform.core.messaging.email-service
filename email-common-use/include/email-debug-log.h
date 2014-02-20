@@ -45,6 +45,8 @@ extern "C"
 #include <errno.h>
 
 #define __FEATURE_DEBUG_LOG__
+#define __FEATURE_LOG_FOR_LIFE_CYCLE_OF_FUNCTION__
+#define __FEATURE_LOG_FOR_DEBUG_LOG_DEV__
 
 #ifdef  __FEATURE_DEBUG_LOG__
 
@@ -57,15 +59,43 @@ extern "C"
 
 #define	EM_DEBUG_LOG(format, arg...)        SLOGD(format, ##arg)
 #define	EM_DEBUG_EXCEPTION(format, arg...)  SLOGE("[EXCEPTION!] " format "\n", ##arg)
- 
+
+#ifdef _SECURE_LOG
+#undef _SECURE_LOG
+#endif
+
+#ifdef _SECURE_LOG
+#define	EM_DEBUG_LOG_SEC(format, arg...)        SECURE_SLOGD(format, ##arg)
+#define	EM_DEBUG_EXCEPTION_SEC(format, arg...)  SECURE_SLOGE("[EXCEPTION!] " format "\n", ##arg)
+#define	EM_DEBUG_FUNC_BEGIN_SEC(format, arg...) EM_DEBUG_LOG_SEC("BEGIN - "format, ##arg)
+#else
+#define	EM_DEBUG_LOG_SEC(format, arg...)        SLOGD(format, ##arg)
+#define	EM_DEBUG_EXCEPTION_SEC(format, arg...)  SLOGE("[EXCEPTION!] " format "\n", ##arg)
+#define	EM_DEBUG_FUNC_BEGIN_SEC(format, arg...) EM_DEBUG_LOG("BEGIN - "format, ##arg)
+#endif
+
 #ifdef  _DEBUG_MIME_PARSE_
-#define EM_DEBUG_LOG_MIME(format, arg...)   EM_DEBUG_LOG(format, ##arg)
+#define EM_DEBUG_LOG_MIME(format, arg...)   EM_DEBUG_LOG_SEC(format, ##arg)
 #else   /*  _DEBUG_MIME_PARSE */
 #define EM_DEBUG_LOG_MIME(format, arg...)
 #endif /*  _DEBUG_MIME_PARSE */
 
+#ifdef __FEATURE_LOG_FOR_LIFE_CYCLE_OF_FUNCTION__
 #define	EM_DEBUG_FUNC_BEGIN(format, arg...) EM_DEBUG_LOG("BEGIN - "format, ##arg)
 #define	EM_DEBUG_FUNC_END(format, arg...)   EM_DEBUG_LOG("END - "format, ##arg)
+#else /* __FEATURE_LOG_FOR_LIFE_CYCLE_OF_FUNCTION__ */
+#define	EM_DEBUG_FUNC_BEGIN(format, arg...)
+#define	EM_DEBUG_FUNC_END(format, arg...)
+#undef	EM_DEBUG_FUNC_BEGIN_SEC
+#define	EM_DEBUG_FUNC_BEGIN_SEC(format, arg...)
+#endif
+
+#ifdef __FEATURE_LOG_FOR_DEBUG_LOG_DEV__
+#define	EM_DEBUG_LOG_DEV(format, arg...) EM_DEBUG_LOG("[DEV] " format, ##arg)
+#else /* __FEATURE_LOG_FOR_DEBUG_LOG_DEV__ */
+#define	EM_DEBUG_LOG_DEV(format, arg...)
+#endif
+
 #define	EM_DEBUG_LINE                       EM_DEBUG_LOG("FUNC[%s : %d]", __FUNCTION__, __LINE__)
 #define EM_DEBUG_DB_EXEC(eval, expr, X)     if (eval) { EM_DEBUG_LOG X; expr;} else {;}
 
@@ -75,7 +105,27 @@ extern "C"
 				FILE *fp_error = NULL;\
 				fp_error = fopen(EM_DEBUG_ERROR_FILE_PATH, "a");\
 				if(fp_error) {\
-					fprintf(fp_error, "[%s() :%s:%d] " format "\n", \
+					char now_time_string[30] = {0,}; \
+					time_t now = time(NULL); \
+					strftime(now_time_string, 20, "%Y.%m.%d %H:%M:%S", localtime(&now)); \
+					fprintf(fp_error, "[%s][%s() :%s:%d] " format "\n",\
+						now_time_string, \
+						__FUNCTION__, (rindex(__FILE__, '/')? rindex(__FILE__,'/')+1 : __FILE__ ),\
+						__LINE__, ##arg); \
+					fclose(fp_error);\
+				}\
+			}
+#define EM_DEBUG_ALARM_LOG_FILE_PATH         "/opt/usr/data/email/.email_data/.alarm.log"
+#define EM_DEBUG_ALARM_LOG(format, arg...)   \
+			{\
+				FILE *fp_error = NULL;\
+				fp_error = fopen(EM_DEBUG_ALARM_LOG_FILE_PATH, "a");\
+				if(fp_error) {\
+					char now_time_string[30] = {0,}; \
+					time_t now = time(NULL); \
+					strftime(now_time_string, 20, "%Y.%m.%d %H:%M:%S", localtime(&now)); \
+					fprintf(fp_error, "[%s][%s() :%s:%d] " format "\n",\
+						now_time_string, \
 						__FUNCTION__, (rindex(__FILE__, '/')? rindex(__FILE__,'/')+1 : __FILE__ ),\
 						__LINE__, ##arg); \
 					fclose(fp_error);\
@@ -146,6 +196,9 @@ extern "C"
 
 #endif /* __FEATURE_DEBUG_LOG__ */
 
+/* Use it in api function */
+#define	EM_DEBUG_API_BEGIN(format, arg...) EM_DEBUG_LOG("BEGIN - "format, ##arg)
+#define	EM_DEBUG_API_END(format, arg...)   EM_DEBUG_LOG("END - "format, ##arg)
 
 #define EM_NULL_CHECK_FOR_VOID(expr)	\
 	{\
@@ -178,8 +231,8 @@ extern "C"
 
 #define EM_SAFE_FREE(expr)	 \
 	({\
-		if (expr ) {\
-			free(expr);\
+		if (expr) {\
+			free (expr);\
 			expr = NULL;\
 		}\
 	})
@@ -228,13 +281,18 @@ extern "C"
 
 #define EM_IF_ACCOUNT_ID_NULL(expr, ret) {\
 		if (expr <= 0) {\
-			EM_DEBUG_EXCEPTION ("EM_IF_ACCOUNT_ID_NULL: Account ID [ %d ]  ", expr);\
+			EM_DEBUG_EXCEPTION_SEC ("EM_IF_ACCOUNT_ID_NULL: Account ID [ %d ]  ", expr);\
 			return ret;\
 		}\
 	}
 
 
-#define EM_STRERROR(err) ({ char buf[128]; strerror_r(err, buf, sizeof(buf));})
+#define ERRNO_BUF_SIZE		64
+
+#define EM_STRERROR(errno_buf) ({\
+					strerror_r(errno, errno_buf, sizeof(errno_buf));\
+					errno_buf;\
+				})
 
 
 #ifdef  __cplusplus

@@ -45,10 +45,11 @@ extern "C"
 
 /* ----------------------------------------------------------------------------- */
 /*  Feature definitions */
+/* #define __FEATURE_USING_ACCOUNT_SVC_FOR_ACCOUNT_MANAGEMENT__ */
 #define __FEATURE_USING_ACCOUNT_SVC_FOR_SYNC_STATUS__
 #define __FEATURE_BACKUP_ACCOUNT__
 #define __FEATURE_MOVE_TO_OUTBOX_FIRST__
-/*  #define __FEATURE_PARTIAL_BODY_FOR_POP3__ */
+/*  #define __FEATURE_PARTIAL_BODY_FOR_POP3__*/
 /*  #define __FEATURE_KEEP_CONNECTION__  */
 /*  #define __FEATURE_DRM__ */
 #define __FEATURE_PARTIAL_BODY_DOWNLOAD__
@@ -72,7 +73,16 @@ extern "C"
 #define __FEATURE_DRIVING_MODE__
 #define __FEATURE_DELETE_MAILBOX_RECURSIVELY__
 #define __FEATURE_RENAME_MAILBOX_RECURSIVELY__
+#define __FEATURE_AUTO_RETRY_SEND__
+/*  #define __FEATURE_SMTP_VALIDATION__  */
+/*  #define FEATURE_CORE_DEBUG  */
+/*  #define FEATURE_USE_GMIME  */
+/* #define __FEATURE_BLOCKING_MODE__ */
 #define __FEATURE_BODY_SEARCH__
+/* #define __FEATURE_USE_APPSYNC__ */
+/* #define __FEATURE_ACCESS_CONTROL__ */
+/* #define __FEATURE_IMAP_QUOTA__ */
+
 
 /* ----------------------------------------------------------------------------- */
 /*  Macro */
@@ -92,18 +102,19 @@ extern "C"
 #define EMAIL_ATTACHMENT_MAX_COUNT          512
 #define DOWNLOAD_MAX_BUFFER_SIZE            8000
 #define LOCAL_MAX_BUFFER_SIZE               1000000
-#define IMAP_MAX_COMMAND_LENGTH             1000
+#define IMAP_MAX_COMMAND_LENGTH             2000
 #define DOWNLOAD_NOTI_INTERVAL_PERCENT      5         /*  notify every 5% */
 #define DOWNLOAD_NOTI_INTERVAL_SIZE         51200     /*  notify every 50k */
 #define MAX_PATH                            4096      /* /usr/src/linux-2.4.20-8/include/linux/limits.h */
 #define DATETIME_LENGTH                     16
 #define MAIL_ID_STRING_LENGTH               10
 #define MAILBOX_ID_STRING_LENGTH            10
-#define	EMAIL_LIMITATION_FREE_SPACE         (5) /*  This value is 5MB */
+#define	EMAIL_LIMITATION_FREE_SPACE         (5)       /* This value means 5MB */
 #define EMAIL_MAIL_MAX_COUNT                5000
 #define HTML_EXTENSION_STRING               ".htm"
 #define MAX_PATH_HTML                       256
 #define MAX_ACTIVE_TASK                     10
+#define AUTO_RESEND_INTERVAL                1200      /* 20 minutes */
 
 #define DIR_SEPERATOR                       "/"
 
@@ -122,6 +133,8 @@ extern "C"
 #define MIME_SUBTYPE_DRM_DCF                "vnd.oma.drm.dcf"
 
 #define SHM_FILE_FOR_DB_LOCK                "/.email_shm_db_lock"
+
+#define ACCOUNT_PASSWORD_SS_GROUP_ID        "secure-storage::email-service"
 
 #define NATIVE_EMAIL_APPLICATION_PKG        "com.samsung.email"
 #define NATIVE_EMAIL_DOMAIN                 "email"
@@ -172,9 +185,9 @@ extern "C"
 #define THREAD_SELF()                             pthread_self()
 #define THREAD_DETACH(tv)                         pthread_detach(tv)
 #define INITIALIZE_CRITICAL_SECTION(cs)           {EM_DEBUG_LOG("INITIALIZE_CRITICAL_SECTION "#cs); pthread_mutex_init(&cs, NULL); }
-#define ENTER_CRITICAL_SECTION(cs)                {EM_DEBUG_LOG("ENTER_CRITICAL_SECTION "#cs); pthread_mutex_lock(&cs); }
-#define TRY_ENTER_CRITICAL_SECTION(cs)            {EM_DEBUG_LOG("TRY_ENTER_CRITICAL_SECTION "#cs); pthread_mutex_trylock(&cs); }
-#define LEAVE_CRITICAL_SECTION(cs)                {EM_DEBUG_LOG("LEAVE_CRITICAL_SECTION "#cs); pthread_mutex_unlock(&cs); }
+#define ENTER_CRITICAL_SECTION(cs)                {pthread_mutex_lock(&cs); }
+#define TRY_ENTER_CRITICAL_SECTION(cs)            {pthread_mutex_trylock(&cs); }
+#define LEAVE_CRITICAL_SECTION(cs)                {pthread_mutex_unlock(&cs); }
 #define DELETE_CRITICAL_SECTION(cs)               {EM_DEBUG_LOG("DELETE_CRITICAL_SECTION "#cs); pthread_mutex_destroy(&cs); }
 
 #define INITIALIZE_CONDITION_VARIABLE(cv)         {EM_DEBUG_LOG("INITIALIZE_CONDITION_VARIABLE "#cv); pthread_cond_init(&cv, NULL); } 
@@ -182,30 +195,34 @@ extern "C"
 #define WAKE_CONDITION_VARIABLE(cv)               {EM_DEBUG_LOG("WAKE_CONDITION_VARIABLE "#cv); pthread_cond_signal(&cv); } 
 #define DELETE_CONDITION_VARIABLE(cv)             {EM_DEBUG_LOG("DELETE_CONDITION_VARIABLE "#cv); pthread_cond_destroy(&cv); } 
 
-#define INITIALIZE_RECURSIVE_CRITICAL_SECTION(cs) { EM_DEBUG_LOG("INITIALIZE_RECURSIVE_CRITICAL_SECTION "#cs);  \
-                                                   if (cs == NULL) {pthread_mutex_lock(&_send_event_available_lock); pthread_mutexattr_t attr; cs = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));\
+#define INITIALIZE_RECURSIVE_CRITICAL_SECTION(cs) {EM_DEBUG_LOG("INITIALIZE_RECURSIVE_CRITICAL_SECTION "#cs);\
+                                                   if (cs == NULL) {pthread_mutexattr_t attr; cs = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));\
                                                    pthread_mutexattr_init(&attr); pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE_NP);\
-                                                   pthread_mutex_init(cs, &attr);pthread_mutexattr_destroy(&attr); pthread_mutex_unlock(&_send_event_available_lock);}}
-#define ENTER_RECURSIVE_CRITICAL_SECTION(cs)      {EM_DEBUG_LOG("ENTER_RECURSIVE_CRITICAL_SECTION "#cs); if(cs) pthread_mutex_lock(cs);}
-#define TRY_ENTER_RECURSIVE_CRITICAL_SECTION(cs)  {EM_DEBUG_LOG("TRY_ENTER_RECURSIVE_CRITICAL_SECTION "#cs); if(cs)  pthread_mutex_trylock(cs);}
-#define LEAVE_RECURSIVE_CRITICAL_SECTION(cs)      {EM_DEBUG_LOG("LEAVE_RECURSIVE_CRITICAL_SECTION "#cs); if(cs) pthread_mutex_unlock(cs);}
+                                                   pthread_mutex_init(cs, &attr); pthread_mutexattr_destroy(&attr);}}
+#define ENTER_RECURSIVE_CRITICAL_SECTION(cs)      {if(cs) pthread_mutex_lock(cs);}
+#define TRY_ENTER_RECURSIVE_CRITICAL_SECTION(cs)  {if(cs)  pthread_mutex_trylock(cs);}
+#define LEAVE_RECURSIVE_CRITICAL_SECTION(cs)      {if(cs) pthread_mutex_unlock(cs);}
 #define DELETE_RECURSIVE_CRITICAL_SECTION(cs)     {EM_DEBUG_LOG("DELETE_RECURSIVE_CRITICAL_SECTION "#cs); if(cs) pthread_mutex_destroy(cs);}
 typedef pthread_t thread_t;
 
-#define SMTP_RESPONSE_OK		        250
-#define SMTP_RESPONSE_READY		        354
-#define SMTP_RESPONSE_CONNECTION_BROKEN 421
-#define SMTP_RESPONSE_WANT_AUTH		    505
-#define SMTP_RESPONSE_WANT_AUTH2	    530
-#define SMTP_RESPONSE_UNAVAIL		    550
+#define SMTP_RESPONSE_OK                   250
+#define SMTP_RESPONSE_READY                354
+#define SMTP_RESPONSE_CONNECTION_BROKEN    421
+#define SMTP_RESPONSE_WANT_AUTH            505
+#define SMTP_RESPONSE_WANT_AUTH2           530
+#define SMTP_RESPONSE_UNAVAIL              550
+#define SMTP_RESPONSE_EXCEED_SIZE_LIMIT    552
 
 #define VCONF_KEY_LATEST_MAIL_ID        "db/private/email-service/latest_mail_id"
 #define VCONF_KEY_DEFAULT_ACCOUNT_ID    "db/private/email-service/default_account_id"
 #define VCONF_KEY_NOTI_PRIVATE_ID       "db/private/email-service/noti_private_id"
 
+#define VCONF_KEY_TOPMOST_WINDOW        "db/private/com.samsung.email/is_topmost_window"
+
 #define OUTMODE  "wb"
 #define INMODE   "rb"
 #define READMODE "r"
+#define WRITEMODE "w"
 
 #define TYPEPKCS7_SIGN 10	
 #define TYPEPKCS7_MIME 11
@@ -213,11 +230,10 @@ typedef pthread_t thread_t;
 #define INLINE_ATTACHMENT    1
 #define ATTACHMENT           2
 
-#define EMAIL_ALARM_CLASS_SCHEDULED_SENDING   1
-#define EMAIL_ALARM_CLASS_NEW_MAIL_ALERT      2
-#define EMAIL_ALARM_CLASS_AUTO_POLLING        3
-
 #define EVENT_QUEUE_MAX 32
+
+#define EMAIL_LAUNCHED_BY_UNKNOWN_METHOD  0
+#define EMAIL_LAUNCHED_BY_DBUS_ACTIVATION 1
 
 /* __FEATURE_LOCAL_ACTIVITY__ supported
 #define BULK_OPERATION_COUNT              50
@@ -282,10 +298,19 @@ enum
 	EXTENSION_P7M    = 10
 };
 
+typedef enum {
+	EMAIL_ALARM_CLASS_SCHEDULED_SENDING   = 1,
+	EMAIL_ALARM_CLASS_NEW_MAIL_ALERT      = 2,
+	EMAIL_ALARM_CLASS_AUTO_POLLING        = 3,
+	EMAIL_ALARM_CLASS_AUTO_RESEND         = 4
+} email_alarm_class_t;
+
+
 /*  event information */
 typedef struct
 {
 	int                        account_id;         /*  in general, account id */
+	int                        handle;
 	email_event_type_t         type;
 	email_event_status_type_t  status;
 	char                      *event_param_data_1; /*  in general, mailbox name (exception in emcore_send_mail, emcore_send_saved_mail it is email_option_t **/
@@ -340,6 +365,8 @@ typedef struct
 	int                    has_archived_mails;         /**< Specifies the archived mails.*/
 	int                    mail_slot_size;             /**< Specifies how many mails can be stored in local mailbox.*/
 	int                    no_select;                  /**< Specifies the 'no_select' attribute from xlist.*/
+	int                    eas_data_length;            /**< Specifies the length of eas_data. */
+	char                  *eas_data;                   /**< Specifies the data for eas engine. */
 	void                  *user_data;                  /**< Specifies the internal data.*/
 	void                  *mail_stream;                /**< Specifies the internal data.*/
 } email_internal_mailbox_t;
@@ -376,7 +403,6 @@ typedef struct {
 	email_task_type_t  task_type;
 	thread_t           thread_id;
 } email_active_task_t;
-
 
 typedef void (*email_event_callback)(int total, int done, int status, int account_id, int mail_id, int handle, void *user_data, int error);
 

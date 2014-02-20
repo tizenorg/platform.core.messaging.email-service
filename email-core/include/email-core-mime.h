@@ -42,6 +42,8 @@ extern "C" {
 
 char *emcore_get_line_from_file(void *stream, char *buf, int size, int *err_code);
 int   emcore_parse_mime(void *stream, int is_file, struct _m_content_info *cnt_info, int *err_code);
+char *emcore_mime_get_save_file_name(int *err_code);
+char *emcore_mime_get_line_from_sock(void *stream, char *buf, int size, int *err_code);
 INTERNAL_FUNC int   emcore_get_content_type_from_mime_string(char *input_mime_string, char **output_content_type);
 INTERNAL_FUNC int   emcore_get_content_type_from_mail_bodystruct(BODY *input_body, int input_buffer_length, char *output_content_type);
 INTERNAL_FUNC int   emcore_get_attribute_value_of_body_part(PARAMETER *input_param, char *atribute_name, char *output_value, int output_buffer_length, int with_rfc2047_text, int *err_code);
@@ -50,11 +52,11 @@ INTERNAL_FUNC int   emcore_get_body(MAILSTREAM *stream, int account_id, int mail
 INTERNAL_FUNC int   emcore_get_body_structure(MAILSTREAM *stream, int msg_uid, BODY **body, int *err_code);
 INTERNAL_FUNC char *emcore_decode_rfc2047_text(char *rfc2047_text, int *err_code);
 INTERNAL_FUNC int   emcore_decode_body_text(char *enc_buf, int enc_len, int enc_type, int *dec_len, int *err_code);
-INTERNAL_FUNC int   emcore_set_fetch_body_section(BODY *body, int enable_inline_list, int *total_mail_size, int *err_code);
+INTERNAL_FUNC int   emcore_set_fetch_body_section(BODY *body, int enable_inline_list, int *total_mail_size, int *total_body_size, int *err_code);
 INTERNAL_FUNC int   emcore_parse_mime_file_to_mail(char *eml_file_path, email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count, int *err_code);
 INTERNAL_FUNC int   emcore_delete_parsed_data(email_mail_data_t *input_mail_data, int *err_code);
 INTERNAL_FUNC int   emcore_get_mime_entity(char *mime_path, char **mime_entity, int *err_code);
-
+INTERNAL_FUNC int   emcore_get_utf8_address(char **dest, ADDRESS *address, int *err_code);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

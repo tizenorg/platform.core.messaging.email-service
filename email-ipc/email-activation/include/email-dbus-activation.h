@@ -61,4 +61,7 @@ gboolean email_service_launch(EmailService *email_service, guint *result_val, GE
 EXPORT_API int emipc_init_dbus_connection();
 EXPORT_API int emipc_launch_email_service();
 
+EXPORT_API void emipc_set_launch_method(int input_launch_method);
+EXPORT_API int  emipc_get_launch_method();
+
 #endif /* __EMAIL_DBUS_ACTIVATION_H__ */

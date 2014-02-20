@@ -36,6 +36,7 @@
 #include <malloc.h>
 #include <pthread.h>
 #include <regex.h>
+#include <security-server.h>
 
 #include "c-client.h"
 
@@ -47,7 +48,7 @@ INTERNAL_FUNC void* em_malloc(int len)
 {
 	/* EM_DEBUG_LOG("Memory allocation size[%d] bytes", len); */
 	if (len <= 0) {
-		EM_DEBUG_EXCEPTION("len should be positive.[%d]", len);
+		EM_DEBUG_LOG ("len should be positive.[%d]", len);
 		return NULL;
 	}
 
@@ -63,7 +64,7 @@ INTERNAL_FUNC void* em_memdup(void* src, int len)
 {
 	/* EM_DEBUG_LOG("Memory allocation size[%d] bytes", len); */
 	if (len <= 0) {
-		EM_DEBUG_EXCEPTION("len should be positive.[%d]", len);
+		EM_DEBUG_LOG ("len should be positive.[%d]", len);
 		return NULL;
 	}
 
@@ -225,6 +226,12 @@ INTERNAL_FUNC char* em_replace_all_string(char *source_string, char *old_string,
 		EM_DEBUG_EXCEPTION("calloc failed");
 		return NULL;
 	}
+
+	if (!strstr(source_string, old_string)) {
+		memcpy(result_buffer, source_string, src_len);
+		return result_buffer;
+	}
+
 	realloc_len = src_len + 1;
 
 	for (i = 0; i < src_len && source_string[i] != '\0';) {
@@ -254,7 +261,7 @@ INTERNAL_FUNC char* em_replace_all_string(char *source_string, char *old_string,
 	else
 		result_buffer[realloc_len-1] = '\0';
 
-	EM_DEBUG_FUNC_END("result_buffer : %s", result_buffer);
+	EM_DEBUG_FUNC_END();
 	return result_buffer;
 }
 
@@ -349,7 +356,7 @@ INTERNAL_FUNC void em_flush_memory()
 
 INTERNAL_FUNC int em_get_file_name_from_file_path(char *input_source_file_path, char **output_file_name)
 {
-	EM_DEBUG_FUNC_BEGIN("input_source_file_path[%s], output_file_name [%p]", input_source_file_path, output_file_name);
+	EM_DEBUG_FUNC_BEGIN_SEC("input_source_file_path[%s], output_file_name [%p]", input_source_file_path, output_file_name);
 	int   err = EMAIL_ERROR_NONE;
 	int   pos_on_string = 0;
 	int   file_name_length = 0;
@@ -380,7 +387,7 @@ INTERNAL_FUNC int em_get_file_name_from_file_path(char *input_source_file_path, 
 		memcpy(file_name_string, start_pos_of_file_name, file_name_length);
 	}
 
-	EM_DEBUG_LOG("file_name_string [%s] pos_on_string [%d] file_name_length [%d]", file_name_string, pos_on_string, file_name_length);
+	EM_DEBUG_LOG_SEC("file_name_string [%s] pos_on_string [%d] file_name_length [%d]", file_name_string, pos_on_string, file_name_length);
 
 	*output_file_name = EM_SAFE_STRDUP(file_name_string);
 
@@ -391,7 +398,7 @@ FINISH_OFF:
 
 INTERNAL_FUNC int em_get_file_name_and_extension_from_file_path(char *input_source_file_path, char **output_file_name, char **output_extension)
 {
-	EM_DEBUG_FUNC_BEGIN("input_source_file_path[%s], output_file_name [%p], output_extension [%p]", input_source_file_path, output_file_name, output_extension);
+	EM_DEBUG_FUNC_BEGIN_SEC("input_source_file_path[%s], output_file_name [%p], output_extension [%p]", input_source_file_path, output_file_name, output_extension);
 	int   err = EMAIL_ERROR_NONE;
 	int   pos_on_string = 0;
 	int   file_name_length = 0;
@@ -436,7 +443,7 @@ INTERNAL_FUNC int em_get_file_name_and_extension_from_file_path(char *input_sour
 		memcpy(extension_string, dot_pos_of_file_path + 1, extention_length);
 	}
 
-	EM_DEBUG_LOG("*file_name_string [%s] pos_on_string [%d]", file_name_string, pos_on_string);
+	EM_DEBUG_LOG_SEC("*file_name_string [%s] pos_on_string [%d]", file_name_string, pos_on_string);
 
 	*output_file_name = EM_SAFE_STRDUP(file_name_string);
 	*output_extension = EM_SAFE_STRDUP(extension_string);
@@ -448,7 +455,7 @@ FINISH_OFF:
 
 INTERNAL_FUNC char *em_get_extension_from_file_path(char *source_file_path, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("source_file_path[%s]", source_file_path);
+	EM_DEBUG_FUNC_BEGIN_SEC("source_file_path[%s]", source_file_path);
 	int err = EMAIL_ERROR_NONE, pos_on_string = 0;
 	char *extension = NULL;
 
@@ -587,20 +594,20 @@ FINISH_OFF:
 #define EMAIL_ALIAS_WITHOUT_BRACKET_RGEX       "([[:space:]]*\"[^\"]*\")?"EMAIL_ADDR_WITHOUT_BRACKET_RGEX
 #define EMAIL_ALIAS_LIST_WITHOUT_BRACKET_RGEX  "("EMAIL_ALIAS_WITHOUT_BRACKET_RGEX"[;,])*"EMAIL_ADDR_WITHOUT_BRACKET_RGEX"[;,]?[[:space:]]*$"
 
-INTERNAL_FUNC int em_verify_email_address(char *address, int without_bracket, int *err_code)
+INTERNAL_FUNC int em_verify_email_address(char *address, int without_bracket)
 {
-	EM_DEBUG_FUNC_BEGIN("address[%s] without_bracket[%d]", address, without_bracket);
+	EM_DEBUG_FUNC_BEGIN_SEC("address[%s] without_bracket[%d]", address, without_bracket);
 
 	/*  this following code verfies the email alias string using reg. exp. */
 	regex_t alias_list_regex = {0};
-	int ret = false, error = EMAIL_ERROR_NONE;
+	int error = EMAIL_ERROR_NONE;
 	char *reg_rule = NULL;
+	int alias_len = 0;
+	regmatch_t *pmatch = NULL;
 
 	if(!address || EM_SAFE_STRLEN(address) == 0) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-		if (err_code)
-			*err_code = EMAIL_ERROR_INVALID_PARAM;
-		return false;
+		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
 	if(without_bracket)
@@ -608,54 +615,52 @@ INTERNAL_FUNC int em_verify_email_address(char *address, int without_bracket, in
 	else
 		reg_rule = EMAIL_ALIAS_LIST_RGEX;
 
-	if (regcomp(&alias_list_regex, reg_rule, REG_ICASE | REG_EXTENDED)) {
+	if (regcomp (&alias_list_regex, reg_rule, REG_ICASE | REG_EXTENDED) != 0) {
 		EM_DEBUG_EXCEPTION("email alias regex unrecognized");
-		if (err_code)
-			*err_code = EMAIL_ERROR_UNKNOWN;
-		return false;
+		error = EMAIL_ERROR_SYSTEM_FAILURE;
+		goto FINISH_OFF;
 	}
 
-	int alias_len = EM_SAFE_STRLEN(address) + 1;
-	regmatch_t pmatch[alias_len];
-
-	bzero(pmatch, alias_len);
-
-	if (regexec(&alias_list_regex, address, alias_len, pmatch, 0) == REG_NOMATCH)
-		EM_DEBUG_LOG("failed :[%s]", address);
-	else {
-		EM_DEBUG_LOG("success :[%s]", address);
-		ret = true;
+	alias_len = EM_SAFE_STRLEN(address) + 1;
+	pmatch = (regmatch_t *) em_malloc (alias_len * sizeof (regmatch_t));
+	if (!pmatch) {
+		EM_DEBUG_EXCEPTION("em_malloc error");
+		goto FINISH_OFF;
 	}
 
+	if (regexec (&alias_list_regex, address, alias_len, pmatch, 0) == REG_NOMATCH) {
+		EM_DEBUG_LOG_SEC("failed :[%s]", address);
+		error = EMAIL_ERROR_INVALID_ADDRESS;
+		goto FINISH_OFF;
+	}
+
+FINISH_OFF:
 	regfree(&alias_list_regex);
+	EM_SAFE_FREE (pmatch);
 
-	if (err_code)
-		*err_code = error;
-
-	EM_DEBUG_FUNC_END("ret [%d]", ret);
-	return ret;
+	EM_DEBUG_FUNC_END("err [%d]", error);
+	return error;
 }
 
-INTERNAL_FUNC int em_verify_email_address_of_mail_data(email_mail_data_t *mail_data, int without_bracket, int *err_code)
+INTERNAL_FUNC int em_verify_email_address_of_mail_data (email_mail_data_t *mail_data, int without_bracket)
 {
 	EM_DEBUG_FUNC_BEGIN("mail_data[%p] without_bracket[%d]", mail_data, without_bracket);
 	char *address_array[4] = { mail_data->full_address_from, mail_data->full_address_to, mail_data->full_address_cc, mail_data->full_address_bcc};
-	int  ret = false, err = EMAIL_ERROR_NONE, i;
+	int  err = EMAIL_ERROR_NONE, i;
 
 	/* check for email_address validation */
 	for (i = 0; i < 4; i++) {
 		if (address_array[i] && address_array[i][0] != 0) {
-			if (!em_verify_email_address(address_array[i] , without_bracket, &err)) {
-				err = EMAIL_ERROR_INVALID_ADDRESS;
-				EM_DEBUG_EXCEPTION("Invalid Email Address [%d][%s]", i, address_array[i]);
+			err = em_verify_email_address (address_array[i] , without_bracket);
+			if (err != EMAIL_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION_SEC("em_verify_email_address error[%d] idx[%d] addr[%s]", err, i, address_array[i]);
 				goto FINISH_OFF;
 			}
 		}
 	}
-	ret = true;
 FINISH_OFF:
-	EM_DEBUG_FUNC_END("ret [%d]", ret);
-	return ret;
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
 }
 
 INTERNAL_FUNC int em_verify_email_address_of_mail_tbl(emstorage_mail_tbl_t *input_mail_tbl, int input_without_bracket)
@@ -667,9 +672,8 @@ INTERNAL_FUNC int em_verify_email_address_of_mail_tbl(emstorage_mail_tbl_t *inpu
 	/* check for email_address validation */
 	for (i = 0; i < 4; i++) {
 		if (address_array[i] && address_array[i][0] != 0) {
-			if (!em_verify_email_address(address_array[i] , input_without_bracket, &err)) {
-				err = EMAIL_ERROR_INVALID_ADDRESS;
-				EM_DEBUG_EXCEPTION("Invalid Email Address [%d][%s]", i, address_array[i]);
+			if ((err = em_verify_email_address (address_array[i] , input_without_bracket)) != EMAIL_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION_SEC("em_verify_email_address error[%d] idx[%d] addr[%s]", err, i, address_array[i]);
 				goto FINISH_OFF;
 			}
 		}
@@ -929,221 +933,181 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int em_send_notification_to_active_sync_engine(int subType, ASNotiData *data)
+INTERNAL_FUNC int em_check_socket_privilege_by_pid(int pid)
 {
-	EM_DEBUG_FUNC_BEGIN("subType [%d], data [%p]", subType, data);
+	EM_DEBUG_FUNC_BEGIN("pid [%d]", pid);
+	int smack_ret = 0;
 
-	DBusConnection     *connection;
-	DBusMessage        *signal = NULL;
-	DBusError           error;
-	int                 i = 0;
-
-	dbus_error_init (&error);
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
-
-	if(connection == NULL)
-		goto FINISH_OFF;
-
-	signal = dbus_message_new_signal("/User/Email/ActiveSync", EMAIL_ACTIVE_SYNC_NOTI, "email");
-
-	dbus_message_append_args(signal, DBUS_TYPE_INT32, &subType, DBUS_TYPE_INVALID);
-	switch ( subType ) {
-		case ACTIVE_SYNC_NOTI_SEND_MAIL:
-			EM_DEBUG_LOG("handle:[%d]", data->send_mail.handle);
-			EM_DEBUG_LOG("account_id:[%d]", data->send_mail.account_id);
-			EM_DEBUG_LOG("mail_id:[%d]", data->send_mail.mail_id);
-
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.handle), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.account_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail.mail_id), DBUS_TYPE_INVALID);
-			break;
-		case ACTIVE_SYNC_NOTI_SEND_SAVED:				/*  publish a send notification to ASE (active sync engine) */
-			EM_DEBUG_EXCEPTION("Not support yet : subType[ACTIVE_SYNC_NOTI_SEND_SAVED]", subType);
-			break;
-		case ACTIVE_SYNC_NOTI_SEND_REPORT:
-			EM_DEBUG_EXCEPTION("Not support yet : subType[ACTIVE_SYNC_NOTI_SEND_REPORT]", subType);
-			break;
-		case ACTIVE_SYNC_NOTI_SYNC_HEADER:
-			EM_DEBUG_LOG("handle:[%d]", data->sync_header.handle);
-			EM_DEBUG_LOG("account_id:[%d]", data->sync_header.account_id);
-			EM_DEBUG_LOG("mailbox_id:[%d]", data->sync_header.mailbox_id);
-
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->sync_header.handle ), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->sync_header.account_id ), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->sync_header.mailbox_id ), DBUS_TYPE_INVALID);
-			break;
-		case ACTIVE_SYNC_NOTI_DOWNLOAD_BODY:			/*  publish a download body notification to ASE */
-			EM_DEBUG_LOG("handle:[%d]", data->download_body.handle);
-			EM_DEBUG_LOG("account_id:[%d]", data->download_body.account_id);
-			EM_DEBUG_LOG("mail_id:[%d]", data->download_body.mail_id);
-			EM_DEBUG_LOG("with_attachment:[%d]", data->download_body.with_attachment);
-
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_body.handle  ), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_body.account_id  ), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_body.mail_id ), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_body.with_attachment  ), DBUS_TYPE_INVALID);
-			break;
-		case ACTIVE_SYNC_NOTI_DOWNLOAD_ATTACHMENT:
-			EM_DEBUG_LOG("handle:[%d]", data->download_attachment.handle);
-			EM_DEBUG_LOG("account_id:[%d]", data->download_attachment.account_id );
-			EM_DEBUG_LOG("mail_id:[%d]", data->download_attachment.mail_id);
-			EM_DEBUG_LOG("with_attachment:[%d]", data->download_attachment.attachment_order );
-
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_attachment.handle  ), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_attachment.account_id  ), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_attachment.mail_id ), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->download_attachment.attachment_order), DBUS_TYPE_INVALID);
-			break;
-		case ACTIVE_SYNC_NOTI_VALIDATE_ACCOUNT:
-			EM_DEBUG_EXCEPTION("Not support yet : subType[ACTIVE_SYNC_NOTI_VALIDATE_ACCOUNT]", subType);
-			break;
-		case ACTIVE_SYNC_NOTI_CANCEL_JOB:
-			EM_DEBUG_LOG("account_id:[%d]",       data->cancel_job.account_id );
-			EM_DEBUG_LOG("handle to cancel:[%d]", data->cancel_job.handle);
-			EM_DEBUG_LOG("cancel_type:[%d]",      data->cancel_job.cancel_type);
-
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_job.account_id  ), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_job.handle  ), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_job.cancel_type  ), DBUS_TYPE_INVALID);
-			break;
-		case ACTIVE_SYNC_NOTI_SEARCH_ON_SERVER:
-			EM_DEBUG_LOG("account_id:[%d]",          data->search_mail_on_server.account_id );
-			EM_DEBUG_LOG("mailbox_id:[%d]",        data->search_mail_on_server.mailbox_id );
-			EM_DEBUG_LOG("search_filter_count:[%d]", data->search_mail_on_server.search_filter_count );
-			EM_DEBUG_LOG("handle to cancel:[%d]",    data->search_mail_on_server.handle);
-
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.account_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->search_mail_on_server.mailbox_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.search_filter_count), DBUS_TYPE_INVALID);
-			for(i = 0; i < data->search_mail_on_server.search_filter_count; i++) {
-				dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.search_filter_list[i].search_filter_type), DBUS_TYPE_INVALID);
-				switch(data->search_mail_on_server.search_filter_list[i].search_filter_type) {
-					case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO       :
-					case EMAIL_SEARCH_FILTER_TYPE_UID              :
-					case EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER      :
-					case EMAIL_SEARCH_FILTER_TYPE_SIZE_SMALLER     :
-					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED   :
-					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED    :
-					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT      :
-					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED     :
-					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT     :
-					case EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN       :
-						dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->search_mail_on_server.search_filter_list[i].search_filter_key_value.integer_type_key_value), DBUS_TYPE_INVALID);
-						break;
-
-					case EMAIL_SEARCH_FILTER_TYPE_BCC              :
-					case EMAIL_SEARCH_FILTER_TYPE_CC               :
-					case EMAIL_SEARCH_FILTER_TYPE_FROM             :
-					case EMAIL_SEARCH_FILTER_TYPE_KEYWORD          :
-					case EMAIL_SEARCH_FILTER_TYPE_SUBJECT          :
-					case EMAIL_SEARCH_FILTER_TYPE_TO               :
-					case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
-						dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->search_mail_on_server.search_filter_list[i].search_filter_key_value.string_type_key_value), DBUS_TYPE_INVALID);
-						break;
-
-					case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :
-					case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON     :
-					case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE  :
-						dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->search_mail_on_server.search_filter_list[i].search_filter_key_value.time_type_key_value), DBUS_TYPE_INVALID);
-						break;
-					default :
-						EM_DEBUG_EXCEPTION("Invalid filter type [%d]", data->search_mail_on_server.search_filter_list[i].search_filter_type);
-						break;
-				}
-			}
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.handle), DBUS_TYPE_INVALID);
-			break;
-
-		case ACTIVE_SYNC_NOTI_CLEAR_RESULT_OF_SEARCH_ON_SERVER :
-			EM_DEBUG_LOG("account_id:[%d]",          data->clear_result_of_search_mail_on_server.account_id );
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->search_mail_on_server.account_id), DBUS_TYPE_INVALID);
-			break;
-
-		case ACTIVE_SYNC_NOTI_EXPUNGE_MAILS_DELETED_FLAGGED :
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->expunge_mails_deleted_flagged.account_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->expunge_mails_deleted_flagged.mailbox_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->expunge_mails_deleted_flagged.on_server), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->expunge_mails_deleted_flagged.handle), DBUS_TYPE_INVALID);
-			break;
-
-		case ACTIVE_SYNC_NOTI_RESOLVE_RECIPIENT :
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->get_resolve_recipients.account_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->get_resolve_recipients.email_address), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->get_resolve_recipients.handle), DBUS_TYPE_INVALID);
-			break;
-
-		case ACTIVE_SYNC_NOTI_VALIDATE_CERTIFICATE :
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->validate_certificate.account_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->validate_certificate.email_address), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->validate_certificate.handle), DBUS_TYPE_INVALID);
-			break;
-
-		case ACTIVE_SYNC_NOTI_ADD_MAILBOX :
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->add_mailbox.account_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->add_mailbox.mailbox_path), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->add_mailbox.mailbox_alias), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->add_mailbox.handle), DBUS_TYPE_INVALID);
-			break;
-
-		case ACTIVE_SYNC_NOTI_RENAME_MAILBOX :
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->rename_mailbox.account_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->rename_mailbox.mailbox_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->rename_mailbox.mailbox_name), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->rename_mailbox.mailbox_alias), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->rename_mailbox.handle), DBUS_TYPE_INVALID);
-			break;
-
-		case ACTIVE_SYNC_NOTI_DELETE_MAILBOX :
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox.account_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox.mailbox_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox.handle), DBUS_TYPE_INVALID);
-			break;
-
-		case ACTIVE_SYNC_NOTI_DELETE_MAILBOX_EX :
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox_ex.account_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox_ex.mailbox_id_count), DBUS_TYPE_INVALID);
-			for(i = 0; i <data->delete_mailbox_ex.mailbox_id_count; i++)
-				dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->delete_mailbox_ex.mailbox_id_array[i]), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32,  &(data->delete_mailbox_ex.handle), DBUS_TYPE_INVALID);
-			break;
-
-		case ACTIVE_SYNC_NOTI_SEND_MAIL_WITH_DOWNLOADING_OF_ORIGINAL_MAIL:
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail_with_downloading_attachment_of_original_mail.handle), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail_with_downloading_attachment_of_original_mail.mail_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->send_mail_with_downloading_attachment_of_original_mail.account_id), DBUS_TYPE_INVALID);
-			break;
-
-		case ACTIVE_SYNC_NOTI_SCHEDULE_SENDING_MAIL:
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->schedule_sending_mail.handle), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->schedule_sending_mail.account_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->schedule_sending_mail.mail_id), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->schedule_sending_mail.scheduled_time), DBUS_TYPE_INVALID);
-			break;
-
-		case ACTIVE_SYNC_NOTI_CANCEL_SENDING_MAIL:
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_sending_mail.handle), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_sending_mail.account_id  ), DBUS_TYPE_INVALID);
-			dbus_message_append_args(signal, DBUS_TYPE_INT32, &(data->cancel_sending_mail.mail_id), DBUS_TYPE_INVALID);
-			break;
-
-		default:
-			EM_DEBUG_EXCEPTION("Invalid Notification type of Active Sync : subType[%d]", subType);
-			return FAILURE;
+	smack_ret = security_server_check_privilege_by_pid(pid, "email-service::write", "rw");
+	if (smack_ret == SECURITY_SERVER_API_ERROR_ACCESS_DENIED) {
+		EM_DEBUG_EXCEPTION("SECURITY_SERVER_API_ERROR_ACCESS_DENIED");
+		return EMAIL_ERROR_PERMISSION_DENIED;
 	}
 
-	if(!dbus_connection_send (connection, signal, NULL)) {
-		EM_DEBUG_EXCEPTION("dbus_connection_send is failed");
-		return FAILURE;
-	} else
-		EM_DEBUG_LOG("dbus_connection_send is successful");
+	EM_DEBUG_FUNC_END();
+	return EMAIL_ERROR_NONE;
+}
 
-	dbus_connection_flush(connection);
+INTERNAL_FUNC int em_check_db_privilege_by_pid(int pid)
+{
+	EM_DEBUG_FUNC_BEGIN("pid [%d]", pid);
+	int smack_ret = 0;
 
-FINISH_OFF:
-
-	if(signal)
-		dbus_message_unref(signal);
+	smack_ret = security_server_check_privilege_by_pid(pid, "email-service::db", "rw");
+	if (smack_ret == SECURITY_SERVER_API_ERROR_ACCESS_DENIED) {
+		EM_DEBUG_EXCEPTION("SECURITY_SERVER_API_ERROR_ACCESS_DENIED");
+		return EMAIL_ERROR_PERMISSION_DENIED;
+	}
 
 	EM_DEBUG_FUNC_END();
-	return true;
+	return EMAIL_ERROR_NONE;
 }
+
+
+/* thread with task queue generic functions */
+
+pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
+
+email_thread_handle_t* em_thread_create (void *(*thread_exit)(void*), void *arg)
+{
+	pthread_mutex_lock(&g_mu);
+
+	email_thread_handle_t* thd_handle = (email_thread_handle_t*) calloc (1,sizeof (email_thread_handle_t));
+	if (!thd_handle) {
+		EM_DEBUG_EXCEPTION ("out of memory");
+		goto FINISH_OFF;
+	}
+
+	thd_handle->q = g_queue_new ();
+	if (!thd_handle->q) {
+		EM_DEBUG_EXCEPTION ("g_queue_new failed");
+		goto FINISH_OFF;
+	}
+	g_queue_init (thd_handle->q);
+
+	int ret = pthread_mutex_init (&thd_handle->mu, NULL);
+	if (ret == -1) {
+		EM_DEBUG_EXCEPTION ("pthread_mutex_init failed [%d]", errno);
+		goto FINISH_OFF;
+	}
+
+	ret = pthread_cond_init (&thd_handle->cond, NULL);
+	if (ret == -1) {
+		EM_DEBUG_EXCEPTION ("pthread_cond_init failed [%d]", errno);
+		goto FINISH_OFF;
+	}
+
+	thd_handle->thread_exit     = thread_exit;
+	thd_handle->thread_exit_arg = arg;
+
+	pthread_mutex_unlock (&g_mu);
+	return thd_handle;
+
+FINISH_OFF:
+	pthread_mutex_unlock (&g_mu);
+	em_thread_destroy (thd_handle);
+	return NULL;
+}
+
+void em_thread_destroy (email_thread_handle_t* thd_handle)
+{
+	if (!thd_handle) return;
+
+	if (!g_queue_is_empty (thd_handle->q)) {
+		EM_DEBUG_EXCEPTION ("delete q item routine here");
+	}
+
+	pthread_mutex_destroy (&thd_handle->mu);
+	pthread_cond_destroy (&thd_handle->cond);
+
+	EM_SAFE_FREE (thd_handle);
+}
+
+typedef struct {
+	void *(*thread_func)(void*);  	/* thread main function */
+	void *(*destroy)(void*);		/* destroyer function */
+	void *arg;
+	email_thread_handle_t *thd_handle;
+} worker_handle_t;
+
+static void* worker_func (void* arg)
+{
+	if (!arg) {
+		EM_DEBUG_EXCEPTION ("PARAMETER NULL");
+		return NULL;
+	}
+	/* first task is passed by arg */
+	worker_handle_t* warg = (worker_handle_t*) arg;
+	email_thread_handle_t *thd_handle = warg->thd_handle;
+
+	if (!thd_handle) {
+		EM_DEBUG_EXCEPTION ("PARAMETER NULL");
+		return NULL;
+	}
+
+	/* consume task in queue and exit */
+	do {
+		/* running thread main function */
+		if (warg->thread_func)
+			(warg->thread_func) (warg->arg); 
+		if (warg->destroy)
+			(warg->destroy) (warg->arg);
+		EM_SAFE_FREE (warg);
+
+		/* if there is a pending job */
+		pthread_mutex_lock (&thd_handle->mu);
+		warg = g_queue_pop_head (thd_handle->q);
+		if (!warg) {
+			thd_handle->running = 0;
+			pthread_mutex_unlock (&thd_handle->mu);
+			(thd_handle->thread_exit) (thd_handle->thread_exit_arg);
+			return NULL;
+		}
+		pthread_mutex_unlock (&thd_handle->mu);
+	} while (1);
+
+	return NULL;
+}
+
+void em_thread_run (email_thread_handle_t *thd_handle, void *(*thread_func)(void*), void *(*destroy)(void*), void* arg)
+{
+	if(!thd_handle || !thread_func) {
+		EM_DEBUG_EXCEPTION ("invalid param");
+		return;
+	}
+
+	worker_handle_t *worker_handle = (worker_handle_t*) calloc (1, sizeof (worker_handle_t));
+	if (!worker_handle) {
+		EM_DEBUG_EXCEPTION ("out of memory");
+		return;
+	}
+	worker_handle->thread_func = thread_func;
+	worker_handle->arg  = arg;
+	worker_handle->thd_handle = thd_handle;
+
+	pthread_mutex_lock (&thd_handle->mu);
+
+	/* adding task to queue */
+	if (thd_handle->running) {
+		g_queue_push_tail (thd_handle->q, worker_handle);		
+	}
+	else {
+		thd_handle->running = 1;
+		pthread_t tid = 0;
+		int err = pthread_create (&tid, NULL, worker_func, worker_handle);
+		if (err < 0 )
+			EM_DEBUG_EXCEPTION ("pthread_create failed [%d]", errno);
+		thd_handle->tid = tid;
+	}
+	pthread_mutex_unlock (&thd_handle->mu);
+}
+
+void em_thread_join (email_thread_handle_t *thd_handle)
+{
+	int err = pthread_join (thd_handle->tid, NULL);
+	if (err < 0) {
+		EM_DEBUG_EXCEPTION ("pthread_join failed [%d]", errno);
+	}
+}
+
+

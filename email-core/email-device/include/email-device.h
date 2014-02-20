@@ -39,6 +39,10 @@ extern "C"
 
 #include "email-internal-types.h"
 
+#define DISPLAY_STATE_OFF 0
+#define DISPLAY_STATE_DIM 1
+#define DISPLAY_STATE_ON  2
+
 INTERNAL_FUNC int emdevice_set_sleep_on_off(int on, int *error_code);
 INTERNAL_FUNC int emdevice_set_dimming_on_off(int on, int *error_code);
 

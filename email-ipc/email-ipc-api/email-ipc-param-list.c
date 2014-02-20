@@ -56,7 +56,6 @@ EXPORT_API bool emipc_destroy_param_list(emipc_param_list *param_list)
 	int index = 0;
 
 	if (!param_list) {
-		EM_DEBUG_EXCEPTION("Invalid parameter.");
 		return false;
 	}
 
@@ -85,7 +84,7 @@ EXPORT_API bool emipc_parse_stream_of_param_list(emipc_param_list *param_list, v
 
 	int stream_len = malloc_usable_size(stream);
 	int remain_len = stream_len - (sizeof(long) * eSTREAM_DATA);
-	EM_DEBUG_LOG("Allocated stream size : %dbyte", stream_len);
+	EM_DEBUG_LOG_DEV ("Allocated stream size : %dbyte", stream_len);
 
 	unsigned char* cur = ((unsigned char*)stream) + sizeof(int)*eSTREAM_DATA;
 
@@ -128,15 +127,12 @@ EXPORT_API unsigned char *emipc_serialize_param_list(emipc_param_list *param_lis
 {
 	EM_DEBUG_FUNC_BEGIN("param_list [%p] stream_length [%p]", param_list, stream_length);
 
-	if(param_list == NULL) {
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+	if (!param_list) {
+		EM_DEBUG_LOG ("no data to be serialized");
 		return NULL;
 	}
 
-	if(param_list->byte_stream) {
-		EM_DEBUG_LOG("param_list->byte_stream exist");
-		goto FINISH_OFF;
-	}
+	EM_SAFE_FREE (param_list->byte_stream);
 
 	int stream_len = emipc_sum_param_list_length (param_list);
 

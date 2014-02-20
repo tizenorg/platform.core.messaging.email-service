@@ -177,8 +177,30 @@ extern "C" {
  */
 EXPORT_API int email_send_mail(int mail_id,	int *handle);
 
+/**
+ * @fn email_send_mail_with_downloading_attachment_of_original_mail(int input_mail_id, int *output_handle)
+ * @brief	Send a mail. This function is invoked when user wants to send the mail, not been downloaded the attachment.
+ *
+ * @return 	This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
+ * @param[in] input_mail_id	Specifies the mail ID.
+ * @param[out] handle 		Specifies the sending handle.
+ * @exception 	none
+ * @see 	email_mailbox_t and email_option_t
+ * @remarks N/A
+ */
 EXPORT_API int email_send_mail_with_downloading_attachment_of_original_mail(int input_mail_id, int *output_handle);
 
+/**
+ * @fn email_schedule_sending_mail(int input_mail_id, time_t input_time)
+ * @brief	Send a mail. This function is invoked when user wants to send the scheduled mail.
+ *
+ * @return 	This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
+ * @param[in] input_mail_id	Specifies the mail ID.
+ * @param[out] input_time	Specifies the scheduled time.
+ * @exception 	none
+ * @see 	email_mailbox_t and email_option_t
+ * @remarks N/A
+ */
 EXPORT_API int email_schedule_sending_mail(int input_mail_id, time_t input_time);
 
 
@@ -258,7 +280,6 @@ EXPORT_API int email_download_attachment(int mail_id, int nth, int *handle);
  * @see 	none
  * @remarks N/A
  */
-
 EXPORT_API int email_cancel_job(int input_account_id, int input_handle, email_cancelation_type input_cancel_type);
 
 EXPORT_API int email_get_pending_job(email_action_t action, int account_id, int mail_id, email_event_status_type_t * status) DEPRECATED;
@@ -324,7 +345,34 @@ EXPORT_API int email_sync_imap_mailbox_list(int account_id, int *handle);
  */
 EXPORT_API int email_search_mail_on_server(int input_account_id, int input_mailbox_id, email_search_filter_t *input_search_filter_list, int input_search_filter_count, int *output_handle);
 
+/**
+
+ * @fn email_clear_result_of_search_mail_on_server(int input_account_id)
+ * @brief	Delete the temporarily downloaded mails on local storage.
+ *
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
+ * @param[in] account_id	Specifies the Account ID
+ * @exception 		none
+ * @see email_search_filter_t,
+ * @code
+ * @endcode
+ * @remarks N/A
+ */
 EXPORT_API int email_clear_result_of_search_mail_on_server(int input_account_id);
+
+/**
+
+ * @fn email_query_smtp_mail_size_limit(int account_id)
+ * @brief	query maximum mail size limit from smtp server
+ *
+ * @return This function returns EMAIL_ERROR_NONE on success or error code (refer to EMAIL_ERROR_XXX) on failure.
+ * @param[in] account_id	Specifies the Account ID
+ * @exception 		none
+ * @code
+ * @endcode
+ * @remarks N/A
+ */
+EXPORT_API int email_query_smtp_mail_size_limit(int account_id, int *handle);
 
 #ifdef __cplusplus
 }

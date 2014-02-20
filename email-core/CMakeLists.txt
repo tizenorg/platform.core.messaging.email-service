@@ -31,7 +31,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(storage_pkgs REQUIRED glib-2.0 dlog vconf dbus-1)
+pkg_check_modules(device_pkgs REQUIRED glib-2.0 dlog vconf pmapi dbus-1)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${device_pkgs_CFLAGS})
@@ -42,12 +42,12 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
 
 #message(">>> extra_cflags ${EXTRA_CFLAGS}")
 #message(">>> result ${CMAKE_C_FLAGS}")
-
+#message(">>> ld flag ${device_pkgs_LDFLAGS}")
 
 SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
 
 ADD_LIBRARY(${DEVICE-LIB} SHARED ${DEVICE-SRCS})
-TARGET_LINK_LIBRARIES(${DEVICE-LIB} ${device_LDFLAGS} ${BASE-LIB})
+TARGET_LINK_LIBRARIES(${DEVICE-LIB} ${device_pkgs_LDFLAGS} ${BASE-LIB})
 SET_TARGET_PROPERTIES(${DEVICE-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${DEVICE-LIB} PROPERTIES VERSION ${VERSION})
 
@@ -132,6 +132,50 @@ SET_TARGET_PROPERTIES(${NETWORK-LIB} PROPERTIES VERSION ${VERSION})
 INSTALL(TARGETS ${NETWORK-LIB} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
 
 ##########################################################
+# Define Core-sound lib
+##########################################################
+
+SET(CORE-SOUND-LIB "email-core-sound")
+SET(CORE-SOUND-SRCS 
+	${CMAKE_SOURCE_DIR}/email-core/email-core-sound.c
+)
+
+INCLUDE_DIRECTORIES(
+	${CMAKE_SOURCE_DIR}/email-common-use/include
+	${CMAKE_SOURCE_DIR}/email-daemon/include/
+	${CMAKE_SOURCE_DIR}/email-core/include
+	${CMAKE_SOURCE_DIR}/email-core/email-storage/include
+)
+
+
+INCLUDE(FindPkgConfig)
+pkg_check_modules(core_sound_pkgs REQUIRED glib-2.0 dlog dbus-1 gthread-2.0 
+			vconf vconf-internal-keys mm-player mm-session feedback 
+			alarm-service notification badge)
+
+set(EXTRA_CFLAGS "")
+FOREACH(flag ${core_sound_pkgs_CFLAGS})
+	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
+ENDFOREACH(flag)
+
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
+
+#message(">> core extra raw: ${core_sound_pkgs_CFLAGS}")
+#message(">> core extra : ${EXTRA_CFLAGS}")
+#message(">> core result: ${CMAKE_C_FLAGS}")
+
+SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
+
+ADD_LIBRARY(${CORE-SOUND-LIB} SHARED ${CORE-SOUND-SRCS})
+
+TARGET_LINK_LIBRARIES(${CORE-SOUND-LIB} ${core_sound_pkgs_LDFLAGS} ${STORAGE-LIB} ${CORE-LIB})
+
+SET_TARGET_PROPERTIES(${CORE-SOUND-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
+SET_TARGET_PROPERTIES(${CORE-SOUND-LIB} PROPERTIES VERSION ${VERSION})
+
+INSTALL(TARGETS ${CORE-SOUND-LIB} DESTINATION lib COMPONENT RuntimeLibraries)
+
+##########################################################
 # Define Core lib
 ##########################################################
 
@@ -144,16 +188,13 @@ SET(CORE-SRCS
 	${CMAKE_SOURCE_DIR}/email-core/email-core-mail.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-mm-callbacks.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-utils.c
-	${CMAKE_SOURCE_DIR}/email-core/email-core-api.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-smtp.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-timer.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-imap-idle.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-global.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-account.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-mime.c
-	${CMAKE_SOURCE_DIR}/email-core/email-core-smime.c
-	${CMAKE_SOURCE_DIR}/email-core/email-core-cert.c
-	${CMAKE_SOURCE_DIR}/email-core/email-core-sound.c
+#	${CMAKE_SOURCE_DIR}/email-core/email-core-sound.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-task-manager.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-tasks.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-signal.c
@@ -162,7 +203,6 @@ SET(CORE-SRCS
 
 INCLUDE_DIRECTORIES(
 	${CMAKE_SOURCE_DIR}/email-common-use/include
-	${CMAKE_SOURCE_DIR}/email-daemon/include/
 	${CMAKE_SOURCE_DIR}/email-core/include
 	${CMAKE_SOURCE_DIR}/email-core/email-storage/include
 	${CMAKE_SOURCE_DIR}/email-core/email-network/include
@@ -171,7 +211,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage openssl accounts-svc mm-player mm-session feedback alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge capi-appfw-application)
+pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage openssl accounts-svc mm-player mm-session feedback alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge capi-appfw-application icu-i18n)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${core_pkgs_CFLAGS})
@@ -203,11 +243,48 @@ SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
 
 ADD_LIBRARY(${CORE-LIB} SHARED ${CORE-SRCS})
 
-TARGET_LINK_LIBRARIES(${CORE-LIB} ${core_pkgs_LDFLAGS} ${STORAGE-LIB} ${NETWORK-LIB} ${DEVICE-LIB})
+TARGET_LINK_LIBRARIES(${CORE-LIB} ${core_pkgs_LDFLAGS} ${STORAGE-LIB} ${NETWORK-LIB} ${DEVICE-LIB} ${CORE-SOUND-LIB})
 
 SET_TARGET_PROPERTIES(${CORE-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${CORE-LIB} PROPERTIES VERSION ${VERSION})
 
 INSTALL(TARGETS ${CORE-LIB} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
+
+##########################################################
+# Define smime lib
+##########################################################
+
+SET(SMIME-LIB "email-smime")
+SET(SMIME-SRCS 
+	${CMAKE_SOURCE_DIR}/email-core/email-core-smime.c
+	${CMAKE_SOURCE_DIR}/email-core/email-core-cert.c
+)
+
+INCLUDE_DIRECTORIES(
+	${CMAKE_SOURCE_DIR}/email-common-use/include
+	${CMAKE_SOURCE_DIR}/email-core/include
+	${CMAKE_SOURCE_DIR}/email-core/email-storage/include
+)
+
+
+INCLUDE(FindPkgConfig)
+pkg_check_modules(smime_pkgs REQUIRED glib-2.0 dlog cert-svc cert-svc-vcore)
+
+set(EXTRA_CFLAGS "")
+FOREACH(flag ${smime_pkgs_CFLAGS})
+	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
+ENDFOREACH(flag)
+
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
+
+SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
+
+ADD_LIBRARY(${SMIME-LIB} SHARED ${SMIME-SRCS})
+TARGET_LINK_LIBRARIES(${SMIME-LIB} ${smime_pkgs_LDFLAGS} ${BASE-LIB})
+SET_TARGET_PROPERTIES(${SMIME-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
+SET_TARGET_PROPERTIES(${SMIME-LIB} PROPERTIES VERSION ${VERSION})
+
+INSTALL(TARGETS ${SMIME-LIB} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
+
 
 

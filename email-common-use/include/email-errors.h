@@ -70,6 +70,7 @@
 #define EMAIL_ERROR_DB_FAILURE                          -1029    /*  database operation failed */
 #define EMAIL_ERROR_SECURED_STORAGE_FAILURE             -2100    /*  Error from secured storage */
 #define EMAIL_ERROR_GCONF_FAILURE                       -1058    /*  The error occurred on accessing Gconf */
+#define EMAIL_ERROR_FILE                                -1059    /* file related error */
 
 /* Error codes for network */
 #define EMAIL_ERROR_SOCKET_FAILURE                      -1031    /*  socket operation failed */
@@ -94,6 +95,10 @@
 #define EMAIL_ERROR_LOGIN_FAILURE                       -1035    /*  login failed */
 #define EMAIL_ERROR_LOGIN_ALLOWED_EVERY_15_MINS         -1600    /*  "login allowed only every 15 minutes" */
 #define EMAIL_ERROR_TOO_MANY_LOGIN_FAILURE              -1601    /*  "Too many login failure" */
+#define EMAIL_ERROR_XOAUTH_BAD_REQUEST                  -1602    /*  "{"status":"400"..." */
+#define EMAIL_ERROR_XOAUTH_INVALID_UNAUTHORIZED         -1603    /*  "{"status":"401"..." */
+#define EMAIL_ERROR_XOAUTH_INVALID_GRANT                -1604    /*  "error" : "invalid_grant" */
+
 
 /* Error codes for functionality */
 #define EMAIL_ERROR_NOT_IMPLEMENTED                     -1047    /*  The function is not implemented yet*/
@@ -126,6 +131,7 @@
 #define EMAIL_ERROR_SCAN_NOT_SUPPORTED                  -1037    /* The server doesn't support 'scan mailbox' */
 
 #define EMAIL_ERROR_SMTP_SEND_FAILURE                   -1063    /* SMTP send failed */
+#define EMAIL_ERROR_SMTP_SEND_FAILURE_BY_OVERSIZE       -1073    /* SMTP send failed by too large mail size*/
 
 #define EMAIL_ERROR_POP3_DELE_FAILURE                   -1100    /* Failed to run the command 'Dele' on POP server */
 #define EMAIL_ERROR_POP3_UIDL_FAILURE                   -1101    /* Failed to run the command 'Uidl' on POP server */
@@ -154,6 +160,7 @@
 /* Error codes for account */
 #define EMAIL_ERROR_ACCOUNT_IS_QUARANTINED              -5001
 #define EMAIL_ERROR_ACCOUNT_IS_BLOCKED                  -5002
+#define EMAIL_ERROR_ACCOUNT_SYNC_IS_DISALBED            -5003
 
 /* Error codes for mails */
 #define EMAIL_ERROR_MAIL_NOT_FOUND_ON_SERVER            -1055    /*  The expected mail is not found in server */
@@ -163,9 +170,10 @@
 /* Error codes for attachment */
 #define EMAIL_ERROR_ATTACHMENT_SIZE_EXCEED_POLICY_LIMIT -7001
 
-/* Error codes for MDM */
+/* Error codes for Other Module */
 #define EMAIL_ERROR_MDM_SERVICE_FAILURE                 -7100
 #define EMAIL_ERROR_MDM_RESTRICTED_MODE                 -7101
+#define EMAIL_ERROR_NOTI                                -7110
 
 /* Etc */
 #define EMAIL_ERROR_ALREADY_INITIALIZED                 -7321
@@ -184,6 +192,10 @@
 #define EMAIL_ERROR_ALREADY_EXISTS                      -1023    /*  data duplicated */
 #define EMAIL_ERROR_INPROPER_RESPONSE_FROM_MSG_SERVICE  -1323
 
+/* smack */
+#define EMAIL_ERROR_NO_SMACK_RULE                       -1710    /*  No smack rule exist for file access */
+#define EMAIL_ERROR_PERMISSION_DENIED                   -1720    /*  Failed to check privilege */
+
 /* Not used */
 #define EMAIL_ERROR_INVALID_USER                        -1003    /*  invalid user ID was given. - Invalid user or password */
 #define EMAIL_ERROR_INVALID_PASSWORD                    -1004    /*  invalid password was given. - Invalid user or password */
@@ -193,6 +205,7 @@
 #define EMAIL_ERROR_PROFILE_FAILURE                     -1030    /*  no proper profile was found */
 #define EMAIL_ERROR_NO_MMC_INSERTED                     -1209
 #define EMAIL_ERROR_VALIDATE_ACCOUNT                    -1208
+#define EMAIL_ERROR_VALIDATE_ACCOUNT_OF_SMTP            -1215
 #define EMAIL_ERROR_NETWORK_TOO_BUSY                    -1027    /*  Network is busy */
 #define EMAIL_ERROR_DISCONNECTED                        -1034    /*  connection was disconnected */
 #define EMAIL_ERROR_MAIL_LOCKED                         -1049    /*  The mail was locked */

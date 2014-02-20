@@ -35,16 +35,15 @@
 #include "email-convert.h"
 #include "email-api-mailbox.h"
 #include "email-types.h"
+#include "email-core-signal.h"
 #include "email-utilities.h"
 #include "email-ipc.h"
 #include "email-storage.h"
 
 
-
-
 EXPORT_API int email_send_mail(int mail_id, int *handle)
 {
-	EM_DEBUG_FUNC_BEGIN("mail_id[%d], handle[%p]", mail_id, handle);
+	EM_DEBUG_API_BEGIN ("mail_id[%d] handle[%p]", mail_id, handle);
 	
 	int err = EMAIL_ERROR_NONE;
 	emstorage_mail_tbl_t* mail_table_data = NULL;
@@ -137,13 +136,13 @@ FINISH_OFF:
 
 	emstorage_free_mail(&mail_table_data, 1, NULL);
 
-	EM_DEBUG_FUNC_END("err [%d]", err);  
+	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;	
 }
 
 EXPORT_API int email_send_mail_with_downloading_attachment_of_original_mail(int input_mail_id, int *output_handle)
 {
-	EM_DEBUG_FUNC_BEGIN("input_mail_id[%d], output_handle[%p]", input_mail_id, output_handle);
+	EM_DEBUG_API_BEGIN ("input_mail_id[%d] output_handle[%p]", input_mail_id, output_handle);
 
 	int err = EMAIL_ERROR_NONE;
 	emstorage_mail_tbl_t* mail_table_data = NULL;
@@ -218,13 +217,13 @@ FINISH_OFF:
 
 	emstorage_free_mail(&mail_table_data, 1, NULL);
 
-	EM_DEBUG_FUNC_END("err [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_schedule_sending_mail(int input_mail_id, time_t input_scheduled_time)
 {
-	EM_DEBUG_FUNC_BEGIN("mail_id[%d], input_time[%d]", input_mail_id, input_scheduled_time);
+	EM_DEBUG_API_BEGIN ("mail_id[%d] input_time[%d]", input_mail_id, input_scheduled_time);
 
 	int err = EMAIL_ERROR_NONE;
 	emstorage_mail_tbl_t* mail_table_data = NULL;
@@ -290,13 +289,13 @@ FINISH_OFF:
 
 	emstorage_free_mail(&mail_table_data, 1, NULL);
 
-	EM_DEBUG_FUNC_END("err [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_send_saved(int account_id, int *handle)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id[%d], handle[%p]", account_id, handle);
+	EM_DEBUG_API_BEGIN ("account_id[%d] handle[%p]", account_id, handle);
 	
 	char* pOptionStream = NULL;
 	int err = EMAIL_ERROR_NONE;
@@ -327,13 +326,13 @@ EXPORT_API int email_send_saved(int account_id, int *handle)
 	hAPI = NULL;
 	EM_SAFE_FREE(pOptionStream);
 
-	EM_DEBUG_FUNC_END("err [%d]", err);  
+	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
 }
 
 EXPORT_API int email_sync_header(int input_account_id, int input_mailbox_id, int *handle)
 {
-	EM_DEBUG_FUNC_BEGIN("input_account_id[%d], input_mailbox_id[%d] handle[%p]", input_account_id, input_mailbox_id, handle);
+	EM_DEBUG_API_BEGIN ("input_account_id[%d] input_mailbox_id[%d] handle[%p]", input_account_id, input_mailbox_id, handle);
 	int err = EMAIL_ERROR_NONE;	
 	/* int total_count = 0; */
 	
@@ -410,14 +409,14 @@ FINISH_OFF:
 	emipc_destroy_email_api(hAPI);
 	hAPI = NULL;
 
-	EM_DEBUG_FUNC_END("err [%d]", err);  
+	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
 }
 
 
 EXPORT_API int email_sync_header_for_all_account(int *handle)
 {
-	EM_DEBUG_FUNC_BEGIN("handle[%p]", handle);
+	EM_DEBUG_API_BEGIN ("handle[%p]", handle);
 	char* mailbox_stream = NULL;
 	int err = EMAIL_ERROR_NONE;	
 	HIPC_API hAPI = NULL;
@@ -505,13 +504,13 @@ FINISH_OFF:
 	if ( account_tbl_array )
 		emstorage_free_account(&account_tbl_array, account_count, NULL);
 	
-	EM_DEBUG_FUNC_END("err [%d]", err);  
+	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
 }
 
 EXPORT_API int email_download_body(int mail_id, int with_attachment, int *handle)
 {
-	EM_DEBUG_FUNC_BEGIN("mail_id[%d],with_attachment[%d]", mail_id, with_attachment);
+	EM_DEBUG_API_BEGIN ("mail_id[%d] with_attachment[%d]", mail_id, with_attachment);
 	int err = EMAIL_ERROR_NONE;
 	emstorage_mail_tbl_t* mail_table_data = NULL;
 	int account_id = 0;
@@ -612,7 +611,7 @@ FINISH_OFF:
 		emstorage_free_mail(&mail_table_data, 1, &err);
 	}
 
-	EM_DEBUG_FUNC_END("err [%d]", err);  
+	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
 
 }
@@ -622,7 +621,7 @@ FINISH_OFF:
 
 EXPORT_API int email_download_attachment(int mail_id, int nth, int *handle)
 {
-	EM_DEBUG_FUNC_BEGIN("mail_id[%d], nth[%d], handle[%p]", mail_id, nth, handle);
+	EM_DEBUG_API_BEGIN ("mail_id[%d] nth[%d] handle[%p]", mail_id, nth, handle);
 	char* mailbox_stream = NULL;
 	int err = EMAIL_ERROR_NONE;
 	emstorage_mail_tbl_t* mail_table_data = NULL;
@@ -722,7 +721,7 @@ FINISH_OFF:
 		emstorage_free_mail(&mail_table_data, 1, &err);
 	}
 
-	EM_DEBUG_FUNC_END("err [%d]", err);  
+	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
 	
 }
@@ -730,7 +729,7 @@ FINISH_OFF:
 
 EXPORT_API int email_cancel_job(int input_account_id, int input_handle, email_cancelation_type input_cancel_type)
 {
-	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_handle [%d], input_cancel_type [%d]", input_account_id, input_handle, input_cancel_type);
+	EM_DEBUG_API_BEGIN ("input_account_id[%d] input_handle[%d] input_cancel_type[%d]", input_account_id, input_handle, input_cancel_type);
 	int err = EMAIL_ERROR_NONE;
 	email_account_server_t account_server_type;
 	HIPC_API hAPI = NULL;
@@ -850,7 +849,7 @@ FINISH_OFF:
 	if (account_list)
 		emstorage_free_account(&account_list, account_count, NULL);
 		
-	EM_DEBUG_FUNC_END("err [%d]", err);  
+	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
 }
 
@@ -858,24 +857,24 @@ FINISH_OFF:
 
 EXPORT_API int email_get_pending_job(email_action_t action, int account_id, int mail_id, email_event_status_type_t * status)
 {
-	EM_DEBUG_FUNC_BEGIN("action[%d], account_id[%d], mail_id[%d], status[%p]", action, account_id, mail_id, status);
+	EM_DEBUG_API_BEGIN ("action[%d] account_id[%d] mail_id[%d] status[%p]", action, account_id, mail_id, status);
 	int err = EMAIL_ERROR_NOT_SUPPORTED;
-	EM_DEBUG_FUNC_END("err [%d]", err);  
+	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
 
 }
 
 EXPORT_API int email_get_network_status(int* on_sending, int* on_receiving)
 {
-	EM_DEBUG_FUNC_BEGIN("on_sending[%p], on_receiving[%p]", on_sending, on_receiving);
+	EM_DEBUG_API_BEGIN ("on_sending[%p] on_receiving[%p]", on_sending, on_receiving);
 	int err = EMAIL_ERROR_NOT_SUPPORTED;
-	EM_DEBUG_FUNC_END("err [%d]", err);  
+	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
 }
 
 EXPORT_API int email_get_task_information(email_task_information_t **output_task_information, int *output_task_information_count)
 {
-	EM_DEBUG_FUNC_BEGIN("output_task_information[%p] output_task_information_count[%p]", output_task_information, output_task_information_count);
+	EM_DEBUG_API_BEGIN ("output_task_information[%p] output_task_information_count[%p]", output_task_information, output_task_information_count);
 	int err = EMAIL_ERROR_NONE;
 	int task_information_stream_length = 0;
 	HIPC_API hAPI = NULL;
@@ -912,6 +911,7 @@ EXPORT_API int email_get_task_information(email_task_information_t **output_task
 
 			emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, task_information_stream_length, task_information_stream);
 			em_convert_byte_stream_to_task_information(task_information_stream, task_information_stream_length, output_task_information, output_task_information_count);
+			EM_SAFE_FREE(task_information_stream); /*prevent 18951*/
 		}
 
 		if(!output_task_information) {
@@ -925,15 +925,13 @@ FINISH_OFF:
 	if(hAPI)
 		emipc_destroy_email_api(hAPI);
 
-	EM_SAFE_FREE(task_information_stream); /*prevent 51266*/
-
-	EM_DEBUG_FUNC_END("err [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_sync_imap_mailbox_list(int account_id, int *handle)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_API_BEGIN ();
 
 	int err = EMAIL_ERROR_NONE;
 
@@ -962,13 +960,13 @@ EXPORT_API int email_sync_imap_mailbox_list(int account_id, int *handle)
 	emipc_destroy_email_api(hAPI);
 	hAPI = NULL;
 
-	EM_DEBUG_FUNC_END("err [%d]", err);  
+	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
 }
 
 EXPORT_API int email_search_mail_on_server(int input_account_id, int input_mailbox_id, email_search_filter_t *input_search_filter_list, int input_search_filter_count, int *output_handle)
 {
-	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_mailbox_id [%d], input_search_filter_list [%p], input_search_filter_count [%d], output_handle [%p]", input_account_id, input_mailbox_id, input_search_filter_list, input_search_filter_count, output_handle);
+	EM_DEBUG_API_BEGIN ("input_account_id[%d] input_mailbox_id[%d] input_search_filter_list[%p] input_search_filter_count[%d] output_handle[%p]", input_account_id, input_mailbox_id, input_search_filter_list, input_search_filter_count, output_handle);
 
 	int       err = EMAIL_ERROR_NONE;
 	int       return_value = 0;
@@ -1037,7 +1035,7 @@ EXPORT_API int email_search_mail_on_server(int input_account_id, int input_mailb
 
 		EM_PROXY_IF_NULL_RETURN_VALUE(stream_for_search_filter_list, hAPI, EMAIL_ERROR_NULL_VALUE);
 
-		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, stream_for_search_filter_list, stream_size_for_search_filter_list)) {
+		if(!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, stream_for_search_filter_list, stream_size_for_search_filter_list)) { /*prevent 18950*/
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
 			err = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
 			goto FINISH_OFF;
@@ -1065,13 +1063,13 @@ FINISH_OFF:
 		hAPI = NULL;
 	}
 
-	EM_DEBUG_FUNC_END("err [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_clear_result_of_search_mail_on_server(int input_account_id)
 {
-	EM_DEBUG_FUNC_BEGIN("input_account_id [%d]", input_account_id);
+	EM_DEBUG_API_BEGIN ("input_account_id[%d]", input_account_id);
 
 	int       err = EMAIL_ERROR_NONE;
 	int       return_value = 0;
@@ -1138,6 +1136,58 @@ FINISH_OFF:
 		hAPI = NULL;
 	}
 
-	EM_DEBUG_FUNC_END("err [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
+	return err;
+}
+
+EXPORT_API int email_query_smtp_mail_size_limit(int account_id, int *handle)
+{
+	EM_DEBUG_API_BEGIN ("account_id[%d] handle[%p]", account_id, handle);
+	int err = EMAIL_ERROR_NONE;
+	email_account_server_t account_server_type;
+	HIPC_API hAPI = NULL;
+
+	if (account_id <= 0) {
+		EM_DEBUG_EXCEPTION("account_id is not valid");
+		err= EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	if (em_get_account_server_type_by_account_id(account_id, &account_server_type, false, &err) == false ) {
+		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
+		goto FINISH_OFF;
+	}
+
+	if (account_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
+		hAPI = emipc_create_email_api(_EMAIL_API_QUERY_SMTP_MAIL_SIZE_LIMIT);
+
+		if (!hAPI ) {
+			EM_DEBUG_EXCEPTION ("INVALID PARAM: hAPI NULL");
+			return EMAIL_ERROR_NULL_VALUE;
+		}
+
+		/*account_id */
+		if (!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)&account_id, sizeof(int))) {
+			EM_DEBUG_EXCEPTION("email_query_smtp_mail_size_limit--Add Param mail_id failed");
+			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
+		}
+
+		if (emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("email_query_smtp_mail_size_limit--emipc_execute_proxy_api failed  ");
+			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_CRASH);
+		}
+
+		emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+		if (err == EMAIL_ERROR_NONE) {
+			if(handle)
+				emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), handle);
+		}
+	}
+
+FINISH_OFF:
+	emipc_destroy_email_api(hAPI);
+	hAPI = (HIPC_API)NULL;
+
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }

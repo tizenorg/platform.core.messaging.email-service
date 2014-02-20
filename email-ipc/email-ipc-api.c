@@ -20,6 +20,7 @@
 */
 
 #include <malloc.h>
+#include <unistd.h>
 
 #include "email-ipc.h"
 #include "email-ipc-build.h"
@@ -51,6 +52,7 @@ EXPORT_API HIPC_API emipc_create_email_api(long api_id)
 	}
 
 	api_info->api_id = api_id;
+	api_info->app_id = getpid();
 
 	return (HIPC_API)api_info;
 }
@@ -58,6 +60,8 @@ EXPORT_API HIPC_API emipc_create_email_api(long api_id)
 EXPORT_API void emipc_destroy_email_api(HIPC_API api)
 {
 	EM_DEBUG_FUNC_BEGIN("API = %p", api);
+	if (!api)
+		return;
 	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
 	emipc_free_api_info(api_info);
 	EM_SAFE_FREE(api_info);
@@ -67,6 +71,7 @@ EXPORT_API long emipc_get_api_id(HIPC_API api)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	emipc_email_api_info *api_info = (emipc_email_api_info*)api;
+	EM_DEBUG_FUNC_END("api_id [%d]", api_info->api_id);
 	return api_info->api_id;
 }
 

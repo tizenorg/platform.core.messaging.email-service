@@ -26,7 +26,6 @@
 #include <stdio.h>
 
 #include "email-ipc.h"
-#include "email-ipc-api-info.h"
 #include "email-ipc-param-list.h"
 
 typedef struct {
@@ -185,6 +184,9 @@ EXPORT_API bool emipc_free_api_info(emipc_email_api_info *api_info);
 					break;\
 			case _EMAIL_API_VALIDATE_ACCOUNT :\
 					s = "_EMAIL_API_VALIDATE_ACCOUNT";\
+					break;\
+			case _EMAIL_API_VALIDATE_ACCOUNT_EX :\
+					s = "_EMAIL_API_VALIDATE_ACCOUNT_EX";\
 					break;\
 			case _EMAIL_API_SEND_MAIL_CANCEL_JOB :\
 					s = "_EMAIL_API_SEND_MAIL_CANCEL_JOB";\

@@ -64,6 +64,7 @@ extern "C"
 #define MAX_PREVIEW_TEXT_LENGTH           512
 #define STRING_LENGTH_FOR_DISPLAY         100
 #define MEETING_REQ_OBJECT_ID_LENGTH      256
+#define EMAIL_NO_LIMITED_RETRY_COUNT      -1
 
 #define ALL_ACCOUNT                       0
 #define NEW_ACCOUNT_ID                    0xFFFFFFFE
@@ -135,11 +136,26 @@ extern "C"
 #define DEPRECATED                        __attribute__((deprecated))
 #endif
 
-#define VCONF_VIP_NOTI_RINGTONE_PATH          "db/private/email-service/noti_ringtone_path"            
-#define VCONF_VIP_NOTI_REP_TYPE               "db/private/email-service/noti_rep_type"                 
-#define VCONF_VIP_NOTI_NOTIFICATION_TICKER    "db/private/email-service/noti_notification_ticker"      
-#define VCONF_VIP_NOTI_DISPLAY_CONTENT_TICKER "db/private/email-service/noti_display_content_ticker"   
-#define VCONF_VIP_NOTI_BADGE_TICKER           "db/private/email-service/noti_badge_ticker"             
+#define VCONF_VIP_NOTI_RINGTONE_PATH                 "db/private/email-service/noti_ringtone_path"
+#define VCONF_VIP_NOTI_REP_TYPE                      "db/private/email-service/noti_rep_type"
+#define VCONF_VIP_NOTI_NOTIFICATION_TICKER           "db/private/email-service/noti_notification_ticker"
+#define VCONF_VIP_NOTI_DISPLAY_CONTENT_TICKER        "db/private/email-service/noti_display_content_ticker"
+#define VCONF_VIP_NOTI_BADGE_TICKER                  "db/private/email-service/noti_badge_ticker"
+#define VCONF_VIP_NOTI_VIBRATION_STATUS_BOOL         "db/private/email-service/noti_vip_vibration_status"
+#define VCONF_VIP_NOTI_USE_DEFAULT_RINGTONE_BOOL     "db/private/email-service/noti_vip_use_default_ringtone"
+#define VCONF_EMAIL_NOTI_VIBRATION_STATUS_BOOL       "db/private/email-service/noti_vibration_status"
+#define VCONF_EMAIL_NOTI_USE_DEFAULT_RINGTONE_BOOL   "db/private/email-service/noti_use_default_ringtone"
+
+
+#define EMAIL_PEAK_DAYS_SUNDAY            0x01
+#define EMAIL_PEAK_DAYS_MONDAY            0x02
+#define EMAIL_PEAK_DAYS_TUEDAY            0x04
+#define EMAIL_PEAK_DAYS_WEDDAY            0x08
+#define EMAIL_PEAK_DAYS_THUDAY            0x10
+#define EMAIL_PEAK_DAYS_FRIDAY            0x20
+#define EMAIL_PEAK_DAYS_SATDAY            0x40
+
+#define PRIORITY_SENDER_TAG_ID            -30000
 
 /*****************************************************************************/
 /*  Enumerations                                                             */
@@ -189,6 +205,7 @@ enum {
 	_EMAIL_API_DELETE_MAILBOX                            = 0x01200001,
 	_EMAIL_API_SET_MAIL_SLOT_SIZE                        = 0x01200007,
 	_EMAIL_API_RENAME_MAILBOX                            = 0x01200008,
+	_EMAIL_API_RENAME_MAILBOX_EX                         = 0x0120000B,
 	_EMAIL_API_SET_MAILBOX_TYPE                          = 0x01200009,
 	_EMAIL_API_SET_LOCAL_MAILBOX                         = 0x0120000A,
 
@@ -204,6 +221,7 @@ enum {
 	_EMAIL_API_SEND_MAIL_CANCEL_JOB                      = 0x01300017,
 	_EMAIL_API_SEARCH_MAIL_ON_SERVER                     = 0x01300019,
 	_EMAIL_API_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER     = 0x0130001A,
+	_EMAIL_API_QUERY_SMTP_MAIL_SIZE_LIMIT                = 0x0130001B,
 
 	/* Rule */
 	_EMAIL_API_ADD_RULE                                  = 0x01400000,
@@ -223,7 +241,7 @@ enum {
 	_EMAIL_API_UPDATE_NOTIFICATION_BAR_FOR_UNREAD_MAIL   = 0x01500001,
 	_EMAIL_API_SHOW_USER_MESSAGE                         = 0x01500002,
 	_EMAIL_API_WRITE_MIME_FILE                           = 0x01500003,
-	_EMAIL_API_GET_TASK_INFORMATION                       = 0x01500004,
+	_EMAIL_API_GET_TASK_INFORMATION                      = 0x01500004,
 
 	/* Smime */
 	_EMAIL_API_ADD_CERTIFICATE                           = 0x01600000,
@@ -354,10 +372,13 @@ typedef enum
 	NOTI_SYNC_IMAP_MAILBOX_LIST_FAIL,
 	NOTI_SYNC_IMAP_MAILBOX_LIST_CANCEL,
 
-	NOTI_DELETE_MAIL_START        = 12300,
+	NOTI_DELETE_MAIL_START        = 12400,
 	NOTI_DELETE_MAIL_FINISH,
 	NOTI_DELETE_MAIL_FAIL,
 	NOTI_DELETE_MAIL_CANCEL,
+
+	NOTI_QUERY_SMTP_MAIL_SIZE_LIMIT_FINISH  = 12500,
+	NOTI_QUERY_SMTP_MAIL_SIZE_LIMIT_FAIL,
 
 	/* To be added more */
 } email_noti_on_network_event;
@@ -406,9 +427,9 @@ typedef enum
 typedef enum
 {
 	EMAIL_FILTER_FROM                = 1,          /**< Specifies the filtering of sender.*/
-	EMAIL_FILTER_SUBJECT,                          /**< Specifies the filtering of email subject.*/
-	EMAIL_FILTER_BODY,                             /**< Specifies the filterinf of email body.*/
-	EMAIL_PRIORITY_SENDER,                         /**< Specifies the priority sender of email. */
+	EMAIL_FILTER_SUBJECT             = 2,          /**< Specifies the filtering of email subject.*/
+	EMAIL_FILTER_BODY                = 4,          /**< Specifies the filterinf of email body.*/
+	EMAIL_PRIORITY_SENDER            = 8,          /**< Specifies the priority sender of email. */
 } email_rule_type_t;
 
 
@@ -447,6 +468,7 @@ typedef enum
 	EMAIL_MAIL_STATUS_SEND_CANCELED,               /**< The mail is a canceled mail.*/
 	EMAIL_MAIL_STATUS_SEND_WAIT,                   /**< The mail is a mail to be send .*/
 	EMAIL_MAIL_STATUS_SEND_SCHEDULED,              /**< The mail is a scheduled mail to be send later.*/
+	EMAIL_MAIL_STATUS_SEND_DELAYED,                /**< The mail is a delayed mail to be send later.*/
 } email_mail_status_t;
 
 /**
@@ -505,6 +527,8 @@ typedef enum
 	EMAIL_MEETING_RESPONSE_DECLINE             = 3, /**< The response is decline */
 	EMAIL_MEETING_RESPONSE_REQUEST             = 4, /**< The response is request */
 	EMAIL_MEETING_RESPONSE_CANCEL              = 5, /**< The response is cancellation */
+	EMAIL_MEETING_RESPONSE_PROPOSE_NEW_TIME_TENTATIVE,
+	EMAIL_MEETING_RESPONSE_PROPOSE_NEW_TIME_DECLINE
 } email_meeting_response_t;
 
 typedef enum
@@ -531,6 +555,7 @@ typedef enum
 	EMAIL_ACTION_EXPUNGE_MAILS_DELETED_FLAGGED = 32,
 	EMAIL_ACTION_SEARCH_ON_SERVER              = 33,
 	EMAIL_ACTION_MOVE_MAILBOX                  = 34,
+	EMAIL_ACTION_SENDING_MAIL                  = 35,
 	EMAIL_ACTION_NUM,
 } email_action_t;
 
@@ -739,6 +764,7 @@ typedef enum
 	EMAIL_EVENT_SEARCH_ON_SERVER                = 21,
 	EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER   = 22,
 	EMAIL_EVENT_VALIDATE_ACCOUNT_EX             = 23,
+	EMAIL_EVENT_QUERY_SMTP_MAIL_SIZE_LIMIT      = 24,
 
 	EMAIL_EVENT_ADD_MAIL                        = 10001,       /*  Deprecated */
 	EMAIL_EVENT_UPDATE_MAIL_OLD                 = 10002,       /*  Deprecated */
@@ -1036,33 +1062,39 @@ typedef enum {
 	EMAIL_MAIL_ATTRIBUTE_CC                      = 14,  /* string type */
 	EMAIL_MAIL_ATTRIBUTE_BCC                     = 15,  /* string type */
 	EMAIL_MAIL_ATTRIBUTE_BODY_DOWNLOAD_STATUS    = 16,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_FILE_PATH_PLAIN         = 17,  /* string type */
-	EMAIL_MAIL_ATTRIBUTE_FILE_PATH_HTML          = 18,  /* string type */
-	EMAIL_MAIL_ATTRIBUTE_FILE_SIZE               = 19,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_FLAGS_SEEN_FIELD        = 20,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_FLAGS_DELETED_FIELD     = 21,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_FLAGS_FLAGGED_FIELD     = 22,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_FLAGS_ANSWERED_FIELD    = 23,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_FLAGS_RECENT_FIELD      = 24,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_FLAGS_DRAFT_FIELD       = 25,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_FLAGS_FORWARDED_FIELD   = 26,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_DRM_STATUS              = 27,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_PRIORITY                = 28,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_SAVE_STATUS             = 29,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_LOCK_STATUS             = 30,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_REPORT_STATUS           = 31,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_ATTACHMENT_COUNT        = 32,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_INLINE_CONTENT_COUNT    = 33,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_THREAD_ID               = 34,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_THREAD_ITEM_COUNT       = 35,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_PREVIEW_TEXT            = 36,  /* string type */
-	EMAIL_MAIL_ATTRIBUTE_MEETING_REQUEST_STATUS  = 37,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_MESSAGE_CLASS           = 38,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_DIGEST_TYPE             = 39,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_SMIME_TYPE              = 40,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_SCHEDULED_SENDING_TIME  = 41,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_EAS_DATA_LENGTH_TYPE    = 42,  /* integer type */
-	EMAIL_MAIL_ATTRIBUTE_EAS_DATA_TYPE           = 43,  /* binary type */
+	EMAIL_MAIL_ATTRIBUTE_MAIL_SIZE               = 17,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_FILE_PATH_PLAIN         = 18,  /* string type */
+	EMAIL_MAIL_ATTRIBUTE_FILE_PATH_HTML          = 19,  /* string type */
+	EMAIL_MAIL_ATTRIBUTE_FILE_SIZE               = 20,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_FLAGS_SEEN_FIELD        = 21,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_FLAGS_DELETED_FIELD     = 22,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_FLAGS_FLAGGED_FIELD     = 23,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_FLAGS_ANSWERED_FIELD    = 24,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_FLAGS_RECENT_FIELD      = 25,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_FLAGS_DRAFT_FIELD       = 26,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_FLAGS_FORWARDED_FIELD   = 27,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_DRM_STATUS              = 28,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_PRIORITY                = 29,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_SAVE_STATUS             = 30,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_LOCK_STATUS             = 31,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_REPORT_STATUS           = 32,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_ATTACHMENT_COUNT        = 33,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_INLINE_CONTENT_COUNT    = 34,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_THREAD_ID               = 35,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_THREAD_ITEM_COUNT       = 36,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_PREVIEW_TEXT            = 37,  /* string type */
+	EMAIL_MAIL_ATTRIBUTE_MEETING_REQUEST_STATUS  = 38,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_MESSAGE_CLASS           = 39,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_DIGEST_TYPE             = 40,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_SMIME_TYPE              = 41,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_SCHEDULED_SENDING_TIME  = 42,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_REMAINING_RESEND_TIMES  = 43,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_TAG_ID                  = 44,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_REPLIED_TIME            = 45,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_FORWARDED_TIME          = 46,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_RECIPIENT_ADDRESS       = 47,  /* string type */
+	EMAIL_MAIL_ATTRIBUTE_EAS_DATA_LENGTH_TYPE    = 48,  /* integer type */
+	EMAIL_MAIL_ATTRIBUTE_EAS_DATA_TYPE           = 49,  /* binary type */
 	EMAIL_MAIL_ATTRIBUTE_END                         
 } email_mail_attribute_type;
 
@@ -1070,6 +1102,11 @@ typedef enum {
 	EMAIL_MAIL_TEXT_ATTRIBUTE_FULL_TEXT = 1,
 	EMAIL_MAIL_TEXT_ATTRIBUTE_END
 } email_mail_text_attribute_type;
+
+typedef enum {
+	EMAIL_MAIL_ATTACH_ATTRIBUTE_ATTACHMENT_NAME = 1,
+	EMAIL_MAIL_ATTCH_ATTRIBUTE_END
+} email_mail_attach_attribute_type;
 
 typedef enum {
 	EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_NONE         = 0,
@@ -1113,6 +1150,7 @@ typedef enum {
 	EMAIL_MESSAGE_CLASS_REPORT_READ_REPORT                                  = 0x20000000,
 	EMAIL_MESSAGE_CLASS_REPORT_NON_DELIVERY_RECEIPT                         = 0x40000000,
 	EMAIL_MESSAGE_CLASS_REPORT_DELIVERY_RECEIPT                             = 0x80000000,
+	EMAIL_MESSAGE_CLASS_CALENDAR_FORWARD						            = 0x04000000
 } email_message_class; 
 
 typedef enum{
@@ -1134,6 +1172,22 @@ typedef enum {
 	DIGEST_TYPE_SHA1                          = 0,
 	DIGEST_TYPE_MD5,
 } email_digest_type;
+
+typedef enum {
+	EMAIL_AUTHENTICATION_METHOD_NO_AUTH          = 0,
+	EMAIL_AUTHENTICATION_METHOD_DEFAULT          = 1,
+	EMAIL_AUTHENTICATION_METHOD_XOAUTH2          = 2,
+} email_authentication_method_t;
+
+typedef enum {
+	EMAIL_ROAMING_OPTION_RESTRICTED_BACKGROUND_TASK  = 0,
+	EMAIL_ROAMING_OPTION_UNRESTRICTED                = 1,
+} email_roaming_option_t;
+
+typedef enum {
+	EMAIL_GET_INCOMING_PASSWORD_LENGTH = 1,
+	EMAIL_GET_OUTGOING_PASSWORD_LENGTH
+} email_get_password_length_type;
 
 /*****************************************************************************/
 /*  Data Structures                                                          */
@@ -1179,59 +1233,67 @@ typedef struct
 typedef struct
 {
 	/* General account information */
-	int                          account_id;                               /**< Account id  */
-	char                        *account_name;                             /**< Account name */
-	int                          account_svc_id;                           /**< AccountSvc priv data: Specifies id from account-svc */
-	int                          sync_status;                              /**< Sync Status. SYNC_STATUS_FINISHED, SYNC_STATUS_SYNCING, SYNC_STATUS_HAVE_NEW_MAILS */
-	int                          sync_disabled;                            /**< If this attriube is set as true, email-service will not synchronize this account. */
-	int                          default_mail_slot_size;
-	char                        *logo_icon_path;                           /**< account logo icon (used by account svc and email app) */
-	void                        *user_data;                                /**< binary user data */
-	int				             user_data_length;                         /**< user data length */
+	int                             account_id;                               /**< Account id  */
+	char                           *account_name;                             /**< Account name */
+	int                             account_svc_id;                           /**< AccountSvc priv data: Specifies id from account-svc */
+	int                             sync_status;                              /**< Sync Status. SYNC_STATUS_FINISHED, SYNC_STATUS_SYNCING, SYNC_STATUS_HAVE_NEW_MAILS */
+	int                             sync_disabled;                            /**< If this attriube is set as true, email-service will not synchronize this account. */
+	int                             default_mail_slot_size;
+	char                           *logo_icon_path;                           /**< account logo icon (used by account svc and email app) */
+	email_roaming_option_t          roaming_option;                           /**< roaming option */
+	void                           *user_data;                                /**< binary user data */
+	int				                user_data_length;                         /**< user data length */
 
 	/* User information */
-	char                     	*user_display_name;                        /**< User's display */
-	char                     	*user_email_address;                       /**< User's email address */
-	char                        *reply_to_address;                         /**< Email address for reply */
-	char                        *return_address;                           /**< Email address for error from server*/
+	char                           *user_display_name;                        /**< User's display */
+	char                           *user_email_address;                       /**< User's email address */
+	char                           *reply_to_address;                         /**< Email address for reply */
+	char                           *return_address;                           /**< Email address for error from server*/
 
 	/* Configuration for incoming server */
-	email_account_server_t       incoming_server_type;                     /**< Incoming server type */
-	char                        *incoming_server_address;                  /**< Incoming server address */
-	int                          incoming_server_port_number;              /**< Incoming server port number */
-	char                        *incoming_server_user_name;                /**< Incoming server user name */
-	char                        *incoming_server_password;                 /**< Incoming server password */
-	int                          incoming_server_secure_connection;        /**< Does incoming server requires secured connection? */
+	email_account_server_t          incoming_server_type;                     /**< Incoming server type */
+	char                           *incoming_server_address;                  /**< Incoming server address */
+	int                             incoming_server_port_number;              /**< Incoming server port number */
+	char                           *incoming_server_user_name;                /**< Incoming server user name */
+	char                           *incoming_server_password;                 /**< Incoming server password */
+	int                             incoming_server_secure_connection;        /**< Does incoming server requires secured connection? */
+	email_authentication_method_t   incoming_server_authentication_method;    /**< Incoming server authentication method */
 
 	/* Options for incoming server */
-	email_imap4_retrieval_mode_t retrieval_mode;                           /**< Retrieval mode : EMAIL_IMAP4_RETRIEVAL_MODE_NEW or EMAIL_IMAP4_RETRIEVAL_MODE_ALL */
-	int                          keep_mails_on_pop_server_after_download;  /**< Keep mails on POP server after download */
-	int                          check_interval;                           /**< Specifies the interval for checking new mail periodically */
-	int                          auto_download_size;                       /**< Specifies the size for auto download in bytes. -1 means entire mails body */
+	email_imap4_retrieval_mode_t    retrieval_mode;                           /**< Retrieval mode : EMAIL_IMAP4_RETRIEVAL_MODE_NEW or EMAIL_IMAP4_RETRIEVAL_MODE_ALL */
+	int                             keep_mails_on_pop_server_after_download;  /**< Keep mails on POP server after download */
+	int                             check_interval;                           /**< Specifies the interval for checking new mail periodically */
+	int                             auto_download_size;                       /**< Specifies the size for auto download in bytes. -1 means entire mails body */
+	int                             peak_interval;                            /**< Specifies the interval for checking new mail periodically of peak schedule */
+	int                             peak_days;                                /**< Specifies the weekdays of peak schedule */
+	int                             peak_start_time;                          /**< Specifies the start time of peak schedule */
+	int                             peak_end_time;                            /**< Specifies the end time of peak schedule */
 
 	/* Configuration for outgoing server */
-	email_account_server_t       outgoing_server_type;                     /**< Outgoing server type */
-	char				        *outgoing_server_address;                  /**< Outgoing server address */
-	int					         outgoing_server_port_number;              /**< Outgoing server port number */
-	char 				        *outgoing_server_user_name;                /**< Outgoing server user name */
-	char 				        *outgoing_server_password;                 /**< Outgoing server password */
-	int 				         outgoing_server_secure_connection;        /**< Does outgoing server requires secured connection? */
-	int 				         outgoing_server_need_authentication;      /**< Does outgoing server requires authentication? */
-	int 				         outgoing_server_use_same_authenticator;   /**< Use same authenticator for outgoing server */
+	email_account_server_t          outgoing_server_type;                     /**< Outgoing server type */
+	char				           *outgoing_server_address;                  /**< Outgoing server address */
+	int					            outgoing_server_port_number;              /**< Outgoing server port number */
+	char 				           *outgoing_server_user_name;                /**< Outgoing server user name */
+	char 				           *outgoing_server_password;                 /**< Outgoing server password */
+	int 				            outgoing_server_secure_connection;        /**< Does outgoing server requires secured connection? */
+	int 				            outgoing_server_need_authentication;      /**< Does outgoing server requires authentication? */
+	int 				            outgoing_server_use_same_authenticator;   /**< Use same authenticator for outgoing server - email_authentication_method_t - */
 
 
 	/* Options for outgoing server */
-	email_option_t 		         options;
+	email_option_t 		            options;
+	int                             auto_resend_times;                        /**< Auto retry count for sending a email */
+	int                            outgoing_server_size_limit;                /** Mail size limitation for SMTP sending*/
 
 	/* Authentication Options */
-	int	                         pop_before_smtp;                          /**< POP before SMTP Authentication */
-	int                          incoming_server_requires_apop;            /**< APOP authentication */
+	int	                            pop_before_smtp;                          /**< POP before SMTP Authentication */
+	int                             incoming_server_requires_apop;            /**< APOP authentication */
 
 	/* S/MIME Options */
-	email_smime_type             smime_type;                               /**< Specifies the smime type 0=Normal 1=Clear signed 2=encrypted 3=Signed + encrypted */
-	char                        *certificate_path;                         /**< Specifies the certificate path of private*/
-	email_cipher_type            cipher_type;                              /**< Specifies the encryption algorithm*/
-	email_digest_type            digest_type;                              /**< Specifies the digest algorithm*/
+	email_smime_type                smime_type;                               /**< Specifies the smime type 0=Normal 1=Clear signed 2=encrypted 3=Signed + encrypted */
+	char                           *certificate_path;                         /**< Specifies the certificate path of private*/
+	email_cipher_type               cipher_type;                              /**< Specifies the encryption algorithm*/
+	email_digest_type               digest_type;                              /**< Specifies the digest algorithm*/
 } email_account_t;
 
 /**
@@ -1335,8 +1397,12 @@ typedef struct
 	email_digest_type     digest_type;             /**< Specifies the digest algorithm*/
 	email_smime_type      smime_type;              /**< Specifies the SMIME type. */
 	time_t                scheduled_sending_time;  /**< Specifies the scheduled sending time.*/
+	int                   remaining_resend_times;  /**< Specifies the remaining resend times.*/
+	int                   tag_id;                  /**< Specifies the data for filtering. */
+	time_t                replied_time;            /**< Specifies the time of replied. */
+	time_t                forwarded_time;          /**< Specifies the time of forwarded. */
 	int                   eas_data_length;         /**< Specifies the length of eas_data. */
-	char                 *eas_data;                /**< Specifies the data for eas engine. */
+	void                 *eas_data;                /**< Extended Application Specific data. */
 } email_mail_data_t;
 
 /**
@@ -1347,11 +1413,13 @@ typedef struct
 	int                   mail_id;                                            /**< Specifies the mail id.*/
 	int                   account_id;                                         /**< Specifies the account id.*/
 	int                   mailbox_id;                                         /**< Specifies the mailbox id.*/
+	email_mailbox_type_e  mailbox_type;                                       /**< Specifies the mailbox type of the mail. */
 	char                  full_address_from[STRING_LENGTH_FOR_DISPLAY];       /**< Specifies the full from email address.*/
 	char                  email_address_sender[MAX_EMAIL_ADDRESS_LENGTH];     /**< Specifies the sender email address.*/
 	char                  email_address_recipient[STRING_LENGTH_FOR_DISPLAY]; /**< Specifies the recipients email address.*/
 	char                  subject[STRING_LENGTH_FOR_DISPLAY];                 /**< Specifies the subject.*/
 	int                   body_download_status;                               /**< Specifies the text donwloaded or not.*/
+	int                   mail_size;                                          /**< Specifies the mail size. */
 	time_t                date_time;                                          /**< Specifies the date time.*/
 	char                  flags_seen_field;                                   /**< Specifies the seen flags*/
 	char                  flags_deleted_field;                                /**< Specifies the deleted flags*/
@@ -1374,8 +1442,10 @@ typedef struct
 	int                   message_class;                                      /**< Specifies the message class */ /* email_message_class */
 	email_smime_type      smime_type;                                         /**< Specifies the smime type */ /* email_smime_type */
 	time_t                scheduled_sending_time;                             /**< Specifies the scheduled sending time.*/
+	int                   remaining_resend_times;                             /**< Specifies the remaining resend times.*/
+	int                   tag_id;                                             /**< Specifies the data for filtering */
 	int                   eas_data_length;                                    /**< Specifies the length of eas_data. */
-	char                 *eas_data;                                           /**< Specifies the data for eas engine. */
+	void                 *eas_data;                                           /**< Extended Application Specific data. */
 } email_mail_list_item_t;
 
 /**
@@ -1385,8 +1455,10 @@ typedef struct
 {
 	int                  account_id;          /**< Specifies the account ID.*/
 	int                  filter_id;           /**< Specifies the filtering ID.*/
+	char                *filter_name;         /**< Specifies the filtering name. */
 	email_rule_type_t    type;                /**< Specifies the filtering type.*/
-	char                *value;               /**< Specifies the filtering value.*/
+	char                *value;               /**< Specifies the filtering value : subject. */
+	char                *value2;              /**< Specifies the filtering value2 : sender address. */
 	email_rule_action_t  faction;             /**< Specifies the action type for filtering.*/
 	int                  target_mailbox_id;   /**< Specifies the mail box if action type means move.*/
 	int                  flag1;               /**< Specifies the activation.*/
@@ -1497,6 +1569,8 @@ typedef struct
 	int                   no_select;                  /**< Specifies the 'no_select' attribute from xlist.*/
 	time_t                last_sync_time;
 	int                   deleted_flag;               /**< Specifies whether mailbox is deleted.*/
+	int                   eas_data_length;            /**< Specifies the length of eas_data. */
+	void                 *eas_data;                   /**< Specifies the data for eas engine. */
 } email_mailbox_t;
 
 typedef struct
@@ -1570,10 +1644,18 @@ typedef struct {
 	email_mail_attribute_value_t           key_value;
 } email_list_filter_rule_fts_t;
 
+typedef struct {
+	email_list_filter_rule_type_t          rule_type;
+	email_mail_attach_attribute_type       target_attribute;
+	email_mail_attribute_value_t           key_value;
+	email_list_filter_case_sensitivity_t   case_sensitivity;
+} email_list_filter_rule_attach_t;
+
 typedef enum {
 	EMAIL_LIST_FILTER_ITEM_RULE                     = 0,
 	EMAIL_LIST_FILTER_ITEM_RULE_FTS                 = 1,
-	EMAIL_LIST_FILTER_ITEM_OPERATOR                 = 2,
+	EMAIL_LIST_FILTER_ITEM_RULE_ATTACH              = 2,
+	EMAIL_LIST_FILTER_ITEM_OPERATOR                 = 3,
 } email_list_filter_item_type_t;
 
 typedef enum {
@@ -1589,6 +1671,7 @@ typedef struct {
 	union {
 		email_list_filter_rule_t           rule;
 		email_list_filter_rule_fts_t       rule_fts;
+		email_list_filter_rule_attach_t    rule_attach;
 		email_list_filter_operator_type_t  operator_type;
 	} list_filter_item;
 
@@ -1596,12 +1679,16 @@ typedef struct {
 
 typedef enum {
 	EMAIL_SORT_ORDER_ASCEND                             = 0,
-	EMAIL_SORT_ORDER_DESCEND                            = 1
+	EMAIL_SORT_ORDER_DESCEND                            = 1,
+	EMAIL_SORT_ORDER_TO_CCBCC                           = 2,
+	EMAIL_SORT_ORDER_TO_CC_BCC                          = 3,
+	EMAIL_SORT_ORDER_TO_CCBCC_ALL                       = 4
 } email_list_filter_sort_order_t;
 
 
 typedef struct {
 	email_mail_attribute_type              target_attribute;
+	email_mail_attribute_value_t           key_value;
 	bool                                   force_boolean_check;
 	email_list_filter_sort_order_t         sort_order;
 } email_list_sorting_rule_t;
@@ -1613,6 +1700,34 @@ typedef struct {
 	email_event_type_t                     type;
 	email_event_status_type_t              status;
 } email_task_information_t;
+
+typedef enum {
+	EMAIL_MESSAGE_CONTEXT_VOICE_MESSAGE                 = 1,
+	EMAIL_MESSAGE_CONTEXT_VIDEO_MESSAGE                 = 2,
+	EMAIL_MESSAGE_CONTEXT_FAX_MESSAGE                   = 3,
+	EMAIL_MESSAGE_CONTEXT_X_EMPTY_CALL_CAPTURE_MESSAGE  = 4,
+	EMAIL_MESSAGE_CONTEXT_X_NUMBER_MESSAGE              = 5,
+	EMAIL_MESSAGE_CONTEXT_X_VOICE_INFOTAINMENT_MESSAGE  = 6
+} email_message_context_t;
+
+typedef enum {
+	EMAIL_MESSAGE_SENSITIVITY_PRIVATE                   = 1,
+	EMAIL_MESSAGE_SENSITIVITY_CONFIDENTIAL              = 2,
+	EMAIL_MESSAGE_SENSITIVITY_PERSONAL                  = 3
+} email_message_sensitivity_t;
+
+typedef struct {
+	email_message_context_t                message_context;
+	int                                    content_length;     /* Content-Duration for audio/video or X-Content-Pages for fax */
+	email_message_sensitivity_t            sensitivity;
+} email_vvm_specific_data_t;
+
+typedef struct {
+	char *quota_root;
+	char *resource_name;
+	int   usage;
+	int   limits;
+} email_quota_resource_t;
 
 /*****************************************************************************/
 /*  For Active Sync                                                          */
@@ -1747,6 +1862,8 @@ typedef union
 		int                     account_id;
 		char                   *mailbox_path;
 		char                   *mailbox_alias;
+		void                   *eas_data;
+		int                     eas_data_length;
 	} add_mailbox;
 
 	struct _rename_mailbox
@@ -1756,6 +1873,8 @@ typedef union
 		int                     mailbox_id;
 		char                   *mailbox_name;
 		char                   *mailbox_alias;
+		void                   *eas_data;
+		int                     eas_data_length;
 	} rename_mailbox;
 
 	struct _delete_mailbox

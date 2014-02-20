@@ -48,7 +48,7 @@ static gboolean testapp_print_mailbox_list(email_mailbox_t *input_mailbox_list, 
 	testapp_print("There are %d mailboxes\n", input_count);
 
 	testapp_print("============================================================================\n");
-	testapp_print("id   a_id  name\t\t\t         alias\t\t unread\t total\t total_on_ server\tmailbox_type\t last_sync_time\n");
+	testapp_print("id\ta_id\talias\tunread\t total\t total_on_ server\tmailbox_type\tlast_sync_time\n");
 	testapp_print("============================================================================\n");
 	if ( input_count == 0 ) {
 		testapp_print("No mailbox is matched\n");
@@ -56,9 +56,9 @@ static gboolean testapp_print_mailbox_list(email_mailbox_t *input_mailbox_list, 
 	else {
 		for(i=0;i<input_count;i++) {
 			strftime(time_string, 40, "%Y-%m-%d %H:%M:%S", localtime(&(input_mailbox_list[i].last_sync_time)));
-			testapp_print("[%2d]", input_mailbox_list[i].mailbox_id);
-			testapp_print("  %2d  [%2d]\t[%-12s]  ", input_mailbox_list[i].account_id, input_mailbox_list[i].mailbox_id, input_mailbox_list[i].alias);
-			testapp_print(" %3d\t %3d\t %3d\t %3d\t %s\n"
+			testapp_print("%2d\t", input_mailbox_list[i].mailbox_id);
+			testapp_print("%2d\t%-12s\t", input_mailbox_list[i].account_id, input_mailbox_list[i].alias);
+			testapp_print("%3d\t%3d\t%3d\t%3d\t%s\n"
 					, input_mailbox_list[i].unread_count
 					, input_mailbox_list[i].total_mail_count_on_local
 					, input_mailbox_list[i].total_mail_count_on_server
@@ -81,6 +81,8 @@ static gboolean testapp_test_add_mailbox()
     int handle;
     int result_from_scanf = 0;
 
+    memset(&mailbox, 0, sizeof(email_mailbox_t));
+
 	memset(arg, 0x00, 500);
 	testapp_print("\n> Enter mailbox name: ");
 	result_from_scanf = scanf("%s",arg);
@@ -99,10 +101,13 @@ static gboolean testapp_test_add_mailbox()
 	result_from_scanf = scanf("%d", &local_yn);
 	mailbox.local= local_yn;	
 
-
 	testapp_print("> Enter mailbox type: ");
 	result_from_scanf = scanf("%d", &mailbox_type);
 	mailbox.mailbox_type= mailbox_type;
+
+	mailbox.eas_data               = strdup("EAS DATA TEST");
+	mailbox.eas_data_length        = strlen(mailbox.eas_data) + 1;
+
 
 	ret = email_add_mailbox(&mailbox, local_yn?0:1, &handle);
 
@@ -113,6 +118,9 @@ static gboolean testapp_test_add_mailbox()
 		testapp_print("\n email_add_mailbox succeed : handle[%d], mailbox_id [%d]\n", handle, mailbox.mailbox_id);
 	}
 	
+	if(mailbox.eas_data)
+		free(mailbox.eas_data);
+
 	return FALSE;
 }
 
@@ -167,7 +175,7 @@ static gboolean testapp_test_rename_mailbox()
 		testapp_print("\n email_rename_mailbox failed[%d]\n", err);
 	}
 	else {
-		testapp_print("\n email_rename_mailbox succeed\n");
+		testapp_print("\n email_rename_mailbox succeed. handle [%d]\n", handle);
 	}
 
 	return FALSE;
@@ -351,6 +359,33 @@ static gboolean testapp_test_get_mailbox_list ()
 	return FALSE;
 }
 
+static gboolean testapp_test_get_mailbox_list_by_keyword ()
+{
+	int result_from_scanf = 0;
+	int account_id =0;
+	int count = 0;
+	char keyword[500] = { 0, };
+	int error_code = EMAIL_ERROR_NONE;
+	email_mailbox_t *mailbox_list = NULL;
+	testapp_print("\n > Enter account id: ");
+	result_from_scanf = scanf("%d", &account_id);
+
+	testapp_print("> Enter keyword: ");
+	result_from_scanf = scanf("%s", keyword);
+
+	if ((error_code = email_get_mailbox_list_by_keyword(account_id, keyword, &mailbox_list, &count)) < 0) {
+		testapp_print("   email_get_mailbox_list_by_keyword error %d\n", error_code);
+		return false ;
+	}
+
+	testapp_print_mailbox_list(mailbox_list, count);
+
+	email_free_mailbox(&mailbox_list, count);
+
+	return FALSE;
+}
+
+
 static gboolean testapp_test_sync_mailbox()
 {
 	int result_from_scanf = 0;
@@ -390,6 +425,36 @@ static gboolean testapp_test_stamp_sync_time()
 
 	email_stamp_sync_time_of_mailbox(input_mailbox_id);
 
+	return FALSE;
+}
+
+static gboolean testapp_test_rename_mailbox_ex()
+{
+	testapp_print ("testapp_test_rename_mailbox_ex\n");
+	int mailbox_id;
+	char mailbox_name[500] = { 0, };
+	char mailbox_alias[500] = { 0, };
+	char eas_data[500] = "OK. Done";
+	int err;
+	int result_from_scanf = 0;
+	int handle = 0;
+
+	testapp_print("> Enter mailbox id: ");
+	result_from_scanf = scanf("%d", &mailbox_id);
+
+	testapp_print("> Enter new mailbox name: ");
+	result_from_scanf = scanf("%s", mailbox_name);
+
+	testapp_print("> Enter new mailbox alias: ");
+	result_from_scanf = scanf("%s", mailbox_alias);
+
+
+	if ( (err = email_rename_mailbox_ex(mailbox_id, mailbox_name, mailbox_alias, eas_data, strlen(eas_data), false, &handle)) < 0) {
+		testapp_print("\n email_rename_mailbox failed[%d]\n", err);
+	}
+	else {
+		testapp_print("\n email_rename_mailbox succeed\n");
+	}
 	return FALSE;
 }
 
@@ -444,6 +509,14 @@ static gboolean testapp_test_interpret_command (int menu_number)
 
 		case 12:
 			testapp_test_stamp_sync_time();
+			break;
+
+		case 13:
+			testapp_test_rename_mailbox_ex();
+			break;
+
+		case 14:
+			testapp_test_get_mailbox_list_by_keyword();
 			break;
 
 		case 0:

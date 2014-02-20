@@ -30,6 +30,8 @@ EXPORT_API bool emipc_start_proxy_socket();
 
 EXPORT_API bool emipc_end_proxy_socket();
 
+EXPORT_API bool emipc_end_all_proxy_sockets();
+
 EXPORT_API int emipc_send_proxy_socket(unsigned char *data, int len);
 
 EXPORT_API int emipc_get_proxy_socket_id();

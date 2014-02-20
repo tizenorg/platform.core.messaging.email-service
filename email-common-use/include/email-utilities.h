@@ -53,8 +53,8 @@ INTERNAL_FUNC char* em_get_extension_from_file_path(char *source_file_path, int 
 INTERNAL_FUNC int   em_get_encoding_type_from_file_path(const char *input_file_path, char **output_encoding_type);
 INTERNAL_FUNC int   em_get_content_type_from_extension_string(const char *extension_string, int *err_code);
 
-INTERNAL_FUNC int   em_verify_email_address(char *address, int without_bracket, int *err_code);
-INTERNAL_FUNC int   em_verify_email_address_of_mail_data(email_mail_data_t *mail_data, int without_bracket, int *err_code);
+INTERNAL_FUNC int   em_verify_email_address(char *address, int without_bracket);
+INTERNAL_FUNC int   em_verify_email_address_of_mail_data(email_mail_data_t *mail_data, int without_bracket);
 INTERNAL_FUNC int   em_verify_email_address_of_mail_tbl(emstorage_mail_tbl_t *input_mail_tbl, int input_without_bracket);
 
 INTERNAL_FUNC int   em_find_pos_stripped_subject_for_thread_view(char *subject, char *stripped_subject, int stripped_subject_buffer_size);
@@ -68,6 +68,24 @@ extern        char* strcasestr(__const char *__haystack, __const char *__needle)
 INTERNAL_FUNC int   em_get_account_server_type_by_account_id(int account_id, email_account_server_t* account_server_type, int flag, int *error);
 
 INTERNAL_FUNC int   em_get_handle_for_activesync(int *handle, int *error);
-INTERNAL_FUNC int   em_send_notification_to_active_sync_engine(int subType, ASNotiData *data);
+INTERNAL_FUNC int   em_check_socket_privilege_by_pid(int pid);
+INTERNAL_FUNC int   em_check_db_privilege_by_pid(int pid);
+
+/* thread handle definition */
+typedef struct {
+	GQueue *q;
+	pthread_mutex_t mu;
+	pthread_cond_t cond;
+	int running;
+	pthread_t tid;
+	void *(*thread_exit)(void*);
+	void *thread_exit_arg;
+} email_thread_handle_t;
+
+INTERNAL_FUNC email_thread_handle_t* em_thread_create ();
+INTERNAL_FUNC void em_thread_destroy (email_thread_handle_t* th);
+INTERNAL_FUNC void em_thread_run (email_thread_handle_t *th, void *(*thread_func)(void*), void *(*destroy)(void*), void* arg);
+INTERNAL_FUNC void em_thread_join (email_thread_handle_t *th);
+
 
 #endif /* __EMAIL_UTILITIES_H__ */

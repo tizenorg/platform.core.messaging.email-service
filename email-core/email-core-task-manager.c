@@ -261,11 +261,10 @@ INTERNAL_FUNC int emcore_free_task_handler_array()
 	int i = 0;
 
 	for(i = 0; i < _task_handler_array_size; i++) {
-		free(_task_handler_array[i]);
+		EM_SAFE_FREE (_task_handler_array[i]);
 	}
 
-	free(_task_handler_array);
-	_task_handler_array      = NULL;
+	EM_SAFE_FREE (_task_handler_array);
 	_task_handler_array_size = 0;
 
 	EM_DEBUG_FUNC_END();
@@ -566,14 +565,14 @@ FINISH_OFF :
 
 INTERNAL_FUNC int emcore_stop_task_manager_loop()
 {
-    EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_FUNC_BEGIN();
 
-    int err = EMAIL_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;
 
-    /* TODO : cancel tasks */
+	/* TODO : cancel tasks */
 
-    /* stop event_data loop */
-    _task_manager_loop_availability = 0;
+	/* stop event_data loop */
+	_task_manager_loop_availability = 0;
 
 	ENTER_CRITICAL_SECTION(_task_manager_loop_lock);
 	WAKE_CONDITION_VARIABLE(_task_available_signal);
@@ -589,10 +588,10 @@ INTERNAL_FUNC int emcore_stop_task_manager_loop()
 
 	/* Free _active_task_pool */
 
-//FINISH_OFF :
+	//FINISH_OFF :
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
-    return err;
+	return err;
 }
 
 INTERNAL_FUNC int emcore_add_task_to_task_table(email_task_type_t input_task_type, email_task_priority_t input_task_priority, char *input_task_parameter, int input_task_parameter_length, int *output_task_id)

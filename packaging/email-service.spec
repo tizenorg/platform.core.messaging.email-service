@@ -6,13 +6,14 @@ Group:      Messaging/Service
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1:    email.service
-Source1001: 	email-service.manifest
 Requires: connman
 Requires: webkit2-efl
 Requires(post):    /sbin/ldconfig
 Requires(post):    systemd
 Requires(post):    /usr/bin/sqlite3
 Requires(post):    /usr/bin/vconftool
+Requires(post):    libss-client
+Requires(post):    ss-server
 Requires(preun):   systemd
 Requires(postun):  /sbin/ldconfig
 Requires(postun):  systemd
@@ -40,23 +41,22 @@ BuildRequires:  pkgconfig(libsystemd-daemon)
 BuildRequires:  pkgconfig(capi-base-common)
 BuildRequires:  pkgconfig(libcurl)
 BuildRequires:  pkgconfig(libxml-2.0)
+BuildRequires:  pkgconfig(gconf-2.0)
 BuildRequires:  pkgconfig(cert-svc)
 BuildRequires:  pkgconfig(badge)
 BuildRequires:  pkgconfig(feedback)
 BuildRequires:  pkgconfig(capi-appfw-application)
 BuildRequires:  pkgconfig(libwbxml2)
 BuildRequires:  pkgconfig(msg-service)
+BuildRequires:  pkgconfig(pmapi)
+BuildRequires:  pkgconfig(libsmack)
+BuildRequires:  pkgconfig(security-server)
+BuildRequires:  pkgconfig(deviced)
+BuildRequires:  pkgconfig(icu-i18n)
 
 %description
 E-mail Framework Middleware Library/Binary package
 
-%package tests
-Summary:    E-mail Framework Middleware - Test Applications
-Group:      Messaging/Testing
-Requires:   %{name} = %{version}-%{release}
-
-%description tests
-E-mail Framework Middleware test application
 
 %package devel
 Summary:    E-mail Framework Middleware Development package
@@ -69,12 +69,12 @@ E-mail Framework Middleware Development package
 
 %prep
 %setup -q
-cp %{SOURCE1001} .
 
 %build
 
 export CFLAGS="${CFLAGS} -fPIC -Wall -g -fvisibility=hidden"
 export CXXFLAGS="${CXXFLAGS} -fPIC -Wall -g -fvisibility=hidden"
+export LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--rpath=%{_libdir} -Wl,--as-needed"
 
 %cmake .
 
@@ -99,24 +99,27 @@ echo "[EMAIL-SERVICE] Start adding preset account information..."
 
 ################################################################################################
 
+# for active sync
+vconftool set -t int    db/email_handle/active_sync_handle "0"          -g 6514 -s "email::vconf_active_sync_handle"
+
 # for default mail slot szie
-vconftool set -t int    db/private/email-service/slot_size "100"        -g 6514
+vconftool set -t int    db/private/email-service/slot_size "100"        -g 6514 -s "email::vconf_slot_size"
 
 # for latest mail id
-vconftool set -t int    db/private/email-service/latest_mail_id "0"     -g 6514
+vconftool set -t int    db/private/email-service/latest_mail_id "0"     -g 6514 -s "email::vconf_latest_mail_id"
 
 # for default account id
-vconftool set -t int    db/private/email-service/default_account_id "0" -g 6514
+vconftool set -t int    db/private/email-service/default_account_id "0" -g 6514 -s "email::vconf_default_account_id"
 
 # for default account id
-vconftool set -t int    memory/sync/email "0" -i -g 6514
+vconftool set -t int    memory/sync/email "0" -i -g 6514                        -s "email::vconf_sync_status"
 
 # for priority send 
-vconftool set -t string db/private/email-service/noti_ringtone_path "Whistle.mp3" -g 6514
-vconftool set -t int    db/private/email-service/noti_rep_type "0" -g 6514
-vconftool set -t bool   db/private/email-service/noti_notification_ticker "0" -g 6514
-vconftool set -t bool   db/private/email-service/noti_display_content_ticker "0" -g 6514
-vconftool set -t bool   db/private/email-service/noti_badge_ticker "0" -i -g 6514
+vconftool set -t string db/private/email-service/noti_ringtone_path "/opt/usr/share/settings/Alerts/Over the horizon.mp3" -g 6514 -s "email::vconf_ringtone_path"
+vconftool set -t int    db/private/email-service/noti_rep_type "0" -g 6514                -s "email::vconf_rep_type"
+vconftool set -t bool   db/private/email-service/noti_notification_ticker "0" -g 6514     -s "email::vconf_notification"
+vconftool set -t bool   db/private/email-service/noti_display_content_ticker "0" -g 6514  -s "email::vconf_display_content"
+vconftool set -t bool   db/private/email-service/noti_badge_ticker "0" -i -g 6514         -s "email::vconf_bagdge"
 vconftool set -t int    db/private/email-service/noti_private_id/1 "0" -i -g 6514
 vconftool set -t int    db/private/email-service/noti_private_id/2 "0" -i -g 6514
 vconftool set -t int    db/private/email-service/noti_private_id/3 "0" -i -g 6514
@@ -127,6 +130,11 @@ vconftool set -t int    db/private/email-service/noti_private_id/7 "0" -i -g 651
 vconftool set -t int    db/private/email-service/noti_private_id/8 "0" -i -g 6514
 vconftool set -t int    db/private/email-service/noti_private_id/9 "0" -i -g 6514
 vconftool set -t int    db/private/email-service/noti_private_id/10 "0" -i -g 6514
+vconftool set -t bool   db/private/email-service/noti_vibration_status "0" -g 6514        -s "email::vconf_vibration"
+vconftool set -t bool   db/private/email-service/noti_vip_vibration_status "0" -g 6514    -s "email::vconf_vip_vibration"
+vconftool set -t bool   db/private/email-service/noti_use_default_ringtone "1" -g 6514    -s "email::vconf_use_default_ringtone"
+vconftool set -t bool   db/private/email-service/noti_vip_use_default_ringtone "1" -g 6514    -s "email::vconf_vip_use_default_ringtone"
+
 
 #################################################################
 # Set executin script
@@ -171,12 +179,19 @@ chmod 664 /opt/usr/dbspace/.email-service.db-journal
 
 mkdir -m775 -p /opt/usr/data/email/.email_data
 chgrp 6006 /opt/usr/data/email/.email_data
+chsmack -a 'email-service' /opt/usr/data/email/.email_data
 
 mkdir -m775 -p /opt/usr/data/email/.email_data/tmp
 chgrp 6006 /opt/usr/data/email/.email_data/tmp
+chsmack -a 'email-service' /opt/usr/data/email/.email_data/tmp
 
 mkdir -p /opt/share/cert-svc/certs/trusteduser/email
 chgrp 6006 /opt/share/cert-svc/certs/trusteduser/email
+
+if [ -f /opt/usr/dbspace/.email-service.db ]
+then
+	chsmack -a 'email-service::db' /opt/usr/dbspace/.email-service.db*
+fi
 
 systemctl daemon-reload
 if [ $1 == 1 ]; then
@@ -194,24 +209,19 @@ systemctl daemon-reload
 
 
 %files
-%manifest %{name}.manifest
-#%manifest email-service.manifest
+%manifest email-service.manifest
+%exclude /usr/bin/email-test-app
 %{_bindir}/email-service
 /opt/usr/data/email/res/*
 %{_libdir}/lib*.so.*
 /usr/lib/systemd/user/email.service
 /usr/lib/systemd/user/tizen-middleware.target.wants/email.service
 /usr/share/dbus-1/services/email-service.service
-/usr/share/license/email-service/LICENSE
+/usr/share/license/email-service
 
 /opt/etc/smack/accesses.d/email-service.rule
 
-%files tests
-%manifest %{name}.manifest
-/usr/bin/email-test-app
-
 %files devel
-%manifest %{name}.manifest
 %{_includedir}/email-service/*.h
 %{_libdir}/lib*.so
 %{_libdir}/pkgconfig/*.pc

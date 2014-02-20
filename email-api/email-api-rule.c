@@ -39,12 +39,20 @@
 
 EXPORT_API int email_get_rule(int filter_id, email_rule_t** filtering_set)
 {
-	EM_DEBUG_FUNC_BEGIN("filter_id[%d], filtering_set[%p]", filter_id, filtering_set);
+	EM_DEBUG_API_BEGIN ("filter_id[%d] filtering_set[%p]", filter_id, filtering_set);
 
 	int err = 0;
 
 	EM_IF_NULL_RETURN_VALUE(filtering_set, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(filter_id, EMAIL_ERROR_INVALID_PARAM);
+
+#ifdef __FEATURE_ACCESS_CONTROL__
+	err = em_check_db_privilege_by_pid(getpid());
+	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		goto FINISH_OFF;
+	}
+#endif
 
 	if (!emstorage_get_rule_by_id(filter_id, (emstorage_rule_tbl_t**)filtering_set, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_rule_by_id failed [%d]", err);
@@ -54,20 +62,28 @@ EXPORT_API int email_get_rule(int filter_id, email_rule_t** filtering_set)
 		err = EMAIL_ERROR_NONE;
 
 FINISH_OFF:
-	EM_DEBUG_FUNC_END("error value [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 
 EXPORT_API int email_get_rule_list(email_rule_t** filtering_set, int* count)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_API_BEGIN ();
 	
 	int err = EMAIL_ERROR_NONE;
 	int is_completed = 0;
 	
 	EM_IF_NULL_RETURN_VALUE(filtering_set, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(count, EMAIL_ERROR_INVALID_PARAM);
+
+#ifdef __FEATURE_ACCESS_CONTROL__
+	err = em_check_db_privilege_by_pid(getpid());
+	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		goto FINISH_OFF;
+	}
+#endif
 
 	*count = 1000;
 	
@@ -79,22 +95,28 @@ EXPORT_API int email_get_rule_list(email_rule_t** filtering_set, int* count)
 	} else
 		err = EMAIL_ERROR_NONE;
 
-
 FINISH_OFF:
-	
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 
 }
 
 EXPORT_API int email_add_rule(email_rule_t* filtering_set)
 {
-	EM_DEBUG_FUNC_BEGIN("filtering_set[%p]", filtering_set);
+	EM_DEBUG_API_BEGIN ("filtering_set[%p]", filtering_set);
 	
 	int size = 0;
+	int *ret_nth_param = NULL;
 	int err = EMAIL_ERROR_NONE;
 	char* stream = NULL;
 	
 	EM_IF_NULL_RETURN_VALUE(filtering_set, EMAIL_ERROR_INVALID_PARAM);
+
+	if (filtering_set->account_id < 0 || filtering_set->target_mailbox_id < 0) {
+		EM_DEBUG_EXCEPTION("Invalid Param : account_id[%d], target_mailbox_id[%d]",
+				filtering_set->account_id, filtering_set->target_mailbox_id);
+		return EMAIL_ERROR_INVALID_PARAM;
+	}
 
 	/* make rule info */
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_ADD_RULE);	
@@ -114,20 +136,28 @@ EXPORT_API int email_add_rule(email_rule_t* filtering_set)
 	}
 	
 	/* get reult form service */
-	err = *((int*)emipc_get_nth_parameter_data(hAPI, ePARAMETER_OUT, 0));
-	if (err == EMAIL_ERROR_NONE) {
-		filtering_set->filter_id = *((int*)emipc_get_nth_parameter_data(hAPI, ePARAMETER_OUT, 1));
-	}	
+	if ((ret_nth_param = (int*)emipc_get_nth_parameter_data(hAPI, ePARAMETER_OUT, 0))) {
+		err = *ret_nth_param;
+
+		if (err == EMAIL_ERROR_NONE) {
+			if ((ret_nth_param = (int *)emipc_get_nth_parameter_data(hAPI, ePARAMETER_OUT, 1)))
+				filtering_set->filter_id = *ret_nth_param;
+			else
+				err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
+		}
+	} else {
+		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
+	}
 
 	emipc_destroy_email_api(hAPI);
 	hAPI = NULL;
-	EM_DEBUG_FUNC_END("error value [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_update_rule(int filter_id, email_rule_t* new_set)
 {
-	EM_DEBUG_FUNC_BEGIN("filter_id[%d], new_set[%p]", filter_id, new_set);
+	EM_DEBUG_API_BEGIN ("filter_id[%d] new_set[%p]", filter_id, new_set);
 	
 	int size = 0;
 	char* stream =  NULL;
@@ -166,7 +196,7 @@ EXPORT_API int email_update_rule(int filter_id, email_rule_t* new_set)
 	emipc_destroy_email_api(hAPI);
 
 	hAPI = NULL;
-	EM_DEBUG_FUNC_END("error value [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
@@ -175,7 +205,7 @@ EXPORT_API int email_update_rule(int filter_id, email_rule_t* new_set)
 
 EXPORT_API int email_delete_rule(int filter_id)
 {
-	EM_DEBUG_FUNC_BEGIN("filter_id[%d]", filter_id);
+	EM_DEBUG_API_BEGIN ("filter_id[%d]", filter_id);
 	
 	int err = EMAIL_ERROR_NONE;
 		
@@ -200,13 +230,13 @@ EXPORT_API int email_delete_rule(int filter_id)
 	emipc_destroy_email_api(hAPI);
 
 	hAPI = NULL;
-	EM_DEBUG_FUNC_END("error value [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_free_rule (email_rule_t** filtering_set, int count)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_FUNC_BEGIN ();
 	int err = EMAIL_ERROR_NONE, i;	
 
 	EM_IF_NULL_RETURN_VALUE(filtering_set, EMAIL_ERROR_INVALID_PARAM);
@@ -222,13 +252,13 @@ EXPORT_API int email_free_rule (email_rule_t** filtering_set, int count)
 		EM_SAFE_FREE(p); *filtering_set = NULL;
 	}
 	
-	EM_DEBUG_FUNC_END("error value [%d]", err);
+	EM_DEBUG_FUNC_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_apply_rule(int filter_id)
 {
-	EM_DEBUG_FUNC_BEGIN("filter_id[%d]", filter_id);
+	EM_DEBUG_API_BEGIN ("filter_id[%d]", filter_id);
 	
 	int err = EMAIL_ERROR_NONE;
 		
@@ -252,6 +282,6 @@ EXPORT_API int email_apply_rule(int filter_id)
 	emipc_destroy_email_api(hAPI);
 
 	hAPI = NULL;
-	EM_DEBUG_FUNC_END("error value [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }

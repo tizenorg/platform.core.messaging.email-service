@@ -5,5 +5,5 @@ includedir=${prefix}/include
 Name: email-service library
 Description: email-service library 1.0
 Version: $version
-Libs: -L${libdir} -lemail-storage -lemail-core -lemail-common-use -lemail-ipc -lemail-api -lemail-network 
+Libs: -L${libdir} -lemail-storage -lemail-core -lemail-common-use -lemail-ipc -lemail-api -lemail-network -lemail-smime-api
 Cflags: -I${includedir}/email-service 

@@ -153,7 +153,7 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 	else
 		p[count].mailbox_name  = cpystr(enc_path);
 
-	EM_DEBUG_LOG("mailbox name [%s] mailbox_type [%d] no_select [%d]", p[count].mailbox_name, p[count].mailbox_type, p[count].no_select);
+	EM_DEBUG_LOG_SEC("mailbox name [%s] mailbox_type [%d] no_select [%d]", p[count].mailbox_name, p[count].mailbox_type, p[count].no_select);
 
 	p[count].alias = emcore_get_alias_of_mailbox((const char *)enc_path);
 	p[count].local = 0;
@@ -165,9 +165,10 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 	tmp = strstr(mailbox, "user=");
 	if (tmp) {
 		tmp = tmp+5;
-		for (s = tmp; *s != '/'; s++);
+		for (s = tmp; *s != '/' &&  *s != '}' && *s != '\0'; s++);
 		*s = '\0';
-		p[count].account_id = atoi(tmp);
+		if(strlen(tmp) > 0)
+			p[count].account_id = atoi(tmp);
 	}
 	EM_DEBUG_LOG("mm_list account_id %d ", p[count].account_id);
 
@@ -207,6 +208,8 @@ INTERNAL_FUNC void mm_login(NETMBX *mb, char *user, char *pwd, long trial)
 	email_account_t *ref_account = NULL;
 	char *username = NULL;
 	char *password = NULL;
+	char *token    = NULL;
+	char *save_ptr = NULL;
 
 	if (!mb->user[0])  {
 		EM_DEBUG_EXCEPTION("invalid account_id...");
@@ -230,13 +233,23 @@ INTERNAL_FUNC void mm_login(NETMBX *mb, char *user, char *pwd, long trial)
 
 	if (ref_account->incoming_server_password == NULL) {
 		EM_SAFE_FREE(username);
-		EM_DEBUG_EXCEPTION("invalid password...");
+		EM_DEBUG_EXCEPTION("Empty password");
 		goto FINISH_OFF;
 	}
 
-	password = EM_SAFE_STRDUP(ref_account->incoming_server_password);
+	EM_DEBUG_LOG("incoming_server_authentication_method [%d]", ref_account->incoming_server_authentication_method);
 
-	if(EM_SAFE_STRLEN(username) > 0 && EM_SAFE_STRLEN(password) > 0) { /*prevent 34355*/
+	if(ref_account->incoming_server_authentication_method == EMAIL_AUTHENTICATION_METHOD_XOAUTH2) {
+
+		token = strtok_r(ref_account->incoming_server_password, "\001", &save_ptr);
+		EM_DEBUG_LOG_SEC("token [%s]", token);
+		password = EM_SAFE_STRDUP(token);
+	}
+	else {
+		password = EM_SAFE_STRDUP(ref_account->incoming_server_password);
+	}
+
+	if(EM_SAFE_STRLEN(username) > 0 && EM_SAFE_STRLEN(password) > 0) {
 		strcpy(user, username);
 		strcpy(pwd, password);
 	}
@@ -298,6 +311,9 @@ INTERNAL_FUNC void mm_log(char *string, long errflg)
 			if (session) {
 				mm_get_error(string, &session->error);
 				EM_DEBUG_EXCEPTION("IMAP_TOOLKIT_LOG ERROR [%d]", session->error);
+				if(session->error == EMAIL_ERROR_XOAUTH_BAD_REQUEST || session->error == EMAIL_ERROR_XOAUTH_INVALID_UNAUTHORIZED) {
+					session->network = session->error;
+				}
 			}
 			
 			break;
@@ -420,6 +436,10 @@ INTERNAL_FUNC void mm_get_error(char *string, int *err_code)
 		*err_code = EMAIL_ERROR_MAILBOX_NOT_FOUND;
 	else if (strstr(string, "15 minute"))
 		*err_code = EMAIL_ERROR_LOGIN_ALLOWED_EVERY_15_MINS;
+	else if (strstr(string, "\"status\":\"400"))
+		*err_code = EMAIL_ERROR_XOAUTH_BAD_REQUEST;
+	else if (strstr(string, "\"status\":\"401"))
+		*err_code = EMAIL_ERROR_XOAUTH_INVALID_UNAUTHORIZED;
 	else
 		*err_code = EMAIL_ERROR_UNKNOWN;
 }

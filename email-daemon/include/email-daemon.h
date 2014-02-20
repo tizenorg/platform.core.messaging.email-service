@@ -634,7 +634,7 @@ INTERNAL_FUNC int emdaemon_validate_account_and_create(email_account_t* new_acco
 
 INTERNAL_FUNC int emdaemon_set_mail_slot_size_of_mailbox(int account_id, int mailbox_id, int new_slot_size, int *handle, int *err_code);
 
-INTERNAL_FUNC int emdaemon_rename_mailbox(int input_mailbox_id, char *input_mailbox_path, char *input_mailbox_alias, int input_on_server, int *output_handle);
+INTERNAL_FUNC int emdaemon_rename_mailbox(int input_mailbox_id, char *input_mailbox_path, char *input_mailbox_alias, void *input_eas_data, int input_eas_data_length, int input_on_server, int *output_handle);
 
 INTERNAL_FUNC int emdaemon_move_mail_thread_to_mailbox(int thread_id, int target_mailbox_id, int move_always_flag, int *err_code);
 
@@ -644,6 +644,17 @@ INTERNAL_FUNC int emdaemon_modify_seen_flag_of_thread(int thread_id, int seen_fl
 
 INTERNAL_FUNC int emdaemon_expunge_mails_deleted_flagged(int input_mailbox_id, int input_on_server, int *output_handle);
 
+INTERNAL_FUNC int emdaemon_kill_daemon_if_no_account();
+
+INTERNAL_FUNC int emdaemon_check_smack_rule(int app_sockfd, char *file_path);
+
+INTERNAL_FUNC int emdaemon_set_smack_label(char *file_path, char *label);
+
+INTERNAL_FUNC void emdaemon_start_alert(void);
+
+INTERNAL_FUNC int emdaemon_finalize_sync(int account_id, int total_mail_count, int unread_mail_count, int *error);
+
+INTERNAL_FUNC int emdaemon_query_smtp_mail_size_limit(int account_id, int *handle, int* err_code);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

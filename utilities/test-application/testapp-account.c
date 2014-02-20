@@ -28,6 +28,7 @@
 #include <glib.h>
 
 #include "email-api.h"
+#include "email-api-smime.h"
 #include "email-api-account.h"
 #include "email-api-network.h"
 
@@ -59,7 +60,8 @@
 gboolean  testapp_create_account_object(email_account_t **result_account)
 {
 	email_account_t *account = NULL;
-	char id_string[100] = { 0, }, password_string[100] = { 0, }, address_string[100]  = { 0, };
+	char id_string[100] = { 0, }, password_string[1000] = { 0, }, address_string[100]  = { 0, };
+	char accesss_token[1000] = { 0, }, refresh_token[1000] = { 0, };
 	int samsung3g_account_index;
 	int result_from_scanf = 0;
 	int account_type;
@@ -76,6 +78,9 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 	testapp_print("11. Daum (IMAP4)\n");
 	testapp_print("12. Daum (POP3)\n");
 	testapp_print("13. Yahoo (IMAP ID)\n");
+	testapp_print("14. Gmail IMAP with XOAUTH\n");
+	testapp_print("15. Yandex\n");
+	testapp_print("16. mopera\n");
 	testapp_print("Choose server type: ");
 
 	result_from_scanf = scanf("%d",&account_type);
@@ -89,7 +94,20 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 			}while( samsung3g_account_index > 10 || samsung3g_account_index < 1);
 			sprintf(id_string, "test%02d", samsung3g_account_index);
 			sprintf(address_string, "test%02d@streaming.s3glab.net", samsung3g_account_index);
-			strcpy(password_string, id_string);
+			sprintf(password_string, "test%02d", samsung3g_account_index);
+			break;
+		case 14 :
+			testapp_print("Enter email address : ");
+			result_from_scanf = scanf("%s", address_string);
+			strcpy(id_string, address_string);
+
+			testapp_print("Enter access token : ");
+			result_from_scanf = scanf("%s", accesss_token);
+
+			testapp_print("Enter refresh token : ");
+			result_from_scanf = scanf("%s", refresh_token);
+
+			snprintf(password_string, 100, "%s\001%s\001", accesss_token, refresh_token);
 			break;
 		default:
 			testapp_print("Enter email address : ");
@@ -121,8 +139,10 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 	account->outgoing_server_type                    = EMAIL_SERVER_TYPE_SMTP;
 	account->auto_download_size			             = 2;
 	account->outgoing_server_use_same_authenticator  = 1;
+	account->auto_resend_times                       = 3;
 	account->pop_before_smtp                         = 0;
 	account->incoming_server_requires_apop           = 0;
+	account->incoming_server_authentication_method   = 0;
 	account->logo_icon_path                          = NULL;
 	account->user_data                               = malloc (data_length);
 	memcpy( account->user_data, (void*) &data, data_length );
@@ -144,6 +164,11 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 	account->check_interval                          = 0;
 	account->keep_mails_on_pop_server_after_download = 1;
 	account->default_mail_slot_size                  = 200;
+	account->roaming_option                          = EMAIL_ROAMING_OPTION_RESTRICTED_BACKGROUND_TASK;
+	account->peak_interval                           = 30;
+	account->peak_days                               = EMAIL_PEAK_DAYS_MONDAY | EMAIL_PEAK_DAYS_TUEDAY | EMAIL_PEAK_DAYS_THUDAY | EMAIL_PEAK_DAYS_FRIDAY;
+	account->peak_start_time                         = 830;
+	account->peak_end_time                           = 1920;
 
 	account->account_name                            = strdup(address_string);
 	account->user_display_name                       = strdup(id_string);
@@ -213,13 +238,14 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 
 		case 7 : /*  Gmail IMAP4 */
 			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
-			account->incoming_server_address= strdup("imap.gmail.com");
+			account->incoming_server_address = strdup("imap.gmail.com");
 			account->incoming_server_port_number = 993;
 			account->incoming_server_secure_connection	= 1;
-			account->outgoing_server_address    = strdup("smtp.gmail.com");
+			account->outgoing_server_address = strdup("smtp.gmail.com");
 			account->outgoing_server_port_number = 465;
 			account->outgoing_server_secure_connection = 1;
-			account->outgoing_server_need_authentication = 1;
+			account->outgoing_server_need_authentication   = EMAIL_AUTHENTICATION_METHOD_DEFAULT;
+			account->incoming_server_authentication_method = EMAIL_AUTHENTICATION_METHOD_NO_AUTH;
 			break;
 
 		case 8: /*  Active Sync */
@@ -288,6 +314,42 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 			account->outgoing_server_need_authentication = 1;
 			break;
 
+		case 14 : /*  XOAUTH */
+			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
+			account->incoming_server_address = strdup("imap.gmail.com");
+			account->incoming_server_port_number = 993;
+			account->incoming_server_secure_connection	= 1;
+			account->outgoing_server_address = strdup("smtp.gmail.com");
+			account->outgoing_server_port_number = 465;
+			account->outgoing_server_secure_connection = 1;
+			account->outgoing_server_need_authentication   = EMAIL_AUTHENTICATION_METHOD_XOAUTH2;
+			account->incoming_server_authentication_method = EMAIL_AUTHENTICATION_METHOD_XOAUTH2;
+			break;
+
+		case 15 : /*  yandex */
+			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
+			account->incoming_server_address = strdup("imap.yandex.ru");
+			account->incoming_server_port_number = 993;
+			account->incoming_server_secure_connection	= 1;
+			account->outgoing_server_address = strdup("smtp.yandex.ru");
+			account->outgoing_server_port_number = 465;
+			account->outgoing_server_secure_connection = 1;
+			account->outgoing_server_need_authentication   = EMAIL_AUTHENTICATION_METHOD_DEFAULT;
+			account->incoming_server_authentication_method = EMAIL_AUTHENTICATION_METHOD_DEFAULT;
+			break;
+
+		case 16 : /*  mopera */
+			account->incoming_server_type                  = EMAIL_SERVER_TYPE_POP3;
+			account->incoming_server_address               = strdup("mail.mopera.net");
+			account->incoming_server_port_number           = 110;
+			account->incoming_server_secure_connection	   = 0;
+			account->incoming_server_authentication_method = EMAIL_AUTHENTICATION_METHOD_NO_AUTH;
+			account->outgoing_server_address               = strdup("mail.mopera.net");
+			account->outgoing_server_port_number           = 465;
+			account->outgoing_server_secure_connection     = 0;
+			account->outgoing_server_need_authentication   = EMAIL_AUTHENTICATION_METHOD_DEFAULT;
+			break;
+
 		default:
 			testapp_print("Invalid Account Number\n");
 			return FALSE;
@@ -342,14 +404,12 @@ static gboolean testapp_test_update_account()
 	testapp_print("\n>> Enter Account No: ");
 	result_from_scanf = scanf("%d",&account_id);
 
-/* sowmya.kr, 281209 Adding signature to options in email_account_t changes */
 	if( (err = email_get_account(account_id, GET_FULL_DATA,&account)) != EMAIL_ERROR_NONE) {
 		testapp_print ("email_get_account failed - %d\n", err);
 		return false;
 	}
 
 	testapp_print ("email_get_account result account_name - %s \n", account->account_name);
-
 	testapp_print ("email_get_account result signature - %s \n", account->options.signature);
 
 #ifdef __FEATURE_AUTO_POLLING__
@@ -365,6 +425,18 @@ static gboolean testapp_test_update_account()
 #ifdef __FEATURE_AUTO_POLLING__
 	testapp_print("\n Enter new check interval (in mins):");
 	result_from_scanf = scanf("%d",&(account->check_interval));
+
+	testapp_print("\n Enter new peak interval (in mins):");
+	result_from_scanf = scanf("%d",&(account->peak_interval));
+
+	testapp_print("\n Enter new peak days:");
+	result_from_scanf = scanf("%d",&(account->peak_days));
+
+	testapp_print("\n Enter new peak start time:");
+	result_from_scanf = scanf("%d",&(account->peak_start_time));
+
+	testapp_print("\n Enter new peak end time:");
+	result_from_scanf = scanf("%d",&(account->peak_end_time));
 #endif
 	testapp_print("\n Enter new signature:");
 	result_from_scanf = scanf("%s",signature);
@@ -521,6 +593,13 @@ static gboolean testapp_test_get_account()
 			"index_color %d\n"
 			"certificate_path %s\n"
 			"digest_type %d\n"
+			"auto_resend_times %d\n"
+			"roaming_option %d\n"
+
+			"peak_interval %d\n"
+			"peak_days %d\n"
+			"peak_start_time %d\n"
+			"peak_end_time %d\n"
 		,
 		account->account_name,
 		account->user_email_address,
@@ -537,7 +616,13 @@ static gboolean testapp_test_get_account()
 		is_preset_account,
 		index_color,
 		account->certificate_path,
-		account->digest_type
+		account->digest_type,
+		account->auto_resend_times,
+		account->roaming_option,
+		account->peak_interval,
+		account->peak_days,
+		account->peak_start_time,
+		account->peak_end_time
 		);
 
 	err_code = email_free_account(&account, 1);
@@ -849,6 +934,56 @@ static gboolean testapp_test_add_account()
 	return true;
 }
 
+static gboolean testapp_test_update_peak_schedule()
+{
+	int result_from_scanf = 0;
+	int account_id;
+	email_account_t *account = NULL;
+	int err = EMAIL_ERROR_NONE;
+
+	testapp_print("\n>> Enter Account No: ");
+	result_from_scanf = scanf("%d",&account_id);
+
+	if( (err = email_get_account(account_id, GET_FULL_DATA, &account)) != EMAIL_ERROR_NONE) {
+		testapp_print ("email_get_account failed [%d]\n", err);
+		return false;
+	}
+
+	testapp_print ("old check_interval - %d \n", account->check_interval);
+
+	testapp_print("\n Enter new check interval (in mins):");
+	result_from_scanf = scanf("%d",&(account->check_interval));
+
+	testapp_print ("old peak_interval - %d \n", account->peak_interval);
+
+	testapp_print("\n Enter new peak interval (in mins):");
+	result_from_scanf = scanf("%d",&(account->peak_interval));
+
+	testapp_print ("old peak_days - %d \n", account->peak_days);
+
+	testapp_print("\n Enter new peak days:");
+	result_from_scanf = scanf("%d",&(account->peak_days));
+
+	testapp_print ("old peak_start_time - %d \n", account->peak_start_time);
+
+	testapp_print("\n Enter new peak start time:");
+	result_from_scanf = scanf("%d",&(account->peak_start_time));
+
+	testapp_print ("old peak_end_time - %d \n", account->peak_start_time);
+
+	testapp_print("\n Enter new peak end time:");
+	result_from_scanf = scanf("%d",&(account->peak_end_time));
+
+	if( account )  {
+		if((err = email_update_account(account_id, account)) != EMAIL_ERROR_NONE) {
+			testapp_print ("email_update_account failed [%d]\n", err);
+			return false;
+		}
+		testapp_print ("email_update_account successful \n");
+	}
+	return true;
+}
+
 static gboolean testapp_test_interpret_command (int selected_number)
 {
 	gboolean go_to_loop = TRUE;
@@ -928,6 +1063,10 @@ static gboolean testapp_test_interpret_command (int selected_number)
 
 		case 19:
 			testapp_test_add_account();
+			break;
+
+		case 20:
+			testapp_test_update_peak_schedule();
 			break;
 
 		case 0:

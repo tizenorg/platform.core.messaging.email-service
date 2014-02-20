@@ -67,13 +67,22 @@ INTERNAL_FUNC int em_convert_account_to_account_tbl(email_account_t *account, em
 	account_tbl->account_id                               = account->account_id;
 	account_tbl->keep_mails_on_pop_server_after_download  = account->keep_mails_on_pop_server_after_download;
 	account_tbl->auto_download_size                       = account->auto_download_size;
+	account_tbl->peak_interval                            = account->peak_interval;
+	account_tbl->peak_days                                = account->peak_days;
+	account_tbl->peak_start_time                          = account->peak_start_time;
+	account_tbl->peak_end_time                            = account->peak_end_time;
+
+
 	account_tbl->outgoing_server_use_same_authenticator   = account->outgoing_server_use_same_authenticator;
+	account_tbl->auto_resend_times                        = account->auto_resend_times;
 	account_tbl->pop_before_smtp                          = account->pop_before_smtp;
 	account_tbl->incoming_server_requires_apop            = account->incoming_server_requires_apop;
+	account_tbl->incoming_server_authentication_method    = account->incoming_server_authentication_method;
 	account_tbl->logo_icon_path                           = EM_SAFE_STRDUP(account->logo_icon_path);
 
 	account_tbl->user_data                                = em_memdup(account->user_data, account->user_data_length);
 	account_tbl->user_data_length                         = account->user_data_length;
+	account_tbl->roaming_option                           = account->roaming_option;
 
 	account_tbl->options.priority                         = account->options.priority;
 	account_tbl->options.keep_local_copy                  = account->options.keep_local_copy;
@@ -98,6 +107,7 @@ INTERNAL_FUNC int em_convert_account_to_account_tbl(email_account_t *account, em
 	account_tbl->certificate_path                         = EM_SAFE_STRDUP(account->certificate_path);
 	account_tbl->cipher_type                              = account->cipher_type;
 	account_tbl->digest_type                              = account->digest_type;
+	account_tbl->outgoing_server_size_limit               = account->outgoing_server_size_limit;
 
 
 	EM_DEBUG_FUNC_END();
@@ -131,12 +141,19 @@ INTERNAL_FUNC int em_convert_account_tbl_to_account(emstorage_account_tbl_t *acc
 	account->account_id                               = account_tbl->account_id;
 	account->keep_mails_on_pop_server_after_download  = account_tbl->keep_mails_on_pop_server_after_download;
 	account->auto_download_size                       = account_tbl->auto_download_size;
+	account->peak_interval                            = account_tbl->peak_interval;
+	account->peak_days                                = account_tbl->peak_days;
+	account->peak_start_time                          = account_tbl->peak_start_time;
+	account->peak_end_time                            = account_tbl->peak_end_time;
 	account->outgoing_server_use_same_authenticator   = account_tbl->outgoing_server_use_same_authenticator;
 	account->pop_before_smtp                          = account_tbl->pop_before_smtp;
+	account->auto_resend_times                        = account_tbl->auto_resend_times;
 	account->incoming_server_requires_apop            = account_tbl->incoming_server_requires_apop;
+	account->incoming_server_authentication_method    = account_tbl->incoming_server_authentication_method;
 	account->logo_icon_path                           = EM_SAFE_STRDUP(account_tbl->logo_icon_path);
-	account->user_data                     = em_memdup(account_tbl->user_data, account_tbl->user_data_length);
-	account->user_data_length              = account_tbl->user_data_length;
+	account->user_data                                = em_memdup(account_tbl->user_data, account_tbl->user_data_length);
+	account->user_data_length                         = account_tbl->user_data_length;
+	account->roaming_option                           = account_tbl->roaming_option;
 	account->options.priority                         = account_tbl->options.priority;
 	account->options.keep_local_copy                  = account_tbl->options.keep_local_copy;
 	account->options.req_delivery_receipt             = account_tbl->options.req_delivery_receipt;
@@ -160,6 +177,7 @@ INTERNAL_FUNC int em_convert_account_tbl_to_account(emstorage_account_tbl_t *acc
 	account->certificate_path                         = EM_SAFE_STRDUP(account_tbl->certificate_path);
 	account->cipher_type                              = account_tbl->cipher_type;
 	account->digest_type                              = account_tbl->digest_type;
+	account->outgoing_server_size_limit               = account_tbl->outgoing_server_size_limit;
 
 	EM_DEBUG_FUNC_END();
 	return ret;
@@ -183,6 +201,16 @@ INTERNAL_FUNC int em_convert_mailbox_to_mailbox_tbl(email_mailbox_t *mailbox, em
 	mailbox_tbl->no_select                  = mailbox->no_select;
 	mailbox_tbl->last_sync_time             = mailbox->last_sync_time;
 	mailbox_tbl->deleted_flag               = mailbox->deleted_flag;
+	mailbox_tbl->eas_data_length            = mailbox->eas_data_length;
+
+	if ((mailbox->eas_data_length>0) && mailbox->eas_data) {
+		if ((mailbox_tbl->eas_data = em_malloc(mailbox->eas_data_length)) == NULL) {
+			EM_DEBUG_EXCEPTION("em_malloc failed");
+			return 0; /*prevent 53448*/
+		}
+		memcpy(mailbox_tbl->eas_data, mailbox->eas_data, mailbox->eas_data_length);
+	}
+
 
 	EM_DEBUG_FUNC_END();
 	return ret;
@@ -206,6 +234,15 @@ INTERNAL_FUNC int em_convert_mailbox_tbl_to_mailbox(emstorage_mailbox_tbl_t *mai
 	mailbox->no_select                  = mailbox_tbl->no_select;
 	mailbox->last_sync_time             = mailbox_tbl->last_sync_time;
 	mailbox->deleted_flag               = mailbox_tbl->deleted_flag;
+	mailbox->eas_data_length            = mailbox_tbl->eas_data_length;
+
+	if ((mailbox_tbl->eas_data_length >0) && mailbox_tbl->eas_data) {
+		if ((mailbox->eas_data = em_malloc(mailbox_tbl->eas_data_length)) == NULL) {
+			EM_DEBUG_EXCEPTION("em_malloc failed");
+			return 0; /*prevent 53445*/
+		}
+		memcpy(mailbox->eas_data, mailbox_tbl->eas_data, mailbox_tbl->eas_data_length);
+	}
 
 	EM_DEBUG_FUNC_END();
 	return ret;
@@ -281,6 +318,10 @@ INTERNAL_FUNC int em_convert_mail_tbl_to_mail_data(emstorage_mail_tbl_t *mail_ta
 		temp_mail_data[i].digest_type             = mail_table_data[i].digest_type;
 		temp_mail_data[i].smime_type              = mail_table_data[i].smime_type;
 		temp_mail_data[i].scheduled_sending_time  = mail_table_data[i].scheduled_sending_time;
+		temp_mail_data[i].remaining_resend_times  = mail_table_data[i].remaining_resend_times;
+		temp_mail_data[i].tag_id                  = mail_table_data[i].tag_id;
+		temp_mail_data[i].replied_time            = mail_table_data[i].replied_time;
+		temp_mail_data[i].forwarded_time          = mail_table_data[i].forwarded_time;
 		temp_mail_data[i].eas_data_length         = mail_table_data[i].eas_data_length;
 		if(mail_table_data[i].eas_data_length && mail_table_data[i].eas_data) {
 			if((temp_mail_data[i].eas_data = em_malloc(mail_table_data[i].eas_data_length)) == NULL) {
@@ -378,6 +419,10 @@ INTERNAL_FUNC int   em_convert_mail_data_to_mail_tbl(email_mail_data_t *mail_dat
 		temp_mail_tbl[i].digest_type             = mail_data[i].digest_type;
 		temp_mail_tbl[i].smime_type              = mail_data[i].smime_type;
 		temp_mail_tbl[i].scheduled_sending_time  = mail_data[i].scheduled_sending_time;
+		temp_mail_tbl[i].remaining_resend_times  = mail_data[i].remaining_resend_times;
+		temp_mail_tbl[i].tag_id                  = mail_data[i].tag_id;
+		temp_mail_tbl[i].replied_time            = mail_data[i].replied_time;
+		temp_mail_tbl[i].forwarded_time          = mail_data[i].forwarded_time;
 		temp_mail_tbl[i].eas_data_length         = mail_data[i].eas_data_length;
 		if(mail_data[i].eas_data_length && mail_data[i].eas_data) {
 			if((temp_mail_tbl[i].eas_data = em_malloc(mail_data[i].eas_data_length)) == NULL) {
@@ -615,8 +660,8 @@ static int fetch_string_from_stream(char *input_stream, int *input_output_stream
 	return EMAIL_ERROR_NONE;
 }
                                     /* divide struct at binary field (void* user_data)*/
-#define EMAIL_ACCOUNT_FMT   "S(" "isiii" "is" ")" "B" "S(" "issss"  "isiss" "iiiii" "isiss" "iii"\
-                                 "$(" "iiiii" "iisii" "iisi" ")" "iiisii" ")"
+#define EMAIL_ACCOUNT_FMT   "S(" "isiii" "isi" ")" "B" "S(" "issss"  "isiss" "iiiii" "iiiii" "isiss" "iii"\
+                                 "$(" "iiiii" "iisii" "iisi" ")" "iiiiisii" ")"
 
 
 INTERNAL_FUNC char* em_convert_account_to_byte_stream(email_account_t* account, int *stream_len)
@@ -628,6 +673,10 @@ INTERNAL_FUNC char* em_convert_account_to_byte_stream(email_account_t* account, 
 	tpl_bin tb;
 
 	tn = tpl_map(EMAIL_ACCOUNT_FMT, account, &tb, &(account->user_data_length));
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return NULL;
+	}
 	tb.sz = account->user_data_length;
 	tb.addr = account->user_data;
 	tpl_pack(tn, 0);
@@ -654,6 +703,10 @@ INTERNAL_FUNC void em_convert_byte_stream_to_account(char *stream, int stream_le
 	tpl_bin tb;
 
 	tn = tpl_map(EMAIL_ACCOUNT_FMT, account, &tb, &(account->user_data_length));
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return;
+	}
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
 	tpl_free(tn);
@@ -665,7 +718,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_account(char *stream, int stream_le
 }
 
 #define EMAIL_MAIL_DATA_FMT  "S(" "iiiis" "iisss" "issss" "sssss" "sisss"\
-                            "icccc" "cccii" "iiiii" "iisii" "iiii)B"
+                            "icccc" "cccii" "iiiii" "iisii" "iiiii" "iii)B"
 
 INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_data, int *stream_len)
 {
@@ -678,7 +731,11 @@ INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_
 
 	EM_DEBUG_LOG("eas_data_length[%d]", mail_data->eas_data_length); /*prevent 44369*/
 
-	tn      = tpl_map(EMAIL_MAIL_DATA_FMT, mail_data, &tb);
+	tn = tpl_map(EMAIL_MAIL_DATA_FMT, mail_data, &tb);
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return NULL;
+	}
 	tb.sz   = mail_data->eas_data_length;
 	tb.addr = mail_data->eas_data;
 	tpl_pack(tn, 0);
@@ -739,17 +796,20 @@ INTERNAL_FUNC char* em_convert_attachment_data_to_byte_stream(email_attachment_d
 		return NULL;
 	}
 
-
 	email_attachment_data_t cur = {0};
 	tpl_node *tn = NULL;
 
 	/* tpl_map adds value at 2nd param addr to packing buffer iterately */
 	/* 2nd param value (not addr via pointer) should be modified at each iteration */
 	tn = tpl_map(EMAIL_ATTACHMENT_DATA_FMT, &cur);
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return NULL;
+	}
 	int i=0;
 	for( ; i < attachment_count ; i++ ) {
-		memcpy(&cur, attachment+i, sizeof(cur)); /* copy data to cur : swallow copy */
-		tpl_pack(tn, 1);                        /* pack data at &cur: deep copy */
+		memcpy(&cur, attachment + i, sizeof(email_attachment_data_t));
+		tpl_pack(tn, 1);                       
 	}
 
 	/* write data to buffer */
@@ -777,6 +837,10 @@ INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int s
 	email_attachment_data_t cur = {0};
 	tpl_node *tn = NULL;
 	tn = tpl_map(EMAIL_ATTACHMENT_DATA_FMT, &cur);
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return;
+	}
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 
 	/* tpl does not return the size of variable-length array, but we need variable-length array */
@@ -787,8 +851,11 @@ INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int s
 	while( tpl_unpack(tn, 1) > 0) {
 		email_attachment_data_t* pdata = (email_attachment_data_t*) em_malloc(sizeof(email_attachment_data_t));
 		memcpy(pdata, &cur, sizeof(email_attachment_data_t)); /* copy unpacked data to list item */
+		pdata->attachment_name 		= EM_SAFE_STRDUP(cur.attachment_name);
+		pdata->attachment_path 		= EM_SAFE_STRDUP(cur.attachment_path);
+		pdata->attachment_mime_type 	= EM_SAFE_STRDUP(cur.attachment_mime_type);
 		head = g_list_prepend(head, pdata);                   /* add it to list */
-		memset(&cur, 0, sizeof(email_attachment_data_t));     /* initialize variable, used for unpacking */
+		memset(&cur, 0, sizeof(email_attachment_data_t));    /* initialize variable, used for unpacking */
 		count++;
 	}
 	tpl_free(tn);
@@ -814,7 +881,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int s
 }
 
 
-#define EMAIL_MAILBOX_FMT  "S(" "isisi" "iiiii" "i" ")"
+#define EMAIL_MAILBOX_FMT  "S(" "isisi" "iiiii" "iiii" ")B"
 
 INTERNAL_FUNC char* em_convert_mailbox_to_byte_stream(email_mailbox_t *mailbox_data, int *stream_len)
 {
@@ -823,15 +890,26 @@ INTERNAL_FUNC char* em_convert_mailbox_to_byte_stream(email_mailbox_t *mailbox_d
 	EM_IF_NULL_RETURN_VALUE(stream_len, NULL);
 
 	tpl_node *tn = NULL;
+	tpl_bin tb;
 
-	tn = tpl_map(EMAIL_MAILBOX_FMT, mailbox_data);
+	EM_DEBUG_LOG("eas_data_length[%d]", mailbox_data->eas_data_length);
+
+	tn = tpl_map(EMAIL_MAILBOX_FMT, mailbox_data, &tb);
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return NULL;
+	}
+	tb.sz   = mailbox_data->eas_data_length;
+	tb.addr = mailbox_data->eas_data;
 	tpl_pack(tn, 0);
 
 	/* write account to buffer */
 	void *buf = NULL;
 	size_t len = 0;
 	tpl_dump(tn, TPL_MEM, &buf, &len);
-	tpl_free(tn);
+
+	if(tn)
+		tpl_free(tn);
 
 	*stream_len = len;
 	EM_DEBUG_FUNC_END("serialized len: %d", len);
@@ -846,11 +924,26 @@ INTERNAL_FUNC void em_convert_byte_stream_to_mailbox(char *stream, int stream_le
 	EM_NULL_CHECK_FOR_VOID(mailbox_data);
 
 	tpl_node *tn = NULL;
+	tpl_bin tb;
 
-	tn = tpl_map(EMAIL_MAILBOX_FMT, mailbox_data);
+	tn = tpl_map(EMAIL_MAILBOX_FMT, mailbox_data, &tb);
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return;
+	}
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
-	tpl_free(tn);
+
+	if(mailbox_data->eas_data_length <= 0 || tb.addr == NULL) {
+		EM_DEBUG_LOG("No eas data. eas_data_length[%d] addr[%p]", mailbox_data->eas_data_length, tb.addr);
+	}
+	else {
+		EM_DEBUG_LOG("eas_data_length[%d] addr[%p]", mailbox_data->eas_data_length, tb.addr);
+		mailbox_data->eas_data = tb.addr;
+	}
+
+	if(tn)
+		tpl_free(tn);
 
 	EM_DEBUG_FUNC_END("deserialized len %d", stream_len);
 }
@@ -866,6 +959,10 @@ INTERNAL_FUNC char* em_convert_option_to_byte_stream(email_option_t* option, int
 	tpl_node *tn = NULL;
 
 	tn = tpl_map(EMAIL_OPTION_FMT, option);
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return NULL;
+	}
 	tpl_pack(tn, 0);
 
 	/* write account to buffer */
@@ -888,6 +985,10 @@ INTERNAL_FUNC void em_convert_byte_stream_to_option(char *stream, int stream_len
 	tpl_node *tn = NULL;
 
 	tn = tpl_map(EMAIL_OPTION_FMT, option);
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return;
+	}
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
 	tpl_free(tn);
@@ -896,7 +997,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_option(char *stream, int stream_len
 }
 
 
-#define EMAIL_RULE_FMT "S(" "iiisi" "iii" ")"
+#define EMAIL_RULE_FMT "S(" "iisis" "siiii" ")"
 
 INTERNAL_FUNC char* em_convert_rule_to_byte_stream(email_rule_t *rule, int *stream_len)
 {
@@ -907,6 +1008,10 @@ INTERNAL_FUNC char* em_convert_rule_to_byte_stream(email_rule_t *rule, int *stre
 	tpl_node *tn = NULL;
 
 	tn = tpl_map(EMAIL_RULE_FMT, rule);
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return NULL;
+	}
 	tpl_pack(tn, 0);
 
 	/* write account to buffer */
@@ -929,6 +1034,10 @@ INTERNAL_FUNC void em_convert_byte_stream_to_rule(char *stream, int stream_len, 
 	tpl_node *tn = NULL;
 
 	tn = tpl_map(EMAIL_RULE_FMT, rule);
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return;
+	}
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
 	tpl_free(tn);
@@ -962,6 +1071,10 @@ INTERNAL_FUNC char* em_convert_meeting_req_to_byte_stream(email_meeting_request_
 						&tb[3],
 						&meeting_req->time_zone.daylight_bias
 				);
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return NULL;
+	}
 	tb[0].sz = tb[1].sz = tb[2].sz = tb[3].sz = sizeof(struct tm);
 	tb[0].addr = &meeting_req->start_time;
 	tb[1].addr = &meeting_req->end_time;
@@ -1007,6 +1120,10 @@ INTERNAL_FUNC void em_convert_byte_stream_to_meeting_req(char *stream, int strea
 						&tb[3],
 						&meeting_req->time_zone.daylight_bias
 				);
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return;
+	}
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
 	tpl_free(tn);
@@ -1168,6 +1285,10 @@ INTERNAL_FUNC char* em_convert_task_information_to_byte_stream(email_task_inform
 	int i = 0;
 
 	tn = tpl_map(EMAIL_JOB_INFORMATION_FMT, &cur);
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return NULL;
+	}
 
 	for( ; i < input_task_information_count ; i++ ) {
 		memcpy(&cur, input_task_information + i, sizeof(email_task_information_t));
@@ -1199,6 +1320,10 @@ INTERNAL_FUNC void em_convert_byte_stream_to_task_information(char *input_stream
 	GList *head = NULL;
 
 	tn = tpl_map(EMAIL_JOB_INFORMATION_FMT, &cur);
+	if (!tn) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		return;
+	}
 	tpl_load(tn, TPL_MEM, input_stream, input_stream_len);
 
 	while( tpl_unpack(tn, 1) > 0) {

@@ -39,7 +39,6 @@ extern "C"
 {
 #endif /* __cplusplus */
 
-INTERNAL_FUNC int emcore_check_sync_imap_mailbox(email_mailbox_t *mailbox, int *synchronous, int *err_code);
 /**
  * Get mailbox list from imap server.
  *
@@ -68,10 +67,16 @@ INTERNAL_FUNC int emcore_download_mailbox_list(void *mail_stream, char *mailbox,
 INTERNAL_FUNC int emcore_delete_imap_mailbox(int input_mailbox_id, int *err_code);
 INTERNAL_FUNC int emcore_create_imap_mailbox(email_mailbox_t *mailbox, int *err_code);
 INTERNAL_FUNC int emcore_rename_mailbox_on_imap_server(int input_account_id, int input_mailbox_id, char *input_old_mailbox_path, char *input_new_mailbox_path, int handle_to_be_published);
-INTERNAL_FUNC int emcore_set_sync_imap_mailbox(email_internal_mailbox_t *mailbox, int synchronous, int *err_code);
 INTERNAL_FUNC int emcore_set_mail_slot_size(int account_id, int mailbox_id, int new_slot_size, int *err_code);
 INTERNAL_FUNC int emcore_remove_overflowed_mails(emstorage_mailbox_tbl_t *intput_mailbox_tbl, int *err_code);	
 INTERNAL_FUNC int emcore_get_default_mail_slot_count(int input_account_id, int *output_count);
+
+#ifdef __FEATURE_IMAP_QUOTA__
+INTERNAL_FUNC int emcore_register_quota_callback();
+INTERNAL_FUNC int emcore_get_quota_root(int input_mailbox_id, email_quota_resource_t *output_list_of_resource_limits);
+INTERNAL_FUNC int emcore_get_quota(int input_mailbox_id, char *input_quota_root, email_quota_resource_t *output_list_of_resource_limits);
+INTERNAL_FUNC int emcore_set_quota(int input_mailbox_id, char *input_quota_root, email_quota_resource_t *input_list_of_resource_limits);
+#endif /* __FEATURE_IMAP_QUOTA__ */
 
 #ifdef __cplusplus
 }

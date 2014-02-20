@@ -140,17 +140,18 @@ static gboolean testapp_add_mail_for_sending (int *result_mail_id)
 
 	SNPRINTF(from_address, 300, "<%s>", account_data->user_email_address);
 
-	test_mail_data->account_id           = account_id;
-	test_mail_data->save_status          = 1;
-	test_mail_data->body_download_status = 1;
-	test_mail_data->flags_seen_field     = 1;
-	test_mail_data->file_path_plain      = strdup(body_file_path);
-	test_mail_data->mailbox_id           = mailbox_data->mailbox_id;
-	test_mail_data->mailbox_type         = mailbox_data->mailbox_type;
-	test_mail_data->full_address_from    = strdup(from_address);
-	test_mail_data->full_address_to      = strdup(receipient_address);
-	test_mail_data->subject              = strdup("Read receipt request from TIZEN");
-	test_mail_data->report_status        = EMAIL_MAIL_REQUEST_DSN | EMAIL_MAIL_REQUEST_MDN;
+	test_mail_data->account_id             = account_id;
+	test_mail_data->save_status            = EMAIL_MAIL_STATUS_SEND_DELAYED;
+	test_mail_data->body_download_status   = 1;
+	test_mail_data->flags_seen_field       = 1;
+	test_mail_data->file_path_plain        = strdup(body_file_path);
+	test_mail_data->mailbox_id             = mailbox_data->mailbox_id;
+	test_mail_data->mailbox_type           = mailbox_data->mailbox_type;
+	test_mail_data->full_address_from      = strdup(from_address);
+	test_mail_data->full_address_to        = strdup(receipient_address);
+	test_mail_data->subject                = strdup("Read receipt request from TIZEN");
+	test_mail_data->remaining_resend_times = 3;
+	test_mail_data->report_status          = EMAIL_MAIL_REQUEST_DSN | EMAIL_MAIL_REQUEST_MDN;
 
 	body_file = fopen(body_file_path, "w");
 
@@ -222,20 +223,21 @@ static gboolean testapp_test_add_mail (int *result_mail_id)
 	testapp_print("\n From EAS? [0/1]> ");
 	result_from_scanf = scanf("%d", &from_eas);
 
-	test_mail_data->account_id           = account_id;
-	test_mail_data->save_status          = 1;
-	test_mail_data->body_download_status = 1;
-	test_mail_data->flags_seen_field     = 1;
-	test_mail_data->file_path_plain      = strdup(body_file_path);
-	test_mail_data->mailbox_id           = mailbox_id;
-	test_mail_data->mailbox_type         = mailbox_data->mailbox_type;
-	test_mail_data->full_address_from    = strdup("<test1@test.com>");
-	test_mail_data->full_address_to      = strdup("<test2@test.com>");
-	test_mail_data->full_address_cc      = strdup("<test3@test.com>");
-	test_mail_data->full_address_bcc     = strdup("<test4@test.com>");
-	test_mail_data->subject              = strdup("Meeting request mail");
-	test_mail_data->eas_data             = strdup("EAS DATA TEST");
-	test_mail_data->eas_data_length      = strlen(test_mail_data->eas_data) + 1;
+	test_mail_data->account_id             = account_id;
+	test_mail_data->save_status            = 1;
+	test_mail_data->body_download_status   = 1;
+	test_mail_data->flags_seen_field       = 1;
+	test_mail_data->file_path_plain        = strdup(body_file_path);
+	test_mail_data->mailbox_id             = mailbox_id;
+	test_mail_data->mailbox_type           = mailbox_data->mailbox_type;
+	test_mail_data->full_address_from      = strdup("<test1@test.com>");
+	test_mail_data->full_address_to        = strdup("<test2@test.com>");
+	test_mail_data->full_address_cc        = strdup("<test3@test.com>");
+	test_mail_data->full_address_bcc       = strdup("<test4@test.com>");
+	test_mail_data->subject                = strdup("Meeting request mail");
+	test_mail_data->remaining_resend_times = 3;
+	test_mail_data->eas_data               = strdup("EAS DATA TEST");
+	test_mail_data->eas_data_length        = strlen(test_mail_data->eas_data) + 1;
 
 	body_file = fopen(body_file_path, "w");
 
@@ -361,7 +363,7 @@ static gboolean testapp_test_update_mail()
 
 	if (test_mail_data->attachment_count > 0) {
 		if ( (err = email_get_attachment_data_list(mail_id, &test_attachment_data_list, &test_attachment_data_count)) != EMAIL_ERROR_NONE ) {
-			testapp_print("email_get_meeting_request() failed [%d]\n", err);
+			testapp_print("email_get_attachment_data_list() failed [%d]\n", err);
 			goto FINISH_OFF;
 		}
 	}	
@@ -456,13 +458,13 @@ static gboolean testapp_test_get_mails()
 
 	/* Get mail list */
 	if(mailbox_id == 0) {
-		testapp_print("Calling email_get_mail_list for all mailbox.\n");
+		testapp_print("Calling email_get_mails for all mailbox.\n");
 		err_code = email_get_mails(account_id, 0, list_type, start_index, limit_count, sorting, mails_pointer, &count);
 		if ( err_code < 0)
 			testapp_print("email_get_mails failed - err[%d]\n", err_code);
 	}
 	else {
-		testapp_print("Calling email_get_mail_list for %d mailbox_id.\n", mailbox_id);
+		testapp_print("Calling email_get_mails for %d mailbox_id.\n", mailbox_id);
 		err_code = email_get_mails(account_id, mailbox_id, list_type, start_index, limit_count, sorting,  mails_pointer, &count);
 		if ( err_code < 0)
 			testapp_print("email_get_mails failed - err[%d]\n", err_code);
@@ -553,13 +555,36 @@ static gboolean testapp_test_get_mail_list_ex()
 	filter_list = malloc(sizeof(email_list_filter_t) * filter_rule_count);
 	memset(filter_list, 0 , sizeof(email_list_filter_t) * filter_rule_count);
 
-	filter_list[0].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_RULE_FTS;
-	filter_list[0].list_filter_item.rule_fts.target_attribute              = EMAIL_MAIL_TEXT_ATTRIBUTE_FULL_TEXT;
-	filter_list[0].list_filter_item.rule_fts.rule_type                     = EMAIL_LIST_FILTER_RULE_MATCH;
-	filter_list[0].list_filter_item.rule_fts.key_value.string_type_value  = strdup("ieee");
+	filter_list[0].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_RULE;
+	filter_list[0].list_filter_item.rule.target_attribute              = EMAIL_MAIL_ATTRIBUTE_ACCOUNT_ID;
+	filter_list[0].list_filter_item.rule.rule_type                     = EMAIL_LIST_FILTER_RULE_EQUAL;
+	filter_list[0].list_filter_item.rule.key_value.integer_type_value  = 1;
+	filter_list[0].list_filter_item.rule.case_sensitivity              = false;
+
+	filter_list[1].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_OPERATOR;
+	filter_list[1].list_filter_item.operator_type                      = EMAIL_LIST_FILTER_OPERATOR_AND;
+
+	filter_list[2].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_RULE;
+	filter_list[2].list_filter_item.rule.target_attribute              = EMAIL_MAIL_ATTRIBUTE_MAILBOX_TYPE;
+	filter_list[2].list_filter_item.rule.rule_type                     = EMAIL_LIST_FILTER_RULE_EQUAL;
+	filter_list[2].list_filter_item.rule.key_value.integer_type_value  = EMAIL_MAILBOX_TYPE_INBOX;
+	filter_list[2].list_filter_item.rule.case_sensitivity              = false;
+
+	/*filter_list[0].list_filter_item_type                                     = EMAIL_LIST_FILTER_ITEM_RULE_ATTACH;
+	filter_list[0].list_filter_item.rule_attach.target_attribute             = EMAIL_MAIL_ATTACH_ATTRIBUTE_ATTACHMENT_NAME;
+	filter_list[0].list_filter_item.rule_attach.rule_type                    = EMAIL_LIST_FILTER_RULE_INCLUDE;
+	filter_list[0].list_filter_item.rule_attach.key_value.string_type_value  = strdup("test");
+	filter_list[0].list_filter_item.rule_attach.case_sensitivity             = false;*/
+
+	/*
+	filter_list[0].list_filter_item_type                                  = EMAIL_LIST_FILTER_ITEM_RULE;
+	filter_list[0].list_filter_item.rule_fts.target_attribute             = EMAIL_MAIL_ATTRIBUTE_ACCOUNT_ID;
+	filter_list[0].list_filter_item.rule_fts.rule_type                    = EMAIL_LIST_FILTER_RULE_EQUAL;
+	filter_list[0].list_filter_item.rule_fts.key_value.integer_type_value = 1;
 
 	filter_list[1].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_OPERATOR;
 	filter_list[1].list_filter_item.operator_type                      = EMAIL_LIST_FILTER_OPERATOR_OR;
+
 
 	filter_list[2].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_RULE;
 	filter_list[2].list_filter_item.rule.target_attribute              = EMAIL_MAIL_ATTRIBUTE_SUBJECT;
@@ -567,7 +592,7 @@ static gboolean testapp_test_get_mail_list_ex()
 	filter_list[2].list_filter_item.rule.key_value.string_type_value   = strdup("2013");
 	filter_list[2].list_filter_item.rule.case_sensitivity              = false;
 
-	/*
+
 	filter_list[1].list_filter_item_type                               = EMAIL_LIST_FILTER_ITEM_OPERATOR;
 	filter_list[1].list_filter_item.operator_type                      = EMAIL_LIST_FILTER_OPERATOR_OR;
 
@@ -620,21 +645,25 @@ static gboolean testapp_test_get_mail_list_ex()
 	filter_list[2].list_filter_item.rule.key_value.string_type_value   = strdup("INBOX");
 	filter_list[2].list_filter_item.rule.case_sensitivity              = true;
 	*/
-	sorting_rule_count = 1;
+	sorting_rule_count = 2;
 
 	sorting_rule_list = malloc(sizeof(email_list_sorting_rule_t) * sorting_rule_count);
 	memset(sorting_rule_list, 0 , sizeof(email_list_sorting_rule_t) * sorting_rule_count);
 
-	sorting_rule_list[0].target_attribute                              = EMAIL_MAIL_ATTRIBUTE_DATE_TIME;
-	sorting_rule_list[0].sort_order                                    = EMAIL_SORT_ORDER_DESCEND;
+	sorting_rule_list[0].target_attribute                              = EMAIL_MAIL_ATTRIBUTE_RECIPIENT_ADDRESS;
+	sorting_rule_list[0].key_value.string_type_value                   = strdup("minsoo.kimn@gmail.com");
+	sorting_rule_list[0].sort_order                                    = EMAIL_SORT_ORDER_TO_CCBCC;
 
-	err = email_get_mail_list_ex(filter_list, filter_rule_count, sorting_rule_list, sorting_rule_count, 0, 10, &result_mail_list, &result_mail_count);
+	sorting_rule_list[1].target_attribute                              = EMAIL_MAIL_ATTRIBUTE_DATE_TIME;
+	sorting_rule_list[1].sort_order                                    = EMAIL_SORT_ORDER_DESCEND;
+
+	err = email_get_mail_list_ex(filter_list, filter_rule_count, sorting_rule_list, sorting_rule_count, -1, -1, &result_mail_list, &result_mail_count);
 
 	if(err == EMAIL_ERROR_NONE) {
 		testapp_print("email_get_mail_list_ex succeed.\n");
 
 		for(i = 0; i < result_mail_count; i++) {
-			testapp_print("mail_id [%d], subject [%s], full_address_from [%s]\n", result_mail_list[i].mail_id, result_mail_list[i].subject, result_mail_list[i].full_address_from);
+			testapp_print("mail_id [%d], subject [%s], mailbox_type [%d] full_address_from [%s]\n", result_mail_list[i].mail_id, result_mail_list[i].subject, result_mail_list[i].mailbox_type, result_mail_list[i].full_address_from);
 		}
 	}
 	else {
@@ -990,6 +1019,7 @@ static gboolean testapp_test_get_mail_list()
 		for (i=0; i< count; i++) {
 			testapp_print("\n[%d]\n", i);
 			testapp_print(" >>> mailbox_id [ %d ] \n", mail_list[i].mailbox_id);
+			testapp_print(" >>> mailbox_type [ %d ] \n", mail_list[i].mailbox_type);
 			testapp_print(" >>> mail_id [ %d ] \n", mail_list[i].mail_id);
 			testapp_print(" >>> account_id [ %d ] \n", mail_list[i].account_id);
 			if (  mail_list[i].full_address_from != NULL )
@@ -1410,6 +1440,7 @@ static gboolean	testapp_test_get_mail_data()
 	testapp_print("digest_type [%d]\n", mail_data->digest_type);
 	testapp_print("smime_type [%d]\n", mail_data->smime_type);
 	testapp_print("scheduled_sending_time [%d]\n", mail_data->scheduled_sending_time);
+	testapp_print("remaining_resend_times [%d]\n", mail_data->remaining_resend_times);
 	testapp_print("eas_data_length [%d]\n", mail_data->eas_data_length);
 
 	return TRUE;
@@ -1540,12 +1571,58 @@ static gboolean testapp_test_download_attachment ()
 
 static gboolean testapp_test_get_attachment_data_list()
 {
+	int err = EMAIL_ERROR_NONE;
+	int i = 0;
 	int mail_id = 0;
 	int result_from_scanf = 0;
+	int test_attachment_data_count;
+	email_attachment_data_t *test_attachment_data_list = NULL;
+
+	testapp_print("\n > Enter Mail id: ");
+	result_from_scanf = scanf("%d", &mail_id);
+
+	if ( (err = email_get_attachment_data_list(mail_id, &test_attachment_data_list, &test_attachment_data_count)) != EMAIL_ERROR_NONE ) {
+		testapp_print("email_get_attachment_data_list() failed [%d]\n", err);
+		goto FINISH_OFF;
+	}
+	if(test_attachment_data_list) {
+		for(i = 0; i < test_attachment_data_count; i++) {
+			testapp_print("index [%d]\n", i);
+			testapp_print("attachment_name [%s]\n", test_attachment_data_list[i].attachment_name);
+			testapp_print("attachment_path [%s]\n", test_attachment_data_list[i].attachment_path);
+			testapp_print("attachment_size [%d]\n", test_attachment_data_list[i].attachment_size);
+			testapp_print("mail_id [%d]\n", test_attachment_data_list[i].mail_id);
+			testapp_print("attachment_mime_type [%s]\n", test_attachment_data_list[i].attachment_mime_type);
+		}
+		email_free_attachment_data(&test_attachment_data_list, test_attachment_data_count);
+	}
+
+FINISH_OFF:
+
+	return TRUE;
+}
+
+static gboolean testapp_test_get_meeting_request()
+{
+	int mail_id = 0;
+	int result_from_scanf = 0;
+	int err = EMAIL_ERROR_NONE;
+	email_meeting_request_t *meeting_request;
 
 	testapp_print("\n > Enter Mail Id: ");
 	result_from_scanf = scanf("%d", &mail_id);
 
+	err = email_get_meeting_request(mail_id, &meeting_request);
+
+	testapp_print("err[%d]\n", err);
+
+	if(err == EMAIL_ERROR_NONE && meeting_request) {
+		testapp_print("mail_id [%d]\n", meeting_request->mail_id);
+		testapp_print("global_object_id [%s]\n", meeting_request->global_object_id);
+		testapp_print("meeting_response [%d]\n", meeting_request->meeting_response);
+	}
+
+	email_free_meeting_request(&meeting_request, 1);
 	return TRUE;
 }
 
@@ -1567,6 +1644,28 @@ static gboolean testapp_test_retry_send()
 	if( email_retry_sending_mail(mail_id, timeout) < 0)
 		testapp_print("email_retry_sending_mail failed");		
 	return TRUE;		
+}
+
+static gboolean testapp_test_get_attachment_data()
+{
+	int attachment_id = 0;
+	int result_from_scanf = 0;
+	email_attachment_data_t *attachment = NULL;
+
+	testapp_print("\n > Enter attachment id: ");
+	result_from_scanf = scanf("%d", &attachment_id);
+
+	email_get_attachment_data(attachment_id, &attachment);
+
+	if(attachment) {
+		testapp_print("attachment_name [%s]\n", attachment->attachment_name);
+		testapp_print("attachment_path [%s]\n", attachment->attachment_path);
+		testapp_print("attachment_size [%d]\n", attachment->attachment_size);
+		testapp_print("mail_id [%d]\n", attachment->mail_id);
+		testapp_print("attachment_mime_type [%s]\n", attachment->attachment_mime_type);
+	}
+
+	return TRUE;
 }
 
 static gboolean testapp_test_move_all_mails_to_mailbox()
@@ -1977,18 +2076,19 @@ static gboolean testapp_test_add_mail_to_search_result_box()
 	testapp_print("\n From EAS? [0/1]> ");
 	result_from_scanf = scanf("%d", &from_eas);
 
-	test_mail_data->account_id           = account_id;
-	test_mail_data->save_status          = 1;
-	test_mail_data->body_download_status = 1;
-	test_mail_data->flags_seen_field     = 1;
-	test_mail_data->file_path_plain      = strdup(body_file_path);
-	test_mail_data->mailbox_id           = mailbox_data->mailbox_id;
-	test_mail_data->mailbox_type         = mailbox_data->mailbox_type;
-	test_mail_data->full_address_from    = strdup("<test1@test.com>");
-	test_mail_data->full_address_to      = strdup("<test2@test.com>");
-	test_mail_data->full_address_cc      = strdup("<test3@test.com>");
-	test_mail_data->full_address_bcc     = strdup("<test4@test.com>");
-	test_mail_data->subject              = strdup("Into search result mailbox");
+	test_mail_data->account_id             = account_id;
+	test_mail_data->save_status            = 1;
+	test_mail_data->body_download_status   = 1;
+	test_mail_data->flags_seen_field       = 1;
+	test_mail_data->file_path_plain        = strdup(body_file_path);
+	test_mail_data->mailbox_id             = mailbox_data->mailbox_id;
+	test_mail_data->mailbox_type           = mailbox_data->mailbox_type;
+	test_mail_data->full_address_from      = strdup("<test1@test.com>");
+	test_mail_data->full_address_to        = strdup("<test2@test.com>");
+	test_mail_data->full_address_cc        = strdup("<test3@test.com>");
+	test_mail_data->full_address_bcc       = strdup("<test4@test.com>");
+	test_mail_data->subject                = strdup("Into search result mailbox");
+	test_mail_data->remaining_resend_times = 3;
 
 	body_file = fopen(body_file_path, "w");
 
@@ -2073,9 +2173,11 @@ static gboolean testapp_test_email_parse_mime_file()
 	email_attachment_data_t *mail_attachment_data = NULL;
 	int i = 0;
 	int attachment_count = 0;
+	int verify = 0;
 	int err = EMAIL_ERROR_NONE;
 	int result_from_scanf = 0;
 	char eml_file_path[255] = {0, };
+        struct tm *struct_time;
 
 	testapp_print("Input eml file path : ");
 	result_from_scanf = scanf("%s", eml_file_path);
@@ -2085,8 +2187,20 @@ static gboolean testapp_test_email_parse_mime_file()
 		testapp_print("email_parse_mime_file failed : [%d]\n", err);
 		return false;	
 	}
-	
-	testapp_print("load success\n");
+       
+        testapp_print("load success\n");
+
+        struct_time = localtime(&(mail_data->date_time));
+
+        testapp_print("%4d year",       struct_time->tm_year +1900);
+        testapp_print("  %2d month(0-11)\n", struct_time->tm_mon  +1   );
+        testapp_print("  %2d day(1-31)\n", struct_time->tm_mday      );
+        testapp_print("  %2d wday\n", struct_time->tm_wday);
+        testapp_print("  %2d hour(0-23)\n", struct_time->tm_hour      );
+        testapp_print("  %2d minutes(0-59)\n", struct_time->tm_min       );
+        testapp_print("  %2d second(0-59)\n", struct_time->tm_sec       );
+        testapp_print("year day %3d\n", struct_time->tm_yday);
+
 	testapp_print("Return-Path: %s\n", mail_data->full_address_return);
 	testapp_print("To: %s\n", mail_data->full_address_to);
 	testapp_print("Subject: %s\n", mail_data->subject);
@@ -2097,8 +2211,10 @@ static gboolean testapp_test_email_parse_mime_file()
 	testapp_print("attachment_count: %d\n", mail_data->attachment_count);
 	testapp_print("SMIME type : %d\n", mail_data->smime_type);
 	testapp_print("inline content count : %d\n", mail_data->inline_content_count);
+	testapp_print("download_body_status : %d\n", mail_data->body_download_status);
 
-	for (i = 0;i < mail_data->attachment_count ; i++) {
+
+	for (i = 0;i < attachment_count ; i++) {
 		testapp_print("attachment_id: %d\n", mail_attachment_data[i].attachment_id);
 		testapp_print("inline_attachment_status: %d\n", mail_attachment_data[i].inline_content_status);
 		testapp_print("attachment_name: %s\n", mail_attachment_data[i].attachment_name);
@@ -2107,6 +2223,15 @@ static gboolean testapp_test_email_parse_mime_file()
 	}
 
 	testapp_print("Success : Open eml file\n");
+
+	if (mail_data->smime_type == EMAIL_SMIME_SIGNED) {
+		if (!email_verify_signature_ex(mail_data, mail_attachment_data, attachment_count, &verify)) {
+			testapp_print("email_verify_signature_ex failed\n");
+		}	
+
+		testapp_print("verify : [%d]\n", verify);
+	}	
+
 	
 	if ((err = email_delete_parsed_data(mail_data)) != EMAIL_ERROR_NONE) {
 		testapp_print("email_delete_eml_data failed : [%d]\n", err);
@@ -2272,6 +2397,9 @@ static gboolean testapp_test_interpret_command (int menu_number)
 		case 18:
 			testapp_test_get_attachment_data_list();
 			break;
+		case 19:
+			testapp_test_get_meeting_request();
+			break;
 		case 20:
 			testapp_test_delete_all();
 			break;
@@ -2280,6 +2408,9 @@ static gboolean testapp_test_interpret_command (int menu_number)
 			break;
  		case 23:
 			testapp_test_retry_send();
+			break;
+ 		case 24:
+			testapp_test_get_attachment_data();
 			break;
 		case 27:
 			testapp_test_move_all_mails_to_mailbox();

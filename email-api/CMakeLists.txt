@@ -27,7 +27,6 @@ SET(API-SRCS
 	${CMAKE_SOURCE_DIR}/email-api/email-api-rule.c
 	${CMAKE_SOURCE_DIR}/email-api/email-api-mailbox.c
 	${CMAKE_SOURCE_DIR}/email-api/email-api-init.c
-	${CMAKE_SOURCE_DIR}/email-api/email-api-smime.c
 	${CMAKE_SOURCE_DIR}/email-api/email-api-etc.c
 )
 
@@ -71,10 +70,48 @@ SET(EMAIL-API-HEADERS
 	${CMAKE_SOURCE_DIR}/email-api/include/email-api-network.h
 	${CMAKE_SOURCE_DIR}/email-api/include/email-api-rule.h
 	${CMAKE_SOURCE_DIR}/email-api/include/email-api-etc.h
-	${CMAKE_SOURCE_DIR}/email-api/include/email-api-smime.h
 	${CMAKE_SOURCE_DIR}/email-common-use/include/email-types.h
 	${CMAKE_SOURCE_DIR}/email-common-use/include/email-errors.h
 )
 
 INSTALL(FILES ${EMAIL-API-HEADERS} DESTINATION include/email-service)
+
+##########################################################
+# Define Email SMIME API   
+##########################################################
+
+SET(SMIME-API-LIB "email-smime-api")
+SET(SMIME-API-SRCS 
+	${CMAKE_SOURCE_DIR}/email-api/email-api-smime.c
+)
+
+INCLUDE_DIRECTORIES(
+	${CMAKE_SOURCE_DIR}/email-api/include
+)
+
+INCLUDE(FindPkgConfig)
+pkg_check_modules(smime_api_pkgs REQUIRED glib-2.0 dlog) 
+
+FOREACH(flag ${smime_api_pkgs_CFLAGS})
+	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
+ENDFOREACH(flag)
+
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
+
+SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
+
+ADD_LIBRARY(${SMIME-API-LIB} SHARED ${SMIME-API-SRCS})
+
+TARGET_LINK_LIBRARIES(${SMIME-API-LIB} ${api_pkgs_LDFLAGS} email-ipc email-storage email-smime)
+
+SET_TARGET_PROPERTIES(${SMIME-API-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
+SET_TARGET_PROPERTIES(${SMIME-API-LIB} PROPERTIES VERSION ${VERSION})
+
+INSTALL(TARGETS ${SMIME-API-LIB} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
+
+SET(SMIME-EMAIL-API-HEADERS
+	${CMAKE_SOURCE_DIR}/email-api/include/email-api-smime.h
+)
+
+INSTALL(FILES ${SMIME-EMAIL-API-HEADERS} DESTINATION include/email-service)
 

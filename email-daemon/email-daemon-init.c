@@ -38,27 +38,41 @@
 #include <vconf.h>
 #include <vconf-internal-account-keys.h>
 #include <dbus/dbus.h>
-#include <dlfcn.h>           /* added for Disabling the Pthread flag log */
+#include <dlfcn.h>				/* added for Disabling the Pthread flag log */
 
 #include "email-daemon.h"
 #include "email-storage.h"
 #include "email-debug-log.h"
+#include "email-daemon-init.h"
 #include "email-daemon-account.h"
-#include "email-daemon-auto-poll.h"   
+#include "email-daemon-auto-poll.h"
+#include "email-daemon-event.h"
 #include "email-core-utils.h"
 #include "email-core-mail.h"
 #include "email-core-event.h" 
-#include "email-core-account.h"    
-#include "email-core-mailbox.h"    
-#include "email-core-api.h"
-#include "email-core-smtp.h"    
+#include "email-core-account.h"
+#include "email-core-mailbox.h"
+#include "email-core-smtp.h"
 #include "email-core-global.h"
-#include "email-storage.h"   
+#include "email-storage.h"
 #include "email-core-sound.h" 
 #include "email-core-task-manager.h"
+#include "email-core-alarm.h"
 #include "email-daemon-emn.h"
+#include "email-network.h"
+#include "email-device.h"
+#include "c-client.h"
 
-extern int g_client_count ;
+extern void *
+pop3_parameters(long function, void *value);
+extern void *
+imap_parameters(long function, void *value);
+
+INTERNAL_FUNC int g_client_count = 0;
+extern int blocking_mode_of_setting;
+extern GList *alarm_data_list;
+
+static int default_alarm_callback(int input_timer_id, void *user_parameter);
 
 /*  static functions */
 static int _emdaemon_load_email_core()
@@ -68,13 +82,13 @@ static int _emdaemon_load_email_core()
 	int err = EMAIL_ERROR_NONE;
 
 	/* initialize mail core */
-	if (!emcore_init(&err))
+	if (!emdaemon_core_init(&err))
 		goto FINISH_OFF;
 
-	if (emcore_start_event_loop(&err) < 0)
+	if (emdaemon_start_event_loop(&err) < 0)
 		goto FINISH_OFF;
 
-	if (emcore_start_event_loop_for_sending_mails(&err) < 0)
+	if (emdaemon_start_event_loop_for_sending_mails(&err) < 0)
 		goto FINISH_OFF;
 
 	emcore_init_task_handler_array();
@@ -87,18 +101,15 @@ static int _emdaemon_load_email_core()
 	*/
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
-	if (emcore_start_thread_for_downloading_partial_body(&err) < 0) {
+	if (emdaemon_start_thread_for_downloading_partial_body(&err) < 0) {
 		EM_DEBUG_EXCEPTION("emcore_start_thread_for_downloading_partial_body failed [%d]",err);
 		goto FINISH_OFF;
 	}
 #endif
 
 #ifdef __FEATURE_BLOCKING_MODE__
-	emcore_init_blocking_mode_status();
+	emdaemon_init_blocking_mode_status();
 #endif /* __FEATURE_BLOCKING_MODE__ */
-
-	if (emcore_start_thread_for_alerting_new_mails(&err) < 0)
-		goto FINISH_OFF;
 
 FINISH_OFF:
 
@@ -148,7 +159,7 @@ static void callback_for_SYNC_ALL_STATUS_from_account_svc(keynode_t *input_node,
 				EM_DEBUG_EXCEPTION("emdaemon_sync_header for [%d] failed [%d]", account_list[i].account_id, err);
 			}
 
-			emstorage_free_mailbox(&mailbox_tbl_data, 1, NULL); /* prevent 27459: remove unnecesary if clause */
+			emstorage_free_mailbox(&mailbox_tbl_data, 1, NULL); /* prevent 27459: remove unnecessary if clause */
 			mailbox_tbl_data = NULL;
 		}
 		else {
@@ -314,6 +325,113 @@ static void callback_for_VCONFKEY_MSG_SERVER_READY(keynode_t *input_node, void *
 	return;
 }
 
+static void callback_for_VCONFKEY_GLOBAL_BADGE_STATUS(keynode_t *input_node, void *input_user_data)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int noti_status = 0;
+	int err = EMAIL_ERROR_NONE;
+	int badge_ticker = 0;
+
+	if (!input_node) {
+		EM_DEBUG_EXCEPTION("Invalid param");
+		return;
+	}
+
+	noti_status = vconf_keynode_get_bool(input_node);
+
+	if (noti_status) {
+		if (!emcore_display_unread_in_badge()) 
+			EM_DEBUG_EXCEPTION("emcore_display_unread_in_badge failed");
+	} else {
+		if (vconf_get_bool(VCONF_VIP_NOTI_BADGE_TICKER, &badge_ticker) != 0) {
+			EM_DEBUG_EXCEPTION("vconf_get_bool failed");
+			err = EMAIL_ERROR_GCONF_FAILURE;
+			goto FINISH_OFF;
+		}
+		/* if priority sender is on, show the priority sender unread */
+		if (badge_ticker) {
+			if (!emcore_display_unread_in_badge()) 
+				EM_DEBUG_EXCEPTION("emcore_display_unread_in_badge failed");
+			goto FINISH_OFF;
+		}
+
+		/* reset badge */
+		if ((err = emcore_display_badge_count(0)) != EMAIL_ERROR_NONE) 
+			EM_DEBUG_EXCEPTION("emcore_display_badge_count failed : [%d]", err);
+	}
+
+FINISH_OFF:
+	EM_DEBUG_FUNC_END();
+}
+
+
+static void callback_for_VCONFKEY_PRIORITY_BADGE_STATUS(keynode_t *input_node, void *input_user_data)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int noti_status = 0;
+	int err = EMAIL_ERROR_NONE;
+	int badge_ticker = 0;
+
+	if (!input_node) {
+		EM_DEBUG_EXCEPTION("Invalid param");
+		return;
+	}
+
+	noti_status = vconf_keynode_get_bool(input_node);
+
+	if (noti_status) {
+		if (!emcore_display_unread_in_badge()) 
+			EM_DEBUG_EXCEPTION("emcore_display_unread_in_badge failed");
+	} else {
+
+		if (vconf_get_bool(VCONFKEY_TICKER_NOTI_BADGE_EMAIL, &badge_ticker) != 0) {
+			EM_DEBUG_EXCEPTION("vconf_get_bool failed");
+			err = EMAIL_ERROR_GCONF_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		/*if global badge is on, show the global unread*/
+		if (badge_ticker) {
+			if (!emcore_display_unread_in_badge()) 
+				EM_DEBUG_EXCEPTION("emcore_display_unread_in_badge failed");
+			goto FINISH_OFF;
+		}
+		/* if all badges are off, reset badge count */
+		if ((err = emcore_display_badge_count(0)) != EMAIL_ERROR_NONE) 
+			EM_DEBUG_EXCEPTION("emcore_display_badge_count failed : [%d]", err);
+	}
+
+FINISH_OFF:
+	EM_DEBUG_FUNC_END();
+}
+
+static void callback_for_VCONFKEY_TELEPHONY_ZONE_TYPE(keynode_t *input_node, void *input_user_data)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int telephony_zone = 0;
+
+	if (!input_node) {
+		EM_DEBUG_EXCEPTION("Invalid param");
+		return;
+	}
+
+	telephony_zone = vconf_keynode_get_int(input_node);
+
+	EM_DEBUG_LOG("telephony_zone [%d]", telephony_zone);
+
+	/*
+	switch(telephony_zone) {
+	case VCONFKEY_TELEPHONY_ZONE_NONE :
+	case VCONFKEY_TELEPHONY_ZONE_HOME :
+	case VCONFKEY_TELEPHONY_ZONE_CITY :
+	default :
+		break;
+	}
+	*/
+
+	EM_DEBUG_FUNC_END();
+}
+
 INTERNAL_FUNC int emdaemon_initialize(int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -356,7 +474,7 @@ INTERNAL_FUNC int emdaemon_initialize(int* err_code)
 		err = EMAIL_ERROR_DB_FAILURE;
 		goto FINISH_OFF;
 	}
-    EM_DEBUG_LOG("emdaemon_initialize_account_reference over - g_client_count [%d]", g_client_count);	
+	EM_DEBUG_LOG("emdaemon_initialize_account_reference over - g_client_count [%d]", g_client_count);
 	
 	if ((err = _emdaemon_load_email_core()) != EMAIL_ERROR_NONE)  {
 		EM_DEBUG_EXCEPTION("_emdaemon_load_email_core failed [%d]", err);
@@ -369,13 +487,27 @@ INTERNAL_FUNC int emdaemon_initialize(int* err_code)
 	}
 #endif
 
+#ifdef __FEATURE_AUTO_RETRY_SEND__
+	if ((err = emcore_create_alarm_for_auto_resend (AUTO_RESEND_INTERVAL)) != EMAIL_ERROR_NONE) {
+		if (err == EMAIL_ERROR_MAIL_NOT_FOUND)
+			EM_DEBUG_LOG ("no mail found");
+		else
+			EM_DEBUG_EXCEPTION("emcore_create_alarm_for_auto_resend failed [%d]", err);
+	}
+#endif /* __FEATURE_AUTO_RETRY_SEND__ */
+
 	/* Subscribe Events */
-	vconf_notify_key_changed(VCONFKEY_ACCOUNT_SYNC_ALL_STATUS_INT,  callback_for_SYNC_ALL_STATUS_from_account_svc,  NULL);
-	vconf_notify_key_changed(VCONFKEY_ACCOUNT_AUTO_SYNC_STATUS_INT, callback_for_AUTO_SYNC_STATUS_from_account_svc, NULL);
+
 	vconf_notify_key_changed(VCONFKEY_NETWORK_STATUS, callback_for_NETWORK_STATUS, NULL);
 #ifdef __FEATURE_BLOCKING_MODE__
-	vconf_notify_key_changed(VCONFKEY_NETWORK_STATUS, callback_for_BLOCKING_MODE_STATUS, NULL);
+	vconf_notify_key_changed(VCONFKEY_SETAPPL_BLOCKINGMODE_NOTIFICATIONS, callback_for_BLOCKING_MODE_STATUS, NULL);
 #endif
+	vconf_notify_key_changed(VCONFKEY_TICKER_NOTI_BADGE_EMAIL, callback_for_VCONFKEY_GLOBAL_BADGE_STATUS, NULL);
+
+	vconf_notify_key_changed(VCONF_VIP_NOTI_BADGE_TICKER, callback_for_VCONFKEY_PRIORITY_BADGE_STATUS, NULL);
+	/* VCONFKEY_TELEPHONY_SVC_ROAM */
+	/*vconf_notify_key_changed(VCONFKEY_TELEPHONY_ZONE_TYPE, callback_for_VCONFKEY_TELEPHONY_ZONE_TYPE, NULL);*/
+	
 	emcore_display_unread_in_badge();
 	
 	ret = true;
@@ -449,8 +581,8 @@ INTERNAL_FUNC int emdaemon_start_auto_polling(int* err_code)
 
 	for (i = 0; i < count; i++)  {
 		/* start auto polling, if check_interval not zero */
-		if(account_list[i].check_interval > 0) {
-			if(!emdaemon_add_polling_alarm( account_list[i].account_id,account_list[i].check_interval))
+		if(account_list[i].check_interval > 0 || (account_list[i].peak_days && account_list[i].peak_interval > 0)) {
+			if(!emdaemon_add_polling_alarm( account_list[i].account_id))
 				EM_DEBUG_EXCEPTION("emdaemon_add_polling_alarm failed");
 		}
 	}
@@ -463,7 +595,128 @@ FINISH_OFF:
 	if (err_code != NULL)
 		*err_code = err;
 	
+	EM_DEBUG_FUNC_END("ret[%d]", ret);
 	return ret;
 }
 #endif /* __FEATURE_AUTO_POLLING__ */
+
+/* initialize mail core */
+INTERNAL_FUNC int emdaemon_core_init(int *err_code)
+{
+	EM_DEBUG_FUNC_BEGIN();
+
+	if (err_code != NULL) {
+		*err_code = EMAIL_ERROR_NONE;
+	}
+
+	mail_link(&imapdriver);    /*  link in the imap driver  */
+	mail_link(&pop3driver);    /*  link in the pop3 driver  */
+
+	mail_link(&unixdriver);	   /*  link in the unix driver  */
+	mail_link(&dummydriver);   /*  link in the dummy driver  */
+
+	ssl_onceonlyinit();
+
+	auth_link(&auth_xoauth2);  /*  link in the xoauth2 authenticator  */
+	auth_link(&auth_md5);      /*  link in the md5 authenticator  */
+	auth_link(&auth_pla);      /*  link in the pla authenticator  */
+	auth_link(&auth_log);      /*  link in the log authenticator  */
+
+	/* Disabled to authenticate with plain text */
+	mail_parameters(NIL, SET_DISABLEPLAINTEXT, (void *) 2);
+
+	/* Set max trials for login */
+	imap_parameters(SET_MAXLOGINTRIALS, (void *)3);
+	pop3_parameters(SET_MAXLOGINTRIALS, (void *)3);
+	smtp_parameters(SET_MAXLOGINTRIALS, (void *)3);
+
+	mail_parameters(NIL, SET_SSLCERTIFICATEQUERY, (void *)emnetwork_callback_ssl_cert_query);
+	mail_parameters(NIL, SET_SSLCAPATH, (void *)SSL_CERT_DIRECTORY);
+
+	/* Set time out in second */
+	mail_parameters(NIL, SET_OPENTIMEOUT  , (void *)50);
+	mail_parameters(NIL, SET_READTIMEOUT  , (void *)180);
+	mail_parameters(NIL, SET_WRITETIMEOUT , (void *)180);
+	mail_parameters(NIL, SET_CLOSETIMEOUT , (void *)30);
+
+	emdaemon_init_alarm_data_list();
+
+	if (err_code)
+		*err_code = EMAIL_ERROR_NONE;
+
+	return true;
+}
+
+#ifdef __FEATURE_BLOCKING_MODE__
+INTERNAL_FUNC bool emdaemon_init_blocking_mode_status()
+{
+	EM_DEBUG_FUNC_BEGIN("blocking_mode_of_setting : [%d]", blocking_mode_of_setting);
+
+	/*if (vconf_get_bool(VCONFKEY_SETAPPL_BLOCKINGMODE_NOTIFICATIONS, &blocking_mode_of_setting) != 0) {
+		EM_DEBUG_EXCEPTION("vconf_get_bool failed");
+		return false;
+	}*/
+
+	EM_DEBUG_FUNC_END();
+	return false;
+}
+#endif
+
+INTERNAL_FUNC int emdaemon_init_alarm_data_list()
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int ret = ALARMMGR_RESULT_SUCCESS;
+	int err = EMAIL_ERROR_NONE;
+	alarm_data_list = NULL;
+
+	if ((ret = alarmmgr_init(EMAIL_ALARM_DESTINATION)) != ALARMMGR_RESULT_SUCCESS) {
+		EM_DEBUG_EXCEPTION("alarmmgr_init failed [%d]",ret);
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	if ((ret = alarmmgr_set_cb(default_alarm_callback, NULL)) != ALARMMGR_RESULT_SUCCESS) {
+		EM_DEBUG_EXCEPTION("alarmmgr_set_cb() failed [%d]", ret);
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
+		goto FINISH_OFF;
+	}
+
+FINISH_OFF:
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
+
+static int default_alarm_callback(int input_timer_id, void *user_parameter)
+{
+	EM_DEBUG_FUNC_BEGIN("input_timer_id [%d] user_parameter [%p]", input_timer_id, user_parameter);
+	int err = EMAIL_ERROR_NONE;
+	email_alarm_data_t *alarm_data = NULL;
+
+	EM_DEBUG_ALARM_LOG("default_alarm_callback input_timer_id[%d]", input_timer_id);
+
+	emdevice_set_sleep_on_off(false, NULL);
+
+	if ((err = emcore_get_alarm_data_by_alarm_id(input_timer_id, &alarm_data)) != EMAIL_ERROR_NONE || alarm_data == NULL) {
+		EM_DEBUG_EXCEPTION("emcore_get_alarm_data_by_alarm_id failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	if ((err = alarm_data->alarm_callback(input_timer_id, user_parameter)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("alarm_callback failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	emcore_delete_alram_data_from_alarm_data_list(alarm_data);
+	EM_SAFE_FREE(alarm_data);
+
+FINISH_OFF:
+
+	if(err != EMAIL_ERROR_NONE) {
+		emdevice_set_sleep_on_off(true, NULL);
+	}
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
 

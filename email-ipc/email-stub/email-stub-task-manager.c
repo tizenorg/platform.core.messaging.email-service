@@ -47,10 +47,11 @@ EXPORT_API bool emipc_start_task_thread()
 	if (task_thread)
 		return true;
 
+	char errno_buf[ERRNO_BUF_SIZE] = {0};
 	task_queue = g_queue_new();
 
 	if (pthread_create(&task_thread, NULL, &emipc_do_task_thread, NULL) != 0) {
-		EM_DEBUG_LOG("Worker thread creation failed: %s", strerror(errno));
+		EM_DEBUG_LOG("Worker thread creation failed: %s", EM_STRERROR(errno_buf));
 		return false;	
 	}
 
@@ -85,16 +86,22 @@ EXPORT_API void *emipc_do_task_thread()
 	while (!stop_flag) {
 		ENTER_CRITICAL_SECTION(ipc_task_mutex);
 		while (g_queue_is_empty(task_queue)) {
-			EM_DEBUG_LOG("Blocked until new task arrives %p.", &ipc_task_cond);
+/*			EM_DEBUG_LOG("Blocked until new task arrives %p.", &ipc_task_cond); */
 			SLEEP_CONDITION_VARIABLE(ipc_task_cond, ipc_task_mutex);
 		}
 		
+		if (stop_flag) {
+			EM_DEBUG_LOG ("task thread is going to be shut down");
+			break;
+		}
+
 		task = (emipc_email_task *)g_queue_pop_head(task_queue);
 		LEAVE_CRITICAL_SECTION(ipc_task_mutex);
 
 		if (task) {
 			emipc_run_task(task);
 			emipc_free_email_task(task);
+			EM_SAFE_FREE(task);
 		}
 	}
 	
@@ -117,15 +124,15 @@ EXPORT_API bool emipc_create_task(unsigned char *task_stream, int response_chann
 			return false;
 		}
 		
-		EM_DEBUG_LOG("[IPCLib] ======================================================");
-		EM_DEBUG_LOG("[IPCLib] Register new task : %p", task);
-		EM_DEBUG_LOG("[IPCLib] Task API ID : %s (%d)", EM_APIID_TO_STR(task->api_info->api_id), task->api_info->api_id);
-		EM_DEBUG_LOG("[IPCLib] Task Response ID : %d", task->api_info->response_id);
-		EM_DEBUG_LOG("[IPCLib] Task APP ID : %d", task->api_info->app_id);
-		EM_DEBUG_LOG("[IPCLib] ======================================================");
+		EM_DEBUG_LOG_DEV ("[IPCLib] ======================================================");
+		EM_DEBUG_LOG_SEC ("[IPCLib] Register new task: API_ID[%s][0x%x] RES_ID[%d] APP_ID[%d]", EM_APIID_TO_STR(task->api_info->api_id),\
+													task->api_info->api_id,\
+													task->api_info->response_id,\
+													task->api_info->app_id);
+		EM_DEBUG_LOG_DEV ("[IPCLib] ======================================================");
 
 		ENTER_CRITICAL_SECTION(ipc_task_mutex);
-		g_queue_push_head(task_queue, (void *)task);
+		g_queue_push_tail(task_queue, (void *)task);
 		
 		WAKE_CONDITION_VARIABLE(ipc_task_cond);
 		LEAVE_CRITICAL_SECTION(ipc_task_mutex);

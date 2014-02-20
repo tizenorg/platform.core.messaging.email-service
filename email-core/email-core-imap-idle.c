@@ -167,7 +167,7 @@ int emcore_imap_idle_loop_start(email_mailbox_t *mailbox_list,  int num, int *er
 				if (temp && FD_ISSET(temp->hold_connection, &readfds)) {
 					if (!emcore_imap_idle_parse_response_stream(temp, &err)) {
 						EM_DEBUG_EXCEPTION(">>>> emcore_imap_idle_loop_start 6 ");
-						emcore_close_mailbox(temp->account_id, temp->mail_stream);
+						temp->mail_stream = mail_close (temp->mail_stream);
 						EM_DEBUG_EXCEPTION(">>>> emcore_imap_idle_loop_start 7 ");
 						goto FINISH_OFF;
 					}
@@ -193,13 +193,13 @@ int emcore_imap_idle_loop_start(email_mailbox_t *mailbox_list,  int num, int *er
     					sprintf(cmd, "%s DONE\015\012", tag);
 
 					if (!imap_local->netstream || !net_sout(imap_local->netstream, cmd, (int)EM_SAFE_STRLEN(cmd))) {
-						EM_DEBUG_EXCEPTION("network error - failed to DONE on Mailbox - %s ", temp->name);
+						EM_DEBUG_EXCEPTION_SEC("network error - failed to DONE on Mailbox - %s ", temp->name);
 					}
 					else {
 						while (imap_local->netstream) {
-					        p = net_getline(imap_local->netstream);
-					     	EM_DEBUG_EXCEPTION("p =[%s]", p);
-							emcore_close_mailbox(temp->account_id, temp->mail_stream);
+							p = net_getline(imap_local->netstream);
+							EM_DEBUG_EXCEPTION("p =[%s]", p);
+							temp->mail_stream = mail_close (temp->mail_stream);
 							break;
 					    }
 					}
@@ -329,20 +329,21 @@ int emcore_imap_idle_insert_sync_event(email_mailbox_t *mailbox, int *err_code)
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 	int handle;
+	email_event_t *event_data = NULL;
 	
 	if (!mailbox || mailbox->account_id <= 0) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-	email_event_t event_data = { 0 };
 
-	event_data.type               = EMAIL_EVENT_SYNC_HEADER;
-	event_data.event_param_data_1 = mailbox ? EM_SAFE_STRDUP(mailbox->mailbox_name)  :  NULL;
-	event_data.event_param_data_3 = NULL;
-	event_data.account_id         = mailbox->account_id;
+	event_data = em_malloc(sizeof(email_event_t));
+	event_data->type               = EMAIL_EVENT_SYNC_HEADER;
+	event_data->event_param_data_1 = mailbox ? EM_SAFE_STRDUP(mailbox->mailbox_name) : NULL;
+	event_data->event_param_data_3 = NULL;
+	event_data->account_id         = mailbox->account_id;
 			
-	if (!emcore_insert_event(&event_data, &handle, &err)) {
+	if (!emcore_insert_event(event_data, &handle, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -351,8 +352,14 @@ int emcore_imap_idle_insert_sync_event(email_mailbox_t *mailbox, int *err_code)
 
 FINISH_OFF:
 
+	if (ret == false && event_data) {
+		emcore_free_event(event_data);
+		EM_SAFE_FREE(event_data);
+	}
+
 	if (err_code)
 		*err_code = err;
+
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
 	return ret;
 }
@@ -413,7 +420,7 @@ static int emcore_imap_idle_connect_and_idle_on_mailbox(email_mailbox_t *mailbox
 
 	/* Send IDLE command */
 	if (!imap_local->netstream || !net_sout(imap_local->netstream, cmd, (int)EM_SAFE_STRLEN(cmd))) {
-		EM_DEBUG_EXCEPTION("network error - failed to IDLE on Mailbox - %s ", mailbox->mailbox_name);
+		EM_DEBUG_EXCEPTION_SEC("network error - failed to IDLE on Mailbox - %s ", mailbox->mailbox_name);
 		err = EMAIL_ERROR_IMAP4_IDLE_FAILURE;
 		goto FINISH_OFF;
 	}
@@ -445,7 +452,7 @@ FINISH_OFF:
 		mailbox->hold_connection = socket_id; /* holds connection continuously on the given socket_id */
 	}
 	else if (mail_stream)
-		emcore_close_mailbox(mailbox->account_id, mail_stream);
+		mail_stream = mail_close (mail_stream);
 
 	if (ref_account) {
 		emcore_free_account(ref_account);
@@ -492,7 +499,7 @@ static int emcore_imap_idle_parse_response_stream(email_mailbox_t *mailbox, int 
 			}
 			else  {	
 				if (!emcore_imap_idle_insert_sync_event(mailbox, &err))
-					EM_DEBUG_EXCEPTION("Syncing mailbox %s failed with err_code [%d]", mailbox->mailbox_name, err);
+					EM_DEBUG_EXCEPTION_SEC("Syncing mailbox %s failed with err_code [%d]", mailbox->mailbox_name, err);
 				EM_SAFE_FREE(p);	
 				break;
 			}

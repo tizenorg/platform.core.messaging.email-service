@@ -41,11 +41,13 @@
 #include "email-core-account.h"
 #include "email-core-cert.h"
 #include "email-core-smime.h"
+#include "email-core-signal.h"
 #include "email-ipc.h"
 
 EXPORT_API int email_add_certificate(char *certificate_path, char *email_address)
 {
-	EM_DEBUG_FUNC_BEGIN("Certificate path : [%s]", certificate_path);
+	EM_DEBUG_API_BEGIN ();
+	EM_DEBUG_FUNC_BEGIN_SEC("certificate_path[%s]", certificate_path);
 	int result_from_ipc = 0;
 	int err = EMAIL_ERROR_NONE;
 	
@@ -62,13 +64,13 @@ EXPORT_API int email_add_certificate(char *certificate_path, char *email_address
 	}
 
 	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, certificate_path, EM_SAFE_STRLEN(certificate_path)+1)) {
-		EM_DEBUG_EXCEPTION("emipc_add_parameter certificate_path[%s] failed", certificate_path);
+		EM_DEBUG_EXCEPTION_SEC("emipc_add_parameter certificate_path[%s] failed", certificate_path);
 		err = EMAIL_ERROR_NULL_VALUE;
 		goto FINISH_OFF;
 	}
 
 	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, email_address, EM_SAFE_STRLEN(email_address)+1)) {
-		EM_DEBUG_EXCEPTION("emipc_add_parameter certificate_path[%s] failed", email_address);
+		EM_DEBUG_EXCEPTION_SEC("emipc_add_parameter certificate_path[%s] failed", email_address);
 		err = EMAIL_ERROR_NULL_VALUE;
 		goto FINISH_OFF;
 	}
@@ -91,13 +93,14 @@ FINISH_OFF:
 	if (hAPI)
 		emipc_destroy_email_api(hAPI);
 
-	EM_DEBUG_FUNC_END("ERROR CODE [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_delete_certificate(char *email_address)
 {
-	EM_DEBUG_FUNC_BEGIN("Eamil_address : [%s]", email_address);
+	EM_DEBUG_API_BEGIN ();
+	EM_DEBUG_FUNC_BEGIN_SEC("email_address[%s]", email_address);
 	int result_from_ipc = 0;
 	int err = EMAIL_ERROR_NONE;
 	
@@ -114,7 +117,7 @@ EXPORT_API int email_delete_certificate(char *email_address)
 	}
 
 	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, email_address, EM_SAFE_STRLEN(email_address)+1)) {
-		EM_DEBUG_EXCEPTION("emipc_add_parameter email_address[%s] failed", email_address);
+		EM_DEBUG_EXCEPTION_SEC("emipc_add_parameter email_address[%s] failed", email_address);
 		err = EMAIL_ERROR_NULL_VALUE;
 		goto FINISH_OFF;
 	}
@@ -137,19 +140,28 @@ FINISH_OFF:
 	if (hAPI)
 		emipc_destroy_email_api(hAPI);
 
-	EM_DEBUG_FUNC_END("ERROR CODE [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **certificate)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_API_BEGIN ();
 	int err = EMAIL_ERROR_NONE;
 	char temp_email_address[130] = {0, };
 	emstorage_certificate_tbl_t *cert = NULL;
 	
 	EM_IF_NULL_RETURN_VALUE(email_address, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(certificate, EMAIL_ERROR_INVALID_PARAM);
+
+#ifdef __FEATURE_ACCESS_CONTROL__
+	err = em_check_db_privilege_by_pid(getpid());
+	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		return err;
+	}
+#endif
+
 	SNPRINTF(temp_email_address, sizeof(temp_email_address), "<%s>", email_address);
 	
 	if (!emstorage_get_certificate_by_email_address(temp_email_address, &cert, false, 0, &err)) {
@@ -162,16 +174,18 @@ EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **
 		return err;
 	}	
 	
-	EM_DEBUG_FUNC_END("ERROR CODE [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count)
 {
-	EM_DEBUG_FUNC_BEGIN("mail_id : [%d]", mail_id);
+	EM_DEBUG_API_BEGIN ("mail_id[%d]", mail_id);
 	int err = EMAIL_ERROR_NONE;
 	int p_output_attachment_count = 0;
+        int i = 0;
 	char *decrypt_filepath = NULL;
+        char *search = NULL;
 	email_mail_data_t *p_output_mail_data = NULL;
 	email_attachment_data_t *p_output_attachment_data = NULL;
 	emstorage_account_tbl_t *p_account_tbl = NULL;
@@ -183,6 +197,14 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
+
+#ifdef __FEATURE_ACCESS_CONTROL__
+	err = em_check_db_privilege_by_pid(getpid());
+	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		goto FINISH_OFF;
+	}
+#endif
 
 	if ((err = emcore_get_mail_data(mail_id, &p_output_mail_data)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_get_mail_data failed");
@@ -199,13 +221,21 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 		goto FINISH_OFF;
 	}
 
-	if (p_output_attachment_count != 1 || !p_output_attachment_data) {
-		EM_DEBUG_EXCEPTION("This is not the encrypted mail");
-		err = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF;
-	}
+        for (i = 0; i < p_output_attachment_count; i++) {
+                EM_DEBUG_LOG("mime_type : [%s]", p_output_attachment_data[i].attachment_mime_type);
+                if (p_output_attachment_data[i].attachment_mime_type && (search = strcasestr(p_output_attachment_data[i].attachment_mime_type, "PKCS7-MIME"))) {
+                        EM_DEBUG_LOG("Found the encrypt file");
+                        break;
+                }
+        }
 
-	if (!emcore_smime_set_decrypt_message(p_output_attachment_data->attachment_path, p_account_tbl->certificate_path, &decrypt_filepath, &err)) {
+        if (!search) {
+                EM_DEBUG_EXCEPTION("No have a decrypt file");
+                err = EMAIL_ERROR_INVALID_PARAM;
+                goto FINISH_OFF;
+        }
+
+	if (!emcore_smime_set_decrypt_message(p_output_attachment_data[i].attachment_path, p_account_tbl->certificate_path, &decrypt_filepath, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_smime_set_decrypt_message failed");
 		goto FINISH_OFF;
 	}
@@ -215,6 +245,17 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 		EM_DEBUG_EXCEPTION("emcore_parse_mime_file_to_mail failed : [%d]", err);
 		goto FINISH_OFF;
 	}
+
+	(*output_mail_data)->subject                 = EM_SAFE_STRDUP(p_output_mail_data->subject);
+	(*output_mail_data)->date_time               = p_output_mail_data->date_time;
+	(*output_mail_data)->full_address_return     = EM_SAFE_STRDUP(p_output_mail_data->full_address_return);
+	(*output_mail_data)->email_address_recipient = EM_SAFE_STRDUP(p_output_mail_data->email_address_recipient);
+	(*output_mail_data)->email_address_sender    = EM_SAFE_STRDUP(p_output_mail_data->email_address_sender);
+	(*output_mail_data)->full_address_reply      = EM_SAFE_STRDUP(p_output_mail_data->full_address_reply);
+	(*output_mail_data)->full_address_from       = EM_SAFE_STRDUP(p_output_mail_data->full_address_from);
+	(*output_mail_data)->full_address_to         = EM_SAFE_STRDUP(p_output_mail_data->full_address_to);
+	(*output_mail_data)->full_address_cc         = EM_SAFE_STRDUP(p_output_mail_data->full_address_cc);
+	(*output_mail_data)->full_address_bcc        = EM_SAFE_STRDUP(p_output_mail_data->full_address_bcc);
 
 FINISH_OFF:
 
@@ -227,13 +268,13 @@ FINISH_OFF:
 	if (p_output_attachment_data)
 		email_free_attachment_data(&p_output_attachment_data, p_output_attachment_count);
 
-	EM_DEBUG_FUNC_END("ERROR CODE [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_verify_signature(int mail_id, int *verify)
 {
-	EM_DEBUG_FUNC_BEGIN("mail_id : [%d]", mail_id);
+	EM_DEBUG_API_BEGIN ("mail_id[%d]", mail_id);
 	int result_from_ipc = 0;
 	int err = EMAIL_ERROR_NONE;
 	int p_verify = 0;
@@ -274,13 +315,38 @@ FINISH_OFF:
 	if (verify != NULL)
 		*verify = p_verify;
 
-	EM_DEBUG_FUNC_END("ERROR CODE [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
+	return err;
+}
+
+EXPORT_API int email_verify_signature_ex(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data, int input_attachment_count, int *verify)
+{
+	EM_DEBUG_API_BEGIN ();
+
+	if (!input_mail_data || !input_attachment_data || input_attachment_count <= 0) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		return EMAIL_ERROR_INVALID_PARAM;
+	}
+
+	int count = 0;
+	int err = EMAIL_ERROR_NONE;
+
+	for (count = 0; count < input_attachment_count ; count++) {
+		if (input_attachment_data[count].attachment_mime_type && strcasestr(input_attachment_data[count].attachment_mime_type, "SIGNATURE"))
+			break;
+	}
+
+	if (!emcore_verify_signature(input_attachment_data[count].attachment_path, input_mail_data->file_path_mime_entity, verify, &err)) 
+		EM_DEBUG_EXCEPTION("emcore_verify_signature failed");
+
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_verify_certificate(char *certificate_path, int *verify)
 {
-	EM_DEBUG_FUNC_BEGIN("certificate : [%s]", certificate_path);
+	EM_DEBUG_API_BEGIN ();
+	EM_DEBUG_FUNC_BEGIN_SEC("certificate_path[%s]", certificate_path);
 	int err = EMAIL_ERROR_NONE;
 	int result_from_ipc = 0;
 	int p_verify = 0;
@@ -298,7 +364,7 @@ EXPORT_API int email_verify_certificate(char *certificate_path, int *verify)
 	}
 
 	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, certificate_path, EM_SAFE_STRLEN(certificate_path)+1)) {
-		EM_DEBUG_EXCEPTION("emipc_add_paramter failed : [%s]", certificate_path);
+		EM_DEBUG_EXCEPTION_SEC("emipc_add_paramter failed : [%s]", certificate_path);
 		err = EMAIL_ERROR_NULL_VALUE;
 		goto FINISH_OFF;
 	}
@@ -324,14 +390,14 @@ FINISH_OFF:
 	if (verify != NULL)
 		*verify = p_verify;
 
-	EM_DEBUG_FUNC_END("ERROR CODE [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 /*
 EXPORT_API int email_check_ocsp_status(char *email_address, char *response_url, unsigned *handle)
 {
-	EM_DEBUG_FUNC_BEGIN("email_address : [%s], response_url : [%s], handle : [%p]", email_address, response_url, handle);
+	EM_DEBUG_FUNC_BEGIN_SEC("email_address : [%s], response_url : [%s], handle : [%p]", email_address, response_url, handle);
 
 	EM_IF_NULL_RETURN_VALUE(email_address, EMAIL_ERROR_INVALID_PARAM);
 
@@ -366,7 +432,8 @@ EXPORT_API int email_check_ocsp_status(char *email_address, char *response_url, 
 */
 EXPORT_API int email_validate_certificate(int account_id, char *email_address, unsigned *handle)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id : [%d], email_address : [%s], handle : [%p]", account_id, email_address, handle);
+	EM_DEBUG_API_BEGIN ("account_id[%d]", account_id);
+	EM_DEBUG_FUNC_BEGIN_SEC("account_id[%d] email_address[%s] handle[%p]", account_id, email_address, handle);
 	
 	EM_IF_NULL_RETURN_VALUE(account_id, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(email_address, EMAIL_ERROR_INVALID_PARAM);
@@ -411,13 +478,14 @@ EXPORT_API int email_validate_certificate(int account_id, char *email_address, u
 
 FINISH_OFF:
 
-	EM_DEBUG_FUNC_END("err [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_get_resolve_recipients(int account_id, char *email_address, unsigned *handle)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id : [%d], email_address : [%s], handle : [%p]", account_id, email_address, handle);
+	EM_DEBUG_API_BEGIN ("account_id[%d]", account_id);
+	EM_DEBUG_FUNC_BEGIN_SEC("account_id[%d] email_address[%s] handle[%p]", account_id, email_address, handle);
 	
 	EM_IF_NULL_RETURN_VALUE(account_id, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(email_address, EMAIL_ERROR_INVALID_PARAM);
@@ -462,15 +530,15 @@ EXPORT_API int email_get_resolve_recipients(int account_id, char *email_address,
 
 FINISH_OFF:
 
-	EM_DEBUG_FUNC_END("err [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_free_certificate(email_certificate_t **certificate, int count)
 {
-	EM_DEBUG_FUNC_BEGIN("certificate[%p], count[%d]", certificate, count);
+	EM_DEBUG_API_BEGIN ("certificate[%p] count[%d]", certificate, count);
 	int err = EMAIL_ERROR_NONE;
 	emcore_free_certificate(certificate, count, &err);
-	EM_DEBUG_FUNC_END("err [%d]", err);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }

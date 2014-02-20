@@ -11,6 +11,9 @@ MESSAGE("")
 MESSAGE(">>> current directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 MESSAGE(">>> Build type: ${CMAKE_BUILD_TYPE}")
 
+ADD_DEFINITIONS("-DSSL_CERT_DIRECTORY=\"/opt/etc/ssl/certs\"")
+ADD_DEFINITIONS("-DSSL_KEY_DIRECTORY=\"/opt/etc/ssl/certs\"")
+
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${VISIBILITY} -fvisibility=hidden")
 
 ##########################################################
@@ -19,6 +22,7 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${VISIBILITY} -fvisibility=hidden")
 
 SET(MAIN-SRCS 
 	${CMAKE_SOURCE_DIR}/email-daemon/main.c
+	${CMAKE_SOURCE_DIR}/email-daemon/email-daemon-event.c
 	${CMAKE_SOURCE_DIR}/email-daemon/email-daemon-init.c
 	${CMAKE_SOURCE_DIR}/email-daemon/email-daemon-account.c
 	${CMAKE_SOURCE_DIR}/email-daemon/email-daemon-mail.c
@@ -31,15 +35,21 @@ SET(MAIN-SRCS
 INCLUDE_DIRECTORIES(
 	${CMAKE_SOURCE_DIR}/email-common-use/include
 	${CMAKE_SOURCE_DIR}/email-ipc/include
+	${CMAKE_SOURCE_DIR}/email-ipc/email-ipc-api/include
+	${CMAKE_SOURCE_DIR}/email-ipc/email-activation/include
 	${CMAKE_SOURCE_DIR}/email-api/include
 	${CMAKE_SOURCE_DIR}/email-core/include
 	${CMAKE_SOURCE_DIR}/email-core/email-storage/include
+	${CMAKE_SOURCE_DIR}/email-core/email-network/include
+	${CMAKE_SOURCE_DIR}/email-core/email-device/include
 	${CMAKE_SOURCE_DIR}/email-daemon/include
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(main_pkgs REQUIRED glib-2.0 dlog dbus-1 gthread-2.0  db-util openssl uw-imap-toolkit vconf contacts-service2 alarm-service mm-player drm-client feedback msg-service libwbxml2)
-
+pkg_check_modules(main_pkgs REQUIRED glib-2.0 dlog dbus-1 gthread-2.0 db-util 
+				openssl uw-imap-toolkit vconf vconf-internal-keys contacts-service2 
+				alarm-service mm-player drm-client feedback msg-service 
+				libwbxml2 libsmack notification)
 
 FOREACH(flag ${main_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
@@ -49,6 +59,6 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
 SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
 
 ADD_EXECUTABLE(${PROJECT_NAME} ${MAIN-SRCS})
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${main_pkgs_LDFLAGS} dl ssl email-core email-storage email-network email-ipc email-common-use)
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${main_pkgs_LDFLAGS} dl ssl email-core email-core-sound email-storage email-network email-ipc email-common-use email-device email-smime)
 INSTALL(TARGETS ${PROJECT_NAME} DESTINATION bin)
 

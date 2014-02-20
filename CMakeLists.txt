@@ -57,7 +57,8 @@ CONFIGURE_FILE(email-service.pc.in email-service.pc @ONLY)
 INSTALL(FILES ${CMAKE_BINARY_DIR}/email-service.pc DESTINATION ${LIB_INSTALL_DIR}/pkgconfig)
 
 # LICENSE file
-INSTALL(FILES ${CMAKE_SOURCE_DIR}/LICENSE.BSD DESTINATION /usr/share/license/email-service/LICENSE)
+INSTALL(FILES ${CMAKE_SOURCE_DIR}/LICENSE.BSD DESTINATION /usr/share/license RENAME email-service)
+
 INSTALL(FILES ${CMAKE_SOURCE_DIR}/email-service.rule DESTINATION /opt/etc/smack/accesses.d/)
 
 INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/res/ DESTINATION /opt/usr/data/email/res/image FILES_MATCHING PATTERN "*.png")

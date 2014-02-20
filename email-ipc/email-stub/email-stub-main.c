@@ -27,6 +27,7 @@
 #include "email-ipc-build.h"
 #include "email-dbus-activation.h"
 #include "email-stub-socket.h"
+#include "email-stub-task-manager.h"
 
 #include "email-api.h"
 #include "email-debug-log.h"
@@ -94,7 +95,7 @@ EXPORT_API bool emipc_execute_api_stub_to_proxy(emipc_email_api_info *api_info)
 {
 	EM_DEBUG_FUNC_BEGIN("api_info [%p]", api_info);
 	EM_IF_NULL_RETURN_VALUE(api_info, false);
-	EM_DEBUG_LOG("APIID [%s], response Socket ID [%d], APPID [%d]",
+	EM_DEBUG_LOG_SEC ("Response: API_ID [%s], RES_ID [%d], APP_ID [%d]",\
 				EM_APIID_TO_STR(api_info->api_id), api_info->response_id, api_info->app_id);
 	
 	unsigned char *stream = NULL;

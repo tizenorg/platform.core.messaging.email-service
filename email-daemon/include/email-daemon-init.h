@@ -39,6 +39,14 @@ extern "C"
 
 #include "email-storage.h"
 
+INTERNAL_FUNC int emdaemon_core_init(int *err_code);
+
+#ifdef __FEATURE_BLOCKING_MODE__
+INTERNAL_FUNC bool emdaemon_init_blocking_mode_status();
+#endif
+
+INTERNAL_FUNC int emdaemon_init_alarm_data_list();
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

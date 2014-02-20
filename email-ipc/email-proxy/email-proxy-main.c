@@ -39,7 +39,7 @@ EXPORT_API int emipc_initialize_proxy_main()
 	int sock_fd = 0;
 
 	sock_fd = emipc_get_proxy_socket_id();
-	
+
 	if (sock_fd) {
 		EM_DEBUG_LOG("Socket already initialized");
 		return EMAIL_ERROR_IPC_ALREADY_INITIALIZED;
@@ -58,8 +58,8 @@ EXPORT_API int emipc_initialize_proxy_main()
 EXPORT_API int emipc_finalize_proxy_main()
 {
 	EM_DEBUG_FUNC_BEGIN();
-	if (!emipc_end_proxy_socket()) {
-		EM_DEBUG_EXCEPTION("emipc_finalize_proxy_main failed");
+	if (!emipc_end_all_proxy_sockets()) {
+		EM_DEBUG_EXCEPTION("emipc_end_all_proxy_sockets failed");
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
@@ -91,7 +91,7 @@ EXPORT_API bool emipc_execute_api_of_proxy_main(emipc_email_api_info *api_info)
 
 	sending_bytes = emipc_send_proxy_socket(in_stream, length);
 
-	EM_DEBUG_LOG("Proxy=>stub sending %d byte.", sending_bytes);
+	/*EM_DEBUG_LOG("Proxy=>stub sending %d byte.", sending_bytes);*/
 
 	if (sending_bytes > 0) {
 #ifdef IPCLIB_STREAM_TRACE_ON

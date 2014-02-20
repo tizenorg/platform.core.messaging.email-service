@@ -43,7 +43,7 @@ EXPORT_API void emipc_free_email_task(emipc_email_task *task)
 	}
 
 	emipc_free_api_info(task->api_info);
-	EM_SAFE_FREE(task);
+	EM_SAFE_FREE(task->api_info);
 }
 
 EXPORT_API bool emipc_parse_stream_email_task(emipc_email_task *task, void *stream, int response_id)
@@ -80,12 +80,12 @@ EXPORT_API int emipc_get_response_channel(emipc_email_task *task)
 
 EXPORT_API bool emipc_run_task(emipc_email_task *task)
 {
-	EM_DEBUG_LOG("[IPCLib] starting a new task...");
-
 	int api_id = task->api_info->api_id;
 	int app_id = task->api_info->app_id;
+	int res_id = task->api_info->response_id;
 
-	EM_DEBUG_LOG("[IPCLib] This task (%s) is for async. App id [%d], Response ID [%d]", EM_APIID_TO_STR(api_id), app_id, api_id);
+	EM_DEBUG_LOG_SEC("[IPCLib] Processing task: API_ID[%s][0x%x] RES_ID[%d] APP_ID[%d] ", EM_APIID_TO_STR(api_id),\
+												api_id, res_id, app_id);
 
 	if (!emipc_execute_api_proxy_to_stub(task->api_info)) {
 		EM_DEBUG_EXCEPTION("emipc_execute_api_proxy_to_stub failed");

@@ -25,14 +25,16 @@
 #include "email-ipc-param-list.h"
 #include "email-ipc-socket.h"
 #include "email-proxy-main.h"
+#include "email-proxy-socket.h"
 
 #include "email-debug-log.h"
 #include "email-api.h"
 #include "email-types.h"
 #include "email-internal-types.h"
 #include "email-dbus-activation.h"
+#include "email-storage.h"
 
-EXPORT_API int emipc_initialize_proxy()
+EXPORT_API int emipc_initialize_proxy ()
 {
 	EM_DEBUG_FUNC_BEGIN();
 
@@ -61,14 +63,14 @@ EXPORT_API int emipc_execute_proxy_api(HIPC_API api)
 	int err = EMAIL_ERROR_NONE;
 	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
 
-	EM_DEBUG_LOG("API [%p]", api_info);
+	EM_DEBUG_LOG_DEV ("API [%p]", api_info);
 
 	if(api_info == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
-	EM_DEBUG_LOG("APIID [%s], ResponseID [%d], APPID[%d]",
+	EM_DEBUG_LOG_SEC("Request: API_ID[%s] RES_ID[%d] APP_ID[%d]",\
 				EM_APIID_TO_STR(api_info->api_id), api_info->response_id, api_info->app_id);
 
 	ret = emipc_execute_api_of_proxy_main(api_info);
@@ -87,7 +89,7 @@ EXPORT_API int emipc_execute_proxy_api(HIPC_API api)
 
 		ret = emipc_execute_api_of_proxy_main(api_info);
 		if (!ret) {
-			EM_DEBUG_EXCEPTION("emipc_proxy_main : emipc_execute_api failed [%d]", err);
+			EM_DEBUG_EXCEPTION("emipc_execute_api_of_proxy_main failed [%d]", err);
 			err = EMAIL_ERROR_CONNECTION_FAILURE;
 			goto FINISH_OFF;
 		}

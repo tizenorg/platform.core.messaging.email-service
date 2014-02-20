@@ -9,6 +9,7 @@ CREATE TABLE mail_account_tbl
 	sync_status                              INTEGER,
 	sync_disabled                            INTEGER,
 	default_mail_slot_size                   INTEGER,
+	roaming_option                           INTEGER,
 	user_display_name                        VARCHAR(31),
 	user_email_address                       VARCHAR(129),
 	reply_to_address                         VARCHAR(129),
@@ -19,10 +20,15 @@ CREATE TABLE mail_account_tbl
 	incoming_server_user_name                VARCHAR(51),
 	incoming_server_password                 VARCHAR(51),
 	incoming_server_secure_connection        INTEGER,
+	incoming_server_authentication_method    INTEGER,
 	retrieval_mode                           INTEGER,
 	keep_mails_on_pop_server_after_download  INTEGER,
 	check_interval                           INTEGER,
 	auto_download_size                       INTEGER,
+	peak_interval                            INTEGER,
+	peak_days                                INTEGER,
+	peak_start_time                          INTEGER,
+	peak_end_time                            INTEGER,
 	outgoing_server_type                     INTEGER,
 	outgoing_server_address                  VARCHAR(51),
 	outgoing_server_port_number              INTEGER,
@@ -45,6 +51,8 @@ CREATE TABLE mail_account_tbl
 	add_signature                            INTEGER,
 	signature                                VARCHAR(256),
 	add_my_address_to_bcc                    INTEGER,
+	auto_resend_times                        INTEGER,
+	outgoing_server_size_limit               INTEGER,
 	pop_before_smtp                          INTEGER,
 	incoming_server_requires_apop            INTEGER,
 	smime_type                               INTEGER,
@@ -66,26 +74,31 @@ CREATE TABLE mail_box_tbl
 	has_archived_mails               INTEGER,    
 	mail_slot_size                   INTEGER,
 	no_select                        INTEGER,
-	last_sync_time                   DATETIME
+	last_sync_time                   DATETIME,
+	eas_data_length                  INTEGER,
+	eas_data                         BLOB
 );
 CREATE TABLE mail_read_mail_uid_tbl          
 (    
 	account_id                       INTEGER ,
 	mailbox_id                       INTEGER ,
-	local_uid                        INTEGER ,
 	mailbox_name                     VARCHAR(256) ,
-	s_uid                            VARCHAR(129) ,
-	data1                            INTEGER ,
-	data2                            VARCHAR(257) ,
-	flag                             INTEGER ,
+	local_uid                        INTEGER ,
+	server_uid                       VARCHAR(129) ,
+	rfc822_size                      INTEGER ,
+	sync_status                      INTEGER ,
+	flags_seen_field                 INTEGER ,
+	flags_flagged_field              INTEGER ,
 	idx_num                          INTEGER PRIMARY KEY
 );
 CREATE TABLE mail_rule_tbl          
 (    
 	account_id                       INTEGER ,
 	rule_id                          INTEGER PRIMARY KEY,
+	filter_name                      VARCHAR(257)  ,
 	type                             INTEGER ,
 	value                            VARCHAR(257)  ,
+	value2                           VARCHAR(257)  ,
 	action_type                      INTEGER ,
 	target_mailbox_id                INTEGER ,
 	flag1                            INTEGER ,
@@ -141,6 +154,10 @@ CREATE TABLE mail_tbl
 	digest_type                      INTEGER,
 	smime_type                       INTEGER,
 	scheduled_sending_time           DATETIME,
+	remaining_resend_times           INTEGER,
+	tag_id                           INTEGER,
+	replied_time                     DATETIME,
+	forwarded_time                   DATETIME,
 	eas_data_length                  INTEGER,
 	eas_data                         BLOB,
 	FOREIGN KEY(account_id)          REFERENCES mail_account_tbl(account_id)
@@ -232,10 +249,18 @@ CREATE VIRTUAL TABLE mail_text_tbl USING fts4
 );
 CREATE UNIQUE INDEX mail_account_idx1 ON mail_account_tbl (account_id);
 CREATE UNIQUE INDEX mail_box_idx1 ON mail_box_tbl (mailbox_id);
-CREATE UNIQUE INDEX mail_read_mail_uid_idx1 ON mail_read_mail_uid_tbl (account_id, mailbox_id, local_uid, mailbox_name, s_uid);
+CREATE UNIQUE INDEX mail_read_mail_uid_idx1 ON mail_read_mail_uid_tbl (account_id, mailbox_id, local_uid, mailbox_name, server_uid);
 CREATE UNIQUE INDEX mail_idx1 ON mail_tbl (mail_id, account_id);
 CREATE UNIQUE INDEX mail_attachment_idx1 ON mail_attachment_tbl (mail_id, attachment_id);
 CREATE UNIQUE INDEX mail_meeting_idx1 ON mail_meeting_tbl (mail_id);
 CREATE UNIQUE INDEX task_idx1 ON mail_task_tbl (task_id);
 CREATE INDEX mail_idx_date_time ON mail_tbl (date_time);
 CREATE INDEX mail_idx_thread_item_count ON mail_tbl (thread_item_count);
+CREATE TRIGGER update_flags_seen_field UPDATE OF flags_seen_field ON mail_tbl 
+  BEGIN
+    UPDATE mail_read_mail_uid_tbl SET flags_seen_field = new.flags_seen_field WHERE local_uid = old.mail_id;
+  END;
+CREATE TRIGGER update_flags_flagged_field UPDATE OF flags_flagged_field ON mail_tbl 
+  BEGIN
+    UPDATE mail_read_mail_uid_tbl SET flags_flagged_field = new.flags_flagged_field WHERE local_uid = old.mail_id;
+  END;

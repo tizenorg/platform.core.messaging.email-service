@@ -27,12 +27,27 @@
 #include "email-types.h"
 #include "email-debug-log.h"
 #include "email-dbus-activation.h"
+#include "email-daemon-init.h"
 #include "email-service-binding.h"
 #include "email-service-glue.h"
 #include <unistd.h>
 
 
 G_DEFINE_TYPE(EmailService, email_service, G_TYPE_OBJECT)
+
+int _launch_method = EMAIL_LAUNCHED_BY_UNKNOWN_METHOD;
+
+EXPORT_API void emipc_set_launch_method(int input_launch_method)
+{
+	EM_DEBUG_LOG("input_launch_method [%d]", input_launch_method);
+	_launch_method = input_launch_method;
+}
+
+EXPORT_API int emipc_get_launch_method()
+{
+	EM_DEBUG_LOG("_launch_method[%d]", _launch_method);
+	return _launch_method;
+}
 
 static void email_service_init(EmailService *email_service)
 {
@@ -44,6 +59,15 @@ static void email_service_class_init(EmailServiceClass *email_service_class)
 	EM_DEBUG_LOG("email_service_class_init entered");
 
 	dbus_g_object_type_install_info(EMAIL_SERVICE_TYPE, &dbus_glib_email_service_object_info);
+}
+
+gboolean daemon_launched = false;
+
+gboolean callback_for_timeout (void *arg)
+{
+	if (!daemon_launched)
+		EM_DEBUG_EXCEPTION ("org_tizen_email_service_launch is not responding");
+	return FALSE;
 }
 
 EXPORT_API int emipc_launch_email_service()
