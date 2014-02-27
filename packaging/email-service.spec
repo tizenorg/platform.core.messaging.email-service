@@ -7,7 +7,7 @@ License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1:    email.service
 Requires: connman
-Requires: webkit2-efl
+Suggests: webkit2-efl
 Requires(post):    /sbin/ldconfig
 Requires(post):    systemd
 Requires(post):    /usr/bin/sqlite3
@@ -95,7 +95,7 @@ ln -sf ../email.service %{buildroot}/usr/lib/systemd/user/tizen-middleware.targe
 #################################################################
 # Add preset account information
 #################################################################
-echo "[EMAIL-SERVICE] Start adding preset account information..." 
+echo "[EMAIL-SERVICE] Start adding preset account information..."
 
 ################################################################################################
 
@@ -114,12 +114,21 @@ vconftool set -t int    db/private/email-service/default_account_id "0" -g 6514 
 # for default account id
 vconftool set -t int    memory/sync/email "0" -i -g 6514                        -s "email::vconf_sync_status"
 
+<<<<<<< HEAD
 # for priority send 
 vconftool set -t string db/private/email-service/noti_ringtone_path "/opt/usr/share/settings/Alerts/Over the horizon.mp3" -g 6514 -s "email::vconf_ringtone_path"
 vconftool set -t int    db/private/email-service/noti_rep_type "0" -g 6514                -s "email::vconf_rep_type"
 vconftool set -t bool   db/private/email-service/noti_notification_ticker "0" -g 6514     -s "email::vconf_notification"
 vconftool set -t bool   db/private/email-service/noti_display_content_ticker "0" -g 6514  -s "email::vconf_display_content"
 vconftool set -t bool   db/private/email-service/noti_badge_ticker "0" -i -g 6514         -s "email::vconf_bagdge"
+=======
+# for priority send
+vconftool set -t string db/private/email-service/noti_ringtone_path "Whistle.mp3" -g 6514
+vconftool set -t int    db/private/email-service/noti_rep_type "0" -g 6514
+vconftool set -t bool   db/private/email-service/noti_notification_ticker "0" -g 6514
+vconftool set -t bool   db/private/email-service/noti_display_content_ticker "0" -g 6514
+vconftool set -t bool   db/private/email-service/noti_badge_ticker "0" -i -g 6514
+>>>>>>> 61cf8bf... Allow install of email-service without webkit2.
 vconftool set -t int    db/private/email-service/noti_private_id/1 "0" -i -g 6514
 vconftool set -t int    db/private/email-service/noti_private_id/2 "0" -i -g 6514
 vconftool set -t int    db/private/email-service/noti_private_id/3 "0" -i -g 6514
@@ -157,7 +166,7 @@ echo 'fi' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
 chmod 755 ${EMAIL_SERVICE_EXEC_SCRIPT}
 rm -rf ${EMAIL_SERVICE_BOOT_SCRIPT}
 rm -rf ${EMAIL_SERVICE_FASTBOOT_SCRIPT}
-ln -s ${EMAIL_SERVICE_EXEC_SCRIPT} ${EMAIL_SERVICE_BOOT_SCRIPT} 
+ln -s ${EMAIL_SERVICE_EXEC_SCRIPT} ${EMAIL_SERVICE_BOOT_SCRIPT}
 ln -s ${EMAIL_SERVICE_EXEC_SCRIPT} ${EMAIL_SERVICE_FASTBOOT_SCRIPT}
 echo "[EMAIL-SERVICE] Finish executing script ..."
 
