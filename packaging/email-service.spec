@@ -118,21 +118,12 @@ vconftool set -t int    db/private/email-service/default_account_id "0" -g 6514 
 # for default account id
 vconftool set -t int    memory/sync/email "0" -i -g 6514                        -s "email::vconf_sync_status"
 
-<<<<<<< HEAD
-# for priority send 
+# for priority send
 vconftool set -t string db/private/email-service/noti_ringtone_path "/opt/usr/share/settings/Alerts/Over the horizon.mp3" -g 6514 -s "email::vconf_ringtone_path"
 vconftool set -t int    db/private/email-service/noti_rep_type "0" -g 6514                -s "email::vconf_rep_type"
 vconftool set -t bool   db/private/email-service/noti_notification_ticker "0" -g 6514     -s "email::vconf_notification"
 vconftool set -t bool   db/private/email-service/noti_display_content_ticker "0" -g 6514  -s "email::vconf_display_content"
 vconftool set -t bool   db/private/email-service/noti_badge_ticker "0" -i -g 6514         -s "email::vconf_bagdge"
-=======
-# for priority send
-vconftool set -t string db/private/email-service/noti_ringtone_path "Whistle.mp3" -g 6514
-vconftool set -t int    db/private/email-service/noti_rep_type "0" -g 6514
-vconftool set -t bool   db/private/email-service/noti_notification_ticker "0" -g 6514
-vconftool set -t bool   db/private/email-service/noti_display_content_ticker "0" -g 6514
-vconftool set -t bool   db/private/email-service/noti_badge_ticker "0" -i -g 6514
->>>>>>> 61cf8bf... Allow install of email-service without webkit2.
 vconftool set -t int    db/private/email-service/noti_private_id/1 "0" -i -g 6514
 vconftool set -t int    db/private/email-service/noti_private_id/2 "0" -i -g 6514
 vconftool set -t int    db/private/email-service/noti_private_id/3 "0" -i -g 6514
