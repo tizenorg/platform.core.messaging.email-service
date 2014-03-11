@@ -45,9 +45,9 @@ ADD_SUBDIRECTORY(email-daemon)
 ##########################################################
 # Define Test App
 ##########################################################
-
-ADD_SUBDIRECTORY(utilities)
-
+IF (TEST_APP_SUPPORT)
+	ADD_SUBDIRECTORY(utilities)
+ENDIF (TEST_APP_SUPPORT)
 ##########################################################
 # Define Install Files
 ##########################################################

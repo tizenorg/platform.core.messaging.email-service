@@ -1,3 +1,4 @@
+%global test_email_app_enabled 0
 Name:       email-service
 Summary:    E-mail Framework Middleware package
 Version:    0.10.101
@@ -76,7 +77,10 @@ export CFLAGS="${CFLAGS} -fPIC -Wall -g -fvisibility=hidden"
 export CXXFLAGS="${CXXFLAGS} -fPIC -Wall -g -fvisibility=hidden"
 export LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--rpath=%{_libdir} -Wl,--as-needed"
 
-%cmake .
+%cmake .  \
+%if %{test_email_app_enabled}
+        -DTEST_APP_SUPPORT=On
+%endif
 
 make %{?_smp_mflags}
 
@@ -219,18 +223,24 @@ systemctl daemon-reload
 
 %files
 %manifest email-service.manifest
-%exclude /usr/bin/email-test-app
+%if %{test_email_app_enabled}
+/usr/bin/email-test-app
+%endif
 %{_bindir}/email-service
 /opt/usr/data/email/res/*
 %{_libdir}/lib*.so.*
-/usr/lib/systemd/user/email.service
-/usr/lib/systemd/user/tizen-middleware.target.wants/email.service
-/usr/share/dbus-1/services/email-service.service
-/usr/share/license/email-service
+%{_libdir}/libemail-core-sound.so
+%{_libdir}/libemail-core-sound.so.*
+%{_unitdir_user}/email.service
+%{_unitdir_user}/tizen-middleware.target.wants/email.service
+%{_datarootdir}/dbus-1/services/email-service.service
+%{_datarootdir}/license/email-service
 
 /opt/etc/smack/accesses.d/email-service.rule
 
 %files devel
 %{_includedir}/email-service/*.h
 %{_libdir}/lib*.so
+%{_libdir}/libemail-core-sound.so
+%{_libdir}/libemail-core-sound.so.*
 %{_libdir}/pkgconfig/*.pc
