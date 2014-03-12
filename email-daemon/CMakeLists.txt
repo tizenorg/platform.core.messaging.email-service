@@ -11,8 +11,8 @@ MESSAGE("")
 MESSAGE(">>> current directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 MESSAGE(">>> Build type: ${CMAKE_BUILD_TYPE}")
 
-ADD_DEFINITIONS("-DSSL_CERT_DIRECTORY=\"/opt/etc/ssl/certs\"")
-ADD_DEFINITIONS("-DSSL_KEY_DIRECTORY=\"/opt/etc/ssl/certs\"")
+ADD_DEFINITIONS("-DSSL_CERT_DIRECTORY=\"${TZ_SYS_ETC}/ssl/certs\"")
+ADD_DEFINITIONS("-DSSL_KEY_DIRECTORY=\"${TZ_SYS_ETC}/ssl/certs\"")
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${VISIBILITY} -fvisibility=hidden")
 
