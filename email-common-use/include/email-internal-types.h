@@ -32,6 +32,7 @@
 #ifndef __EMAIL_INTERNAL_TYPES_H__
 #define __EMAIL_INTERNAL_TYPES_H__
 
+#include <tzplatform_config.h>
 #include "email-types.h"
 
 #ifdef __cplusplus
@@ -119,13 +120,13 @@ extern "C"
 #define DIR_SEPERATOR                       "/"
 
 #define USERDATA_PATH                       "/opt/usr"
-#define DATA_PATH                           "/opt/usr/data"
-#define DB_PATH                             "/opt/usr/dbspace"
-#define EMAIL_SERVICE_DB_FILE_PATH          "/opt/usr/dbspace/.email-service.db"
+#define DATA_PATH                           tzplatform_getenv(TZ_USER_DATA)
+#define DB_PATH                             tzplatform_getenv(TZ_USER_DB)
+#define EMAIL_SERVICE_DB_FILE_PATH          tzplatform_mkpath(TZ_USER_DB, ".email-service.db")
 
-#define EMAILPATH 					        DATA_PATH"/email"
-#define MAILHOME 					        DATA_PATH"/email/.email_data"
-#define MAILTEMP                            MAILHOME"/tmp"
+#define EMAILPATH 					        tzplatform_mkpath(TZ_USER_DATA, "email")
+#define MAILHOME 					        tzplatform_mkpath(TZ_USER_DATA, "email/.email_data")
+#define MAILTEMP                            tzplatform_mkpath(TZ_USER_DATA, "email/.email_data/tmp")
 #define DIRECTORY_PERMISSION                0755
 
 #define MIME_SUBTYPE_DRM_OBJECT             "vnd.oma.drm.message"

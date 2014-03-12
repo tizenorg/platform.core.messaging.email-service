@@ -31,6 +31,7 @@
  *****************************************************************************/
 #ifndef __EMAIL_STORAGE_H__
 #define __EMAIL_STORAGE_H__
+#include <tzplatform_config.h>
 
 #ifdef __cplusplus
 extern "C"
@@ -44,7 +45,7 @@ extern "C"
 #include "email-internal-types.h"
 
 #define FIRST_ACCOUNT_ID    1
-#define EMAIL_SERVICE_CREATE_TABLE_QUERY_FILE_PATH "/opt/usr/data/email/res/email-service.sql"
+#define EMAIL_SERVICE_CREATE_TABLE_QUERY_FILE_PATH tzplatform_mkpath(TZ_USER_DATA,"email/res/email-service.sql")
 
 
 #ifdef __FEATURE_BULK_DELETE_MOVE_UPDATE_REQUEST_OPTI__

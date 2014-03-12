@@ -29,7 +29,7 @@
  * History:
  *	2006.08.16 : created
  *****************************************************************************/
-
+#include <tzplatform_config.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -89,7 +89,7 @@
 #define EMAIL_CH_SQUARE_BRACKET_S '['
 #define EMAIL_CH_SQUARE_BRACKET_E ']'
 #define EMAIL_CH_SPACE            ' '
-#define EMAIL_NOTI_ICON_PATH      EMAILPATH"/res/image/Q02_Notification_email.png"
+#define EMAIL_NOTI_ICON_PATH      tzplatform_mkpath(TZ_USER_DATA, "email/res/image/Q02_Notification_email.png")
 
 typedef struct  _em_transaction_info_type_t {
 	int mail_id;

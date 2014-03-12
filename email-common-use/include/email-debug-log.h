@@ -37,7 +37,7 @@
 extern "C"
 {
 #endif
-
+#include <tzplatform_config.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -99,7 +99,7 @@ extern "C"
 #define	EM_DEBUG_LINE                       EM_DEBUG_LOG("FUNC[%s : %d]", __FUNCTION__, __LINE__)
 #define EM_DEBUG_DB_EXEC(eval, expr, X)     if (eval) { EM_DEBUG_LOG X; expr;} else {;}
 
-#define EM_DEBUG_ERROR_FILE_PATH            "/opt/usr/data/email/.email_data/.critical_error.log"
+#define EM_DEBUG_ERROR_FILE_PATH            tzplatform_mkpath(TZ_USER_DATA, "email/.email_data/.critical_error.log")
 #define EM_DEBUG_CRITICAL_EXCEPTION(format, arg...)   \
 			{\
 				FILE *fp_error = NULL;\
@@ -115,7 +115,7 @@ extern "C"
 					fclose(fp_error);\
 				}\
 			}
-#define EM_DEBUG_ALARM_LOG_FILE_PATH         "/opt/usr/data/email/.email_data/.alarm.log"
+#define EM_DEBUG_ALARM_LOG_FILE_PATH         tzplatform_mkpath(TZ_USER_DATA, "email/.email_data/.alarm.log")
 #define EM_DEBUG_ALARM_LOG(format, arg...)   \
 			{\
 				FILE *fp_error = NULL;\

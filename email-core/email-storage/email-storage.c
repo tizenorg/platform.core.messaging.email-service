@@ -48,6 +48,7 @@
 #include <ss_manager.h>
 #include <fcntl.h>
 #include <db-util.h>
+#include <tzplatform_config.h>
 
 #define __USE_UNIX98
 #define __USE_GNU
@@ -1556,7 +1557,43 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END();
 	return ret;
 }
+int _xsystem(const char *argv[])
+{
+       int status = 0;
+       pid_t pid;
+       pid = fork();
+       switch (pid) {
+       case -1:
+               perror("fork failed");
+               return -1;
+       case 0:
+               /* child */
+               execvp(argv[0], (char *const *)argv);
+               _exit(-1);
+       default:
+               /* parent */
+               break;
+       }
+       if (waitpid(pid, &status, 0) == -1)
+       {
+               perror("waitpid failed");
+               return -1;
+       }
+       if (WIFSIGNALED(status))
+       {
+               perror("signal");
+               return -1;
+       }
+       if (!WIFEXITED(status))
+       {
+               /* shouldn't happen */
+               perror("should not happen");
+               return -1;
+       }
+       return WEXITSTATUS(status);
+}
 
+#define SCRIPT_INIT_DB "/usr/bin/email-service_init_db.sh"
 
 INTERNAL_FUNC int em_db_open(sqlite3 **sqlite_handle, int *err_code)
 {
@@ -1573,7 +1610,14 @@ INTERNAL_FUNC int em_db_open(sqlite3 **sqlite_handle, int *err_code)
 			*err_code = error;
 		return true;
 	}
-
+       /*Generate db file*/
+       struct stat sts;
+       ret = stat(EMAIL_SERVICE_DB_FILE_PATH , &sts);
+       if (ret == -1 && errno == ENOENT)
+       {
+               const char *argv_script[] = {"/bin/sh", SCRIPT_INIT_DB, NULL };
+               ret = _xsystem(argv_script);
+       }
 	/*  db open */
 	EMSTORAGE_PROTECTED_FUNC_CALL(db_util_open(EMAIL_SERVICE_DB_FILE_PATH, sqlite_handle, DB_UTIL_REGISTER_HOOK_METHOD), rc);
 	if (SQLITE_OK != rc) {
@@ -11795,7 +11839,7 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
 	return ret;
 }
-
+#define MAILHOME_UTF8    tzplatform_mkpath(TZ_USER_DATA,"email/.email_data/7/348/UTF-8")
 
 INTERNAL_FUNC int emstorage_test(int mail_id, int account_id, char *full_address_to, char *full_address_cc, char *full_address_bcc, int *err_code)
 {
@@ -11892,7 +11936,7 @@ INTERNAL_FUNC int emstorage_test(int mail_id, int account_id, char *full_address
 	_bind_stmt_field_data_string(hStmt, ALIAS_SENDER_IDX_IN_MAIL_TBL, "send_alias", 1, FROM_EMAIL_ADDRESS_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, ALIAS_RECIPIENT_IDX_IN_MAIL_TBL, "recipient_alias", 1, TO_EMAIL_ADDRESS_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_int(hStmt, BODY_DOWNLOAD_STATUS_IDX_IN_MAIL_TBL, 1);
-	_bind_stmt_field_data_string(hStmt, FILE_PATH_PLAIN_IDX_IN_MAIL_TBL, MAILHOME"/7/348/UTF-8", 0, TEXT_1_LEN_IN_MAIL_TBL);
+	_bind_stmt_field_data_string(hStmt, FILE_PATH_PLAIN_IDX_IN_MAIL_TBL, MAILHOME_UTF8, 0, TEXT_1_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, FILE_PATH_HTML_IDX_IN_MAIL_TBL, "", 0, TEXT_2_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_int(hStmt, MAIL_SIZE_IDX_IN_MAIL_TBL, 4);
 	_bind_stmt_field_data_char(hStmt, FLAGS_SEEN_FIELD_IDX_IN_MAIL_TBL, 0);
