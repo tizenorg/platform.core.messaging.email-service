@@ -72,7 +72,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(storage_pkgs REQUIRED drm-client glib-2.0 dlog db-util openssl vconf secure-storage dbus-1 contacts-service2)
+pkg_check_modules(storage_pkgs REQUIRED drm-client glib-2.0 dlog db-util openssl vconf secure-storage dbus-1 contacts-service2 libtzplatform-config)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${storage_pkgs_CFLAGS})
@@ -211,7 +211,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage openssl accounts-svc mm-player mm-session feedback alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge capi-appfw-application icu-i18n)
+pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage openssl accounts-svc mm-player mm-session feedback alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge capi-appfw-application icu-i18n libtzplatform-config)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${core_pkgs_CFLAGS})
@@ -232,8 +232,8 @@ ADD_DEFINITIONS("-DACTIVEFILE=\"/var/lib/news/active\"")
 ADD_DEFINITIONS("-DNEWSSPOOL=\"/var/spool/news\"")
 ADD_DEFINITIONS("-DRSHPATH=\"/usr/bin/rsh\"")
 ADD_DEFINITIONS("-DMD5ENABLE=\"/etc/cram-md5.pwd\"")
-ADD_DEFINITIONS("-DSSL_CERT_DIRECTORY=\"/opt/etc/ssl/certs\"")
-ADD_DEFINITIONS("-DSSL_KEY_DIRECTORY=\"/opt/etc/ssl/certs\"")
+ADD_DEFINITIONS("-DSSL_CERT_DIRECTORY=\"${TZ_SYS_ETC}/ssl/certs\"")
+ADD_DEFINITIONS("-DSSL_KEY_DIRECTORY=\"${TZ_SYS_ETC}/ssl/certs\"")
 ADD_DEFINITIONS("-DCHUNKSIZE=65536")
 ADD_DEFINITIONS("-DLOCKPGM=\"\"")
 ADD_DEFINITIONS("-DLOCKPGM1=\"/usr/libexec/mlock\"")

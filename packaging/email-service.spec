@@ -1,4 +1,5 @@
 %global test_email_app_enabled 0
+
 Name:       email-service
 Summary:    E-mail Framework Middleware package
 Version:    0.10.101
@@ -8,6 +9,7 @@ License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1:    email.service
 Source2:    email-service.manifest
+Source3:    email-service_init_db.sh
 Requires: connman
 Suggests: webkit2-efl
 Requires(post):    /sbin/ldconfig
@@ -55,6 +57,8 @@ BuildRequires:  pkgconfig(libsmack)
 BuildRequires:  pkgconfig(security-server)
 BuildRequires:  pkgconfig(deviced)
 BuildRequires:  pkgconfig(icu-i18n)
+BuildRequires:  pkgconfig(libtzplatform-config)
+Requires: libtzplatform-config
 
 %description
 E-mail Framework Middleware Library/Binary package
@@ -80,6 +84,9 @@ export CXXFLAGS="${CXXFLAGS} -fPIC -Wall -g -fvisibility=hidden"
 export LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--rpath=%{_libdir} -Wl,--as-needed"
 
 %cmake .  \
+-DTZ_SYS_SMACK=%TZ_SYS_SMACK \
+-DTZ_SYS_DATA=%TZ_SYS_DATA \
+-DTZ_SYS_ETC=%TZ_SYS_ETC \
 %if %{test_email_app_enabled}
         -DTEST_APP_SUPPORT=On
 %endif
@@ -88,6 +95,9 @@ make %{?_smp_mflags}
 
 %install
 mkdir -p %{buildroot}/usr/share/license
+if [ -d %{_datarootdir}/license/email-service]; then
+	rm -rf %{_datarootdir}/license/email-service
+fi
 %make_install
 
 mkdir -p %{buildroot}/usr/lib/systemd/user/tizen-middleware.target.wants
@@ -99,105 +109,21 @@ ln -sf ../email.service %{buildroot}/usr/lib/systemd/user/tizen-middleware.targe
 /sbin/ldconfig
 
 #################################################################
-# Add preset account information
-#################################################################
-echo "[EMAIL-SERVICE] Start adding preset account information..."
-
-################################################################################################
-
-# for active sync
-vconftool set -t int    db/email_handle/active_sync_handle "0"          -g 6514 -s "email::vconf_active_sync_handle"
-
-# for default mail slot szie
-vconftool set -t int    db/private/email-service/slot_size "100"        -g 6514 -s "email::vconf_slot_size"
-
-# for latest mail id
-vconftool set -t int    db/private/email-service/latest_mail_id "0"     -g 6514 -s "email::vconf_latest_mail_id"
-
-# for default account id
-vconftool set -t int    db/private/email-service/default_account_id "0" -g 6514 -s "email::vconf_default_account_id"
-
-# for default account id
-vconftool set -t int    memory/sync/email "0" -i -g 6514                        -s "email::vconf_sync_status"
-
-# for priority send
-vconftool set -t string db/private/email-service/noti_ringtone_path "/opt/usr/share/settings/Alerts/Over the horizon.mp3" -g 6514 -s "email::vconf_ringtone_path"
-vconftool set -t int    db/private/email-service/noti_rep_type "0" -g 6514                -s "email::vconf_rep_type"
-vconftool set -t bool   db/private/email-service/noti_notification_ticker "0" -g 6514     -s "email::vconf_notification"
-vconftool set -t bool   db/private/email-service/noti_display_content_ticker "0" -g 6514  -s "email::vconf_display_content"
-vconftool set -t bool   db/private/email-service/noti_badge_ticker "0" -i -g 6514         -s "email::vconf_bagdge"
-vconftool set -t int    db/private/email-service/noti_private_id/1 "0" -i -g 6514
-vconftool set -t int    db/private/email-service/noti_private_id/2 "0" -i -g 6514
-vconftool set -t int    db/private/email-service/noti_private_id/3 "0" -i -g 6514
-vconftool set -t int    db/private/email-service/noti_private_id/4 "0" -i -g 6514
-vconftool set -t int    db/private/email-service/noti_private_id/5 "0" -i -g 6514
-vconftool set -t int    db/private/email-service/noti_private_id/6 "0" -i -g 6514
-vconftool set -t int    db/private/email-service/noti_private_id/7 "0" -i -g 6514
-vconftool set -t int    db/private/email-service/noti_private_id/8 "0" -i -g 6514
-vconftool set -t int    db/private/email-service/noti_private_id/9 "0" -i -g 6514
-vconftool set -t int    db/private/email-service/noti_private_id/10 "0" -i -g 6514
-vconftool set -t bool   db/private/email-service/noti_vibration_status "0" -g 6514        -s "email::vconf_vibration"
-vconftool set -t bool   db/private/email-service/noti_vip_vibration_status "0" -g 6514    -s "email::vconf_vip_vibration"
-vconftool set -t bool   db/private/email-service/noti_use_default_ringtone "1" -g 6514    -s "email::vconf_use_default_ringtone"
-vconftool set -t bool   db/private/email-service/noti_vip_use_default_ringtone "1" -g 6514    -s "email::vconf_vip_use_default_ringtone"
-
-
-#################################################################
 # Set executin script
 #################################################################
 echo "[EMAIL-SERVICE] Set executing script ..."
+mkdir -p %{buildroot}/etc/rc.d/rc3.d/
+mkdir -p %{buildroot}/etc/rc.d/rc5.d/
 EMAIL_SERVICE_EXEC_SCRIPT=/etc/rc.d/init.d/email-service
 EMAIL_SERVICE_BOOT_SCRIPT=/etc/rc.d/rc3.d/S70email-service
 EMAIL_SERVICE_FASTBOOT_SCRIPT=/etc/rc.d/rc5.d/S70email-service
-echo '#!/bin/sh' > ${EMAIL_SERVICE_EXEC_SCRIPT}
-echo 'account_count=$(sqlite3 /opt/usr/dbspace/.email-service.db "select COUNT(*) from mail_account_tbl")' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
-echo 'if [ "$(echo "$account_count" | cut -c0-1)" == "0" ]' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
-echo 'then' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
-echo '	echo 'There is no account'' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
-echo 'elif [ "$(echo "$account_count" | cut -c0-1)" == "" ]' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
-echo 'then' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
-echo '	echo 'DB failure'' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
-echo 'else' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
-echo '	/usr/bin/email-service & ' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
-echo 'fi' >> ${EMAIL_SERVICE_EXEC_SCRIPT}
+
 chmod 755 ${EMAIL_SERVICE_EXEC_SCRIPT}
 rm -rf ${EMAIL_SERVICE_BOOT_SCRIPT}
 rm -rf ${EMAIL_SERVICE_FASTBOOT_SCRIPT}
 ln -s ${EMAIL_SERVICE_EXEC_SCRIPT} ${EMAIL_SERVICE_BOOT_SCRIPT}
 ln -s ${EMAIL_SERVICE_EXEC_SCRIPT} ${EMAIL_SERVICE_FASTBOOT_SCRIPT}
 echo "[EMAIL-SERVICE] Finish executing script ..."
-
-#################################################################
-# Create DB file and tables.
-#################################################################
-echo "[EMAIL-SERVICE] Creating Email Tables ..."
-mkdir -p /opt/usr
-mkdir -p /opt/usr/dbspace
-
-sqlite3 /opt/usr/dbspace/.email-service.db 'PRAGMA journal_mode = PERSIST;'
-sqlite3 /opt/usr/dbspace/.email-service.db < /opt/usr/data/email/res/email-service.sql
-
-echo "[EMAIL-SERVICE] Finish Creating Email Tables."
-
-chgrp 6006 /opt/usr/dbspace/.email-service.db*
-chmod 664 /opt/usr/dbspace/.email-service.db
-chmod 664 /opt/usr/dbspace/.email-service.db-journal
-
-mkdir -m775 -p /opt/usr/data/email/.email_data
-chgrp 6006 /opt/usr/data/email/.email_data
-chsmack -a 'email-service' /opt/usr/data/email/.email_data
-
-mkdir -m775 -p /opt/usr/data/email/.email_data/tmp
-chgrp 6006 /opt/usr/data/email/.email_data/tmp
-chsmack -a 'email-service' /opt/usr/data/email/.email_data/tmp
-
-mkdir -p /opt/share/cert-svc/certs/trusteduser/email
-chgrp 6006 /opt/share/cert-svc/certs/trusteduser/email
-
-if [ -f /opt/usr/dbspace/.email-service.db ]
-then
-	chsmack -a 'email-service::db' /opt/usr/dbspace/.email-service.db*
-fi
 
 systemctl daemon-reload
 if [ $1 == 1 ]; then
@@ -217,10 +143,10 @@ systemctl daemon-reload
 %files
 %manifest email-service.manifest
 %if %{test_email_app_enabled}
-/usr/bin/email-test-app
+%{_bindir}/email-test-app
 %endif
+%{TZ_SYS_DATA}/email/res/*
 %{_bindir}/email-service
-/opt/usr/data/email/res/*
 %{_libdir}/lib*.so.*
 %{_libdir}/libemail-core-sound.so
 %{_libdir}/libemail-core-sound.so.*
@@ -228,8 +154,8 @@ systemctl daemon-reload
 %{_unitdir_user}/tizen-middleware.target.wants/email.service
 %{_datarootdir}/dbus-1/services/email-service.service
 %{_datarootdir}/license/email-service
-
-/opt/etc/smack/accesses.d/email-service.rule
+%attr(0755,root,root) /etc/rc.d/init.d/email-service
+%{TZ_SYS_SMACK}/accesses.d/email-service.rule
 
 %files devel
 %{_includedir}/email-service/*.h
