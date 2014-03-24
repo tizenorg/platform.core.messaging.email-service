@@ -7,6 +7,7 @@ Group:      Messaging/Service
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1:    email.service
+Source2:    email-service.manifest
 Requires: connman
 Suggests: webkit2-efl
 Requires(post):    /sbin/ldconfig
@@ -70,6 +71,7 @@ E-mail Framework Middleware Development package
 
 %prep
 %setup -q
+cp %{SOURCE2} .
 
 %build
 
