@@ -126,6 +126,7 @@ ln -s ${EMAIL_SERVICE_EXEC_SCRIPT} ${EMAIL_SERVICE_FASTBOOT_SCRIPT}
 echo "[EMAIL-SERVICE] Finish executing script ..."
 
 chgrp %TZ_SYS_USER_GROUP %{_bindir}/email-service_init_db.sh
+chsmack -a 'User' /opt/usr/dbspace/.email-service.db*
 
 systemctl daemon-reload
 if [ $1 == 1 ]; then
