@@ -1470,7 +1470,6 @@ static void *_emstorage_open_once(int *err_code)
 
 	int error = EMAIL_ERROR_NONE;
 
-	mkdir(USERDATA_PATH, DIRECTORY_PERMISSION);
 	mkdir(DATA_PATH, DIRECTORY_PERMISSION);
 	mkdir(EMAILPATH, DIRECTORY_PERMISSION);
 	mkdir(MAILHOME, DIRECTORY_PERMISSION);
