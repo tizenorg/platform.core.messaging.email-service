@@ -84,7 +84,6 @@ export CXXFLAGS="${CXXFLAGS} -fPIC -Wall -g -fvisibility=hidden"
 export LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--rpath=%{_libdir} -Wl,--as-needed"
 
 %cmake .  \
--DTZ_SYS_SMACK=%TZ_SYS_SMACK \
 -DTZ_SYS_DATA=%TZ_SYS_DATA \
 -DTZ_SYS_ETC=%TZ_SYS_ETC \
 %if %{test_email_app_enabled}
@@ -157,7 +156,6 @@ systemctl daemon-reload
 %{_datarootdir}/dbus-1/services/email-service.service
 %{_datarootdir}/license/email-service
 %attr(0755,root,root) /etc/rc.d/init.d/email-service
-%{TZ_SYS_SMACK}/accesses.d/email-service.rule
 %{_bindir}/email-service_init_db.sh
 
 %files devel
