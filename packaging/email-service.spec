@@ -93,6 +93,8 @@ export LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--rpath=%{_libdir} -Wl,--as
 
 make %{?_smp_mflags}
 
+find -name '*.pc' -exec sed -i -e 's/\$version/%{version}/g' {} \;
+
 %install
 mkdir -p %{buildroot}/usr/share/license
 if [ -d %{_datarootdir}/license/email-service]; then
