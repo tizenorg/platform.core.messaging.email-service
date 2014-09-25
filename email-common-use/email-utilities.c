@@ -483,7 +483,7 @@ FINISH_OFF:
 
 INTERNAL_FUNC int em_get_encoding_type_from_file_path(const char *input_file_path, char **output_encoding_type)
 {
-	EM_DEBUG_FUNC_BEGIN("input_file_path[%d], output_encoding_type[%p]", input_file_path, output_encoding_type);
+	EM_DEBUG_FUNC_BEGIN("input_file_path[%p], output_encoding_type[%p]", input_file_path, output_encoding_type);
 	int   err = EMAIL_ERROR_NONE;
 	int   pos_of_filename = 0;
 	int   pos_of_dot = 0;

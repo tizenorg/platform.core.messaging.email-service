@@ -1382,9 +1382,12 @@ void stb_update_mail(HIPC_API a_hAPI)
 	int  *temp_buffer = NULL;
 	int  err = EMAIL_ERROR_NONE;
 	int  i = 0;
-	email_mail_data_t result_mail_data = {0};
+	
+	email_mail_data_t *result_mail_data = NULL;
+	result_mail_data=(email_mail_data_t*)em_malloc(sizeof(email_mail_data_t));
+
 	email_attachment_data_t *result_attachment_data = NULL;
-	email_meeting_request_t result_meeting_request = {0};
+	email_meeting_request_t *result_meeting_request=(email_mail_data_t*)em_malloc(sizeof(email_meeting_request_t));
 	emipc_email_api_info *api_info = (emipc_email_api_info *)a_hAPI;
 
 	EM_DEBUG_LOG("email_mail_data_t");
@@ -1392,28 +1395,28 @@ void stb_update_mail(HIPC_API a_hAPI)
 
 	if(buffer_size > 0)	 {
 		char* stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
-		em_convert_byte_stream_to_mail_data(stream, buffer_size, &result_mail_data);
+		em_convert_byte_stream_to_mail_data(stream, buffer_size, result_mail_data);
 	}
 
 	/* check smack rule for accessing file path */
-	if (result_mail_data.file_path_html) {
-		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data.file_path_html)) {
+	if (result_mail_data->file_path_html) {
+		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data->file_path_html)) {
 			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
 			err = EMAIL_ERROR_NO_SMACK_RULE;
 			goto FINISH_OFF;
 		}
 	}
 
-	if (result_mail_data.file_path_plain) {
-		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data.file_path_plain)) {
+	if (result_mail_data->file_path_plain) {
+		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data->file_path_plain)) {
 			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
 			err = EMAIL_ERROR_NO_SMACK_RULE;
 			goto FINISH_OFF;
 		}
 	}
 
-	if (result_mail_data.file_path_mime_entity) {
-		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data.file_path_mime_entity)) {
+	if (result_mail_data->file_path_mime_entity) {
+		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data->file_path_mime_entity)) {
 			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
 			err = EMAIL_ERROR_NO_SMACK_RULE;
 			goto FINISH_OFF;
@@ -1450,14 +1453,14 @@ void stb_update_mail(HIPC_API a_hAPI)
 	}
 
 	EM_DEBUG_LOG("email_meeting_request_t");
-	if ( result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_REQUEST
-		|| result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_RESPONSE
-		|| result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_ORIGINATINGREQUEST) {
+	if ( result_mail_data->meeting_request_status == EMAIL_MAIL_TYPE_MEETING_REQUEST
+		|| result_mail_data->meeting_request_status == EMAIL_MAIL_TYPE_MEETING_RESPONSE
+		|| result_mail_data->meeting_request_status == EMAIL_MAIL_TYPE_MEETING_ORIGINATINGREQUEST) {
 		buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
 
 		if(buffer_size > 0) {
 			char* stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
-			em_convert_byte_stream_to_meeting_req(stream, buffer_size, &result_meeting_request);
+			em_convert_byte_stream_to_meeting_req(stream, buffer_size, result_meeting_request);
 		}
 	}
 
@@ -1473,8 +1476,8 @@ void stb_update_mail(HIPC_API a_hAPI)
 
 	sync_server = *temp_buffer;
 
-	if( (err = emdaemon_update_mail(&result_mail_data, result_attachment_data,
-			result_attachment_data_count, &result_meeting_request, sync_server)) != EMAIL_ERROR_NONE) {
+	if( (err = emdaemon_update_mail(result_mail_data, result_attachment_data,
+			result_attachment_data_count, result_meeting_request, sync_server)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emdaemon_update_mail failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1482,9 +1485,9 @@ void stb_update_mail(HIPC_API a_hAPI)
 	local_result = 1;
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.mail_id, sizeof(int)))
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, result_mail_data->mail_id, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.thread_id, sizeof(int)))
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, result_mail_data->thread_id, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
@@ -1497,12 +1500,15 @@ FINISH_OFF:
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 	}
 
-	emcore_free_mail_data(&result_mail_data);
+#ifndef __FEATURE_SYNC_CLIENT_TO_SERVER__
+	emcore_free_mail_data(result_mail_data);
 
 	if(result_attachment_data)
 		emcore_free_attachment_data(&result_attachment_data, result_attachment_data_count, NULL);
 
-	emstorage_free_meeting_request(&result_meeting_request);
+	emstorage_free_meeting_request(result_meeting_request);
+	EM_SAFE_FREE(result_mail_data);
+#endif
 
 	em_flush_memory();
 	EM_DEBUG_FUNC_END();

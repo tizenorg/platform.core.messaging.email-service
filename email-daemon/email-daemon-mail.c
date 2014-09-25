@@ -1169,8 +1169,9 @@ INTERNAL_FUNC int emdaemon_update_mail(email_mail_data_t *input_mail_data, email
 	EM_DEBUG_FUNC_BEGIN("input_mail_data[%p], input_attachment_data_list[%p], input_attachment_count [%d], input_meeting_req [%p], input_from_eas[%d]", input_mail_data, input_attachment_data_list, input_attachment_count, input_meeting_request, input_from_eas);
 
 	int ret = false;
+	int handle=0;
 	int err = EMAIL_ERROR_NONE;
-	/*email_event_t *event_data = NULL;*/
+	email_event_t *event_data = NULL;
 	email_account_t *ref_account = NULL;
 
 	if (!input_mail_data || input_mail_data->account_id <= 0 || input_mail_data->mail_id == 0 ||
@@ -1187,30 +1188,28 @@ INTERNAL_FUNC int emdaemon_update_mail(email_mail_data_t *input_mail_data, email
 		goto FINISH_OFF;
 	}
 
-	if ( (err = emcore_update_mail(input_mail_data, input_attachment_data_list, input_attachment_count, input_meeting_request, input_from_eas)) != EMAIL_ERROR_NONE) {
+	if (input_from_eas && (err = emcore_update_mail(input_mail_data, input_attachment_data_list, input_attachment_count, input_meeting_request, input_from_eas)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_update_mail failed [%d]", err);
-		goto FINISH_OFF;
 	}
-
+	else if(input_from_eas == 0) 
+	{
 #ifdef __FEATURE_SYNC_CLIENT_TO_SERVER__
-/*	if ( input_from_eas == 0) {
 		event_data = em_malloc(sizeof(email_event_t));
 		event_data->type               = EMAIL_EVENT_UPDATE_MAIL;
 		event_data->account_id         = input_mail_data->account_id;
-		event_data->event_param_data_1 = (char*)input_mail_data; 			// need to be duplicated, it is double freed
-		event_data->event_param_data_2 = (char*)input_attachment_data_list;	// need to be duplicated, it is double freed
-		event_data->event_param_data_3 = (char*)input_meeting_request;		// need to be duplicated, it is double freed
+		event_data->event_param_data_1 = (char*)input_mail_data;
+		event_data->event_param_data_2 = (char*)input_attachment_data_list;
+		event_data->event_param_data_3 = (char*)input_meeting_request;
 		event_data->event_param_data_4 = input_attachment_count;
 		event_data->event_param_data_5 = input_from_eas;
 
-		if (!emcore_insert_event(event_data, &handle, &err))  {
+		if (!emcore_insert_event(event_data, &handle, &err))
 			EM_DEBUG_EXCEPTION("emcore_insert_event_for_sending_mails failed [%d]", err);
-			err = EMAIL_ERROR_NONE;
-			goto FINISH_OFF;
-		}
-	}
-*/
+#else
+		err = EMAIL_NO_AVAILABLE_TASK_SLOT;
+		EM_DEBUG_EXCEPTION("syncing with server is not supported in this version!! [%d]", err);
 #endif
+	}
 
 	ret = true;
 

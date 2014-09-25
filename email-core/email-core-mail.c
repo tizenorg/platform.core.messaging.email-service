@@ -4941,7 +4941,7 @@ INTERNAL_FUNC int emcore_save_mail_file(int account_id, int mail_id, int attachm
 FINISH_OFF:
 	if (err_code)
 		*err_code = err;
-	return 1;
+	return ret;
 }
 
 /* description : update mail information */
@@ -4974,7 +4974,7 @@ INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_a
 			if (stat(input_mail_data->file_path_plain, &st_buf) < 0)  {
 				EM_DEBUG_EXCEPTION_SEC("input_mail_data->file_path_plain, stat(\"%s\") failed...", input_mail_data->file_path_plain);
 				err = EMAIL_ERROR_FILE_NOT_FOUND;
-				goto FINISH_OFF;
+				goto FINISH_OFF2;
 			}
 		}
 		
@@ -4982,7 +4982,7 @@ INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_a
 			if (stat(input_mail_data->file_path_html, &st_buf) < 0)  {
 				EM_DEBUG_EXCEPTION_SEC("input_mail_data->file_path_html, stat(\"%s\") failed...", input_mail_data->file_path_html);
 				err = EMAIL_ERROR_FILE_NOT_FOUND;
-				goto FINISH_OFF;
+				goto FINISH_OFF2;
 			}
 		}
 		
@@ -4992,7 +4992,7 @@ INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_a
 					if (!input_attachment_data_list[i].attachment_path || stat(input_attachment_data_list[i].attachment_path, &st_buf) < 0)  {
 						EM_DEBUG_EXCEPTION("stat(\"%s\") failed...", input_attachment_data_list[i].attachment_path);
 						err = EMAIL_ERROR_FILE_NOT_FOUND;
-						goto FINISH_OFF;
+						goto FINISH_OFF2;
 					}
 				}
 			}
@@ -5007,7 +5007,7 @@ INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_a
 		if ( (err = em_get_file_name_from_file_path(input_mail_data->file_path_plain, &body_text_file_name)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("em_get_file_name_from_file_path failed [%d]", err);
 			err = EMAIL_ERROR_INVALID_FILE_PATH;
-			goto FINISH_OFF;
+			goto FINISH_OFF2;
 		}
 
 		if (!emcore_save_mail_file(input_mail_data->account_id, input_mail_data->mail_id, 0, input_mail_data->file_path_plain, body_text_file_name, filename_buf, &err)) {
@@ -5023,7 +5023,7 @@ INTERNAL_FUNC int emcore_update_mail(email_mail_data_t *input_mail_data, email_a
 		if ( (err = em_get_file_name_from_file_path(input_mail_data->file_path_html, &body_text_file_name)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("em_get_file_name_from_file_path failed [%d]", err);
 			err = EMAIL_ERROR_INVALID_FILE_PATH;
-			goto FINISH_OFF;
+			goto FINISH_OFF2;
 		}
 
 		if (!emcore_save_mail_file(input_mail_data->account_id, input_mail_data->mail_id, 0, input_mail_data->file_path_html, body_text_file_name, filename_buf, &err)) {

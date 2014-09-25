@@ -1346,6 +1346,7 @@ INTERNAL_FUNC int emcore_free_event(email_event_t *event_data)
 				emcore_free_mail_data_list(&input_mail_data, 1);
 				emcore_free_attachment_data(&input_attachment_data_list, input_attachment_count, NULL);
 				emstorage_free_meeting_request(input_meeting_request);				
+				EM_SAFE_FREE(input_mail_data);
 			}
 			break;
 

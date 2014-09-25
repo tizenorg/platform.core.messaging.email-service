@@ -1172,10 +1172,10 @@ static int event_handler_EMAIL_EVENT_UPDATE_MAIL(email_mail_data_t *input_mail_d
 {
 	EM_DEBUG_FUNC_BEGIN("input_mail_data[%p], input_attachment_data_list[%p], input_attachment_count[%d], input_meeting_request[%p], input_from_eas[%d]", input_mail_data, input_attachment_data_list, input_attachment_count, input_meeting_request, input_from_eas);
 	int err = EMAIL_ERROR_NONE;
-/*
+
 	if ( (err = emcore_update_mail(input_mail_data, input_attachment_data_list, input_attachment_count, input_meeting_request, input_from_eas)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_EXCEPTION("emcore_update_mail failed [%d]", err);
-*/
+
 	EM_DEBUG_FUNC_END("err [%d", err);
 	return err;
 }
