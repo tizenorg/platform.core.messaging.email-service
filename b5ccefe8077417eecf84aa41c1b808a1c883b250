@@ -2,6 +2,15 @@ Verified+1: Jean-Benoit MARTIN <jean-benoit.martin@eurogiciel.fr>
 Code-Review+1: José Bollo <jose.bollo@open.eurogiciel.org>
 Code-Review+2: Casey Schaufler <casey.schaufler@intel.com>
 Submitted-by: Casey Schaufler <casey.schaufler@intel.com>
+Submitted-at: Wed, 08 Oct 2014 07:44:02 -0800
+Reviewed-on: https://review.tizen.org/gerrit/22962
+Project: platform/core/messaging/email-service
+Branch: refs/heads/tizen
+
+Verified+1: Jean-Benoit MARTIN <jean-benoit.martin@eurogiciel.fr>
+Code-Review+1: José Bollo <jose.bollo@open.eurogiciel.org>
+Code-Review+2: Casey Schaufler <casey.schaufler@intel.com>
+Submitted-by: Casey Schaufler <casey.schaufler@intel.com>
 Submitted-at: Wed, 08 Oct 2014 08:44:02 -0700
 Reviewed-on: https://review.tizen.org/gerrit/22962
 Project: platform/core/messaging/email-service
