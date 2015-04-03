@@ -47,9 +47,14 @@ INCLUDE_DIRECTORIES(
 
 INCLUDE(FindPkgConfig)
 pkg_check_modules(main_pkgs REQUIRED glib-2.0 dlog dbus-1 gthread-2.0 db-util 
-				openssl uw-imap-toolkit vconf vconf-internal-keys contacts-service2 
+				openssl uw-imap-toolkit vconf vconf-internal-keys 
 				alarm-service mm-player drm-client feedback msg-service 
 				libwbxml2 libsmack notification)
+
+#pkg_check_modules(main_pkgs REQUIRED glib-2.0 dlog dbus-1 gthread-2.0 db-util 
+#				openssl uw-imap-toolkit vconf vconf-internal-keys contacts-service2 
+#				alarm-service mm-player drm-client feedback msg-service 
+#				libwbxml2 libsmack notification)
 
 FOREACH(flag ${main_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")

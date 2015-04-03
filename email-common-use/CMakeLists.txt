@@ -28,7 +28,9 @@ INCLUDE_DIRECTORIES(
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(common_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf contacts-service2 uw-imap-toolkit security-server libtzplatform-config)
+pkg_check_modules(common_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf uw-imap-toolkit security-server libtzplatform-config)
+
+#pkg_check_modules(common_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf contacts-service2 uw-imap-toolkit security-server libtzplatform-config)
 
 FOREACH(flag ${common_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")

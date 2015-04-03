@@ -33,7 +33,7 @@
 #define __EMAIL_CORE_MESSAGE_H__
 
 #include "email-storage.h"
-#include <contacts.h>
+//#include <contacts.h>
 
 #ifdef __cplusplus
 extern "C" {

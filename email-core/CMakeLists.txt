@@ -72,7 +72,9 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(storage_pkgs REQUIRED drm-client glib-2.0 dlog db-util openssl vconf secure-storage dbus-1 contacts-service2 libtzplatform-config)
+pkg_check_modules(storage_pkgs REQUIRED drm-client glib-2.0 dlog db-util openssl vconf secure-storage dbus-1 libtzplatform-config)
+
+#pkg_check_modules(storage_pkgs REQUIRED drm-client glib-2.0 dlog db-util openssl vconf secure-storage dbus-1 contacts-service2 libtzplatform-config)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${storage_pkgs_CFLAGS})
@@ -211,7 +213,10 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage openssl accounts-svc mm-player mm-session feedback alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge capi-appfw-application icu-i18n libtzplatform-config)
+pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys secure-storage openssl accounts-svc mm-player mm-session feedback alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge capi-appfw-application icu-i18n libtzplatform-config)
+
+
+#pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage openssl accounts-svc mm-player mm-session feedback alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge capi-appfw-application icu-i18n libtzplatform-config)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${core_pkgs_CFLAGS})

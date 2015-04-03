@@ -46,7 +46,7 @@
 #include <glib/gstdio.h>
 
 #include <vconf.h> 
-#include <contacts.h>
+//#include <contacts.h>
 
 #include "email-internal-types.h"
 #include "c-client.h"
@@ -1709,7 +1709,7 @@ INTERNAL_FUNC int emcore_get_mail_address_info_list(int mail_id, email_address_i
 		goto FINISH_OFF;
 	}	
 	memset(p_address_info_list, 0x00, sizeof(email_address_info_list_t)); 	
-
+#if 0
 	if ((contact_error = contacts_connect2 ()) != CONTACTS_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("contacts_connect2 failed [%d]", contact_error);		
 		err = EMAIL_ERROR_DB_FAILURE;
@@ -1727,7 +1727,7 @@ INTERNAL_FUNC int emcore_get_mail_address_info_list(int mail_id, email_address_i
 
 	if ((contact_error = contacts_disconnect2 ()) != CONTACTS_ERROR_NONE)
 		EM_DEBUG_EXCEPTION("contacts_connect2 failed [%d]", contact_error);
-
+#endif
 	if (failed == false)
 		ret = true;
 

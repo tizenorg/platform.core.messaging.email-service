@@ -3336,7 +3336,7 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END("err[%d]", err);
 	return err;
 }
-
+#if 0
 static int convert_contact_err_to_email_err(int contact_err)
 {
 	int err = EMAIL_ERROR_NONE;
@@ -3370,7 +3370,7 @@ static int convert_contact_err_to_email_err(int contact_err)
 	}
 	return err;
 }
-
+#endif
 int emcore_get_mail_contact_info(email_mail_contact_info_t *contact_info, char *full_address, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("contact_info[%p], full_address[%s], err_code[%p]", contact_info, full_address, err_code);
@@ -3388,7 +3388,7 @@ int emcore_get_mail_contact_info(email_mail_contact_info_t *contact_info, char *
 	
 	return ret;
 }
-
+#if 0
 int emcore_search_contact_info(const char *contact_uri, int address_property_id, char *address, int favorite_property_id, bool is_favorite, int limit, contacts_record_h *contacts_record)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -3505,12 +3505,13 @@ FINISH_OFF:
 
 	return contact_err;
 }
-
+#endif
 int emcore_set_contacts_log(int account_id, char *email_address, char *subject, time_t date_time, email_action_t action)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("account_id : [%d], address : [%p], subject : [%s], action : [%d], date_time : [%d]", account_id, email_address, subject, action, (int)date_time);
 	
 	int err = EMAIL_ERROR_NONE;
+#if 0
 	int contacts_error = CONTACTS_ERROR_NONE;
 	int person_id = 0;
 	int action_type = 0;
@@ -3608,7 +3609,7 @@ FINISH_OFF:
 		EM_DEBUG_EXCEPTION("Open connect service failed [%d]", contacts_error);
 		err = convert_contact_err_to_email_err(contacts_error);
 	}
-
+#endif
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
@@ -3669,6 +3670,7 @@ INTERNAL_FUNC int emcore_delete_contacts_log(int account_id)
 	EM_DEBUG_FUNC_BEGIN("account_id [%d]", account_id);
 
 	int err = EMAIL_ERROR_NONE;
+#if 0
 	int contacts_error = CONTACTS_ERROR_NONE;
 
 	if ((contacts_error = contacts_connect2()) != CONTACTS_ERROR_NONE) {
@@ -3689,7 +3691,7 @@ FINISH_OFF:
 		EM_DEBUG_EXCEPTION("Open connect service failed [%d]", contacts_error);
 		err = convert_contact_err_to_email_err(contacts_error);
 	}
-
+#endif
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
@@ -3697,9 +3699,9 @@ FINISH_OFF:
 INTERNAL_FUNC int emcore_get_mail_display_name(char *email_address, char **contact_display_name, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("contact_name_value[%s], contact_display_name[%p]", email_address, contact_display_name);
-
-	int contact_err = 0;
 	int ret = false;
+#if 0
+	int contact_err = 0;
 	char *display = NULL;
 	/* Contact variable */
 	contacts_record_h record = NULL;
@@ -3754,7 +3756,7 @@ FINISH_OFF:
 
 	if (err_code != NULL)
 		*err_code = convert_contact_err_to_email_err(contact_err);
-
+#endif
 	return ret;
 }
 
@@ -3791,6 +3793,7 @@ INTERNAL_FUNC int emcore_check_blocking_mode(char *sender_address, int *blocking
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
+#if 0
 	int contact_error = 0;
 	int person_id = 0;
 	int allowed_contact_type = 0; /* 0 : NONE, 1 : All contacts, 2 : Favorites, 3 : Custom */
@@ -3895,7 +3898,7 @@ FINISH_OFF :
 	contacts_disconnect2();
 
 	err = convert_contact_err_to_email_err(contact_error);
-
+#endif
 	EM_DEBUG_FUNC_END();
 	return err;
 }

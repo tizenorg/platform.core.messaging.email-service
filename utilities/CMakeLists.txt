@@ -40,7 +40,9 @@ INCLUDE_DIRECTORIES(
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(test_app_pkgs REQUIRED glib-2.0 gthread-2.0 vconf db-util uw-imap-toolkit contacts-service2 drm-client pmapi)
+pkg_check_modules(test_app_pkgs REQUIRED glib-2.0 gthread-2.0 vconf db-util uw-imap-toolkit drm-client pmapi)
+
+#pkg_check_modules(test_app_pkgs REQUIRED glib-2.0 gthread-2.0 vconf db-util uw-imap-toolkit contacts-service2 drm-client pmapi)
 
 FOREACH(flag ${test_app_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")

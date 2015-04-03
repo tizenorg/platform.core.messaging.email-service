@@ -25,7 +25,7 @@
 #include <pthread.h>
 #include <vconf.h>
 #include <signal.h>
-#include <contacts.h>
+//#include <contacts.h>
 #include "c-client.h"
 #include "email-convert.h"
 #include "email-storage.h"
