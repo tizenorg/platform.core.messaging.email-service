@@ -79,7 +79,16 @@ EXPORT_API long emipc_get_app_id(HIPC_API api)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
+	EM_DEBUG_FUNC_END("app_id [%d]", api_info->app_id);
 	return api_info->app_id;
+}
+
+EXPORT_API long emipc_get_response_id(HIPC_API api)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
+	EM_DEBUG_FUNC_END("response_id [%d]", api_info->response_id);
+	return api_info->response_id;
 }
 
 /* note: there incurs additional cost (malloc & memcpy). */

@@ -60,6 +60,7 @@
 #include "email-storage.h"
 #include "email-dbus-activation.h"
 #include "email-core-container.h"
+#include "email-core-cynara.h"
 
 void stb_create_account(HIPC_API a_hAPI)
 {
@@ -3626,8 +3627,25 @@ void stb_get_user_name(HIPC_API a_hAPI)
 void stb_API_mapper(HIPC_API a_hAPI)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int err = EMAIL_ERROR_NONE;
-	int nAPIID = emipc_get_api_id(a_hAPI);
+	int err         = EMAIL_ERROR_NONE;
+	int nAPIID      = emipc_get_api_id(a_hAPI);
+	int app_id      = emipc_get_app_id(a_hAPI);
+	int response_id = emipc_get_response_id(a_hAPI);
+
+#ifdef __FEATURE_ACCESS_CONTROL__
+	/*check privilege*/
+	err = emcore_check_privilege(app_id, response_id);
+	if (err != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_check_privilege : [%d]", err);
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+
+		if (!emipc_execute_stub_api(a_hAPI))
+			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
+
+		return;
+	}
+#endif
 
 	switch(nAPIID) {
 		case _EMAIL_API_ADD_ACCOUNT:
@@ -4103,7 +4121,7 @@ INTERNAL_FUNC int main(int argc, char *argv[])
     emcore_create_container();
 
 	/* Init cynara */
-	//emcore_init_cynara();
+	emcore_init_cynara();
 
 	EM_DEBUG_LOG("ipcEmailStub_Initialize Start");
 

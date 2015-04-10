@@ -35,7 +35,6 @@
 #include "email-debug-log.h"
 #include "email-internal-types.h"
 #include "email-utilities.h"
-//#include "email-core-cynara.h"
 
 static pthread_t task_thread = 0;
 static bool stop_flag = false;
@@ -155,25 +154,13 @@ EXPORT_API int emipc_create_task(unsigned char *task_stream, int response_channe
 
         task->api_info->app_id = uc.pid;
 
-		/*check privilege*/
-#ifdef __FEATURE_ACCESS_CONTROL__
-#if 0
-		err = emcore_check_privilege(response_channel);
-		if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-			EM_DEBUG_LOG("permission denied");
-			emipc_free_email_task(task);
-			EM_SAFE_FREE(task);
-			return err;
-		}
-#endif
-#endif
-
 		ENTER_CRITICAL_SECTION(ipc_task_mutex);
 		g_queue_push_tail(task_queue, (void *)task);
 		
 		WAKE_CONDITION_VARIABLE(ipc_task_cond);
 		LEAVE_CRITICAL_SECTION(ipc_task_mutex);
 	}
+
 	return err;
 }
 

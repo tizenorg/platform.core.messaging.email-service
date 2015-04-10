@@ -181,7 +181,7 @@ EXPORT_API void emipc_wait_for_ipc_request()
 						if (recv_len >= sizeof(long) * eSTREAM_DATA) {
 							int ret = 0;
 							ret = emipc_create_task((unsigned char *)sz_buf, event_fd);
-							if (ret == EMAIL_ERROR_PERMISSION_DENIED) {
+							if (ret != EMAIL_ERROR_NONE) {
 								if (epoll_ctl(epfd, EPOLL_CTL_DEL, event_fd, events) == -1) {
 									EM_DEBUG_EXCEPTION("epoll_ctl error [%d]", errno);
 									EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl error [%d]", errno);
