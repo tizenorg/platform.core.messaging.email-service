@@ -44,18 +44,21 @@ INTERNAL_FUNC int   em_upper_path(char *path);
 
 INTERNAL_FUNC void  em_skip_whitespace(char *addr_str , char **pAddr);
 INTERNAL_FUNC char* em_skip_whitespace_without_strdup(char *source_string);
+INTERNAL_FUNC void  em_skip_whitespace_without_alias(char *addr_str, char **pAddr);
 INTERNAL_FUNC char* em_replace_all_string(char *source_string, char *old_string, char *new_string);
 INTERNAL_FUNC char* em_replace_string(char *source_string, char *old_string, char *new_string);
+INTERNAL_FUNC int   em_replace_string_ex(char **input_source_string, char *input_old_string, char *input_new_string);
 INTERNAL_FUNC void  em_flush_memory();
 INTERNAL_FUNC int   em_get_file_name_from_file_path(char *input_source_file_path, char **output_file_name);
 INTERNAL_FUNC int   em_get_file_name_and_extension_from_file_path(char *input_source_file_path, char **output_file_name, char **output_extention);
 INTERNAL_FUNC char* em_get_extension_from_file_path(char *source_file_path, int *err_code);
 INTERNAL_FUNC int   em_get_encoding_type_from_file_path(const char *input_file_path, char **output_encoding_type);
 INTERNAL_FUNC int   em_get_content_type_from_extension_string(const char *extension_string, int *err_code);
+INTERNAL_FUNC char *em_shrink_filename(char *fname, int size_limit);
 
-INTERNAL_FUNC int   em_verify_email_address(char *address, int without_bracket);
-INTERNAL_FUNC int   em_verify_email_address_of_mail_data(email_mail_data_t *mail_data, int without_bracket);
-INTERNAL_FUNC int   em_verify_email_address_of_mail_tbl(emstorage_mail_tbl_t *input_mail_tbl, int input_without_bracket);
+INTERNAL_FUNC int   em_verify_email_address(char *address);
+INTERNAL_FUNC int   em_verify_email_address_of_mail_data(email_mail_data_t *mail_data);
+INTERNAL_FUNC int   em_verify_email_address_of_mail_tbl(emstorage_mail_tbl_t *input_mail_tbl);
 
 INTERNAL_FUNC int   em_find_pos_stripped_subject_for_thread_view(char *subject, char *stripped_subject, int stripped_subject_buffer_size);
 INTERNAL_FUNC int   em_find_tag_for_thread_view(char *subject, int *result);
@@ -65,11 +68,9 @@ INTERNAL_FUNC int   em_decode_base64(unsigned char *enc_text, unsigned long enc_
 
 extern        char* strcasestr(__const char *__haystack, __const char *__needle) __THROW __attribute_pure__ __nonnull ((1, 2));
 
-INTERNAL_FUNC int   em_get_account_server_type_by_account_id(int account_id, email_account_server_t* account_server_type, int flag, int *error);
+INTERNAL_FUNC int   em_get_account_server_type_by_account_id(char *multi_user_name, int account_id, email_account_server_t* account_server_type, int flag, int *error);
 
 INTERNAL_FUNC int   em_get_handle_for_activesync(int *handle, int *error);
-INTERNAL_FUNC int   em_check_socket_privilege_by_pid(int pid);
-INTERNAL_FUNC int   em_check_db_privilege_by_pid(int pid);
 
 /* thread handle definition */
 typedef struct {
@@ -82,10 +83,11 @@ typedef struct {
 	void *thread_exit_arg;
 } email_thread_handle_t;
 
-INTERNAL_FUNC email_thread_handle_t* em_thread_create ();
+INTERNAL_FUNC email_thread_handle_t* em_thread_create(void *(*thread_exit)(void*), void *arg);
 INTERNAL_FUNC void em_thread_destroy (email_thread_handle_t* th);
 INTERNAL_FUNC void em_thread_run (email_thread_handle_t *th, void *(*thread_func)(void*), void *(*destroy)(void*), void* arg);
 INTERNAL_FUNC void em_thread_join (email_thread_handle_t *th);
-
+INTERNAL_FUNC int  em_fopen(const char *filename, const char *mode, FILE **fp);
+INTERNAL_FUNC int  em_open(const char *filename, int oflags, mode_t mode, int *handle);
 
 #endif /* __EMAIL_UTILITIES_H__ */

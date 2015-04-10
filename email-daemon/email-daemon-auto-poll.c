@@ -43,10 +43,10 @@
 #include "email-utilities.h"
 
 
-static int _emdaemon_get_polling_account_and_timeinterval(alarm_id_t  alarm_id, int *account_id, int *timer_interval);
-static int _emdaemon_create_alarm_for_auto_polling(int input_account_id);
+static int _emdaemon_get_polling_account_and_timeinterval(email_alarm_data_t *alarm_data, int *account_id, int *timer_interval);
+static int _emdaemon_create_alarm_for_auto_polling(char *multi_user_name, int input_account_id);
 
-INTERNAL_FUNC int emdaemon_add_polling_alarm(int input_account_id)
+INTERNAL_FUNC int emdaemon_add_polling_alarm(char *multi_user_name, int input_account_id)
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id[%d]", input_account_id);
 	int err = EMAIL_ERROR_NONE;
@@ -62,7 +62,7 @@ INTERNAL_FUNC int emdaemon_add_polling_alarm(int input_account_id)
 		goto FINISH_OFF;
 	}
 
-	if((err = _emdaemon_create_alarm_for_auto_polling(input_account_id)) != EMAIL_ERROR_NONE) {
+	if((err = _emdaemon_create_alarm_for_auto_polling(multi_user_name, input_account_id)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("_emdaemon_create_alarm_for_auto_polling failed[%d]", err);
 		goto FINISH_OFF;
 	}
@@ -103,9 +103,9 @@ FINISH_OFF:
 	return err;
 }
 
-INTERNAL_FUNC int emdaemon_alarm_polling_cb(alarm_id_t alarm_id, void* user_param)
+INTERNAL_FUNC int emdaemon_alarm_polling_cb(email_alarm_data_t *alarm_data, void* user_param)
 {
-	EM_DEBUG_FUNC_BEGIN("alarm_id [%d] user_param [%d]", alarm_id, user_param);
+	EM_DEBUG_FUNC_BEGIN("alarm_data [%p] user_param [%d]", alarm_data, user_param);
 
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
@@ -117,27 +117,20 @@ INTERNAL_FUNC int emdaemon_alarm_polling_cb(alarm_id_t alarm_id, void* user_para
 	int wifi_status = 0;
 	email_account_t *ref_account = NULL;
 
-	EM_DEBUG_ALARM_LOG("alarm_id [%d]", alarm_id);
-
-	if(!_emdaemon_get_polling_account_and_timeinterval(alarm_id, &account_id, &timer_interval)) {
+	if(!_emdaemon_get_polling_account_and_timeinterval(alarm_data, &account_id, &timer_interval)) {
 		EM_DEBUG_EXCEPTION("email_get_polling_account failed");
 		return false;
-	}
-
-	/* delete from list */
-	if ((err = emdaemon_remove_polling_alarm(account_id)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("email_get_polling_account failed [%d]", err);
 	}
 
 	EM_DEBUG_LOG("target account_id [%d]",account_id);
 
 	/* create alarm, for polling */
-	if ((err = _emdaemon_create_alarm_for_auto_polling(account_id)) != EMAIL_ERROR_NONE) {
+	if ((err = _emdaemon_create_alarm_for_auto_polling(alarm_data->multi_user_name, account_id)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("_emdaemon_create_alarm_for_auto_polling failed [%d]", err);
 		return false;
 	}
 
-	ref_account = emcore_get_account_reference(account_id);
+	ref_account = emcore_get_account_reference(alarm_data->multi_user_name, account_id);
 
 	if (ref_account == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed");
@@ -166,12 +159,12 @@ INTERNAL_FUNC int emdaemon_alarm_polling_cb(alarm_id_t alarm_id, void* user_para
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_get_mailbox_id_by_mailbox_type(account_id,EMAIL_MAILBOX_TYPE_INBOX, &mailbox_id, false, &err))  {
+	if (!emstorage_get_mailbox_id_by_mailbox_type(alarm_data->multi_user_name, account_id,EMAIL_MAILBOX_TYPE_INBOX, &mailbox_id, false, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_name_by_mailbox_type failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	if (!emdaemon_sync_header(account_id, mailbox_id, &handle, &err))  {
+	if (!emdaemon_sync_header(alarm_data->multi_user_name, account_id, mailbox_id, &handle, &err))  {
 		EM_DEBUG_EXCEPTION("emdaemon_sync_header falied [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -189,25 +182,19 @@ FINISH_OFF :
 }
 
 
-static int _emdaemon_get_polling_account_and_timeinterval(alarm_id_t alarm_id, int *account_id, int *timer_interval)
+static int _emdaemon_get_polling_account_and_timeinterval(email_alarm_data_t *alarm_data, int *account_id, int *timer_interval)
 {
-	EM_DEBUG_FUNC_BEGIN("alarm_id [%d] account_id[%p] timer_interval[%p]", alarm_id, account_id, timer_interval);
+	EM_DEBUG_FUNC_BEGIN("alarm_data [%p] account_id[%p] timer_interval[%p]", alarm_data, account_id, timer_interval);
 	int err = EMAIL_ERROR_NONE;
-	email_alarm_data_t *alarm_data = NULL;
 	email_account_t *account = NULL;
 
-	if(!alarm_id || !account_id) {
+	if(!alarm_data || !account_id) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
-	if (((err = emcore_get_alarm_data_by_alarm_id(alarm_id, &alarm_data)) != EMAIL_ERROR_NONE) || alarm_data == NULL) {
-		EM_DEBUG_EXCEPTION("emcore_add_alarm failed [%d]",err);
-		goto FINISH_OFF;
-	}
-
-	account = emcore_get_account_reference(alarm_data->reference_id);
+	account = emcore_get_account_reference(alarm_data->multi_user_name, alarm_data->reference_id);
 	if (account == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]",err);
 		goto FINISH_OFF;
@@ -226,7 +213,7 @@ FINISH_OFF:
 
 
 
-static int _emdaemon_create_alarm_for_auto_polling(int input_account_id)
+static int _emdaemon_create_alarm_for_auto_polling(char *multi_user_name, int input_account_id)
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id [%d]", input_account_id);
 	int err = EMAIL_ERROR_NONE;
@@ -241,7 +228,7 @@ static int _emdaemon_create_alarm_for_auto_polling(int input_account_id)
 
 	time(&current_time);
 
-	if ((err = emcore_calc_next_time_to_sync(input_account_id, current_time, &trigger_at_time)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_calc_next_time_to_sync(multi_user_name, input_account_id, current_time, &trigger_at_time)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_add_alarm failed [%d]",err);
 		goto FINISH_OFF;
 	}
@@ -249,7 +236,7 @@ static int _emdaemon_create_alarm_for_auto_polling(int input_account_id)
 	if (trigger_at_time == 0) {
 		EM_DEBUG_LOG("trigger_at_time is 0. It means auto polling is disabled");
 	}
-	else if ((err = emcore_add_alarm(trigger_at_time, EMAIL_ALARM_CLASS_AUTO_POLLING, input_account_id, emdaemon_alarm_polling_cb, NULL)) != EMAIL_ERROR_NONE) {
+	else if ((err = emcore_add_alarm(multi_user_name, trigger_at_time, EMAIL_ALARM_CLASS_AUTO_POLLING, input_account_id, emdaemon_alarm_polling_cb, NULL)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_add_alarm failed [%d]",err);
 		goto FINISH_OFF;
 	}

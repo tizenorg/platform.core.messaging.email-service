@@ -45,8 +45,9 @@ extern "C"
 #include <errno.h>
 
 #define __FEATURE_DEBUG_LOG__
-#define __FEATURE_LOG_FOR_LIFE_CYCLE_OF_FUNCTION__
-#define __FEATURE_LOG_FOR_DEBUG_LOG_DEV__
+/* #define __FEATURE_LOG_FOR_LIFE_CYCLE_OF_FUNCTION__ */
+/* #define __FEATURE_LOG_FOR_DEBUG_LOG_DEV__ */
+/* #define FEATURE_CORE_DEBUG */
 
 #ifdef  __FEATURE_DEBUG_LOG__
 
@@ -60,19 +61,9 @@ extern "C"
 #define	EM_DEBUG_LOG(format, arg...)        SLOGD(format, ##arg)
 #define	EM_DEBUG_EXCEPTION(format, arg...)  SLOGE("[EXCEPTION!] " format "\n", ##arg)
 
-#ifdef _SECURE_LOG
-#undef _SECURE_LOG
-#endif
-
-#ifdef _SECURE_LOG
 #define	EM_DEBUG_LOG_SEC(format, arg...)        SECURE_SLOGD(format, ##arg)
 #define	EM_DEBUG_EXCEPTION_SEC(format, arg...)  SECURE_SLOGE("[EXCEPTION!] " format "\n", ##arg)
 #define	EM_DEBUG_FUNC_BEGIN_SEC(format, arg...) EM_DEBUG_LOG_SEC("BEGIN - "format, ##arg)
-#else
-#define	EM_DEBUG_LOG_SEC(format, arg...)        SLOGD(format, ##arg)
-#define	EM_DEBUG_EXCEPTION_SEC(format, arg...)  SLOGE("[EXCEPTION!] " format "\n", ##arg)
-#define	EM_DEBUG_FUNC_BEGIN_SEC(format, arg...) EM_DEBUG_LOG("BEGIN - "format, ##arg)
-#endif
 
 #ifdef  _DEBUG_MIME_PARSE_
 #define EM_DEBUG_LOG_MIME(format, arg...)   EM_DEBUG_LOG_SEC(format, ##arg)
@@ -97,7 +88,7 @@ extern "C"
 #endif
 
 #define	EM_DEBUG_LINE                       EM_DEBUG_LOG("FUNC[%s : %d]", __FUNCTION__, __LINE__)
-#define EM_DEBUG_DB_EXEC(eval, expr, X)     if (eval) { EM_DEBUG_LOG X; expr;} else {;}
+#define EM_DEBUG_DB_EXEC(eval, expr, X)     if (eval) { EM_DEBUG_EXCEPTION X; expr;} else {;}
 
 #define EM_DEBUG_ERROR_FILE_PATH            tzplatform_mkpath(TZ_USER_DATA, "email/.email_data/.critical_error.log")
 #define EM_DEBUG_CRITICAL_EXCEPTION(format, arg...)   \
@@ -203,16 +194,16 @@ extern "C"
 #define EM_NULL_CHECK_FOR_VOID(expr)	\
 	{\
 		if (!expr) {\
-			EM_DEBUG_EXCEPTION ("INVALID PARAM: "#expr" NULL ");\
+			EM_DEBUG_LOG ("NULL_PARAM: ["#expr"]");\
 			return;\
 		}\
 	}
 
-#define EM_IF_NULL_RETURN_VALUE(expr, val) \
+#define EM_IF_NULL_RETURN_VALUE(expr, ret) \
 	{\
 		if (!expr ) {\
-			EM_DEBUG_EXCEPTION ("INVALID PARAM: "#expr" NULL ");\
-			return val;	\
+			EM_DEBUG_LOG("NULL_PARAM: ["#expr"]");\
+			return ret;	\
 		}\
 	}
 
@@ -237,6 +228,17 @@ extern "C"
 		}\
 	})
 
+#define EM_SAFE_CLOSE(fd)	 \
+	({\
+		int err = 0;\
+		if (fd >=0) {\
+			err = close (fd);\
+			if (err < 0)\
+				EM_DEBUG_EXCEPTION ("close errno [%d]", errno);\
+			fd = 0;\
+		}\
+	})
+
 #define EM_SAFE_STRDUP(s) \
 	({\
 		char* _s = (char*)s;\
@@ -248,6 +250,13 @@ extern "C"
 		char* _dest = dest;\
 		char* _src = src;\
 		((_src) && (_dest))? strcmp(_dest, _src) : -1;\
+	})
+
+#define EM_SAFE_STRCASECMP(dest, src) \
+	({\
+		char* _dest = dest;\
+		char* _src = src;\
+		((_src) && (_dest))? strcasecmp(_dest, _src) : -1;\
 	})
 
 #define EM_SAFE_STRCPY(dest, src) \

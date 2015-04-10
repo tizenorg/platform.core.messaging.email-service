@@ -36,23 +36,27 @@
 EXPORT_API int emipc_initialize_proxy_main()
 {
 	EM_DEBUG_FUNC_BEGIN();
+	int err = EMAIL_ERROR_NONE;
 	int sock_fd = 0;
 
 	sock_fd = emipc_get_proxy_socket_id();
 
 	if (sock_fd) {
 		EM_DEBUG_LOG("Socket already initialized");
-		return EMAIL_ERROR_IPC_ALREADY_INITIALIZED;
+		return err;
 	}
 	
-	if (!emipc_start_proxy_socket()) {
+	if ((err = emipc_start_proxy_socket()) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("Socket start failed");
+		if (err == EMAIL_ERROR_PERMISSION_DENIED)
+			return err;
+		
 		return EMAIL_ERROR_IPC_CONNECTION_FAILURE;
 	}
 	
 	EM_DEBUG_LOG("Socket ID : %d", emipc_get_proxy_socket_id());
 	EM_DEBUG_FUNC_END();
-	return EMAIL_ERROR_NONE; 
+	return err; 
 }
 
 EXPORT_API int emipc_finalize_proxy_main()

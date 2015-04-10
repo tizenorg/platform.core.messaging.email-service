@@ -46,12 +46,13 @@ typedef struct _email_alarm_data_t {
 	email_alarm_class_t           class_id;
 	int                         reference_id;
 	time_t                      trigger_at_time;
-	int                       (*alarm_callback)(int, void *);
+	int                       (*alarm_callback)(struct _email_alarm_data_t*, void *);
+	char                       *multi_user_name;
 	void                       *user_data;
 } email_alarm_data_t;
 
 
-INTERNAL_FUNC int emcore_add_alarm(time_t input_trigger_at_time, email_alarm_class_t input_class_id, int input_reference_id, int (*input_alarm_callback)(int, void *), void *input_user_data);
+INTERNAL_FUNC int emcore_add_alarm(char *multi_user_name, time_t input_trigger_at_time, email_alarm_class_t input_class_id, int input_reference_id, int (*input_alarm_callback)(email_alarm_data_t*, void *), void *input_user_data);
 
 INTERNAL_FUNC int emcore_delete_alram_data_from_alarm_data_list(email_alarm_data_t *input_alarm_data);
 INTERNAL_FUNC int emcore_delete_alram_data_by_reference_id(email_alarm_class_t input_class_id, int input_reference_id);

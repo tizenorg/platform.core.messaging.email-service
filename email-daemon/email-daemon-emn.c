@@ -426,7 +426,7 @@ static int _get_emn_account(unsigned char *input_wbxml, int input_wbxml_length, 
 	if(incoming_server_user_name && host_addr)
 		SNPRINTF((char*)email_address, MAX_EMAIL_ADDRESS_LENGTH, "%s@%s", incoming_server_user_name, host_addr);
 
-	if (!emdaemon_get_account_list(&accounts, &count, &err)) {
+	if (!emdaemon_get_account_list(NULL, &accounts, &count, &err)) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_DB_FAILURE");
 		err = EMAIL_ERROR_DB_FAILURE;
 		goto FINISH_OFF;
@@ -524,19 +524,19 @@ static int emdaemon_handle_emn_notification(unsigned char* wbxml_b64, int input_
 	}
 
 	if (account.incoming_server_type == EMAIL_SERVER_TYPE_IMAP4 && mailbox_name)  {
-		if (!emstorage_get_mailbox_by_name(account.account_id, -1, mailbox_name, &mailbox_tbl, false, &err))  {
+		if (!emstorage_get_mailbox_by_name(multi_user_name, account.account_id, -1, mailbox_name, &mailbox_tbl, false, &err))  {
 			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_name failed [%d", err);
 			goto FINISH_OFF;
 		}
 	}
 	else {
-		if (!emstorage_get_mailbox_by_mailbox_type(account.account_id, EMAIL_MAILBOX_TYPE_INBOX, &mailbox_tbl, false, &err))  {
+		if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name, account.account_id, EMAIL_MAILBOX_TYPE_INBOX, &mailbox_tbl, false, &err))  {
 			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d", err);
 			goto FINISH_OFF;
 		}
 	}
 
-	if (!emdaemon_sync_header(mailbox_tbl->account_id, mailbox_tbl->mailbox_id, &handle, &err))  {
+	if (!emdaemon_sync_header(multi_user_name, mailbox_tbl->account_id, mailbox_tbl->mailbox_id, &handle, &err))  {
 		EM_DEBUG_EXCEPTION("emdaemon_sync_header failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -574,7 +574,7 @@ static int emdaemon_register_wap_push_callback(msg_handle_t *input_msg_handle, c
 	msg_error_t msg_err = MSG_SUCCESS;
 	msg_struct_t msg_struct = NULL;
 	char *content_type = "application/vnd.wap.emn+wbxml";
-	char *pkg_name = "com.samsung.email";
+	char *pkg_name = "org.tizen.email";
 	bool bLaunch = false;
 
 	if(input_msg_handle == NULL || input_app_id == NULL) {

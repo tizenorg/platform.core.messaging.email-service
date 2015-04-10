@@ -20,6 +20,8 @@
 */
 
 
+#define _GNU_SOURCE
+#include <sys/socket.h>
 
 #include <string.h>
 #include <pthread.h>
@@ -31,8 +33,9 @@
 #include "email-ipc-build.h"
 
 #include "email-debug-log.h"
-#include "email-api.h"
 #include "email-internal-types.h"
+#include "email-utilities.h"
+//#include "email-core-cynara.h"
 
 static pthread_t task_thread = 0;
 static bool stop_flag = false;
@@ -95,11 +98,16 @@ EXPORT_API void *emipc_do_task_thread()
 			break;
 		}
 
-		task = (emipc_email_task *)g_queue_pop_head(task_queue);
+		task = (emipc_email_task *)g_queue_peek_head(task_queue);
 		LEAVE_CRITICAL_SECTION(ipc_task_mutex);
 
 		if (task) {
 			emipc_run_task(task);
+
+			ENTER_CRITICAL_SECTION(ipc_task_mutex);
+			task = (emipc_email_task *)g_queue_pop_head(task_queue); 
+			LEAVE_CRITICAL_SECTION(ipc_task_mutex);
+
 			emipc_free_email_task(task);
 			EM_SAFE_FREE(task);
 		}
@@ -109,27 +117,56 @@ EXPORT_API void *emipc_do_task_thread()
 }
 
 /* code for ipc handler */
-EXPORT_API bool emipc_create_task(unsigned char *task_stream, int response_channel)
+EXPORT_API int emipc_create_task(unsigned char *task_stream, int response_channel)
 {
 	emipc_email_task *task = NULL;
-	bool ret = true;
+	int err = EMAIL_ERROR_NONE;
 
 	task = (emipc_email_task *)malloc(sizeof(emipc_email_task));
 	if (task == NULL) {
 		EM_DEBUG_EXCEPTION("Malloc failed.");
-		ret = false;
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
 	} else {
 		if (!emipc_parse_stream_email_task(task, task_stream, response_channel)) {
 			EM_DEBUG_EXCEPTION("emipc_parse_stream_email_task failed");
-			return false;
+    		emipc_free_email_task(task);
+			EM_SAFE_FREE(task);
+			return err;
 		}
 		
 		EM_DEBUG_LOG_DEV ("[IPCLib] ======================================================");
-		EM_DEBUG_LOG_SEC ("[IPCLib] Register new task: API_ID[%s][0x%x] RES_ID[%d] APP_ID[%d]", EM_APIID_TO_STR(task->api_info->api_id),\
-													task->api_info->api_id,\
-													task->api_info->response_id,\
-													task->api_info->app_id);
+		EM_DEBUG_LOG_SEC ("[IPCLib] Register new task: API_ID[%s][0x%x] RES_ID[%d] APP_ID[%d]", 
+                                           EM_APIID_TO_STR(task->api_info->api_id),
+                                           task->api_info->api_id,
+                                           task->api_info->response_id,
+                                           task->api_info->app_id);
 		EM_DEBUG_LOG_DEV ("[IPCLib] ======================================================");
+
+        struct ucred uc;
+        socklen_t uc_len = sizeof(uc);
+
+        if (getsockopt(response_channel, SOL_SOCKET, SO_PEERCRED, &uc, &uc_len) < 0) {
+            EM_DEBUG_EXCEPTION("getsockopt error : [%d]", errno);
+            err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
+            return err;
+        }
+
+        EM_DEBUG_LOG("Peer PID : [%d]", uc.pid);
+
+        task->api_info->app_id = uc.pid;
+
+		/*check privilege*/
+#ifdef __FEATURE_ACCESS_CONTROL__
+#if 0
+		err = emcore_check_privilege(response_channel);
+		if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+			EM_DEBUG_LOG("permission denied");
+			emipc_free_email_task(task);
+			EM_SAFE_FREE(task);
+			return err;
+		}
+#endif
+#endif
 
 		ENTER_CRITICAL_SECTION(ipc_task_mutex);
 		g_queue_push_tail(task_queue, (void *)task);
@@ -137,5 +174,21 @@ EXPORT_API bool emipc_create_task(unsigned char *task_stream, int response_chann
 		WAKE_CONDITION_VARIABLE(ipc_task_cond);
 		LEAVE_CRITICAL_SECTION(ipc_task_mutex);
 	}
-	return ret;
+	return err;
 }
+
+
+EXPORT_API void emipc_close_fd_in_task_queue (int fd)
+{
+	emipc_email_task *task = NULL;
+	int i = 0;
+	ENTER_CRITICAL_SECTION(ipc_task_mutex);
+	while ( (task = g_queue_peek_nth (task_queue, i++)) ) {
+		if (task->api_info->response_id == fd) {
+			task->api_info->response_id = -1;
+		}
+	}
+	LEAVE_CRITICAL_SECTION(ipc_task_mutex);
+}
+
+
