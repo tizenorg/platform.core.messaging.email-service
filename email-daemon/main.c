@@ -4103,7 +4103,7 @@ INTERNAL_FUNC int main(int argc, char *argv[])
     emcore_create_container();
 
 	/* Init cynara */
-	//emcore_init_cynara();
+	emcore_init_cynara();
 
 	EM_DEBUG_LOG("ipcEmailStub_Initialize Start");
 

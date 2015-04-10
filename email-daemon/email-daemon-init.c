@@ -68,7 +68,7 @@
 #include "c-client.h"
 #include "email-core-smime.h"
 #include "email-core-container.h"
-//#include "email-core-cynara.h"
+#include "email-core-cynara.h"
 
 connection_h conn = NULL;
 
@@ -152,7 +152,7 @@ static int _emdaemon_unload_email_core()
     emcore_destroy_container();
 
 	/* Finish cynara */
-	//emcore_finish_cynara();
+	emcore_finish_cynara();
 
 #ifdef __FEATURE_WIFI_AUTO_DOWNLOAD__
 	emcore_stop_auto_download_loop(&err);
