@@ -1,0 +1,20 @@
+[Unit]
+Description=Email service
+After=graphical.target
+
+[Service]
+User=system
+Group=system
+SmackProcessLabel=email-service
+Type=dbus
+BusName=org.tizen.email_service
+ExecStart=/usr/bin/email-service
+Restart=on-failure
+SuccessExitStatus=0 44
+
+[Socket]
+SocketUser=system
+SocketGroup=system
+
+[Install]
+WantedBy=graphical.target

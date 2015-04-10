@@ -10,6 +10,7 @@ CREATE TABLE mail_account_tbl
 	sync_disabled                            INTEGER,
 	default_mail_slot_size                   INTEGER,
 	roaming_option                           INTEGER,
+	color_label                              INTEGER,
 	user_display_name                        VARCHAR(31),
 	user_email_address                       VARCHAR(129),
 	reply_to_address                         VARCHAR(129),
@@ -53,12 +54,19 @@ CREATE TABLE mail_account_tbl
 	add_my_address_to_bcc                    INTEGER,
 	auto_resend_times                        INTEGER,
 	outgoing_server_size_limit               INTEGER,
+	wifi_auto_download                       INTEGER,
 	pop_before_smtp                          INTEGER,
 	incoming_server_requires_apop            INTEGER,
 	smime_type                               INTEGER,
 	certificate_path                         VARCHAR(256),
 	cipher_type                              INTEGER,
-	digest_type                              INTEGER
+	digest_type                              INTEGER,
+	notification_status                      INTEGER,
+	vibrate_status                           INTEGER,
+	display_content_status                   INTEGER,
+	default_ringtone_status                  INTEGER,
+	alert_ringtone_path                      VARCHAR(256),
+	user_name                                VARCHAR(256)
 );
 CREATE TABLE mail_box_tbl 
 (    
@@ -123,8 +131,8 @@ CREATE TABLE mail_tbl
 	full_address_cc                  TEXT,
 	full_address_bcc                 TEXT,
 	full_address_return              TEXT,
-	email_address_sender             TEXT collation user1,
-	email_address_recipient          TEXT collation user1,
+	email_address_sender             TEXT,
+	email_address_recipient          TEXT,
 	alias_sender                     TEXT,
 	alias_recipient                  TEXT,
 	body_download_status             INTEGER,
@@ -158,8 +166,10 @@ CREATE TABLE mail_tbl
 	tag_id                           INTEGER,
 	replied_time                     DATETIME,
 	forwarded_time                   DATETIME,
+	default_charset                  VARCHAR(257),
 	eas_data_length                  INTEGER,
 	eas_data                         BLOB,
+	user_name                        VARCHAR(256),
 	FOREIGN KEY(account_id)          REFERENCES mail_account_tbl(account_id)
 );
 CREATE TABLE mail_attachment_tbl 
@@ -167,6 +177,7 @@ CREATE TABLE mail_attachment_tbl
 	attachment_id                            INTEGER PRIMARY KEY,
 	attachment_name                          VARCHAR(257),
 	attachment_path                          VARCHAR(257),
+	content_id                               VARCHAR(257),
 	attachment_size                          INTEGER,
 	mail_id                                  INTEGER,
 	account_id                               INTEGER,
@@ -185,7 +196,8 @@ CREATE TABLE mail_partial_body_activity_tbl
 	activity_id                  	INTEGER PRIMARY KEY,
 	activity_type                	INTEGER,
 	mailbox_id                   	INTEGER,
-	mailbox_name                 	VARCHAR(4000)
+	mailbox_name                 	VARCHAR(4000),
+	multi_user_name                 VARCHAR(64)
 );
 CREATE TABLE mail_meeting_tbl
 (
@@ -247,6 +259,16 @@ CREATE VIRTUAL TABLE mail_text_tbl USING fts4
 	mailbox_id			 INTEGER,
 	body_text			 TEXT
 );
+CREATE TABLE mail_auto_download_activity_tbl
+(
+	activity_id                  	INTEGER PRIMARY KEY,
+	status								INTEGER,
+	account_id						INTEGER,
+	mail_id                      	INTEGER,
+	server_mail_id               	INTEGER,
+	mailbox_id                   	INTEGER,
+	multi_user_name              VARCHAR(64)
+);
 CREATE UNIQUE INDEX mail_account_idx1 ON mail_account_tbl (account_id);
 CREATE UNIQUE INDEX mail_box_idx1 ON mail_box_tbl (mailbox_id);
 CREATE UNIQUE INDEX mail_read_mail_uid_idx1 ON mail_read_mail_uid_tbl (account_id, mailbox_id, local_uid, mailbox_name, server_uid);
@@ -263,4 +285,8 @@ CREATE TRIGGER update_flags_seen_field UPDATE OF flags_seen_field ON mail_tbl
 CREATE TRIGGER update_flags_flagged_field UPDATE OF flags_flagged_field ON mail_tbl 
   BEGIN
     UPDATE mail_read_mail_uid_tbl SET flags_flagged_field = new.flags_flagged_field WHERE local_uid = old.mail_id;
+  END;
+CREATE TRIGGER update_mailbox_id_field UPDATE OF mailbox_id ON mail_tbl 
+  BEGIN
+    UPDATE mail_auto_download_activity_tbl SET mailbox_id = new.mailbox_id WHERE mail_id = old.mail_id;
   END;

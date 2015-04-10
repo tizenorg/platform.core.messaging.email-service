@@ -244,7 +244,7 @@ EXPORT_API int emipc_execute_proxy_task(email_task_type_t input_task_type, void 
 
 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
 
-	FINISH_OFF:
+FINISH_OFF:
 	if(hAPI)
 		emipc_destroy_email_api(hAPI);
 
@@ -252,3 +252,49 @@ EXPORT_API int emipc_execute_proxy_task(email_task_type_t input_task_type, void 
 	return err;
 }
 
+EXPORT_API int emipc_get_user_name(char **output_user_name)
+{
+    EM_DEBUG_FUNC_BEGIN();
+
+    int err = EMAIL_ERROR_NONE;
+
+    if (!output_user_name) {
+        EM_DEBUG_EXCEPTION("Invalid parameter");
+        err = EMAIL_ERROR_INVALID_PARAM;
+        return err;
+    }
+
+    int buffer_size = 0;
+    char *user_name = NULL;
+
+    HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_GET_USER_NAME);
+    if(!emipc_execute_proxy_api(hAPI))  {
+        EM_DEBUG_LOG("ipcProxy_ExecuteAsyncAPI failed");
+        err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
+        goto FINISH_OFF;
+    }
+
+    emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+    if (err != EMAIL_ERROR_NONE) 
+        goto FINISH_OFF;
+
+    buffer_size = emipc_get_parameter_length(hAPI, ePARAMETER_OUT, 1);
+    if (buffer_size > 0) {
+        user_name = (char *)malloc(buffer_size);
+        emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, buffer_size, user_name);
+        EM_DEBUG_LOG("Name : [%s]", user_name);
+    }
+
+FINISH_OFF:
+
+    *output_user_name = EM_SAFE_STRDUP(user_name);
+
+    EM_SAFE_FREE(user_name);
+
+    if (hAPI) 
+        emipc_destroy_email_api(hAPI);
+
+    EM_DEBUG_FUNC_END();
+
+    return err;
+}
