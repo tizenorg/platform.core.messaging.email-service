@@ -30,7 +30,6 @@
  *			email-service . 
  */
  
-#include "email-api.h"
 #include "string.h"
 #include "email-convert.h"
 #include "email-api-mailbox.h"
@@ -46,18 +45,24 @@ EXPORT_API int email_send_mail(int mail_id, int *handle)
 	EM_DEBUG_API_BEGIN ("mail_id[%d] handle[%p]", mail_id, handle);
 	
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 	emstorage_mail_tbl_t* mail_table_data = NULL;
 	email_account_server_t account_server_type;
 	HIPC_API hAPI = NULL;
 	ASNotiData as_noti_data;
 
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
 	if(mail_id <= 0) {
 		EM_DEBUG_EXCEPTION("mail_id is not valid");
-		err= EMAIL_ERROR_INVALID_PARAM;
+		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
-	if(!emstorage_get_mail_by_id(mail_id, &mail_table_data, true, &err) || !mail_table_data) {
+	if(!emstorage_get_mail_by_id(multi_user_name, mail_id, &mail_table_data, true, &err) || !mail_table_data) {
 		EM_DEBUG_EXCEPTION("Failed to get mail by mail_id [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -73,7 +78,7 @@ EXPORT_API int email_send_mail(int mail_id, int *handle)
 	memset(&as_noti_data, 0x00, sizeof(ASNotiData));
 
 	/*  check account bind type and branch off  */
-	if ( em_get_account_server_type_by_account_id(mail_table_data->account_id, &account_server_type, false, &err) == false ) {
+	if (em_get_account_server_type_by_account_id(multi_user_name, mail_table_data->account_id, &account_server_type, false, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
@@ -88,9 +93,10 @@ EXPORT_API int email_send_mail(int mail_id, int *handle)
 		}
 		
 		/*  noti to active sync */
-		as_noti_data.send_mail.handle     = as_handle;
-		as_noti_data.send_mail.account_id = mail_table_data->account_id;
-		as_noti_data.send_mail.mail_id    = mail_id;
+		as_noti_data.send_mail.handle          = as_handle;
+		as_noti_data.send_mail.account_id      = mail_table_data->account_id;
+		as_noti_data.send_mail.mail_id         = mail_id;
+        as_noti_data.send_mail.multi_user_name = multi_user_name;
 
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_SEND_MAIL, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -136,6 +142,8 @@ FINISH_OFF:
 
 	emstorage_free_mail(&mail_table_data, 1, NULL);
 
+    EM_SAFE_FREE(multi_user_name);
+
 	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;	
 }
@@ -145,10 +153,16 @@ EXPORT_API int email_send_mail_with_downloading_attachment_of_original_mail(int 
 	EM_DEBUG_API_BEGIN ("input_mail_id[%d] output_handle[%p]", input_mail_id, output_handle);
 
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 	emstorage_mail_tbl_t* mail_table_data = NULL;
 	email_account_server_t account_server_type;
 	HIPC_API hAPI = NULL;
 	task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL task_parameter;
+
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
 
 	if(input_mail_id <= 0) {
 		EM_DEBUG_EXCEPTION("mail_id is not valid");
@@ -156,7 +170,7 @@ EXPORT_API int email_send_mail_with_downloading_attachment_of_original_mail(int 
 		goto FINISH_OFF;
 	}
 
-	if(!emstorage_get_mail_by_id(input_mail_id, &mail_table_data, true, &err) || !mail_table_data) {
+	if(!emstorage_get_mail_by_id(multi_user_name, input_mail_id, &mail_table_data, true, &err) || !mail_table_data) {
 		EM_DEBUG_EXCEPTION("Failed to get mail by mail_id [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -170,7 +184,7 @@ EXPORT_API int email_send_mail_with_downloading_attachment_of_original_mail(int 
 	EM_DEBUG_LOG("mail_table_data->account_id[%d], mail_table_data->mailbox_id[%d]", mail_table_data->account_id, mail_table_data->mailbox_id);
 
 	/*  check account bind type and branch off  */
-	if ( em_get_account_server_type_by_account_id(mail_table_data->account_id, &account_server_type, false, &err) == false ) {
+	if ( em_get_account_server_type_by_account_id(multi_user_name, mail_table_data->account_id, &account_server_type, false, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
@@ -189,9 +203,10 @@ EXPORT_API int email_send_mail_with_downloading_attachment_of_original_mail(int 
 		}
 
 		/*  noti to active sync */
-		as_noti_data.send_mail_with_downloading_attachment_of_original_mail.handle     = as_handle;
-		as_noti_data.send_mail_with_downloading_attachment_of_original_mail.mail_id    = input_mail_id;
-		as_noti_data.send_mail_with_downloading_attachment_of_original_mail.account_id = mail_table_data->account_id;
+		as_noti_data.send_mail_with_downloading_attachment_of_original_mail.handle          = as_handle;
+		as_noti_data.send_mail_with_downloading_attachment_of_original_mail.mail_id         = input_mail_id;
+		as_noti_data.send_mail_with_downloading_attachment_of_original_mail.account_id      = mail_table_data->account_id;
+		as_noti_data.send_mail_with_downloading_attachment_of_original_mail.multi_user_name = multi_user_name;
 
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_SEND_MAIL_WITH_DOWNLOADING_OF_ORIGINAL_MAIL, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -217,6 +232,8 @@ FINISH_OFF:
 
 	emstorage_free_mail(&mail_table_data, 1, NULL);
 
+    EM_SAFE_FREE(multi_user_name);
+
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -226,10 +243,16 @@ EXPORT_API int email_schedule_sending_mail(int input_mail_id, time_t input_sched
 	EM_DEBUG_API_BEGIN ("mail_id[%d] input_time[%d]", input_mail_id, input_scheduled_time);
 
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 	emstorage_mail_tbl_t* mail_table_data = NULL;
 	email_account_server_t account_server_type;
 	HIPC_API hAPI = NULL;
 	task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL task_parameter;
+
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
 
 	if(input_mail_id <= 0) {
 		EM_DEBUG_EXCEPTION("mail_id is not valid");
@@ -237,13 +260,13 @@ EXPORT_API int email_schedule_sending_mail(int input_mail_id, time_t input_sched
 		goto FINISH_OFF;
 	}
 
-	if(!emstorage_get_mail_by_id(input_mail_id, &mail_table_data, true, &err) || !mail_table_data) {
+	if(!emstorage_get_mail_by_id(multi_user_name, input_mail_id, &mail_table_data, true, &err) || !mail_table_data) {
 		EM_DEBUG_EXCEPTION("Failed to get mail by mail_id [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	/*  check account bind type and branch off  */
-	if ( em_get_account_server_type_by_account_id(mail_table_data->account_id, &account_server_type, false, &err) == false ) {
+	if ( em_get_account_server_type_by_account_id(multi_user_name, mail_table_data->account_id, &account_server_type, false, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
@@ -262,10 +285,11 @@ EXPORT_API int email_schedule_sending_mail(int input_mail_id, time_t input_sched
 		}
 
 		/*  noti to active sync */
-		as_noti_data.schedule_sending_mail.handle         = as_handle;
-		as_noti_data.schedule_sending_mail.account_id     = mail_table_data->account_id;
-		as_noti_data.schedule_sending_mail.mail_id        = input_mail_id;
-		as_noti_data.schedule_sending_mail.scheduled_time = input_scheduled_time;
+		as_noti_data.schedule_sending_mail.handle          = as_handle;
+		as_noti_data.schedule_sending_mail.account_id      = mail_table_data->account_id;
+		as_noti_data.schedule_sending_mail.mail_id         = input_mail_id;
+		as_noti_data.schedule_sending_mail.scheduled_time  = input_scheduled_time;
+        as_noti_data.schedule_sending_mail.multi_user_name = multi_user_name;
 
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_SCHEDULE_SENDING_MAIL, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -288,6 +312,8 @@ FINISH_OFF:
 	hAPI = (HIPC_API)NULL;
 
 	emstorage_free_mail(&mail_table_data, 1, NULL);
+
+    EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
@@ -334,6 +360,7 @@ EXPORT_API int email_sync_header(int input_account_id, int input_mailbox_id, int
 {
 	EM_DEBUG_API_BEGIN ("input_account_id[%d] input_mailbox_id[%d] handle[%p]", input_account_id, input_mailbox_id, handle);
 	int err = EMAIL_ERROR_NONE;	
+    char *multi_user_name = NULL;
 	/* int total_count = 0; */
 	
 	EM_IF_ACCOUNT_ID_NULL(input_account_id, EMAIL_ERROR_INVALID_PARAM);
@@ -343,8 +370,13 @@ EXPORT_API int email_sync_header(int input_account_id, int input_mailbox_id, int
 	ASNotiData as_noti_data;
 	memset(&as_noti_data, 0x00, sizeof(ASNotiData));
 
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
 	/*  2010/02/12 ch715.lee : check account bind type and branch off  */
-	if ( em_get_account_server_type_by_account_id(input_account_id, &account_server_type, true, &err) == false ) {
+	if (em_get_account_server_type_by_account_id(multi_user_name, input_account_id, &account_server_type, true, &err) == false) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		goto FINISH_OFF;
 	}
@@ -357,18 +389,19 @@ EXPORT_API int email_sync_header(int input_account_id, int input_mailbox_id, int
 		}
 		
 		/*  noti to active sync */
-		as_noti_data.sync_header.handle = as_handle;
-		as_noti_data.sync_header.account_id = input_account_id;
+		as_noti_data.sync_header.handle          = as_handle;
+		as_noti_data.sync_header.account_id      = input_account_id;
 		/* In case that Mailbox is NULL,   SYNC ALL MAILBOX */
-		as_noti_data.sync_header.mailbox_id = input_mailbox_id;
+		as_noti_data.sync_header.mailbox_id      = input_mailbox_id;
+        as_noti_data.sync_header.multi_user_name = multi_user_name;
 
-		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_SYNC_HEADER, &as_noti_data) == false) {
+		if (em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_SYNC_HEADER, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
 			err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 			goto FINISH_OFF;
 		}
 
-		if(handle)
+		if (handle)
 			*handle = as_handle;
 
 	}
@@ -406,8 +439,11 @@ EXPORT_API int email_sync_header(int input_account_id, int input_mailbox_id, int
 	}
 
 FINISH_OFF:
+
 	emipc_destroy_email_api(hAPI);
 	hAPI = NULL;
+
+    EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
@@ -418,6 +454,7 @@ EXPORT_API int email_sync_header_for_all_account(int *handle)
 {
 	EM_DEBUG_API_BEGIN ("handle[%p]", handle);
 	char* mailbox_stream = NULL;
+    char *multi_user_name = NULL;
 	int err = EMAIL_ERROR_NONE;	
 	HIPC_API hAPI = NULL;
 	int return_handle;
@@ -427,6 +464,11 @@ EXPORT_API int email_sync_header_for_all_account(int *handle)
 	int as_err;
 	int input_account_id = ALL_ACCOUNT;
 	int input_mailbox_id = 0; /* all case */
+
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
 
 	hAPI = emipc_create_email_api(_EMAIL_API_SYNC_HEADER);	
 
@@ -457,14 +499,13 @@ EXPORT_API int email_sync_header_for_all_account(int *handle)
 	 if (err != EMAIL_ERROR_NONE)
 		 goto FINISH_OFF;
 
-	   emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), &return_handle);
+    emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), &return_handle);
 
 	memset(&as_noti_data, 0x00, sizeof(ASNotiData));
 
 	/*  Get all accounts for sending notification to active sync engine. */
-	if (!emstorage_get_account_list(&account_count, &account_tbl_array , true, false, &as_err)) {
+	if (!emstorage_get_account_list(multi_user_name, &account_count, &account_tbl_array , true, false, &as_err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [ %d ]  ", as_err);
-
 		goto FINISH_OFF;
 	}
 
@@ -480,10 +521,11 @@ EXPORT_API int email_sync_header_for_all_account(int *handle)
 			*/
 			
 			/*  noti to active sync */
-			as_noti_data.sync_header.handle = return_handle;
-			as_noti_data.sync_header.account_id = account_tbl_array[i].account_id;
+			as_noti_data.sync_header.handle          = return_handle;
+			as_noti_data.sync_header.account_id      = account_tbl_array[i].account_id;
 			/* In case that Mailbox is NULL,   SYNC ALL MAILBOX */
-			as_noti_data.sync_header.mailbox_id = 0;
+			as_noti_data.sync_header.mailbox_id      = 0;
+            as_noti_data.sync_header.multi_user_name = multi_user_name;
 
 			if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_SYNC_HEADER, &as_noti_data) == false) {
 				EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -503,7 +545,8 @@ FINISH_OFF:
 
 	if ( account_tbl_array )
 		emstorage_free_account(&account_tbl_array, account_count, NULL);
-	
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
 }
@@ -517,6 +560,13 @@ EXPORT_API int email_download_body(int mail_id, int with_attachment, int *handle
 	email_account_server_t account_server_type;
 	HIPC_API hAPI = NULL;
 	ASNotiData as_noti_data;
+    char *multi_user_name = NULL;
+
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
 	memset(&as_noti_data, 0x00, sizeof(ASNotiData));
 
 	if(mail_id <= 0) {
@@ -525,7 +575,7 @@ EXPORT_API int email_download_body(int mail_id, int with_attachment, int *handle
 		goto FINISH_OFF;
 	}
 
-	if(!emstorage_get_mail_by_id(mail_id, &mail_table_data, true, &err) || !mail_table_data ) {
+	if(!emstorage_get_mail_by_id(multi_user_name, mail_id, &mail_table_data, true, &err) || !mail_table_data ) {
 		EM_DEBUG_EXCEPTION("Failed to get mail by mail_id [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -538,7 +588,7 @@ EXPORT_API int email_download_body(int mail_id, int with_attachment, int *handle
 	account_id = mail_table_data->account_id;
 		
 	/*  2010/02/12 ch715.lee : check account bind type and branch off  */
-	if ( em_get_account_server_type_by_account_id(account_id, &account_server_type, true, &err) == false ) {
+	if ( em_get_account_server_type_by_account_id(multi_user_name, account_id, &account_server_type, true, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		goto FINISH_OFF;
 	}
@@ -551,10 +601,11 @@ EXPORT_API int email_download_body(int mail_id, int with_attachment, int *handle
 		}
 		
 		/*  noti to active sync */
-		as_noti_data.download_body.handle = as_handle;
-		as_noti_data.download_body.account_id = account_id;
-		as_noti_data.download_body.mail_id = mail_id;
+		as_noti_data.download_body.handle          = as_handle;
+		as_noti_data.download_body.account_id      = account_id;
+		as_noti_data.download_body.mail_id         = mail_id;
 		as_noti_data.download_body.with_attachment = with_attachment;
+        as_noti_data.download_body.multi_user_name = multi_user_name;
 
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_DOWNLOAD_BODY, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -595,11 +646,9 @@ EXPORT_API int email_download_body(int mail_id, int with_attachment, int *handle
 		 if (err != EMAIL_ERROR_NONE)		
 			 goto FINISH_OFF;
 		 
-		 if(handle)	
-		 {
+		 if(handle)	{
 		 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), handle);
 			EM_DEBUG_LOG("RETURN VALUE : %d  handle %d", err, *handle);
-
 		 }
 	}
 
@@ -610,6 +659,8 @@ FINISH_OFF:
 	if(mail_table_data) {
 		emstorage_free_mail(&mail_table_data, 1, &err);
 	}
+
+    EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
@@ -629,6 +680,13 @@ EXPORT_API int email_download_attachment(int mail_id, int nth, int *handle)
 	email_account_server_t account_server_type;
 	HIPC_API hAPI = NULL;
 	ASNotiData as_noti_data;
+    char *multi_user_name = NULL;
+
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
 	memset(&as_noti_data, 0x00, sizeof(ASNotiData));
 
 	if(mail_id <= 0) {
@@ -637,7 +695,7 @@ EXPORT_API int email_download_attachment(int mail_id, int nth, int *handle)
 		goto FINISH_OFF;
 	}
 
-	if(!emstorage_get_mail_by_id(mail_id, &mail_table_data, true, &err) || !mail_table_data ) {
+	if(!emstorage_get_mail_by_id(multi_user_name, mail_id, &mail_table_data, true, &err) || !mail_table_data ) {
 		EM_DEBUG_EXCEPTION("Failed to get mail by mail_id [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -648,8 +706,8 @@ EXPORT_API int email_download_attachment(int mail_id, int nth, int *handle)
 	}
 
 	account_id = mail_table_data->account_id;
-	
-	if ( em_get_account_server_type_by_account_id(account_id, &account_server_type, true, &err) == false ) {
+
+	if ( em_get_account_server_type_by_account_id(multi_user_name, account_id, &account_server_type, true, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		goto FINISH_OFF;
 	}
@@ -662,10 +720,12 @@ EXPORT_API int email_download_attachment(int mail_id, int nth, int *handle)
 		}
 		
 		/*  noti to active sync */
-		as_noti_data.download_attachment.handle = as_handle;
-		as_noti_data.download_attachment.account_id = account_id;
-		as_noti_data.download_attachment.mail_id = mail_id;
+		as_noti_data.download_attachment.handle           = as_handle;
+		as_noti_data.download_attachment.account_id       = account_id;
+		as_noti_data.download_attachment.mail_id          = mail_id;
 		as_noti_data.download_attachment.attachment_order = nth;
+        as_noti_data.download_attachment.multi_user_name  = multi_user_name;
+
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_DOWNLOAD_ATTACHMENT, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
 			err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
@@ -721,6 +781,8 @@ FINISH_OFF:
 		emstorage_free_mail(&mail_table_data, 1, &err);
 	}
 
+    EM_SAFE_FREE(multi_user_name);
+
 	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
 	
@@ -736,30 +798,36 @@ EXPORT_API int email_cancel_job(int input_account_id, int input_handle, email_ca
 	ASNotiData as_noti_data;
 	emstorage_account_tbl_t *account_list = NULL;
 	int i, account_count = 0;
+    char *multi_user_name = NULL;
 
 	if(input_account_id < 0)
 		return EMAIL_ERROR_INVALID_PARAM;
 
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
 	if ( input_account_id == ALL_ACCOUNT ) {
 		/*  this means that job is executed with all account */
 		/*  Get all accounts for sending notification to active sync engine. */
-		if (!emstorage_get_account_list(&account_count, &account_list , true, false, &err)) {
+		if (!emstorage_get_account_list(multi_user_name, &account_count, &account_list , true, false, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [%d]", err);
 			goto FINISH_OFF;
 		}
 
 		for(i = 0; i < account_count; i++) {
-			if ( em_get_account_server_type_by_account_id(account_list[i].account_id, &account_server_type, true, &err) == false ) {
+			if ( em_get_account_server_type_by_account_id(multi_user_name, account_list[i].account_id, &account_server_type, true, &err) == false ) {
 				EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 				goto FINISH_OFF;
 			}
 
 			if ( account_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC ) {
 				memset(&as_noti_data, 0x00, sizeof(ASNotiData));
-				as_noti_data.cancel_job.account_id  = account_list[i].account_id;
-				as_noti_data.cancel_job.handle      = input_handle;
-				as_noti_data.cancel_job.cancel_type = input_cancel_type;
-
+				as_noti_data.cancel_job.account_id      = account_list[i].account_id;
+				as_noti_data.cancel_job.handle          = input_handle;
+				as_noti_data.cancel_job.cancel_type     = input_cancel_type;
+                as_noti_data.cancel_job.multi_user_name = multi_user_name;
 
 				if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_CANCEL_JOB, &as_noti_data) == false) {
 					EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -802,15 +870,16 @@ EXPORT_API int email_cancel_job(int input_account_id, int input_handle, email_ca
 		hAPI = NULL;
 	}
 	else {
-		if ( em_get_account_server_type_by_account_id(input_account_id, &account_server_type, true, &err) == false ) {
+		if ( em_get_account_server_type_by_account_id(multi_user_name, input_account_id, &account_server_type, true, &err) == false ) {
 			EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 			goto FINISH_OFF;
 		}
 
 		if ( account_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC ) {
 			memset(&as_noti_data, 0x00, sizeof(ASNotiData));
-			as_noti_data.cancel_job.account_id = input_account_id;
-			as_noti_data.cancel_job.handle = input_handle;
+			as_noti_data.cancel_job.account_id      = input_account_id;
+			as_noti_data.cancel_job.handle          = input_handle;
+            as_noti_data.cancel_job.multi_user_name = multi_user_name;
 
 			if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_CANCEL_JOB, &as_noti_data) == false) {
 				EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -848,7 +917,8 @@ FINISH_OFF:
 	hAPI = NULL;
 	if (account_list)
 		emstorage_free_account(&account_list, account_count, NULL);
-		
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_API_END ("err[%d]", err);  
 	return err;
 }
@@ -921,6 +991,9 @@ EXPORT_API int email_get_task_information(email_task_information_t **output_task
 		}
 	}
 
+        if (err == EMAIL_ERROR_DATA_NOT_FOUND)
+            err = EMAIL_ERROR_NONE;
+
 FINISH_OFF:
 	if(hAPI)
 		emipc_destroy_email_api(hAPI);
@@ -964,186 +1037,11 @@ EXPORT_API int email_sync_imap_mailbox_list(int account_id, int *handle)
 	return err;
 }
 
-EXPORT_API int email_search_mail_on_server(int input_account_id, int input_mailbox_id, email_search_filter_t *input_search_filter_list, int input_search_filter_count, int *output_handle)
-{
-	EM_DEBUG_API_BEGIN ("input_account_id[%d] input_mailbox_id[%d] input_search_filter_list[%p] input_search_filter_count[%d] output_handle[%p]", input_account_id, input_mailbox_id, input_search_filter_list, input_search_filter_count, output_handle);
-
-	int       err = EMAIL_ERROR_NONE;
-	int       return_value = 0;
-	int       stream_size_for_search_filter_list = 0;
-	char     *stream_for_search_filter_list = NULL;
-	HIPC_API  hAPI = NULL;
-	email_account_server_t account_server_type = EMAIL_SERVER_TYPE_NONE;
-	ASNotiData as_noti_data;
-
-	EM_IF_NULL_RETURN_VALUE(input_account_id,         EMAIL_ERROR_INVALID_PARAM);
-	EM_IF_NULL_RETURN_VALUE(input_mailbox_id,         EMAIL_ERROR_INVALID_PARAM);
-	EM_IF_NULL_RETURN_VALUE(input_search_filter_list, EMAIL_ERROR_INVALID_PARAM);
-
-	memset(&as_noti_data, 0, sizeof(ASNotiData)); /* initialization of union members */
-
-	if ( em_get_account_server_type_by_account_id(input_account_id, &account_server_type, true, &err) == false ) {
-		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
-		goto FINISH_OFF;
-	}
-
-	if ( account_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC ) {
-		int as_handle = 0;
-
-		if ( em_get_handle_for_activesync(&as_handle, &err) == false ) {
-			EM_DEBUG_EXCEPTION("em_get_handle_for_activesync failed[%d].", err);
-			goto FINISH_OFF;
-		}
-
-		/*  noti to active sync */
-		as_noti_data.search_mail_on_server.handle              = as_handle;
-		as_noti_data.search_mail_on_server.account_id          = input_account_id;
-		as_noti_data.search_mail_on_server.mailbox_id          = input_mailbox_id;
-		as_noti_data.search_mail_on_server.search_filter_list  = input_search_filter_list;
-		as_noti_data.search_mail_on_server.search_filter_count = input_search_filter_count;
-
-		return_value = em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_SEARCH_ON_SERVER, &as_noti_data);
-
-		if ( return_value == false ) {
-			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
-			err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
-			goto FINISH_OFF;
-		}
-
-		if(output_handle)
-			*output_handle = as_handle;
-	}
-	else
-	{
-		hAPI = emipc_create_email_api(_EMAIL_API_SEARCH_MAIL_ON_SERVER);
-
-		EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
-
-		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (void*)&input_account_id, sizeof(int))) {
-			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
-			err = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
-			goto FINISH_OFF;
-		}
-
-		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (void*)&input_mailbox_id, sizeof(int))){
-			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
-			err = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
-			goto FINISH_OFF;
-		}
-
-		stream_for_search_filter_list = em_convert_search_filter_to_byte_stream(input_search_filter_list, input_search_filter_count, &stream_size_for_search_filter_list);
-
-		EM_PROXY_IF_NULL_RETURN_VALUE(stream_for_search_filter_list, hAPI, EMAIL_ERROR_NULL_VALUE);
-
-		if(!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, stream_for_search_filter_list, stream_size_for_search_filter_list)) { /*prevent 18950*/
-			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
-			err = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
-			goto FINISH_OFF;
-		}
-
-		if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
-			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
-		}
-
-		emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
-
-		if (err != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("_EMAIL_API_SEARCH_MAIL_ON_SERVER failed [%d]", err);
-			goto FINISH_OFF;
-		}
-
-		if(output_handle)
-			emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), output_handle);
-	}
-
-FINISH_OFF:
-	if(hAPI) {
-		emipc_destroy_email_api(hAPI);
-		hAPI = NULL;
-	}
-
-	EM_DEBUG_API_END ("err[%d]", err);
-	return err;
-}
-
-EXPORT_API int email_clear_result_of_search_mail_on_server(int input_account_id)
-{
-	EM_DEBUG_API_BEGIN ("input_account_id[%d]", input_account_id);
-
-	int       err = EMAIL_ERROR_NONE;
-	int       return_value = 0;
-	HIPC_API  hAPI = NULL;
-	email_account_server_t account_server_type = EMAIL_SERVER_TYPE_NONE;
-	ASNotiData as_noti_data;
-
-	EM_IF_NULL_RETURN_VALUE(input_account_id,         EMAIL_ERROR_INVALID_PARAM);
-
-	memset(&as_noti_data, 0, sizeof(ASNotiData)); /* initialization of union members */
-
-	if ( em_get_account_server_type_by_account_id(input_account_id, &account_server_type, true, &err) == false ) {
-		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
-		goto FINISH_OFF;
-	}
-
-	if ( account_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC ) {
-		int as_handle = 0;
-
-		if ( em_get_handle_for_activesync(&as_handle, &err) == false ) {
-			EM_DEBUG_EXCEPTION("em_get_handle_for_activesync failed[%d].", err);
-			goto FINISH_OFF;
-		}
-
-		/*  noti to active sync */
-		as_noti_data.clear_result_of_search_mail_on_server.handle              = as_handle;
-		as_noti_data.clear_result_of_search_mail_on_server.account_id          = input_account_id;
-
-		return_value = em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_CLEAR_RESULT_OF_SEARCH_ON_SERVER, &as_noti_data);
-
-		if ( return_value == false ) {
-			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
-			err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
-			goto FINISH_OFF;
-		}
-	}
-	else {
-		hAPI = emipc_create_email_api(_EMAIL_API_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER);
-
-		EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
-
-		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (void*)&input_account_id, sizeof(int))) {
-			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
-			err = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
-			goto FINISH_OFF;
-		}
-
-		if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
-			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
-		}
-
-		emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
-
-		if (err != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("_EMAIL_API_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER failed [%d]", err);
-			goto FINISH_OFF;
-		}
-	}
-
-FINISH_OFF:
-	if(hAPI) {
-		emipc_destroy_email_api(hAPI);
-		hAPI = NULL;
-	}
-
-	EM_DEBUG_API_END ("err[%d]", err);
-	return err;
-}
-
 EXPORT_API int email_query_smtp_mail_size_limit(int account_id, int *handle)
 {
 	EM_DEBUG_API_BEGIN ("account_id[%d] handle[%p]", account_id, handle);
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 	email_account_server_t account_server_type;
 	HIPC_API hAPI = NULL;
 
@@ -1153,7 +1051,12 @@ EXPORT_API int email_query_smtp_mail_size_limit(int account_id, int *handle)
 		goto FINISH_OFF;
 	}
 
-	if (em_get_account_server_type_by_account_id(account_id, &account_server_type, false, &err) == false ) {
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
+	if (em_get_account_server_type_by_account_id(multi_user_name, account_id, &account_server_type, false, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1188,6 +1091,7 @@ FINISH_OFF:
 	emipc_destroy_email_api(hAPI);
 	hAPI = (HIPC_API)NULL;
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }

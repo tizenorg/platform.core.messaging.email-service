@@ -42,27 +42,31 @@ extern "C"
 #include "c-client.h"
 #include "email-internal-types.h"
 
-INTERNAL_FUNC int emcore_send_mail(int mail_id, int *err_code);
+INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_code);
 
-INTERNAL_FUNC int emcore_send_saved_mail(int account_id, char *mailbox, int *err_code);
+INTERNAL_FUNC int emcore_send_saved_mail(char *multi_user_name, int account_id, char *mailbox, int *err_code);
 
-INTERNAL_FUNC int emcore_send_mail_with_downloading_attachment_of_original_mail(int input_mail_id);
+INTERNAL_FUNC int emcore_send_mail_with_downloading_attachment_of_original_mail(char *multi_user_name, int input_mail_id);
 
-INTERNAL_FUNC int emcore_schedule_sending_mail(int input_mail_id, time_t input_time_to_send);
+INTERNAL_FUNC int emcore_schedule_sending_mail(char *multi_user_name, int input_mail_id, time_t input_time_to_send);
 
-INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(emstorage_mail_tbl_t *input_mail_tbl_data, emstorage_attachment_tbl_t *input_attachment_tbl_t, int input_attachment_count, ENVELOPE **env, char **file_path, email_option_t *sending_option, int *err_code);
+INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(char *multi_user_name, emstorage_mail_tbl_t *input_mail_tbl_data, emstorage_attachment_tbl_t *input_attachment_tbl_t, int input_attachment_count, ENVELOPE **env, char **file_path, email_option_t *sending_option, int *err_code);
 
-INTERNAL_FUNC int emcore_make_rfc822_file(email_mail_data_t *input_mail_tbl_data, email_attachment_data_t *input_attachment_tbl, int input_attachment_count, char **file_path, int *err_code);
+INTERNAL_FUNC int emcore_make_rfc822_file(char *multi_user_name, email_mail_data_t *input_mail_tbl_data, email_attachment_data_t *input_attachment_tbl, int input_attachment_count, int mime_entity_status, char **file_path, int *err_code);
 
-INTERNAL_FUNC int emcore_add_mail(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t *input_meeting_request, int input_from_eas, int move_flag);
+INTERNAL_FUNC int emcore_add_mail(char *multi_user_name, email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t *input_meeting_request, int input_from_eas, int move_flag);
 
-INTERNAL_FUNC int emcore_add_read_receipt(int input_read_mail_id, int *output_receipt_mail_id);
+INTERNAL_FUNC int emcore_add_read_receipt(char *multi_user_name, int input_read_mail_id, int *output_receipt_mail_id);
 
-INTERNAL_FUNC int emcore_add_meeting_request(int account_id, int input_mailbox_id, email_meeting_request_t *meeting_req, int *err_code);
+INTERNAL_FUNC int emcore_add_meeting_request(char *multi_user_name, int account_id, int input_mailbox_id, email_meeting_request_t *meeting_req, int *err_code);
 
-INTERNAL_FUNC int emcore_create_alarm_for_auto_resend(int input_alarm_interval_in_second);
+INTERNAL_FUNC int emcore_create_alarm_for_auto_resend(char *multi_user_name, int input_alarm_interval_in_second);
 
-INTERNAL_FUNC int emcore_query_mail_size_limit(int account_id, int handle, int *err_code);
+INTERNAL_FUNC int emcore_query_mail_size_limit(char *multi_user_name, int account_id, int handle, int *err_code);
+
+INTERNAL_FUNC void emcore_close_smtp_stream_list (void);
+
+INTERNAL_FUNC SENDSTREAM** emcore_get_smtp_stream (char *multi_user_name, int account_id, int *error);
 
 #ifdef __cplusplus
 }

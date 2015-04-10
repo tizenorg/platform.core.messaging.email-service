@@ -54,28 +54,30 @@ char* emcore_get_alias_of_mailbox(const char *mailbox_path);
 
 /* Parse the Mailbox Path and get the Account Email address */
 INTERNAL_FUNC int   emcore_get_temp_file_name(char **filename, int *err_code);
-int   emcore_get_long_encoded_path(int account_id, char *path, int delimiter, char **long_enc_path, int *err_code);
+int   emcore_get_long_encoded_path(char *multi_user_name, int account_id, char *path, int delimiter, char **long_enc_path, int *err_code);
 int   emcore_get_encoded_mailbox_name(char *name, char **enc_name, int *err_code);
 int   emcore_get_file_name(char *path, char **filename, int *err_code);
 INTERNAL_FUNC int   emcore_get_file_size(char *path, int *size, int *err_code);
 int   emcore_get_actual_mail_size(char *pBodyPlane, char *pBodyHtml, struct attachment_info *pAttachment, int *error_code);
-int   emcore_calc_mail_size(email_mail_data_t *mail_data_src, email_attachment_data_t *attachment_data_src, int attachment_count, int *error_code);
+int   emcore_calc_mail_size(char *multi_user_name, email_mail_data_t *mail_data_src, email_attachment_data_t *attachment_data_src, int attachment_count, int *error_code);
 int   emcore_get_address_count(char *addr_str, int *to_num, int *err_code);
-INTERNAL_FUNC int   emcore_is_storage_full(int *error);
-int   emcore_get_long_encoded_path_with_account_info(email_account_t *account, char *path, int delimiter, char **long_enc_path, int *err_code);
-void  emcore_fill_address_information_of_mail_tbl(emstorage_mail_tbl_t *mail_data);
+INTERNAL_FUNC int   emcore_is_storage_full();
+int   emcore_get_long_encoded_path_with_account_info(char *multi_user_name, email_account_t *account, char *path, int delimiter, char **long_enc_path, int *err_code);
+void  emcore_fill_address_information_of_mail_tbl(char *multi_user_name, emstorage_mail_tbl_t *mail_data);
 
 INTERNAL_FUNC char* emcore_get_mail_field_name_by_attribute_type(email_mail_attribute_type input_attribute_type);
 INTERNAL_FUNC int emcore_get_attribute_type_by_mail_field_name(char *input_mail_field_name, email_mail_attribute_type *output_mail_attribute_type);
 INTERNAL_FUNC int emcore_get_mail_attribute_value_type(email_mail_attribute_type input_attribute_type, email_mail_attribute_value_type *output_value_type);
-INTERNAL_FUNC int emcore_get_preview_text_from_file(const char *input_plain_path, const char *input_html_path, int input_preview_buffer_length, char **output_preview_buffer);
+INTERNAL_FUNC int emcore_get_preview_text_from_file(char *multi_user_name, const char *input_plain_path, const char *input_html_path, int input_preview_buffer_length, char **output_preview_buffer);
 #ifdef __FEATURE_BODY_SEARCH__
-INTERNAL_FUNC int emcore_strip_mail_body_from_file(emstorage_mail_tbl_t *mail, char **stripped_text, int *err_code);
+INTERNAL_FUNC int emcore_strip_mail_body_from_file(char *multi_user_name, emstorage_mail_tbl_t *mail, char **stripped_text, int *err_code);
 #endif
+INTERNAL_FUNC int emcore_get_first_address(const char *full_address, char **alias, char **address);
 
-int   reg_replace (char *input_source_text, char *input_old_pattern_string, char *input_new_string);
-int   reg_replace_new (char **input_source_text, char *input_old_pattern_string, char *input_new_string);
-int   emcore_strip_HTML(char **source_string);
+
+INTERNAL_FUNC int reg_replace (char *input_source_text, char *input_old_pattern_string, char *input_new_string);
+INTERNAL_FUNC int reg_replace_new (char **input_source_text, char *input_old_pattern_string, char *input_new_string);
+int   emcore_strip_HTML_tag(const char *input_html_file_path, char *encoding_type, char *output_result_buffer, int input_result_buffer_legnth);
 int   emcore_send_noti_for_new_mail(int account_id, char *mailbox_name, char *subject, char *from, char *uid, char *datetime);
 int   emcore_make_attachment_file_name_with_extension(char *source_file_name, char *sub_type, char *result_file_name, int result_file_name_buffer_length, int *err_code);
 
@@ -84,16 +86,16 @@ INTERNAL_FUNC int   emcore_get_empty_session(email_session_t **session);
 INTERNAL_FUNC int   emcore_clear_session(email_session_t *session);
 INTERNAL_FUNC int   emcore_get_current_session(email_session_t **session);
 
-INTERNAL_FUNC int emcore_get_mail_count_by_query(int account_id, int mailbox_type, int priority_sender, int *total_mail, int *unread_mail, int *err_code);
+INTERNAL_FUNC int emcore_get_mail_count_by_query(char *multi_user_name, int account_id, int mailbox_type, int priority_sender, int *total_mail, int *unread_mail, int *err_code);
 
 INTERNAL_FUNC int emcore_check_drm_file(char *path, int *err_code);
 INTERNAL_FUNC int emcore_check_drm_is_ringtone(char *ringtone_path, int *err_code);
 
-INTERNAL_FUNC int emcore_display_unread_in_badge();
+INTERNAL_FUNC void emcore_display_unread_in_badge(void *data);
 INTERNAL_FUNC int emcore_display_badge_count(int count);
 INTERNAL_FUNC int emcore_set_network_error(int err_code);
 
-INTERNAL_FUNC int emcore_calc_next_time_to_sync(int input_account_id, time_t input_current_time, time_t *output_time);
+INTERNAL_FUNC int emcore_calc_next_time_to_sync(char *multi_user_name, int input_account_id, time_t input_current_time, time_t *output_time);
 
 /* Transaction Handling */
 INTERNAL_FUNC int emcore_add_transaction_info(int mail_id , int handle  , int *err_code);
@@ -102,15 +104,20 @@ INTERNAL_FUNC int emcore_delete_transaction_info_by_mailId(int mail_id);
 
 /* For notification bar */
 INTERNAL_FUNC int emcore_update_notification_for_unread_mail(int account_id);
-INTERNAL_FUNC int emcore_clear_all_notifications();
+INTERNAL_FUNC int emcore_clear_notifications(char *multi_user_name, int account_id);
 //INTERNAL_FUNC int emcore_add_notification_for_unread_mail(emstorage_mail_tbl_t *input_mail_tbl_data);
-INTERNAL_FUNC int emcore_add_notification(int account_id, int mail_id, int unread_mail_count, int input_play_alert_tone, int sending_error, unsigned long display);
-INTERNAL_FUNC int emcore_add_notification_for_send(int account_id, int mail_id, email_action_t action, int sending_error, unsigned long display);
+INTERNAL_FUNC int emcore_add_notification(char *multi_user_name, int account_id, int mail_id, int unread_mail_count, int vip_unread_mail_count, int input_play_alert_tone, int sending_error, unsigned long display);
+INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int account_id, int mail_id, email_action_t action, int sending_error, unsigned long display);
 INTERNAL_FUNC void emcore_update_notification_for_send(int account_id, int mail_id, double progress);
 INTERNAL_FUNC int emcore_delete_notification_for_read_mail(int mail_id);
-INTERNAL_FUNC int emcore_delete_notification_by_account(int account_id, int with_noti_tray);
+INTERNAL_FUNC int emcore_delete_notification_by_account(char *multi_user_name, int account_id, int with_noti_tray);
+INTERNAL_FUNC void emcore_set_flash_noti();
 
-INTERNAL_FUNC int emcore_show_user_message(int id, email_action_t action, int error);
+
+INTERNAL_FUNC int emcore_show_user_message(char *multi_user_name, int id, email_action_t action, int error);
+
+INTERNAL_FUNC int emcore_connect_contacts_service(char *multi_user_name);
+INTERNAL_FUNC int emcore_disconnect_contacts_service(char *multi_user_name);
 
 #ifdef __FEATURE_BULK_DELETE_MOVE_UPDATE_REQUEST_OPTI__
 
@@ -208,17 +215,28 @@ INTERNAL_FUNC int emcore_search_string_from_file(char *file_path, char *search_s
 
 INTERNAL_FUNC int emcore_load_query_from_file(char *file_path, char ***query_array, int *array_len);
 
-INTERNAL_FUNC int emcore_start_driving_mode(int account_id);
+INTERNAL_FUNC int emcore_start_driving_mode(char *multi_user_name, int mail_id);
 
 #ifdef __FEATURE_BLOCKING_MODE__
 INTERNAL_FUNC bool emcore_init_blocking_mode_status();
 INTERNAL_FUNC void emcore_set_blocking_mode_of_setting(int input_blocking_mode_of_setting);
 INTERNAL_FUNC int emcore_get_blocking_mode_status();
 INTERNAL_FUNC void emcore_set_blocking_mode_status(int blocking_mode);
-INTERNAL_FUNC int emcore_check_blocking_mode(char *sender_address, int *blocking_status);
+INTERNAL_FUNC int emcore_check_blocking_mode(char *multi_user_name, char *sender_address, int *blocking_status);
+INTERNAL_FUNC int emcore_check_blocking_mode_internal (char *multi_user_name, char *sender_address, int *blocking_status);
 #endif /* __FEATURE_BLOCKING_MODE__ */
 
 INTERNAL_FUNC char *emcore_set_mime_entity(char *mime_path);
+INTERNAL_FUNC int emcore_get_content_from_file(char *filename, char **contents, int *length);
+INTERNAL_FUNC int emcore_set_content_to_file(const char *contents, char *dest_path, int length);
+
+#ifdef __FEATURE_UPDATE_DB_TABLE_SCHEMA__
+INTERNAL_FUNC int emcore_update_db_table_schema(char *multi_user_name);
+#endif /* #ifdef __FEATURE_UPDATE_DB_TABLE_SCHEMA__ */
+INTERNAL_FUNC int emcore_unescape_from_url(char *input_url, char **output_url);
+INTERNAL_FUNC char *__em_get_month_in_string(int month);
+INTERNAL_FUNC int emcore_make_date_string_for_search(time_t input_time, char *output_date_string);
+INTERNAL_FUNC int emcore_make_uid_range_string(emcore_uid_list *uid_list, int total, char **output_uid_range_string);
 
 #ifdef __cplusplus
 }
