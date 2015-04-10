@@ -1,12 +1,13 @@
+
 [Unit]
 Description=Start the Email service
 
 [Service]
 ExecStart=/usr/bin/email-service
 Nice=5
-EnvironmentFile=/run/tizen-mobile-ui
 OOMScoreAdjust=100
-Restart=always
+MemoryLimit=30M
 
 [Install]
 WantedBy=tizen-middleware.target
+EnvironmentFile=/run/tizen-mobile-ui

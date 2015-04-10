@@ -29,7 +29,6 @@
 #include "email-stub-socket.h"
 #include "email-stub-task-manager.h"
 
-#include "email-api.h"
 #include "email-debug-log.h"
 
 static bool stub_socket = false;
@@ -52,8 +51,6 @@ EXPORT_API bool emipc_initialize_stub_main(PFN_EXECUTE_API fn_api_mapper)
 		EM_DEBUG_EXCEPTION("Socket did not create");
 		return false;
 	}
-
-	emipc_init_dbus_connection();
 
 	EM_DEBUG_FUNC_END();
 	return true;
@@ -95,8 +92,11 @@ EXPORT_API bool emipc_execute_api_stub_to_proxy(emipc_email_api_info *api_info)
 {
 	EM_DEBUG_FUNC_BEGIN("api_info [%p]", api_info);
 	EM_IF_NULL_RETURN_VALUE(api_info, false);
-	EM_DEBUG_LOG_SEC ("Response: API_ID [%s], RES_ID [%d], APP_ID [%d]",\
-				EM_APIID_TO_STR(api_info->api_id), api_info->response_id, api_info->app_id);
+	EM_DEBUG_LOG_SEC ("Response: API_ID [%s][0x%x], RES_ID [%d], APP_ID [%d]",\
+                                            EM_APIID_TO_STR(api_info->api_id), 
+                                            api_info->api_id, 
+                                            api_info->response_id, 
+                                            api_info->app_id);
 	
 	unsigned char *stream = NULL;
 	int stream_length = 0;

@@ -38,8 +38,8 @@ INTERNAL_FUNC int  emcore_free_task_handler_array();
 INTERNAL_FUNC int  emcore_encode_task_parameter(email_task_type_t input_task_type, void *input_task_parameter_struct, char **output_byte_stream, int *output_stream_size);
 INTERNAL_FUNC int  emcore_decode_task_parameter(email_task_type_t input_task_type, char *input_byte_stream, int input_stream_size, void **output_task_parameter_struct);
 
-INTERNAL_FUNC int  emcore_add_task_to_task_table(email_task_type_t input_task_type, email_task_priority_t input_task_priority, char *input_task_parameter, int input_task_parameter_length, int *output_task_id);
-INTERNAL_FUNC int  emcore_remove_task_from_task_table(int input_task_id);
+INTERNAL_FUNC int  emcore_add_task_to_task_table(char *multi_user_name, email_task_type_t input_task_type, email_task_priority_t input_task_priority, char *input_task_parameter, int input_task_parameter_length, int *output_task_id);
+INTERNAL_FUNC int  emcore_remove_task_from_task_table(char *multi_user_name, int input_task_id);
 INTERNAL_FUNC int  emcore_get_active_task_by_thread_id(thread_t input_thread_id, email_active_task_t **output_active_task);
 
 INTERNAL_FUNC void* emcore_default_async_task_handler(void *intput_param);

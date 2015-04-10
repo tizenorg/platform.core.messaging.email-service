@@ -40,15 +40,17 @@
 #include "email-debug-log.h"
 #include "email-daemon-account.h"
 #include "email-daemon-auto-poll.h"
-//#include <contacts.h>
+#include <contacts.h>
+#include <contacts_internal.h>
 #include "email-types.h"
 #include "email-core-account.h"
 #include "email-core-event.h"
 #include "email-core-utils.h"
+#include "email-core-imap-idle.h"
 #include "email-utilities.h"
 #include "email-convert.h"
 
-static int emdaemon_check_filter_id(int filter_id, int* err_code)
+static int emdaemon_check_filter_id(char *multi_user_name, int filter_id, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("filter_id[%d], err_code[%p]", filter_id, err_code);
 
@@ -64,9 +66,8 @@ static int emdaemon_check_filter_id(int filter_id, int* err_code)
 	int err = EMAIL_ERROR_NONE;
 	emstorage_rule_tbl_t* filter = NULL;
 
-	if (!emstorage_get_rule_by_id(filter_id, &filter, true, &err)) {
+	if (!emstorage_get_rule_by_id(multi_user_name, filter_id, &filter, true, &err)) {
 		EM_DEBUG_EXCEPTION(" emstorage_get_rule_by_id failed [%d]", err);
-
 		goto FINISH_OFF;
 	}
 
@@ -83,17 +84,15 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC int emdaemon_create_account(email_account_t* account, int* err_code)
+INTERNAL_FUNC int emdaemon_create_account(char *multi_user_name, email_account_t* account, int* err_code)
 {
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 
-	if (!emcore_create_account(account, &err)) {
+	if (!emcore_create_account(multi_user_name, account, false, &err)) {
 		EM_DEBUG_EXCEPTION(" emcore_account_add failed [%d]", err);
 		goto FINISH_OFF;
 	}
-
-	emcore_init_account_reference();
 
 	ret = true;
 FINISH_OFF:
@@ -104,12 +103,12 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC int emdaemon_delete_account(int account_id, int* err_code)
+INTERNAL_FUNC int emdaemon_delete_account(char *multi_user_name, int account_id, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d] err_code[%p]", account_id, err_code);
 	int ret = false;
 
-	ret = emcore_delete_account(account_id, err_code);
+	ret = emcore_delete_account(multi_user_name, account_id, false, err_code);
 
 	EM_DEBUG_FUNC_END("ret[%d]", ret);
 	return ret;
@@ -141,7 +140,7 @@ static email_account_t* duplicate_account(email_account_t *src)
 	dst->reply_to_address          = EM_SAFE_STRDUP(src->reply_to_address);
 	dst->return_address            = EM_SAFE_STRDUP(src->return_address);
 	dst->logo_icon_path            = EM_SAFE_STRDUP(src->logo_icon_path);
-	dst->certificate_path 		   = EM_SAFE_STRDUP(src->certificate_path);
+	dst->certificate_path          = EM_SAFE_STRDUP(src->certificate_path);
 	dst->options.display_name_from = EM_SAFE_STRDUP(src->options.display_name_from);
 	dst->options.signature 	       = EM_SAFE_STRDUP(src->options.signature);
 	dst->user_data                = (void*) em_malloc(src->user_data_length);
@@ -157,7 +156,7 @@ static email_account_t* duplicate_account(email_account_t *src)
 	return dst;
 }
 
-INTERNAL_FUNC int emdaemon_validate_account(int account_id, int *handle, int* err_code)
+INTERNAL_FUNC int emdaemon_validate_account(char *multi_user_name, int account_id, int *handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], handle[%p], err_code[%p]", account_id, handle, err_code);
 
@@ -172,7 +171,7 @@ INTERNAL_FUNC int emdaemon_validate_account(int account_id, int *handle, int* er
 		goto FINISH_OFF;
 	}
 
-	if (!(ref_account = emcore_get_account_reference(account_id))) {
+	if (!(ref_account = emcore_get_account_reference(multi_user_name, account_id))) {
 		EM_DEBUG_EXCEPTION(" emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
@@ -183,6 +182,7 @@ INTERNAL_FUNC int emdaemon_validate_account(int account_id, int *handle, int* er
 	event_data->event_param_data_1 = NULL;
 	event_data->event_param_data_3 = NULL;
 	event_data->account_id = account_id;
+    event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
 	if (!emcore_insert_event(event_data, (int*)handle, &err)) {
 		EM_DEBUG_EXCEPTION(" emcore_insert_event falied [%d]", err);
@@ -211,7 +211,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_validate_account_ex(email_account_t* input_account, int *output_handle)
+INTERNAL_FUNC int emdaemon_validate_account_ex(char *multi_user_name, email_account_t* input_account, int *output_handle)
 {
 	EM_DEBUG_FUNC_BEGIN("input_account[%p], output_handle[%p]", input_account, output_handle);
 
@@ -231,6 +231,7 @@ INTERNAL_FUNC int emdaemon_validate_account_ex(email_account_t* input_account, i
 	event_data->event_param_data_1 = (void*)input_account;
 	event_data->event_param_data_3 = NULL;
 	event_data->account_id         = NEW_ACCOUNT_ID;
+    event_data->multi_user_name    = EM_SAFE_STRDUP(multi_user_name);
 
 	if (!emcore_insert_event(event_data, (int*)output_handle, &err)) {
 		EM_DEBUG_EXCEPTION(" emcore_insert_event falied [%d]", err);
@@ -251,7 +252,7 @@ FINISH_OFF:
 	return err;
 }
 
-INTERNAL_FUNC int emdaemon_validate_account_and_create(email_account_t* new_account, int *handle, int* err_code)
+INTERNAL_FUNC int emdaemon_validate_account_and_create(char *multi_user_name, email_account_t* new_account, int *handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account[%p], handle[%p], err_code[%p]", new_account, handle, err_code);
 
@@ -267,10 +268,11 @@ INTERNAL_FUNC int emdaemon_validate_account_and_create(email_account_t* new_acco
 		goto FINISH_OFF;
 	}
 
-	event_data->type = EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT;
+	event_data->type               = EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT;
 	event_data->event_param_data_1 = (void *)new_account;
 	event_data->event_param_data_3 = NULL;
-	event_data->account_id = NEW_ACCOUNT_ID;
+	event_data->account_id         = NEW_ACCOUNT_ID;
+    event_data->multi_user_name    = EM_SAFE_STRDUP(multi_user_name);
 
 	if (!emcore_insert_event(event_data, (int*)handle, &err))  {
 		EM_DEBUG_EXCEPTION(" emcore_insert_event falied [%d]", err);
@@ -295,7 +297,7 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC int emdaemon_update_account(int account_id, email_account_t* new_account, int* err_code)
+INTERNAL_FUNC int emdaemon_update_account(char *multi_user_name, int account_id, email_account_t* new_account, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], new_account[%p], err_code[%p]", account_id, new_account, err_code);
 
@@ -303,7 +305,7 @@ INTERNAL_FUNC int emdaemon_update_account(int account_id, email_account_t* new_a
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 	emstorage_account_tbl_t *new_account_tbl = NULL;
-	email_account_t old_account_info = {0};
+	email_account_t *old_account_info = NULL;
 
 	if ((account_id <= 0) || !new_account)  {
 		EM_DEBUG_EXCEPTION("Invalid Parameters.");
@@ -311,17 +313,24 @@ INTERNAL_FUNC int emdaemon_update_account(int account_id, email_account_t* new_a
 		goto FINISH_OFF;
 	}
 
-	if(!emdaemon_get_account(account_id, GET_FULL_DATA, &old_account_info, &err)) {
-		EM_DEBUG_EXCEPTION("emdaemon_get_account failed ");
+	if((old_account_info = emcore_get_account_reference(multi_user_name, account_id)) == NULL) {
+		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed ");
 		goto FINISH_OFF;
 	}
 
-	EM_DEBUG_LOG_SEC("new_account->email_addr[%s]", new_account->user_email_address);
 	if(new_account->user_email_address) {
-		if ((err = em_verify_email_address (new_account->user_email_address, true)) != EMAIL_ERROR_NONE) {
+		if ((err = em_verify_email_address (new_account->user_email_address)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("em_verify_email_address error [%d]", err);
 			goto FINISH_OFF;
 		}
+	}
+
+	if (EM_SAFE_STRCMP(new_account->incoming_server_password, old_account_info->incoming_server_password) == 0) {
+		EM_SAFE_FREE(new_account->incoming_server_password);
+	}
+
+	if (EM_SAFE_STRCMP(new_account->outgoing_server_password, old_account_info->outgoing_server_password) == 0) {
+		EM_SAFE_FREE(new_account->outgoing_server_password);
 	}
 
 	new_account_tbl = em_malloc(sizeof(emstorage_account_tbl_t));
@@ -332,27 +341,34 @@ INTERNAL_FUNC int emdaemon_update_account(int account_id, email_account_t* new_a
 
 	em_convert_account_to_account_tbl(new_account, new_account_tbl);
 
-	if (!emstorage_update_account(account_id, new_account_tbl, true, &err))  {
-		EM_DEBUG_EXCEPTION("emstorage_update_account falied [%d]", err);
+	if (!emstorage_update_account(multi_user_name, account_id, new_account_tbl, true, &err))  {
+		EM_DEBUG_EXCEPTION("emstorage_update_account failed [%d]", err);
 		goto FINISH_OFF;
 	}
-
-	emcore_init_account_reference();
 
 #ifdef __FEATURE_AUTO_POLLING__
 	int  change_in_auto_polling_option = 0;
 
-	change_in_auto_polling_option = (old_account_info.check_interval  != new_account->check_interval)  ||
-									(old_account_info.peak_interval   != new_account->peak_interval)   ||
-									(old_account_info.peak_start_time != new_account->peak_start_time) ||
-									(old_account_info.peak_end_time   != new_account->peak_end_time);
+	change_in_auto_polling_option = (old_account_info->check_interval  != new_account->check_interval)  ||
+									(old_account_info->peak_interval   != new_account->peak_interval)   ||
+									(old_account_info->peak_start_time != new_account->peak_start_time) ||
+									(old_account_info->peak_end_time   != new_account->peak_end_time);
 
+	EM_DEBUG_LOG("change_in_auto_polling_option [%d]", change_in_auto_polling_option);
+#endif
+
+
+#ifdef __FEATURE_AUTO_POLLING__
 	if(change_in_auto_polling_option) {
 		if(!emdaemon_remove_polling_alarm(account_id))
 			EM_DEBUG_LOG("emdaemon_remove_polling_alarm failed");
 
-		if(!emdaemon_add_polling_alarm(account_id))
+		if(!emdaemon_add_polling_alarm(multi_user_name, account_id))
 			EM_DEBUG_EXCEPTION("emdaemon_add_polling_alarm failed");
+
+#ifdef __FEATURE_IMAP_IDLE__
+		emcore_refresh_imap_idle_thread();
+#endif /* __FEATURE_IMAP_IDLE__ */
 	}
 #endif
 
@@ -360,10 +376,13 @@ INTERNAL_FUNC int emdaemon_update_account(int account_id, email_account_t* new_a
 
 FINISH_OFF:
 
-	emcore_free_account(&old_account_info);
-
 	if(new_account_tbl)
 		emstorage_free_account(&new_account_tbl, 1, NULL);
+
+	if (old_account_info) {
+		emcore_free_account(old_account_info);
+		EM_SAFE_FREE(old_account_info);
+	}
 
 	if (err_code)
 		*err_code = err;
@@ -372,7 +391,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_validate_account_and_update(int old_account_id, email_account_t* new_account_info, int *handle,int *err_code)
+INTERNAL_FUNC int emdaemon_validate_account_and_update(char *multi_user_name, int old_account_id, email_account_t* new_account_info, int *handle,int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account[%d], new_account_info[%p], handle[%p], err_code[%p]", old_account_id, new_account_info, handle, err_code);
 
@@ -392,6 +411,7 @@ INTERNAL_FUNC int emdaemon_validate_account_and_update(int old_account_id, email
 	event_data->event_param_data_1 = (char *) duplicate_account(new_account_info);
 	event_data->event_param_data_3 = NULL;
 	event_data->account_id = old_account_id;
+	event_data->multi_user_name    = EM_SAFE_STRDUP(multi_user_name);
 
 #if 0
 	email_account_t *pAccount = (email_account_t *)em_malloc(sizeof(email_account_t));
@@ -444,7 +464,7 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC int emdaemon_get_account(int account_id, int pulloption, email_account_t* account, int* err_code)
+INTERNAL_FUNC int emdaemon_get_account(char *multi_user_name, int account_id, int pulloption, email_account_t* account, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], pulloption [%d], account[%p], err_code[%p]", account_id, pulloption, account, err_code);
 
@@ -459,7 +479,7 @@ INTERNAL_FUNC int emdaemon_get_account(int account_id, int pulloption, email_acc
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_get_account_by_id(account_id, pulloption, &account_tbl, true, &err)) {
+	if (!emstorage_get_account_by_id(multi_user_name, account_id, pulloption, &account_tbl, true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -477,7 +497,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_get_account_list(email_account_t** account_list, int* count, int* err_code)
+INTERNAL_FUNC int emdaemon_get_account_list(char *multi_user_name, email_account_t** account_list, int* count, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_list[%p], count[%p], err_code[%p]", account_list, count, err_code);
 
@@ -491,7 +511,7 @@ INTERNAL_FUNC int emdaemon_get_account_list(email_account_t** account_list, int*
 
 	*count = 1000;
 
-	if (!emstorage_get_account_list(count, &account_tbl_array, true, true, &err))  {
+	if (!emstorage_get_account_list(multi_user_name, count, &account_tbl_array, true, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -527,7 +547,7 @@ INTERNAL_FUNC int emdaemon_free_account(email_account_t** account_list, int coun
 }
 
 
-INTERNAL_FUNC int emdaemon_get_filter(int filter_id, email_rule_t** filter_info, int* err_code)
+INTERNAL_FUNC int emdaemon_get_filter(char *multi_user_name, int filter_id, email_rule_t** filter_info, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("filter_id[%d], filter_info[%p], err_code[%p]", filter_id, filter_info, err_code);
 
@@ -543,7 +563,7 @@ INTERNAL_FUNC int emdaemon_get_filter(int filter_id, email_rule_t** filter_info,
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 
-	if (!emstorage_get_rule_by_id(filter_id, (emstorage_rule_tbl_t**)filter_info, true, &err))  {
+	if (!emstorage_get_rule_by_id(multi_user_name, filter_id, (emstorage_rule_tbl_t**)filter_info, true, &err))  {
 		EM_DEBUG_EXCEPTION(" emstorage_get_rule_by_id failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -557,7 +577,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_get_filter_list(email_rule_t** filter_info, int* count, int* err_code)
+INTERNAL_FUNC int emdaemon_get_filter_list(char *multi_user_name, email_rule_t** filter_info, int* count, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("filter_info[%p], count[%p], err_code[%p]", filter_info, count, err_code);
 
@@ -574,7 +594,7 @@ INTERNAL_FUNC int emdaemon_get_filter_list(email_rule_t** filter_info, int* coun
 
 	*count = 1000;
 
-	if (!emstorage_get_rule(ALL_ACCOUNT, 0, 0, count, &is_completed, (emstorage_rule_tbl_t**)filter_info, true, &err))  {
+	if (!emstorage_get_rule(multi_user_name, ALL_ACCOUNT, 0, 0, count, &is_completed, (emstorage_rule_tbl_t**)filter_info, true, &err))  {
 		EM_DEBUG_EXCEPTION(" emstorage_get_rule failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -588,7 +608,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_find_filter(email_rule_t* filter_info, int* err_code)
+INTERNAL_FUNC int emdaemon_find_filter(char *multi_user_name, email_rule_t* filter_info, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("filter_info[%p], err_code[%p]", filter_info, err_code);
 
@@ -610,7 +630,7 @@ INTERNAL_FUNC int emdaemon_find_filter(email_rule_t* filter_info, int* err_code)
 
 	filter_info->account_id = ALL_ACCOUNT;		/*  MUST BE */
 
-	if (!emstorage_find_rule((emstorage_rule_tbl_t*)filter_info, true, &err)) {
+	if (!emstorage_find_rule(multi_user_name, (emstorage_rule_tbl_t*)filter_info, true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_find_rule failed [%d]", err);
 		goto FINISH_OFF;
 	} else {
@@ -631,7 +651,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_add_filter(email_rule_t* filter_info)
+INTERNAL_FUNC int emdaemon_add_filter(char *multi_user_name, email_rule_t* filter_info)
 {
 	EM_DEBUG_FUNC_BEGIN("filter_info[%p]", filter_info);
 
@@ -643,40 +663,11 @@ INTERNAL_FUNC int emdaemon_add_filter(email_rule_t* filter_info)
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_find_rule((emstorage_rule_tbl_t*)filter_info, true, &err)) {
-		EM_DEBUG_EXCEPTION("emstorage_find_rule failed [%d]", err);
-		goto FINISH_OFF;
-	} else {
-		if (err != EMAIL_ERROR_FILTER_NOT_FOUND) {
-			EM_DEBUG_LOG("filter already exist");
-			err = EMAIL_ERROR_ALREADY_EXISTS;
-			goto FINISH_OFF;
-		}
-	}
-
-	switch (filter_info->faction) {
-	case EMAIL_FILTER_MOVE :
-		if (filter_info->account_id < 0) {
-			EM_DEBUG_EXCEPTION("Invalid Param : target_mailbox_id[%d], account_id[%d]", filter_info->target_mailbox_id, filter_info->account_id);
-			err = EMAIL_ERROR_INVALID_PARAM;
-			goto FINISH_OFF;
-		}
-		break;	
-	case EMAIL_FILTER_BLOCK :
-		filter_info->account_id = ALL_ACCOUNT;
-		break;
-	case EMAIL_FILTER_DELETE :
-	default:
-		EM_DEBUG_LOG("filter_faction : [%d]", filter_info->faction);
-		break;
-	}
-
-	if (!emstorage_add_rule((emstorage_rule_tbl_t*)filter_info, true, &err)) {
-		EM_DEBUG_EXCEPTION("emstorage_add_rule failed [%d]", err);
+	err = emcore_add_rule(multi_user_name, filter_info);
+	if (err != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_add_rule failed : [%d]", err);
 		goto FINISH_OFF;
 	}
-
-	EM_DEBUG_LOG("filter_id : [%d]", filter_info->filter_id);
 
 FINISH_OFF:
 
@@ -684,7 +675,7 @@ FINISH_OFF:
 	return err;
 }
 
-INTERNAL_FUNC int emdaemon_update_filter(int filter_id, email_rule_t* filter_info, int* err_code)
+INTERNAL_FUNC int emdaemon_update_filter(char *multi_user_name, int filter_id, email_rule_t* filter_info, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("filter_id[%d], filter_info[%p], err_code[%p]", filter_id, filter_info, err_code);
 
@@ -698,15 +689,16 @@ INTERNAL_FUNC int emdaemon_update_filter(int filter_id, email_rule_t* filter_inf
 		goto FINISH_OFF;
 	}
 
-	if (!emdaemon_check_filter_id(filter_id, &err))  {
+	if (!emdaemon_check_filter_id(multi_user_name, filter_id, &err))  {
 		EM_DEBUG_EXCEPTION("emdaemon_check_filter_id falied [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_change_rule(filter_id, (emstorage_rule_tbl_t*)filter_info, true, &err))  {
-		EM_DEBUG_EXCEPTION("emstorage_change_rule falied [%d]", err);
-		goto FINISH_OFF;
-	}
+        err = emcore_update_rule(multi_user_name, filter_id, filter_info);
+        if (err != EMAIL_ERROR_NONE) {
+            EM_DEBUG_EXCEPTION("emcore_update_rule failed : [%d]", err);
+            goto FINISH_OFF;
+        }
 
 	ret = true;
 
@@ -717,14 +709,13 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_delete_filter(int filter_id, int* err_code)
+INTERNAL_FUNC int emdaemon_delete_filter(char *multi_user_name, int filter_id, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("filter_id[%d, err_code[%p]", filter_id, err_code);
 
 	/*  default variable */
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	emstorage_rule_tbl_t *p_rule_tbl = NULL;
 
 	if (filter_id <= 0)  {
 		EM_DEBUG_EXCEPTION(" fliter_id[%d]", filter_id);
@@ -732,18 +723,9 @@ INTERNAL_FUNC int emdaemon_delete_filter(int filter_id, int* err_code)
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_get_rule_by_id(filter_id, &p_rule_tbl, false, &err)) {
-		EM_DEBUG_EXCEPTION("emstorage_get_rule_by_id failed : [%d]", err);
-		goto FINISH_OFF;
-	}
-
-	if (!emstorage_filter_mails_by_rule(p_rule_tbl->account_id, p_rule_tbl->target_mailbox_id, false, true, p_rule_tbl, NULL, NULL, &err)) {
-		EM_DEBUG_EXCEPTION("emstorage_filter_mails_by_rule failed : [%d]", err);
-		goto FINISH_OFF;
-	}
-
-	if (!emstorage_delete_rule(filter_id, true, &err)) {
-		EM_DEBUG_EXCEPTION(" emstorage_delete_rule failed [%d]", err);
+	err = emcore_delete_rule(multi_user_name, filter_id);
+	if (err != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_delete_rule failed : [%d]", err);
 		goto FINISH_OFF;
 	}
 
@@ -792,7 +774,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_apply_filter(int filter_id, int *err_code)
+INTERNAL_FUNC int emdaemon_apply_filter(char *multi_user_name, int filter_id, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("filter_id[%d, err_code[%p]", filter_id, err_code);
 
@@ -807,12 +789,12 @@ INTERNAL_FUNC int emdaemon_apply_filter(int filter_id, int *err_code)
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_get_rule_by_id(filter_id, &filter_info, false, &err)) {
+	if (!emstorage_get_rule_by_id(multi_user_name, filter_id, &filter_info, false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_rule_by_id failed : [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	if (!emcore_mail_filter_by_rule((email_rule_t *)filter_info, &err))  {
+	if (!emcore_mail_filter_by_rule(multi_user_name, (email_rule_t *)filter_info, &err))  {
 		EM_DEBUG_EXCEPTION(" emstorage_mail_filter_by_rule failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -828,37 +810,6 @@ FINISH_OFF:
 
 
 /* ----- internal functions --------------------------------------------*/
-int emdaemon_initialize_account_reference()
-{
-	EM_DEBUG_FUNC_BEGIN();
-	int err = EMAIL_ERROR_NONE;
-
-	if ((err = emcore_init_account_reference()) != EMAIL_ERROR_NONE) {
-		if (err == EMAIL_ERROR_SECURED_STORAGE_FAILURE) {
-			if ((err = emcore_recover_from_secured_storage_failure()) != EMAIL_ERROR_NONE) {
-				EM_DEBUG_EXCEPTION("emcore_recover_from_secured_storage_failure failed [%d]", err);
-				goto FINISH_OFF;
-			}
-
-			if ((err = emcore_init_account_reference()) != EMAIL_ERROR_NONE) {
-				EM_DEBUG_EXCEPTION("emcore_init_account_reference failed [%d]", err);
-				goto FINISH_OFF;
-			}
-		}
-		else {
-			if (err == EMAIL_ERROR_ACCOUNT_NOT_FOUND)
-				EM_DEBUG_LOG ("no account found");
-			else
-				EM_DEBUG_EXCEPTION ("emcore_init_account_reference failed [%d]", err);
-			goto FINISH_OFF;
-		}
-	}
-
-FINISH_OFF:
-
-	EM_DEBUG_FUNC_END("err [%d]", err);
-	return err;
-}
 
 INTERNAL_FUNC int emdaemon_insert_accountinfo_to_contact(email_account_t* account)
 {
@@ -884,7 +835,7 @@ INTERNAL_FUNC int emdaemon_update_accountinfo_to_contact(email_account_t* old_ac
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_query_smtp_mail_size_limit(int account_id, int *handle, int* err_code)
+INTERNAL_FUNC int emdaemon_query_smtp_mail_size_limit(char *multi_user_name, int account_id, int *handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], handle[%p], err_code[%p]", account_id, handle, err_code);
 
@@ -903,6 +854,7 @@ INTERNAL_FUNC int emdaemon_query_smtp_mail_size_limit(int account_id, int *handl
 	event_data->event_param_data_1 = NULL;
 	event_data->event_param_data_3 = NULL;
 	event_data->account_id = account_id;
+   event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
 	if (!emcore_insert_event(event_data, (int*)handle, &err)) {
 		EM_DEBUG_EXCEPTION(" emcore_insert_event falied [%d]", err);

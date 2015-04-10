@@ -43,7 +43,7 @@ typedef struct {
 
 EXPORT_API emipc_param_list *emipc_create_param_list();
 
-EXPORT_API bool emipc_destroy_param_list(emipc_param_list *param_list);
+EXPORT_API void emipc_destroy_param_list(emipc_param_list *param_list);
 
 EXPORT_API bool emipc_parse_stream_of_param_list(emipc_param_list *param_list, void *stream_data);
 

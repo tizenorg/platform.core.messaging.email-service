@@ -57,27 +57,22 @@
 #include "email-core-event.h"
 #endif
 
+int network_status = 0;
+
 /* _get_network_status - Get the data network status from vconf */
-static int _get_network_status(int *network_status)
+
+INTERNAL_FUNC void emnetwork_set_network_status(int input_network_status)
 {
-	EM_DEBUG_FUNC_BEGIN("network_status [%p]", network_status);
+	EM_DEBUG_FUNC_BEGIN();
+	network_status = input_network_status;
+	EM_DEBUG_FUNC_END();
+}
 
-	int value = 0;
-
-	if(!network_status) {
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-		return EMAIL_ERROR_INVALID_PARAM;
-	}
-
-	if (vconf_get_int(VCONFKEY_NETWORK_STATUS, &value)) {
-		EM_DEBUG_EXCEPTION("Failed vconf_get_int [VCONFKEY_NETWORK_STATUS]");
-		return EMAIL_ERROR_SYSTEM_FAILURE;
-	}
-
-	*network_status = value;
-
-	EM_DEBUG_FUNC_END("network_status [%d]", value);
-	return EMAIL_ERROR_NONE;
+INTERNAL_FUNC int emnetwork_get_network_status()
+{
+	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_FUNC_END();
+	return network_status;
 }
 
 /* Check code for SIM status */
@@ -100,6 +95,31 @@ static int  _get_sim_status(int *sim_status)
 
 	EM_DEBUG_FUNC_END("status[%d]", value);
 	return EMAIL_ERROR_NONE;
+}
+
+/* Check code for flight mode */
+static int _get_flight_mode(int *flight_mode)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int value;
+
+	if(!flight_mode) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		return EMAIL_ERROR_INVALID_PARAM;
+	}
+
+	if (vconf_get_bool(VCONFKEY_TELEPHONY_FLIGHT_MODE, &value) != 0) {
+		EM_DEBUG_EXCEPTION("Failed vconf_get_bool [VCONFKEY_TELEPHONY_FLIGHT_MODE]");
+		return EMAIL_ERROR_SYSTEM_FAILURE;
+	}
+
+	EM_DEBUG_LOG("flight_mode : [%d]", value);
+
+	*flight_mode = value;
+
+	EM_DEBUG_FUNC_END("status[%d]", value);
+	return EMAIL_ERROR_NONE;
+
 }
 
 INTERNAL_FUNC int emnetwork_get_wifi_status(int *wifi_status)
@@ -128,19 +148,25 @@ INTERNAL_FUNC int emnetwork_get_wifi_status(int *wifi_status)
 INTERNAL_FUNC int emnetwork_check_network_status(int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int network_status = 0;
 	int sim_status     = VCONFKEY_TELEPHONY_SIM_UNKNOWN;
 	int wifi_status    = 0;
+	int flight_mode    = 0;
 	int err            = EMAIL_ERROR_NONE;
 	int ret            = false;
 
-	if ( (err = _get_network_status(&network_status)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("_get_network_status failed [%d]", err);
-		goto FINISH_OFF;
-	}
-
 	if(network_status == 0) {
 		EM_DEBUG_LOG("VCONFKEY_NETWORK_STATUS is 0");
+
+		if ( (err = _get_flight_mode(&flight_mode)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("_get_flight_mode failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		if (flight_mode) {
+			EM_DEBUG_LOG("Flight mode enable");
+			err = EMAIL_ERROR_FLIGHT_MODE_ENABLE;
+			goto FINISH_OFF;			
+		}
 
 		if ( (err = emnetwork_get_wifi_status(&wifi_status)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emnetwork_get_wifi_status failed [%d]", err);

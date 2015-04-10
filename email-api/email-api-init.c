@@ -30,34 +30,35 @@
  *			email-service . 
  */
  
-#include "email-api.h"
 #include "string.h"
 #include "email-convert.h"
 #include "email-storage.h"
 #include "email-ipc.h"
 #include "email-core-task-manager.h"
+#include "email-core-account.h"
 #include "email-utilities.h"
+#include "email-dbus-activation.h"
+#include "email-core-container.h"
 #include <sqlite3.h>
-
+#include <gio/gio.h>
 
 EXPORT_API int email_open_db(void)
 {
 	EM_DEBUG_API_BEGIN ();
 	int error  = EMAIL_ERROR_NONE;
-	
-#ifdef __FEATURE_ACCESS_CONTROL__
-	error = em_check_db_privilege_by_pid(getpid());
-	if (error == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_EXCEPTION ("permission denied");
-		return error;
-	}
-#endif
+    char *multi_user_name = NULL;
 
-	if (emstorage_db_open(&error) == NULL)
+    if ((error = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", error);
+        return error;
+    }
+
+	if (emstorage_db_open(multi_user_name, &error) == NULL)
 		EM_DEBUG_EXCEPTION("emstorage_db_open failed [%d]", error);
-	
-	EM_DEBUG_API_END ("err[%d]", error);
 
+    EM_SAFE_FREE(multi_user_name);
+
+	EM_DEBUG_API_END ("error[%d]", error);
 	return error;	
 }
 
@@ -65,11 +66,19 @@ EXPORT_API int email_close_db(void)
 {
 	EM_DEBUG_API_BEGIN ();
 	int error  = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 
-	if ( !emstorage_db_close(&error)) 
+    if ((error = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", error);
+        return error;
+    }
+
+	if (!emstorage_db_close(multi_user_name, &error)) 
 		EM_DEBUG_EXCEPTION("emstorage_db_close failed [%d]", error);
 
-	EM_DEBUG_API_END ("err[%d]", error);
+    EM_SAFE_FREE(multi_user_name);
+
+	EM_DEBUG_API_END ("error[%d]", error);
 	return error;	
 }
 
@@ -89,12 +98,18 @@ EXPORT_API int email_service_begin(void)
 	return ret;
 }
 
+extern GCancellable *cancel;
 
 EXPORT_API int email_service_end(void)
 {
 	EM_DEBUG_API_BEGIN ();
 	int ret = -1;
-	
+
+	if (cancel) {
+		g_cancellable_cancel (cancel);
+		while (cancel) usleep(1000000);
+	}
+
 	ret = emipc_finalize_proxy();
 
 	EM_DEBUG_API_END ("err[%d]", ret);
@@ -109,20 +124,20 @@ EXPORT_API int email_init_storage(void)
 {
 	EM_DEBUG_API_BEGIN ();
 	int error  = EMAIL_ERROR_NONE;
-	
-#ifdef __FEATURE_ACCESS_CONTROL__
-	error = em_check_db_privilege_by_pid(getpid());
-	if (error == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		return error;
-	}
-#endif
+    char *multi_user_name = NULL;
 
-	if (!emstorage_create_table(EMAIL_CREATE_DB_CHECK, &error))  {
+    if ((error = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", error);
+        return error;
+    }
+
+	if (!emstorage_create_table(multi_user_name, EMAIL_CREATE_DB_NORMAL, &error))  {
 		EM_DEBUG_EXCEPTION("emstorage_create_table failed [%d]", error);
 	}
 
-	EM_DEBUG_API_END ("err[%d]", error);
+    EM_SAFE_FREE(multi_user_name);
+
+	EM_DEBUG_API_END ("error[%d]", error);
 	return error;
 }
 

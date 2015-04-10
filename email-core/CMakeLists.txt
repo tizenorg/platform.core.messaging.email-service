@@ -13,7 +13,7 @@ MESSAGE(">>> Build type: ${CMAKE_BUILD_TYPE}")
 
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${VISIBILITY} -fvisibility=hidden")
-
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--gc-sections")
 
 ##########################################################
 # Define device lib
@@ -29,9 +29,8 @@ INCLUDE_DIRECTORIES(
 	${CMAKE_SOURCE_DIR}/email-core/email-device/include
 )
 
-
 INCLUDE(FindPkgConfig)
-pkg_check_modules(device_pkgs REQUIRED glib-2.0 dlog vconf pmapi dbus-1)
+pkg_check_modules(device_pkgs REQUIRED glib-2.0 dlog vconf capi-system-device dbus-1)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${device_pkgs_CFLAGS})
@@ -47,7 +46,7 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
 SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
 
 ADD_LIBRARY(${DEVICE-LIB} SHARED ${DEVICE-SRCS})
-TARGET_LINK_LIBRARIES(${DEVICE-LIB} ${device_pkgs_LDFLAGS} ${BASE-LIB})
+TARGET_LINK_LIBRARIES(${DEVICE-LIB} ${device_pkgs_LDFLAGS})
 SET_TARGET_PROPERTIES(${DEVICE-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${DEVICE-LIB} PROPERTIES VERSION ${VERSION})
 
@@ -72,9 +71,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(storage_pkgs REQUIRED drm-client glib-2.0 dlog db-util openssl vconf secure-storage dbus-1 libtzplatform-config)
-
-#pkg_check_modules(storage_pkgs REQUIRED drm-client glib-2.0 dlog db-util openssl vconf secure-storage dbus-1 contacts-service2 libtzplatform-config)
+pkg_check_modules(storage_pkgs REQUIRED glib-2.0 dlog openssl vconf secure-storage dbus-1 contacts-service2)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${storage_pkgs_CFLAGS})
@@ -90,7 +87,6 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
 SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
 
 ADD_LIBRARY(${STORAGE-LIB} SHARED ${STORAGE-SRCS})
-TARGET_LINK_LIBRARIES(${STORAGE-LIB} ${storage_LDFLAGS} ${BASE-LIB} ss-client)
 SET_TARGET_PROPERTIES(${STORAGE-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${STORAGE-LIB} PROPERTIES VERSION ${VERSION})
 
@@ -127,55 +123,80 @@ SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
 SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
 
 ADD_LIBRARY(${NETWORK-LIB} SHARED ${NETWORK-SRCS})
-TARGET_LINK_LIBRARIES(${NETWORK-LIB} ${network_pkgs_LDFLAGS} ${BASE-LIB} ${STORAGE-LIB} dl)
+TARGET_LINK_LIBRARIES(${NETWORK-LIB} ${network_pkgs_LDFLAGS} ${STORAGE-LIB} dl)
 SET_TARGET_PROPERTIES(${NETWORK-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${NETWORK-LIB} PROPERTIES VERSION ${VERSION})
 
 INSTALL(TARGETS ${NETWORK-LIB} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
 
 ##########################################################
-# Define Core-sound lib
+# Define container lib                                                  
 ##########################################################
 
-SET(CORE-SOUND-LIB "email-core-sound")
-SET(CORE-SOUND-SRCS 
-	${CMAKE_SOURCE_DIR}/email-core/email-core-sound.c
+SET(CONTAINER-LIB "email-container")
+SET(CONTAINER-SRCS 
+    ${CMAKE_SOURCE_DIR}/email-core/email-core-container.c
 )
 
 INCLUDE_DIRECTORIES(
 	${CMAKE_SOURCE_DIR}/email-common-use/include
-	${CMAKE_SOURCE_DIR}/email-daemon/include/
-	${CMAKE_SOURCE_DIR}/email-core/include
-	${CMAKE_SOURCE_DIR}/email-core/email-storage/include
 )
 
-
 INCLUDE(FindPkgConfig)
-pkg_check_modules(core_sound_pkgs REQUIRED glib-2.0 dlog dbus-1 gthread-2.0 
-			vconf vconf-internal-keys mm-player mm-session feedback 
-			alarm-service notification badge)
+SET(PKG_MODULES glib-2.0)
 
-set(EXTRA_CFLAGS "")
-FOREACH(flag ${core_sound_pkgs_CFLAGS})
+# __FEATURE_CONTAINER_ENABLE__
+#SET(PKG_MODULES glib-2.0 vasum)
+
+pkg_check_modules(container_pkgs REQUIRED ${PKG_MODULES})
+
+FOREACH(flag ${container_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
 
-#message(">> core extra raw: ${core_sound_pkgs_CFLAGS}")
-#message(">> core extra : ${EXTRA_CFLAGS}")
-#message(">> core result: ${CMAKE_C_FLAGS}")
+SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
+
+ADD_LIBRARY(${CONTAINER-LIB} SHARED ${CONTAINER-SRCS})
+TARGET_LINK_LIBRARIES(${CONTAINER-LIB} ${container_pkgs_LDFLAGS} dl)
+SET_TARGET_PROPERTIES(${CONTAINER-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
+SET_TARGET_PROPERTIES(${CONTAINER-LIB} PROPERTIES VERSION ${VERSION})
+
+INSTALL(TARGETS ${CONTAINER-LIB} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
+
+##########################################################
+# Define cynara lib                                                  
+##########################################################
+
+SET(CYNARA-LIB "email-cynara")
+SET(CYNARA-SRCS 
+    ${CMAKE_SOURCE_DIR}/email-core/email-core-cynara.c
+)
+
+INCLUDE_DIRECTORIES(
+	${CMAKE_SOURCE_DIR}/email-common-use/include
+)
+
+INCLUDE(FindPkgConfig)
+SET(PKG_MODULES cynara-client cynara-creds-socket)
+
+pkg_check_modules(cynara_pkgs REQUIRED ${PKG_MODULES})
+
+FOREACH(flag ${cynara_pkgs_CFLAGS})
+	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
+ENDFOREACH(flag)
+
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
 
 SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
 
-ADD_LIBRARY(${CORE-SOUND-LIB} SHARED ${CORE-SOUND-SRCS})
+ADD_LIBRARY(${CYNARA-LIB} SHARED ${CYNARA-SRCS})
+TARGET_LINK_LIBRARIES(${CYNARA-LIB} ${cynara_pkgs_LDFLAGS} dl)
+SET_TARGET_PROPERTIES(${CYNARA-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
+SET_TARGET_PROPERTIES(${CYNARA-LIB} PROPERTIES VERSION ${VERSION})
 
-TARGET_LINK_LIBRARIES(${CORE-SOUND-LIB} ${core_sound_pkgs_LDFLAGS} ${STORAGE-LIB} ${CORE-LIB})
-
-SET_TARGET_PROPERTIES(${CORE-SOUND-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
-SET_TARGET_PROPERTIES(${CORE-SOUND-LIB} PROPERTIES VERSION ${VERSION})
-
-INSTALL(TARGETS ${CORE-SOUND-LIB} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
+INSTALL(TARGETS ${CYNARA-LIB} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
 
 ##########################################################
 # Define Core lib
@@ -196,11 +217,12 @@ SET(CORE-SRCS
 	${CMAKE_SOURCE_DIR}/email-core/email-core-global.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-account.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-mime.c
-#	${CMAKE_SOURCE_DIR}/email-core/email-core-sound.c
+	${CMAKE_SOURCE_DIR}/email-core/email-core-gmime.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-task-manager.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-tasks.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-signal.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-alarm.c
+	${CMAKE_SOURCE_DIR}/email-core/email-core-auto-download.c
 )
 
 INCLUDE_DIRECTORIES(
@@ -209,14 +231,17 @@ INCLUDE_DIRECTORIES(
 	${CMAKE_SOURCE_DIR}/email-core/email-storage/include
 	${CMAKE_SOURCE_DIR}/email-core/email-network/include
 	${CMAKE_SOURCE_DIR}/email-core/email-device/include
+	${CMAKE_SOURCE_DIR}/email-ipc/email-activation/include/
 )
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys secure-storage openssl accounts-svc mm-player mm-session feedback alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge capi-appfw-application icu-i18n libtzplatform-config)
+SET(PKG_MODULES glib-2.0 dlog dbus-1 gthread-2.0
+			uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage
+			openssl accounts-svc alarm-service notification libcurl libxml-2.0 feedback
+			cert-svc cert-svc-vcore badge capi-appfw-application icu-i18n gmime-2.6 storage)
 
-
-#pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage openssl accounts-svc mm-player mm-session feedback alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge capi-appfw-application icu-i18n libtzplatform-config)
+pkg_check_modules(core_pkgs REQUIRED ${PKG_MODULES})
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${core_pkgs_CFLAGS})
@@ -248,7 +273,7 @@ SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
 
 ADD_LIBRARY(${CORE-LIB} SHARED ${CORE-SRCS})
 
-TARGET_LINK_LIBRARIES(${CORE-LIB} ${core_pkgs_LDFLAGS} ${STORAGE-LIB} ${NETWORK-LIB} ${DEVICE-LIB} ${CORE-SOUND-LIB})
+TARGET_LINK_LIBRARIES(${CORE-LIB} ${core_pkgs_LDFLAGS} ${STORAGE-LIB} ${NETWORK-LIB} ${DEVICE-LIB} ${CONTAINER-LIB} ${CYNARA-LIB})
 
 SET_TARGET_PROPERTIES(${CORE-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${CORE-LIB} PROPERTIES VERSION ${VERSION})
@@ -263,6 +288,7 @@ SET(SMIME-LIB "email-smime")
 SET(SMIME-SRCS 
 	${CMAKE_SOURCE_DIR}/email-core/email-core-smime.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-cert.c
+	${CMAKE_SOURCE_DIR}/email-core/email-core-pgp.c
 )
 
 INCLUDE_DIRECTORIES(

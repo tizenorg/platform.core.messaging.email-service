@@ -24,6 +24,7 @@
 #define __IPC_LIBRARY_H
 
 #include "email-types.h"
+#include "email-internal-types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -81,6 +82,8 @@ EXPORT_API int emipc_get_parameter_length(HIPC_API input_api_handle, EPARAMETER_
 EXPORT_API int emipc_get_nth_parameter_length(HIPC_API input_api_handle, EPARAMETER_DIRECTION input_parameter_direction, int input_parameter_index);
 
 EXPORT_API int emipc_execute_proxy_task(email_task_type_t input_task_type, void *input_task_parameter);
+
+EXPORT_API int emipc_get_user_name(char **output_user_name);
 #ifdef __cplusplus
 }
 #endif

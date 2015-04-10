@@ -79,30 +79,34 @@ static gboolean testapp_test_add_mailbox()
 	char arg[500];
 	int ret;
     int handle;
-    int result_from_scanf = 0;
 
     memset(&mailbox, 0, sizeof(email_mailbox_t));
 
 	memset(arg, 0x00, 500);
 	testapp_print("\n> Enter mailbox name: ");
-	result_from_scanf = scanf("%s",arg);
+	if (0 >= scanf("%s",arg))
+		testapp_print("Invalid input. ");
 	mailbox.mailbox_name = strdup(arg);
 	
 	memset(arg, 0x00, 500);
 	testapp_print("> Enter mailbox alias name: ");
-	result_from_scanf = scanf("%s",arg);
+	if (0 >= scanf("%s",arg))
+		testapp_print("Invalid input. ");
 	mailbox.alias = strdup(arg);
 
 	testapp_print("> Enter account id: ");
-	result_from_scanf = scanf("%d", &account_id);
+	if (0 >= scanf("%d", &account_id))
+		testapp_print("Invalid input. ");
 	mailbox.account_id = account_id;
 
 	testapp_print("> Enter local_yn (1/0): ");
-	result_from_scanf = scanf("%d", &local_yn);
+	if (0 >= scanf("%d", &local_yn))
+		testapp_print("Invalid input. ");
 	mailbox.local= local_yn;	
 
 	testapp_print("> Enter mailbox type: ");
-	result_from_scanf = scanf("%d", &mailbox_type);
+	if (0 >= scanf("%d", &mailbox_type))
+		testapp_print("Invalid input. ");
 	mailbox.mailbox_type= mailbox_type;
 
 	mailbox.eas_data               = strdup("EAS DATA TEST");
@@ -130,13 +134,14 @@ static gboolean testapp_test_delete_mailbox()
 	int on_server = 0;
 	int ret;
 	int handle;
-	int result_from_scanf = 0;
 
 	testapp_print("\n> Enter mailbox id:");
-	result_from_scanf = scanf("%d", &mailbox_id);
+	if (0 >= scanf("%d", &mailbox_id))
+		testapp_print("Invalid input");
 	
 	testapp_print("> Enter on_server (1/0): ");
-	result_from_scanf = scanf("%d", &on_server);
+	if (0 >= scanf("%d", &on_server))
+		testapp_print("Invalid input");
 
 	ret = email_delete_mailbox(mailbox_id, on_server, &handle);
 
@@ -158,17 +163,19 @@ static gboolean testapp_test_rename_mailbox()
 	char mailbox_name[500] = { 0, };
 	char mailbox_alias[500] = { 0, };
 	int err;
-	int result_from_scanf = 0;
 	int handle = 0;
 	
 	testapp_print("> Enter mailbox id: ");
-	result_from_scanf = scanf("%d", &mailbox_id);
+	if (0 >= scanf("%d", &mailbox_id))
+		testapp_print("Invalid input");
 
 	testapp_print("> Enter new mailbox name: ");
-	result_from_scanf = scanf("%s", mailbox_name);
+	if (0 >= scanf("%s", mailbox_name))
+		testapp_print("Invalid input");
 
 	testapp_print("> Enter new mailbox name: ");
-	result_from_scanf = scanf("%s", mailbox_alias);
+	if (0 >= scanf("%s", mailbox_alias))
+		testapp_print("Invalid input");
 
 	
 	if ( (err = email_rename_mailbox(mailbox_id, mailbox_name, mailbox_alias, true, &handle)) < 0) {
@@ -185,10 +192,10 @@ static gboolean testapp_test_get_imap_mailbox_list()
 {
 	int account_id = 0;
 	int handle = 0;
-	int result_from_scanf = 0;
 	
 	testapp_print("> Enter account id: ");
-	result_from_scanf = scanf("%d", &account_id);
+	if (0 >= scanf("%d", &account_id))
+		testapp_print("Invalid input");
 	
 	if(  email_sync_imap_mailbox_list(account_id, &handle) < 0)
 		testapp_print("email_sync_imap_mailbox_list failed");
@@ -201,13 +208,14 @@ static gboolean testapp_test_set_local_mailbox()
 {
 	int mailbox_id = 0;
 	int is_local_mailbox = 0;
-	int result_from_scanf = 0;
 
 	testapp_print("> Enter mailbox id: ");
-	result_from_scanf = scanf("%d", &mailbox_id);
+	if (0 >= scanf("%d", &mailbox_id))
+		testapp_print("Invalid input");
 
 	testapp_print("> Enter local: ");
-	result_from_scanf = scanf("%d", &is_local_mailbox);
+	if (0 >= scanf("%d", &is_local_mailbox))
+		testapp_print("Invalid input");
 
 	if( email_set_local_mailbox(mailbox_id, is_local_mailbox) < 0)
 		testapp_print("email_set_local_mailbox failed");
@@ -224,16 +232,18 @@ static gboolean testapp_test_delete_mailbox_ex()
 	int  on_server = 0;
 	int  handle = 0;
 	int  i = 0;
-	int  result_from_scanf = 0;
 
 	testapp_print("\n > Enter account_id: ");
-	result_from_scanf = scanf("%d", &account_id);
+	if (0 >= scanf("%d", &account_id))
+		testapp_print("Invalid input");
 
 	testapp_print("\n > Enter mailbox_id_count: ");
-	result_from_scanf = scanf("%d", &mailbox_id_count);
+	if (0 >= scanf("%d", &mailbox_id_count))
+		testapp_print("Invalid input");
 
 	testapp_print("\n > Enter on_server: ");
-	result_from_scanf = scanf("%d", &on_server);
+	if (0 >= scanf("%d", &on_server))
+		testapp_print("Invalid input");
 
 	mailbox_id_count = (mailbox_id_count < 5000)?mailbox_id_count:5000;
 
@@ -243,7 +253,8 @@ static gboolean testapp_test_delete_mailbox_ex()
 
 	for(i = 0; i < mailbox_id_count; i++) {
 		testapp_print("\n > Enter mailbox id: ");
-		result_from_scanf = scanf("%d", (mailbox_id_array + i));
+		if (0 >= scanf("%d", (mailbox_id_array + i)))
+			testapp_print("Invalid input");
 	}
 
 	err = email_delete_mailbox_ex(account_id, mailbox_id_array, mailbox_id_count, on_server, &handle);
@@ -260,15 +271,16 @@ static gboolean testapp_test_get_mailbox_by_type()
 
 	int account_id =0;	
 	int err_code = EMAIL_ERROR_NONE;
-	int result_from_scanf = 0;
 	email_mailbox_t *mailbox =NULL;
 	email_mailbox_type_e mailbox_type =0;
 	
 	testapp_print("\n > Enter account id: ");
-	result_from_scanf = scanf("%d", &account_id);
+	if (0 >= scanf("%d", &account_id))
+		testapp_print("Invalid input");
 
 	testapp_print("\n > Enter mailbox_type: ");
-	result_from_scanf = scanf("%d", (int*)&mailbox_type);
+	if (0 >= scanf("%d", (int*)&mailbox_type))
+		testapp_print("Invalid input");
 
 	if( (err_code = email_get_mailbox_by_mailbox_type(account_id,mailbox_type,&mailbox)) < 0) {
 		testapp_print("   email_get_mailbox_by_mailbox_type error : %d\n",err_code);
@@ -286,13 +298,14 @@ static gboolean testapp_test_set_mailbox_type()
 	int  mailbox_id = 0;
 	int  mailbox_type = 0;
 	int  err_code = EMAIL_ERROR_NONE;
-	int  result_from_scanf = 0;
 
 	testapp_print("\n > Enter mailbox id : ");
-	result_from_scanf = scanf("%d", &mailbox_id);
+	if (0 >= scanf("%d", &mailbox_id))
+		testapp_print("Invalid input");
 
 	testapp_print("\n > Enter mailbox type : ");
-	result_from_scanf = scanf("%d", &mailbox_type);
+	if (0 >= scanf("%d", &mailbox_type))
+		testapp_print("Invalid input");
 
 	if( (err_code = email_set_mailbox_type(mailbox_id, mailbox_type) ) != EMAIL_ERROR_NONE) {
 		testapp_print("\nemail_set_mailbox_type error : %d\n", err_code);
@@ -307,16 +320,18 @@ static gboolean testapp_test_set_mail_slot_size ()
 	int mailbox_id = 0;
 	int mail_slot_size = 0;
 	int err_code = EMAIL_ERROR_NONE;
-	int result_from_scanf = 0;
 	
 	testapp_print("\n > Enter account id (0: All account): ");
-	result_from_scanf = scanf("%d", &account_id);
+	if (0 >= scanf("%d", &account_id))
+		testapp_print("Invalid input");
 
 	testapp_print("\n> Enter mailbox id (0 : All mailboxes):");
-	result_from_scanf = scanf("%d", &mailbox_id);
+	if (0 >= scanf("%d", &mailbox_id))
+		testapp_print("Invalid input");
 
 	testapp_print("\n > Enter mailbox slot size: ");
-	result_from_scanf = scanf("%d", &mail_slot_size);
+	if (0 >= scanf("%d", &mail_slot_size))
+		testapp_print("Invalid input");
 
 	if( (err_code = email_set_mail_slot_size(account_id, mailbox_id, mail_slot_size) ) < 0) {
 		testapp_print("   testapp_test_set_mail_slot_size error : %d\n", err_code);
@@ -328,16 +343,17 @@ static gboolean testapp_test_set_mail_slot_size ()
 
 static gboolean testapp_test_get_mailbox_list ()
 {
-	int result_from_scanf = 0;
 	int account_id =0;
 	int mailbox_sync_type;
 	int count = 0;
 	int error_code = EMAIL_ERROR_NONE;
 	email_mailbox_t *mailbox_list=NULL;
 	testapp_print("\n > Enter account id: ");
-	result_from_scanf = scanf("%d", &account_id);
+	if (0 >= scanf("%d", &account_id))
+		testapp_print("Invalid input");
 	testapp_print("\n > Enter mailbox_sync_type\n[-1 :for all mailboxes, 0 : for mailboxes from server, 1 : local mailboxes\n : ");
-	result_from_scanf = scanf("%d", &mailbox_sync_type);
+	if (0 >= scanf("%d", &mailbox_sync_type))
+		testapp_print("Invalid input");
 
 	if((error_code = email_get_mailbox_list(account_id, mailbox_sync_type, &mailbox_list, &count)) < 0) {
 		testapp_print("   email_get_mailbox_list error %d\n", error_code);
@@ -361,17 +377,18 @@ static gboolean testapp_test_get_mailbox_list ()
 
 static gboolean testapp_test_get_mailbox_list_by_keyword ()
 {
-	int result_from_scanf = 0;
 	int account_id =0;
 	int count = 0;
 	char keyword[500] = { 0, };
 	int error_code = EMAIL_ERROR_NONE;
 	email_mailbox_t *mailbox_list = NULL;
 	testapp_print("\n > Enter account id: ");
-	result_from_scanf = scanf("%d", &account_id);
+	if (0 >= scanf("%d", &account_id))
+		testapp_print("Invalid input");
 
 	testapp_print("> Enter keyword: ");
-	result_from_scanf = scanf("%s", keyword);
+	if (0 >= scanf("%s", keyword))
+		testapp_print("Invalid input");
 
 	if ((error_code = email_get_mailbox_list_by_keyword(account_id, keyword, &mailbox_list, &count)) < 0) {
 		testapp_print("   email_get_mailbox_list_by_keyword error %d\n", error_code);
@@ -388,16 +405,17 @@ static gboolean testapp_test_get_mailbox_list_by_keyword ()
 
 static gboolean testapp_test_sync_mailbox()
 {
-	int result_from_scanf = 0;
 	int account_id = 0;
 	int handle = 0;
 	int mailbox_id = 0;
 
 	testapp_print("\n > Enter Account id (0: for all account) : ");
-	result_from_scanf = scanf("%d",&account_id);
+	if (0 >= scanf("%d",&account_id))
+		testapp_print("Invalid input");
 
 	testapp_print("\n > Enter Mailbox id (0: for all mailboxes) : ");
-	result_from_scanf = scanf("%d",&mailbox_id);
+	if (0 >= scanf("%d",&mailbox_id))
+		testapp_print("Invalid input");
 
 	if(account_id == ALL_ACCOUNT) {
 		if(email_sync_header_for_all_account(&handle) < 0)
@@ -417,11 +435,11 @@ static gboolean testapp_test_sync_mailbox()
 
 static gboolean testapp_test_stamp_sync_time()
 {
-	int result_from_scanf;
 	int input_mailbox_id = 0;
 
 	testapp_print("\n > Enter Mailbox id : ");
-	result_from_scanf = scanf("%d",&input_mailbox_id);
+	if (0 >= scanf("%d",&input_mailbox_id))
+		testapp_print("Invalid input");
 
 	email_stamp_sync_time_of_mailbox(input_mailbox_id);
 
@@ -436,18 +454,19 @@ static gboolean testapp_test_rename_mailbox_ex()
 	char mailbox_alias[500] = { 0, };
 	char eas_data[500] = "OK. Done";
 	int err;
-	int result_from_scanf = 0;
 	int handle = 0;
 
 	testapp_print("> Enter mailbox id: ");
-	result_from_scanf = scanf("%d", &mailbox_id);
+	if (0 >= scanf("%d", &mailbox_id))
+		testapp_print("Invalid input. ");
 
 	testapp_print("> Enter new mailbox name: ");
-	result_from_scanf = scanf("%s", mailbox_name);
+	if (0 >= scanf("%s", mailbox_name))
+		testapp_print("Invalid input. ");
 
 	testapp_print("> Enter new mailbox alias: ");
-	result_from_scanf = scanf("%s", mailbox_alias);
-
+	if (0 >= scanf("%s", mailbox_alias))
+		testapp_print("Invalid input. ");
 
 	if ( (err = email_rename_mailbox_ex(mailbox_id, mailbox_name, mailbox_alias, eas_data, strlen(eas_data), false, &handle)) < 0) {
 		testapp_print("\n email_rename_mailbox failed[%d]\n", err);
@@ -533,13 +552,13 @@ void email_test_mailbox_main()
 {
 	gboolean go_to_loop = TRUE;
 	int menu_number = 0;
-	int result_from_scanf = 0;
 	
 	while (go_to_loop) {
 		testapp_show_menu (EMAIL_MAILBOX_MENU);
 		testapp_show_prompt (EMAIL_MAILBOX_MENU);
 			
-		result_from_scanf = scanf("%d", &menu_number);
+		if (0 >= scanf("%d", &menu_number))
+			testapp_print("Invalid input. ");
 
 		go_to_loop = testapp_test_interpret_command (menu_number);
 	}
