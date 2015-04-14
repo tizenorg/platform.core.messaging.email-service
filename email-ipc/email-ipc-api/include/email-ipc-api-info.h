@@ -32,6 +32,7 @@ typedef struct {
 	long api_id;
 	long response_id;
 	long app_id;
+	long permission;
 	emipc_param_list *params[2];
 } emipc_email_api_info;
 
