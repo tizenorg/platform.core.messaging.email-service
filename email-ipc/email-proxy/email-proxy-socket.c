@@ -46,7 +46,7 @@ typedef struct {
 GList *socket_head = NULL;
 pthread_mutex_t proxy_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-EXPORT_API int emipc_start_proxy_socket()
+EXPORT_API bool emipc_start_proxy_socket()
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int ret = true;
@@ -58,10 +58,19 @@ EXPORT_API int emipc_start_proxy_socket()
 		return false;
 	}
 
+#ifdef __FEATURE_ACCESS_CONTROL__
+	int err = EMAIL_ERROR_NONE;
+	err = em_check_socket_privilege_by_pid(getpid());
+	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		return false;
+	}
+#endif
+
 	ret = emipc_connect_email_socket(socket_fd);
-	if (ret != EMAIL_ERROR_NONE) {
+	if (!ret) {
 		EM_DEBUG_EXCEPTION("emipc_connect_email_socket failed");
-		return ret;
+		return false;
 	}
 
 	thread_socket_t* cur = (thread_socket_t*) em_malloc(sizeof(thread_socket_t));
@@ -95,6 +104,15 @@ EXPORT_API bool emipc_end_proxy_socket()
 
 		/* close the socket of current thread */
 		if( tid == cur_socket->tid ) {
+#ifdef __FEATURE_ACCESS_CONTROL__
+			int err = EMAIL_ERROR_NONE;
+			err = em_check_socket_privilege_by_pid(cur_socket->pid);
+			if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+				LEAVE_CRITICAL_SECTION(proxy_mutex); /*prevent 30968*/
+				EM_DEBUG_LOG("permission denied");
+				return false;
+			}
+#endif
 			emipc_close_email_socket(&cur_socket->socket_fd);
 			EM_SAFE_FREE(cur_socket);
 			GList *del = cur;
@@ -124,6 +142,16 @@ EXPORT_API bool emipc_end_all_proxy_sockets()
 
 		/* close all sockets of the pid */
 		if( pid == cur_socket->pid ) {
+#ifdef __FEATURE_ACCESS_CONTROL__
+			int err = EMAIL_ERROR_NONE;
+			err = em_check_socket_privilege_by_pid(cur_socket->pid);
+			if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+				LEAVE_CRITICAL_SECTION(proxy_mutex); /*prevent 30967*/
+				EM_DEBUG_LOG("permission denied");
+				return false;
+			}
+#endif
+
 			emipc_close_email_socket(&cur_socket->socket_fd);
 			EM_SAFE_FREE(cur_socket);
 			GList *del = cur;
@@ -192,11 +220,12 @@ EXPORT_API int emipc_get_proxy_socket_id()
  */
 static bool wait_for_reply (int fd)
 {
-	int err = -1;
+	int return_from_select = -1;
 	fd_set fds;
 	struct timeval tv;
+	char errno_buf[ERRNO_BUF_SIZE] = {0};
 
-	if (fd < 0) {
+	if (fd == 0) {
 		EM_DEBUG_EXCEPTION("Invalid file description : [%d]", fd);
 		return false;
 	}
@@ -208,13 +237,13 @@ static bool wait_for_reply (int fd)
 	tv.tv_usec = 0;
 
 	EM_DEBUG_LOG_DEV ("wait for response [%d]", fd);
-	err = select(fd + 1, &fds, NULL, NULL, &tv);
-	if (err == -1) {
-		EM_DEBUG_EXCEPTION("[IPCLib] select error[%d] fd[%d]", errno, fd);
+
+	if ((return_from_select = select(fd + 1, &fds, NULL, NULL, &tv)) == -1) {
+		EM_DEBUG_EXCEPTION("[IPCLib] select failed: %s", EM_STRERROR(errno_buf));
 		return false;
 	}
-	else if (err == 0) {
-		EM_DEBUG_EXCEPTION("[IPCLib] select timeout fd[%d]", fd);
+	else if (return_from_select == 0) {
+		EM_DEBUG_EXCEPTION("[IPCLib] select: timeout");
 		return false;
 	}
 

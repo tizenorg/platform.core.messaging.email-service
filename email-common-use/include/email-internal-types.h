@@ -50,8 +50,9 @@ extern "C"
 #define __FEATURE_USING_ACCOUNT_SVC_FOR_SYNC_STATUS__
 #define __FEATURE_BACKUP_ACCOUNT__
 #define __FEATURE_MOVE_TO_OUTBOX_FIRST__
-#define __FEATURE_PARTIAL_BODY_FOR_POP3__
+/*  #define __FEATURE_PARTIAL_BODY_FOR_POP3__*/
 /*  #define __FEATURE_KEEP_CONNECTION__  */
+/*  #define __FEATURE_DRM__ */
 #define __FEATURE_PARTIAL_BODY_DOWNLOAD__
 #define __FEATURE_HEADER_OPTIMIZATION__
 #define __FEATURE_SEND_OPTMIZATION__
@@ -67,32 +68,22 @@ extern "C"
 #define __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__
 #define __FEATURE_SUPPORT_VALIDATION_SYSTEM__
 #define __FEATURE_PROGRESS_IN_OUTBOX__
-
+#define __FEATURE_OMA_EMN__
 /*  #define __FEATURE_USE_SHARED_MUTEX_FOR_PROTECTED_FUNC_CALL__ */
-#define __FEATURE_IMAP_IDLE__
+/*  #define __FEATURE_IMAP_IDLE__ */
 #define __FEATURE_DRIVING_MODE__
 #define __FEATURE_DELETE_MAILBOX_RECURSIVELY__
 #define __FEATURE_RENAME_MAILBOX_RECURSIVELY__
 #define __FEATURE_AUTO_RETRY_SEND__
-#define __FEATURE_SMTP_VALIDATION__
-#define __FEATURE_USE_GMIME__
-#define __FEATURE_WIFI_AUTO_DOWNLOAD__
-
+/*  #define __FEATURE_SMTP_VALIDATION__  */
+/*  #define FEATURE_CORE_DEBUG  */
+/*  #define FEATURE_USE_GMIME  */
 /* #define __FEATURE_BLOCKING_MODE__ */
 #define __FEATURE_BODY_SEARCH__
-#define __FEATURE_ACCESS_CONTROL__
-#define __FEATURE_UPDATE_DB_TABLE_SCHEMA__ 
-#define __FEATURE_OPEN_SSL_MULTIHREAD_HANDLE__
-/* #define __FEATURE_COMPARE_DOMAIN__ */
-/* #define __FEATURE_FORK_FOR_CURL__ */
-/* #define __FEATURE_USE_DRM_API__ */
-#define __FEATURE_SECURE_PGP__ 
-#define __FEATURE_SYNC_STATUS__
-/* #define __FEATURE_CONTAINER_ENABLE__ */
-/* #define __FEATURE_NOTIFICATION_ENABLE__ */
-/* #define __FEATURE_CONTACTS_ENABLE__ */
-/* #define __FEATURE_FEEDBACK_TYPE_LED_ENABLE__ */
+/* #define __FEATURE_USE_APPSYNC__ */
+/* #define __FEATURE_ACCESS_CONTROL__ */
 /* #define __FEATURE_IMAP_QUOTA__ */
+
 
 /* ----------------------------------------------------------------------------- */
 /*  Macro */
@@ -100,7 +91,7 @@ extern "C"
 #define NULL (char *)0
 #endif
 
-#define SESSION_MAX	                        50
+#define SESSION_MAX	                        10
 #define	IMAP_2004_LOG                       1
 #define TEXT_SIZE                           161 
 #define MAILBOX_COUNT                       6
@@ -116,7 +107,6 @@ extern "C"
 #define DOWNLOAD_NOTI_INTERVAL_PERCENT      5         /*  notify every 5% */
 #define DOWNLOAD_NOTI_INTERVAL_SIZE         51200     /*  notify every 50k */
 #define MAX_PATH                            4096      /* /usr/src/linux-2.4.20-8/include/linux/limits.h */
-#define MAX_FILENAME                        255
 #define DATETIME_LENGTH                     16
 #define MAIL_ID_STRING_LENGTH               10
 #define MAILBOX_ID_STRING_LENGTH            10
@@ -146,7 +136,7 @@ extern "C"
 
 #define ACCOUNT_PASSWORD_SS_GROUP_ID        "secure-storage::email-service"
 
-#define NATIVE_EMAIL_APPLICATION_PKG        "org.tizen.email"
+#define NATIVE_EMAIL_APPLICATION_PKG        "com.samsung.email"
 #define NATIVE_EMAIL_DOMAIN                 "email"
 
 #define IMAP_ID_OS                          "TIZEN"
@@ -177,7 +167,8 @@ extern "C"
 #define SAVE_TYPE_BUFFER                    2        /*  save content to buffer */
 #define SAVE_TYPE_FILE                      3        /*  save content to temporary file */
 
-#define TOKEN_FOR_MULTI_USER                 "_"
+#define FINISH_OFF_IF_CANCELED              if (!emcore_check_thread_status()) { err = EMAIL_ERROR_CANCELLED; goto FINISH_OFF; }
+#define CHECK_JOB_CANCELED()                {if (!emcore_check_thread_status()) goto JOB_CANCEL; }
 
 #define SNPRINTF(buff, size, format, args...)  snprintf(buff, size, format, ##args)
 #define SNPRINTF_OFFSET(base_buf, offset, base_size, format, args...) \
@@ -226,7 +217,7 @@ typedef pthread_t thread_t;
 #define VCONF_KEY_DEFAULT_ACCOUNT_ID    "db/private/email-service/default_account_id"
 #define VCONF_KEY_NOTI_PRIVATE_ID       "db/private/email-service/noti_private_id"
 
-#define VCONF_KEY_TOPMOST_WINDOW        "db/private/org.tizen.email/is_topmost_window"
+#define VCONF_KEY_TOPMOST_WINDOW        "db/private/com.samsung.email/is_topmost_window"
 
 #define OUTMODE  "wb"
 #define INMODE   "rb"
@@ -235,7 +226,6 @@ typedef pthread_t thread_t;
 
 #define TYPEPKCS7_SIGN 10	
 #define TYPEPKCS7_MIME 11
-#define TYPEPGP        12
 
 #define INLINE_ATTACHMENT    1
 #define ATTACHMENT           2
@@ -305,16 +295,14 @@ enum
 	EXTENSION_TIF    = 7,
 	EXTENSION_WBMP   = 8,
 	EXTENSION_P7S    = 9,
-	EXTENSION_P7M    = 10,
-	EXTENSION_ASC    = 11
+	EXTENSION_P7M    = 10
 };
 
 typedef enum {
 	EMAIL_ALARM_CLASS_SCHEDULED_SENDING   = 1,
 	EMAIL_ALARM_CLASS_NEW_MAIL_ALERT      = 2,
 	EMAIL_ALARM_CLASS_AUTO_POLLING        = 3,
-	EMAIL_ALARM_CLASS_AUTO_RESEND         = 4,
-	EMAIL_ALARM_CLASS_IMAP_IDLE           = 5,
+	EMAIL_ALARM_CLASS_AUTO_RESEND         = 4
 } email_alarm_class_t;
 
 
@@ -325,7 +313,6 @@ typedef struct
 	int                        handle;
 	email_event_type_t         type;
 	email_event_status_type_t  status;
-	char                      *multi_user_name;
 	char                      *event_param_data_1; /*  in general, mailbox name (exception in emcore_send_mail, emcore_send_saved_mail it is email_option_t **/
 	char                      *event_param_data_2;
 	char                      *event_param_data_3;
@@ -352,11 +339,15 @@ struct email_search_key_t
 	email_search_key_t *next;
 };
 
-/* the type is used to get uw-imap-toolkit error with thread local storage */
-typedef struct {
+typedef struct
+{
+	int                  tid;
+	email_protocol_type_t  protocol;
+	void                *stream;
 	int                  auth;
 	int                  network;
 	int                  error;
+	int                  status;
 } email_session_t;
 
 typedef struct
@@ -402,7 +393,7 @@ typedef struct
 } email_mail_contact_info_t;
 
 /*  global account list */
-typedef struct  email_account_list {
+typedef struct email_account_list {
     email_account_t *account;
     struct email_account_list *next;
 } email_account_list_t;
@@ -412,14 +403,6 @@ typedef struct {
 	email_task_type_t  task_type;
 	thread_t           thread_id;
 } email_active_task_t;
-
-typedef struct emcore_uid_elem {
-	int msgno;
-	char *uid;
-	char *internaldate;
-	email_mail_flag_t flag;
-	struct emcore_uid_elem *next;
-} emcore_uid_list;
 
 typedef void (*email_event_callback)(int total, int done, int status, int account_id, int mail_id, int handle, void *user_data, int error);
 
@@ -435,26 +418,17 @@ typedef enum
 
 typedef struct 
 {
-        int account_id;
-        int mail_id;
-        unsigned long server_mail_id;
-        int activity_id;
-        int mailbox_id;
-        char *mailbox_name;
-        char *multi_user_name;
-        email_event_type_t event_type;   /*  Event Type Null means event is created from local activitys    */
-        int activity_type;             /*  Activity Type Null means event is created from event queue */
+    int account_id;
+    int mail_id;
+    unsigned long server_mail_id;
+    int activity_id;
+    int mailbox_id;
+    char *mailbox_name;
+    email_event_type_t event_type;   /*  Event Type Null means event is created from local activitys    */
+    int activity_type;             /*  Activity Type Null means event is created from event queue */
+
 } email_event_partial_body_thd;
 #endif /*  __FEATURE_PARTIAL_BODY_DOWNLOAD__ */
-
-typedef enum
-{
-	EMAIL_ALERT_TYPE_MELODY, 
-	EMAIL_ALERT_TYPE_VIB, 
-	EMAIL_ALERT_TYPE_MELODY_AND_VIB, 
-	EMAIL_ALERT_TYPE_MUTE, 
-	EMAIL_ALERT_TYPE_NONE,
-} EMAIL_ALERT_TYPE;
 
 #ifdef __cplusplus
 }

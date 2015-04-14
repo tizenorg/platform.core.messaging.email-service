@@ -32,6 +32,11 @@
 #ifndef __EMAIL_DAEMON_EMN_H__
 #define __EMAIL_DAEMON_EMN_H__
 
+/**
+* @ingroup EMAIL_SERVICE
+* @defgroup EMN EMN
+* @{
+*/
 
 #include "email-internal-types.h"
 
@@ -87,6 +92,10 @@ typedef int (*email_emn_noti_cb)(
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
+
+/**
+* @} @}
+*/
 
 
 #endif /* __EMAIL_DAEMON_EMN_H__ */

@@ -42,8 +42,6 @@ INTERNAL_FUNC int emnetwork_check_network_status(int *err_code);
 INTERNAL_FUNC int emnetwork_get_roaming_status(int *output_roaming_status);
 INTERNAL_FUNC int emnetwork_get_wifi_status(int *wifi_status);
 INTERNAL_FUNC long emnetwork_callback_ssl_cert_query(char *reason, char *host, char *cert);
-INTERNAL_FUNC void emnetwork_set_network_status(int input_network_status);
-INTERNAL_FUNC int emnetwork_get_network_status();
 
 
 #ifdef __cplusplus

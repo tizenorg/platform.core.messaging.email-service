@@ -46,7 +46,7 @@ EXPORT_API int emipc_accept_email_socket(int fd);
 
 EXPORT_API int emipc_open_email_socket(int fd, const char *path);
 
-EXPORT_API int emipc_connect_email_socket(int fd);
+EXPORT_API bool emipc_connect_email_socket(int fd);
 
 #endif /*  _IPC_SOCKET_H_		 */
 

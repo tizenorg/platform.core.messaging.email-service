@@ -39,9 +39,9 @@
 #include "email-utilities.h"
 #include "email-types.h"
 
-INTERNAL_FUNC int emcore_add_public_certificate(char *multi_user_name, char *public_cert_path, char *save_name, int *err_code);
+INTERNAL_FUNC int emcore_add_public_certificate(char *public_cert_path, char *save_name, int *err_code);
 
-INTERNAL_FUNC int emcore_delete_public_certificate(char *multi_user_name, char *email_address, int *err_code);
+INTERNAL_FUNC int emcore_delete_public_certificate(char *email_address, int *err_code);
 
 INTERNAL_FUNC int emcore_verify_signature(char *p7s_file_path, char *mime_entity, int *validity, int *err_code);
 
@@ -53,5 +53,4 @@ INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, char *password, EVP_PK
 */
 INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X509 **cert, STACK_OF(X509) **ca, int *err_code);
 
-INTERNAL_FUNC int emcore_load_PFX_file_from_string(char *certificate, char **key_string, int *key_size, int *err_code);
 #endif

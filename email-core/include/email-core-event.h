@@ -53,19 +53,17 @@ INTERNAL_FUNC int          emcore_cancel_all_thread(int *err_code);
 INTERNAL_FUNC int          emcore_send_event_loop_stop(int *err_code);
 INTERNAL_FUNC int          emcore_cancel_send_mail_thread(int handle, void *arg, int *err_code);
 INTERNAL_FUNC int          emcore_cancel_all_send_mail_thread(int *err_code);
-INTERNAL_FUNC int          emcore_check_event_thread_status(int *event_type, int handle);
+INTERNAL_FUNC int          emcore_check_thread_status(void);
 INTERNAL_FUNC int          emcore_check_send_mail_thread_status(void);
 INTERNAL_FUNC void         emcore_get_event_queue_status(int *on_sending, int *on_receiving);
 INTERNAL_FUNC int          emcore_insert_event_for_sending_mails(email_event_t *event_data, int *handle, int *err_code);
 INTERNAL_FUNC int          emcore_get_receiving_event_queue(email_event_t **event_queue, int *event_count, int *err);
-INTERNAL_FUNC int          emcore_cancel_all_threads_of_an_account(char *multi_user_name, int account_id);
+INTERNAL_FUNC int          emcore_cancel_all_threads_of_an_account(int account_id);
 INTERNAL_FUNC int          emcore_free_event(email_event_t *event_data);
 INTERNAL_FUNC int          emcore_get_task_information(email_task_information_t **output_task_information, int *output_task_information_count);
 
 INTERNAL_FUNC void emcore_initialize_event_callback_table();
 INTERNAL_FUNC int emcore_event_loop_continue(void);
-INTERNAL_FUNC int emcore_is_event_queue_empty(void);
-INTERNAL_FUNC int emcore_is_send_event_queue_empty(void);
 INTERNAL_FUNC int emcore_retrieve_event(email_event_t **event_data, int *err_code);
 INTERNAL_FUNC int emcore_return_handle(int handle);
 INTERNAL_FUNC int emcore_retrieve_send_event(email_event_t **event_data, int *err_code);
@@ -75,21 +73,6 @@ INTERNAL_FUNC int emcore_mail_partial_body_download(email_event_partial_body_thd
 INTERNAL_FUNC void emcore_pb_thd_set_local_activity_continue(int flag);
 INTERNAL_FUNC int emcore_pb_thd_can_local_activity_continue();
 INTERNAL_FUNC int emcore_set_pbd_thd_state(int flag);
-INTERNAL_FUNC void emcore_get_sync_fail_event_data(email_event_t **event_data);
-
-/*
-NOTE: The event is subject to event thread worker. 
-      Don't be confused with other events 
-*/
-#define FINISH_OFF_IF_EVENT_CANCELED(err, handle)     \
-		do {\
-			int type=0;\
-			if (!emcore_check_event_thread_status(&type, handle))     {\
-				EM_DEBUG_LOG ("CANCELED EVENT: type [%d]", type);\
-				err = EMAIL_ERROR_CANCELLED;\
-				goto FINISH_OFF;\
-			}\
-		} while(0)
 
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__

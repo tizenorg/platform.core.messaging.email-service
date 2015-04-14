@@ -26,7 +26,7 @@
 
 #include "email-types.h"
 
-EXPORT_API int emipc_start_proxy_socket();
+EXPORT_API bool emipc_start_proxy_socket();
 
 EXPORT_API bool emipc_end_proxy_socket();
 

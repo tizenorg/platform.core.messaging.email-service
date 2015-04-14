@@ -45,7 +45,7 @@ EXPORT_API unsigned char *emipc_serialize_api_info(emipc_email_api_info *api_inf
 
 EXPORT_API void *emipc_get_parameters_of_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction);
 
-EXPORT_API void emipc_free_api_info(emipc_email_api_info *api_info);
+EXPORT_API bool emipc_free_api_info(emipc_email_api_info *api_info);
 
 /* don't insert empty line */
 #define EM_APIID_TO_STR(nAPIID) \
@@ -70,9 +70,6 @@ EXPORT_API void emipc_free_api_info(emipc_email_api_info *api_info);
 					break;\
 			case _EMAIL_API_RENAME_MAILBOX:\
 					s = "_EMAIL_API_RENAME_MAILBOX";\
-					break;\
-			case _EMAIL_API_RENAME_MAILBOX_EX:\
-					s = "_EMAIL_API_RENAME_MAILBOX_EX";\
 					break;\
 			case _EMAIL_API_SET_MAILBOX_TYPE:\
 					s = "_EMAIL_API_SET_MAILBOX_TYPE";\
@@ -194,6 +191,9 @@ EXPORT_API void emipc_free_api_info(emipc_email_api_info *api_info);
 			case _EMAIL_API_SEND_MAIL_CANCEL_JOB :\
 					s = "_EMAIL_API_SEND_MAIL_CANCEL_JOB";\
 					break;\
+			case _EMAIL_API_SEARCH_MAIL_ON_SERVER :\
+					s = "_EMAIL_API_SEARCH_MAIL_ON_SERVER";\
+					break;\
 			case _EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION :\
 					s = "_EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION";\
 					break;\
@@ -208,9 +208,6 @@ EXPORT_API void emipc_free_api_info(emipc_email_api_info *api_info);
 					break;\
 			case _EMAIL_API_UPDATE_NOTIFICATION_BAR_FOR_UNREAD_MAIL :\
 					s = "_EMAIL_API_UPDATE_NOTIFICATION_BAR_FOR_UNREAD_MAIL";\
-					break;\
-			case _EMAIL_API_CLEAR_NOTIFICATION_BAR :\
-					s = "_EMAIL_API_CLEAR_NOTIFICATION_BAR";\
 					break;\
 			case _EMAIL_API_GET_PASSWORD_LENGTH_OF_ACCOUNT:\
 					s = "_EMAIL_API_GET_PASSWORD_LENGTH_OF_ACCOUNT";\

@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-*
+* 
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -24,9 +24,9 @@
  * File :  email-core-cert.h
  * Desc :  Certificate API
  *
- * Auth :
+ * Auth : 
  *
- * History :
+ * History : 
  *    2006.08.16  :  created
  *****************************************************************************/
 #include <openssl/pkcs7.h>
@@ -55,7 +55,7 @@
 
 typedef enum {
 	CERT_TYPE_ETC          = 0,
-	CERT_TYPE_PKCS12,
+	CERT_TYPE_PKCS12,	
 	CERT_TYPE_PKCS7,
 	CERT_TYPE_P7S
 } cert_type;
@@ -73,7 +73,7 @@ static int emcore_get_certificate_type(char *extension, int *err_code)
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-
+	
 	while(supported_file_type[index]) {
 		EM_DEBUG_LOG_SEC("certificate extension[%d]:[%s]", index, supported_file_type[index]);
 		if (strcasecmp(extension, supported_file_type[index]) == 0) {
@@ -95,7 +95,7 @@ static int emcore_get_certificate_type(char *extension, int *err_code)
 			default:
 				type = CERT_TYPE_ETC;
 				err = EMAIL_ERROR_INVALID_CERTIFICATE;
-				break;
+				break;			
 			}
 		}
 		index++;
@@ -110,7 +110,7 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END("File type is [%d]", type);
 	return type;
 }
-/*
+/*	
 static GList *emcore_make_glist_from_string(char *email_address_list)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("email_address list : [%s]", email_address_list);
@@ -127,11 +127,11 @@ static GList *emcore_make_glist_from_string(char *email_address_list)
 		email_list = g_list_append(email_list, token_list[index]);
 		index++;
 	}
-
+	
 	if (p_email_address_list)
 		g_free(p_email_address_list);
 
-	return email_list;
+	return email_list;	
 }
 
 static char *emcore_store_public_certificate(STACK_OF(X509) *certificates, char *email_address, int *err_code)
@@ -161,7 +161,7 @@ static char *emcore_store_public_certificate(STACK_OF(X509) *certificates, char 
 		EM_DEBUG_LOG("Write the certificate in pem file : [%d]", index);
 		PEM_write_bio_X509(outfile, sk_X509_value(certificates, index));
 	}
-
+	
 FINISH_OFF:
 
 	if (outfile)
@@ -182,12 +182,14 @@ INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, char *password, EVP_PK
 	FILE *fp = NULL;
 	PKCS12 *p12 = NULL;
 
-	err = em_fopen(certificate, "rb", &fp);
-	if (err != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION_SEC("em_fopen failed : [%s] [%d]", certificate, err);
+	OpenSSL_add_all_algorithms();
+	ERR_load_crypto_strings();
+	if (!(fp = fopen(certificate, "rb"))) {
+		EM_DEBUG_EXCEPTION_SEC("fopen failed : [%s]", certificate);
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
-
+	
 	p12 = d2i_PKCS12_fp(fp, NULL);
 	if (!p12) {
 		EM_DEBUG_EXCEPTION("d2i_PKCS12_fp failed");
@@ -214,7 +216,7 @@ FINISH_OFF:
 	if (err_code)
 		*err_code = err;
 
-	return ret;
+	return ret;	
 }
 #endif
 
@@ -230,7 +232,7 @@ INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X5
 	X509 *t_cert = NULL;
 	BIO *bio_mem = NULL;
 //	STACK_OF(X509) *t_ca = NULL;
-
+	
 	/* Variable for private key */
 	EVP_PKEY *t_pri_key = NULL;
 
@@ -317,7 +319,7 @@ INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X5
 	}
 
 	ret = true;
-
+	
 FINISH_OFF:
 
 	if (bio_mem)
@@ -343,107 +345,10 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emcore_load_PFX_file_from_string(char *certificate, char **key_string, int *key_size, int *err_code)
-{
-	EM_DEBUG_FUNC_BEGIN_SEC("certificate : [%s]", certificate);
-	int err = EMAIL_ERROR_NONE;
-	int ret = false;
-	size_t p_key_size = 0;
-	char *private_key = NULL;
-
-	/* Variable for certificate */
-	X509 *t_cert = NULL;
-//	STACK_OF(X509) *t_ca = NULL;
-
-	/* Variable for private key */
-	EVP_PKEY *t_pri_key = NULL;
-
-	CertSvcString csstring;
-	CertSvcInstance cert_instance;
-	CertSvcCertificate csc_cert;
-	CertSvcCertificateList certificate_list;
-
-	if (certificate == NULL) {
-		EM_DEBUG_EXCEPTION("Invalid parameter");
-		err = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF;
-	}
-
-	/* Create instance */
-	err = certsvc_instance_new(&cert_instance);
-	if (err != CERTSVC_SUCCESS) {
-		EM_DEBUG_EXCEPTION("certsvc_instance_new failed : [%d]", err);
-		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
-		goto FINISH_OFF;
-	}
-
-	/* Make the pfxID string */
-	err = certsvc_string_new(cert_instance, certificate, EM_SAFE_STRLEN(certificate), &csstring);
-	if (err != CERTSVC_SUCCESS) {
-		EM_DEBUG_EXCEPTION("certsvc_string_new failed : [%d]", err);
-		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
-		goto FINISH_OFF;
-	}
-
-	/* Load the certificate list of pkcs12 type */
-	err = certsvc_pkcs12_load_certificate_list(cert_instance, csstring, &certificate_list);
-	if (err != CERTSVC_SUCCESS) {
-		EM_DEBUG_EXCEPTION("certsvc_pkcs12_load_certificate_list failed : [%d]", err);
-		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
-		goto FINISH_OFF;
-	}
-
-	/* Get a certificate */
-	err = certsvc_certificate_list_get_one(certificate_list, 0, &csc_cert);
-	if (err != CERTSVC_SUCCESS) {
-		EM_DEBUG_EXCEPTION("certsvc_certificate_list_get_one failed : [%d]", err);
-		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
-		goto FINISH_OFF;
-	}
-
-	/* Convert from char to X509 */
-	err = certsvc_certificate_dup_x509(csc_cert, &t_cert);
-	if (t_cert == NULL || err != CERTSVC_SUCCESS) {
-		EM_DEBUG_EXCEPTION("certsvc_certificate_dup_x509 failed");
-		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
-		goto FINISH_OFF;
-	}
-
-	/* Get the private key */
-	err = certsvc_pkcs12_private_key_dup(cert_instance, csstring, &private_key, &p_key_size);
-	if (err != CERTSVC_SUCCESS) {
-		EM_DEBUG_EXCEPTION("certsvc_pkcs12_private_key_dup failed : [%d]", err);
-		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
-		goto FINISH_OFF;
-	}
-
-	EM_DEBUG_LOG_DEV("key_size : [%d], private_key : [%s]", p_key_size, private_key);
-	ret = true;
-
-FINISH_OFF:
-
-	if (true) {
-		if (key_string)
-			*key_string = private_key;
-
-		if (key_size)
-			*key_size = p_key_size;
-	} else {
-		X509_free(t_cert);
-		EVP_PKEY_free(t_pri_key);
-		EM_SAFE_FREE(private_key);
-	}
-
-	if (err_code)
-		*err_code = err;
-
-	return ret;
-}
-
-INTERNAL_FUNC int emcore_add_public_certificate(char *multi_user_name, char *public_cert_path, char *save_name, int *err_code)
+INTERNAL_FUNC int emcore_add_public_certificate(char *public_cert_path, char *save_name, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("Path [%s], filename [%s]", public_cert_path, save_name);
-	int err = EMAIL_ERROR_NONE;
+	int err = EMAIL_ERROR_NONE;	
 	int ret = false;
 	int validity = 0;
 	int cert_type = 0;
@@ -457,9 +362,9 @@ INTERNAL_FUNC int emcore_add_public_certificate(char *multi_user_name, char *pub
 	if (public_cert_path == NULL || save_name == NULL) {
 		EM_DEBUG_EXCEPTION("Invalid parameter");
 		err = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF;
+		goto FINISH_OFF;		
 	}
-
+	
 	/* Initilize the structure of certificate */
 	context = cert_svc_cert_context_init();
 
@@ -482,15 +387,15 @@ INTERNAL_FUNC int emcore_add_public_certificate(char *multi_user_name, char *pub
 	if (cert_type == CERT_TYPE_P7S) {
 		extension = "der";
 	}
-
+	
 	SNPRINTF(temp_file, sizeof(temp_file), "%s%s%s.%s", MAILTEMP, DIR_SEPERATOR, save_name, extension);
-	EM_DEBUG_LOG_SEC("temp cert path : [%s]", temp_file);
+	EM_DEBUG_LOG("temp cert path : [%s]", temp_file);
 
 	if (!emstorage_copy_file(public_cert_path, temp_file, false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_copy_file failed [%d]", err);
 		goto FINISH_OFF;
 	}
-
+	
 	/* Load the public certificate */
 	err = cert_svc_load_file_to_context(context, temp_file);
 	if (err != CERT_SVC_ERR_NO_ERROR) {
@@ -504,7 +409,7 @@ INTERNAL_FUNC int emcore_add_public_certificate(char *multi_user_name, char *pub
 		EM_DEBUG_EXCEPTION("cert_svc_verify_certificate failed");
 //		err = EMAIL_ERROR_INVALID_CERTIFICATE;
 //		goto FINISH_OFF;
-	}
+	} 
 
 	if (validity <= 0) {
 		EM_DEBUG_LOG("Invalid certificate");
@@ -538,16 +443,16 @@ INTERNAL_FUNC int emcore_add_public_certificate(char *multi_user_name, char *pub
 	cert->issue_year = context->certDesc->info.validPeriod.firstYear;
 	cert->issue_year = context->certDesc->info.validPeriod.firstYear;
 	cert->issue_month = context->certDesc->info.validPeriod.firstMonth;
-	cert->issue_day = context->certDesc->info.validPeriod.firstDay;
-	cert->expiration_year= context->certDesc->info.validPeriod.secondYear;
-	cert->expiration_month = context->certDesc->info.validPeriod.secondMonth;
-	cert->expiration_day = context->certDesc->info.validPeriod.secondDay;
+	cert->issue_day = context->certDesc->info.validPeriod.firstDay;		
+	cert->expiration_year= context->certDesc->info.validPeriod.secondYear;		
+	cert->expiration_month = context->certDesc->info.validPeriod.secondMonth;		
+	cert->expiration_day = context->certDesc->info.validPeriod.secondDay;				
 	cert->issue_organization_name = EM_SAFE_STRDUP(context->certDesc->info.issuer.organizationName);
 	cert->email_address = EM_SAFE_STRDUP(temp_save_name);
-	cert->subject_str = EM_SAFE_STRDUP(context->certDesc->info.issuerStr);
-	cert->filepath = EM_SAFE_STRDUP(filepath);
+	cert->subject_str = EM_SAFE_STRDUP(context->certDesc->info.issuerStr);		
+	cert->filepath = EM_SAFE_STRDUP(filepath);				
 
-	if (emstorage_add_certificate(multi_user_name, cert, true, &err)) {
+	if (emstorage_add_certificate(cert, true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_add_certificate failed");
 		goto FINISH_OFF;
 	}
@@ -562,7 +467,7 @@ INTERNAL_FUNC int emcore_add_public_certificate(char *multi_user_name, char *pub
 FINISH_OFF:
 
 	emstorage_delete_file(temp_file, NULL);
-
+	
 	emstorage_free_certificate(&cert, 1, NULL);
 
 	cert_svc_cert_context_final(context);
@@ -577,7 +482,7 @@ FINISH_OFF:
 
 }
 
-INTERNAL_FUNC int emcore_delete_public_certificate(char *multi_user_name, char *email_address, int *err_code)
+INTERNAL_FUNC int emcore_delete_public_certificate(char *email_address, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int ret = false;
@@ -590,7 +495,7 @@ INTERNAL_FUNC int emcore_delete_public_certificate(char *multi_user_name, char *
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_get_certificate_by_email_address(multi_user_name, email_address, &certificate, false, 0, &err)) {
+	if (!emstorage_get_certificate_by_email_address(email_address, &certificate, false, 0, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_certificate failed");
 		goto FINISH_OFF;
 	}
@@ -600,7 +505,7 @@ INTERNAL_FUNC int emcore_delete_public_certificate(char *multi_user_name, char *
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_delete_certificate(multi_user_name, certificate->certificate_id, true, &err)) {
+	if (!emstorage_delete_certificate(certificate->certificate_id, true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_delete_certificate failed");
 		goto FINISH_OFF;
 	}
@@ -633,6 +538,9 @@ INTERNAL_FUNC int emcore_verify_signature(char *p7s_file_path, char *mime_entity
 
 	PKCS7 *pkcs7_p7s = NULL;
 
+	/* Initialize */
+	OpenSSL_add_all_algorithms();
+
 	/* Open p7s file */
 	bio_p7s = BIO_new_file(p7s_file_path, INMODE);
 	if (!bio_p7s) {
@@ -659,6 +567,7 @@ INTERNAL_FUNC int emcore_verify_signature(char *p7s_file_path, char *mime_entity
 
 	if (!PKCS7_verify(pkcs7_p7s, NULL, NULL, bio_indata, NULL, flags)) {
 		EM_DEBUG_EXCEPTION("PKCS7_verify failed");
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 
@@ -667,6 +576,8 @@ INTERNAL_FUNC int emcore_verify_signature(char *p7s_file_path, char *mime_entity
 	ret = true;
 
 FINISH_OFF:
+
+	EVP_cleanup();
 
 	if (pkcs7_p7s)
 		PKCS7_free(pkcs7_p7s);
@@ -695,7 +606,7 @@ INTERNAL_FUNC int emcore_verify_certificate(char *certificate, int *validity, in
 	int p_validity = 0;
 
 	CERT_CONTEXT *context = NULL;
-
+	
 	context = cert_svc_cert_context_init();
 
 	err = cert_svc_load_file_to_context(context, certificate);
@@ -714,7 +625,7 @@ INTERNAL_FUNC int emcore_verify_certificate(char *certificate, int *validity, in
 
 FINISH_OFF:
 
-	if (validity != NULL)
+	if (validity != NULL) 
 		*validity = p_validity;
 
 	if (err_code != NULL) {
@@ -730,17 +641,17 @@ FINISH_OFF:
 INTERNAL_FUNC int emcore_free_certificate(email_certificate_t **certificate, int count, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("certificate [%p], count [%d]", certificate, count);
-
+	
 	if (count <= 0 || !certificate || !*certificate) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-		if (err_code)
+		if (err_code)	
 			*err_code = EMAIL_ERROR_INVALID_PARAM;
 		return false;
 	}
 
 	email_certificate_t *p_certificate = *certificate;
 	int i;
-
+	
 	for (i=0;i<count;i++) {
 		EM_SAFE_FREE(p_certificate[i].issue_organization_name);
 		EM_SAFE_FREE(p_certificate[i].email_address);

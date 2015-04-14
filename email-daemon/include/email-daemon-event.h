@@ -34,10 +34,6 @@ INTERNAL_FUNC int emdaemon_start_event_loop(int *err_code);
 INTERNAL_FUNC int emdaemon_start_event_loop_for_sending_mails(int *err_code);
 INTERNAL_FUNC int emdaemon_start_thread_for_downloading_partial_body(int *err_code);
 
-#ifdef __FEATURE_OPEN_SSL_MULTIHREAD_HANDLE__
-INTERNAL_FUNC void emdaemon_setup_handler_for_open_ssl_multithread(void);
-INTERNAL_FUNC void emdaemon_cleanup_handler_for_open_ssl_multithread(void);
-#endif /* __FEATURE_OPEN_SSL_MULTIHREAD_HANDLE__ */
 
 #ifdef __cplusplus
 }

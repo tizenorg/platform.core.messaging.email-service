@@ -41,20 +41,19 @@ static gboolean testapp_test_move_thread()
 {
 	int thread_id, move_always_flag;
 	int target_mailbox_id;
+	int result;
+	int result_from_scanf = 0;
 
 	testapp_print("\n > Enter thread_id: ");
-	if (0 >= scanf("%d", &thread_id))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &thread_id);
 
 	testapp_print("\n > Enter target_mailbox_id: ");
-	if (0 >= scanf("%d", &target_mailbox_id))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &target_mailbox_id);
 
 	testapp_print("\n > Enter move_always_flag: ");
-	if (0 >= scanf("%d", &move_always_flag))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &move_always_flag);
 	
-	email_move_thread_to_mailbox(thread_id, target_mailbox_id, move_always_flag);
+	result = email_move_thread_to_mailbox(thread_id, target_mailbox_id, move_always_flag);
 
 	return FALSE;
 }
@@ -62,16 +61,16 @@ static gboolean testapp_test_move_thread()
 static gboolean testapp_test_delete_thread()
 {
 	int thread_id, delete_always_flag;
+	int result;
+	int result_from_scanf = 0;
 
 	testapp_print("\n > Enter thread_id: ");
-	if (0 >= scanf("%d", &thread_id))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &thread_id);
 
 	testapp_print("\n > Enter delete_always_flag: ");
-	if (0 >= scanf("%d", &delete_always_flag))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &delete_always_flag);
 
-	email_delete_thread(thread_id, delete_always_flag);
+	result = email_delete_thread(thread_id, delete_always_flag);
 
 	return FALSE;
 }
@@ -79,20 +78,19 @@ static gboolean testapp_test_delete_thread()
 static gboolean testapp_test_set_seen_flag_of_thread()
 {
 	int thread_id, seen_flag, on_server;
+	int result;
+	int result_from_scanf = 0;
 
 	testapp_print("\n > Enter thread_id: ");
-	if (0 >= scanf("%d", &thread_id))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &thread_id);
 
 	testapp_print("\n > Enter seen_flag: ");
-	if (0 >= scanf("%d", &seen_flag))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &seen_flag);
 
 	testapp_print("\n > Enter on_server: ");
-	if (0 >= scanf("%d", &on_server))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &on_server);
 
-	email_modify_seen_flag_of_thread(thread_id, seen_flag, on_server);
+	result = email_modify_seen_flag_of_thread(thread_id, seen_flag, on_server);
 
 	return FALSE;
 }
@@ -128,13 +126,13 @@ void testapp_thread_main()
 {
 	gboolean go_to_loop = TRUE;
 	int menu_number = 0;
+	int result_from_scanf = 0;
 
 	while (go_to_loop) {
 		testapp_show_menu (EMAIL_THREAD_MENU);
 		testapp_show_prompt (EMAIL_THREAD_MENU);
 
-		if (0 >= scanf("%d", &menu_number))
-			testapp_print("Invalid input. ");
+		result_from_scanf = scanf("%d", &menu_number);
 
 		go_to_loop = testapp_test_interpret_command (menu_number);
 	}

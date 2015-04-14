@@ -30,38 +30,38 @@
  *			email-service . 
  */
 
+#include "email-api.h"
 #include "string.h"
 #include "email-convert.h"
 #include "email-storage.h"
 #include "email-utilities.h"
 #include "email-ipc.h"
-#include "email-core-utils.h"
 
 EXPORT_API int email_get_rule(int filter_id, email_rule_t** filtering_set)
 {
 	EM_DEBUG_API_BEGIN ("filter_id[%d] filtering_set[%p]", filter_id, filtering_set);
 
 	int err = 0;
-    char *multi_user_name = NULL;
 
 	EM_IF_NULL_RETURN_VALUE(filtering_set, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(filter_id, EMAIL_ERROR_INVALID_PARAM);
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        goto FINISH_OFF;
-    }
+#ifdef __FEATURE_ACCESS_CONTROL__
+	err = em_check_db_privilege_by_pid(getpid());
+	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		goto FINISH_OFF;
+	}
+#endif
 
-	if (!emstorage_get_rule_by_id(multi_user_name, filter_id, (emstorage_rule_tbl_t**)filtering_set, true, &err))  {
+	if (!emstorage_get_rule_by_id(filter_id, (emstorage_rule_tbl_t**)filtering_set, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_rule_by_id failed [%d]", err);
+
 		goto FINISH_OFF;
 	} else
 		err = EMAIL_ERROR_NONE;
 
 FINISH_OFF:
-
-    EM_SAFE_FREE(multi_user_name);
-
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -73,28 +73,29 @@ EXPORT_API int email_get_rule_list(email_rule_t** filtering_set, int* count)
 	
 	int err = EMAIL_ERROR_NONE;
 	int is_completed = 0;
-    char *multi_user_name = NULL;
 	
 	EM_IF_NULL_RETURN_VALUE(filtering_set, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(count, EMAIL_ERROR_INVALID_PARAM);
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        goto FINISH_OFF;
-    }
+#ifdef __FEATURE_ACCESS_CONTROL__
+	err = em_check_db_privilege_by_pid(getpid());
+	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		goto FINISH_OFF;
+	}
+#endif
 
 	*count = 1000;
-
-	if (!emstorage_get_rule(multi_user_name, 0, 0, 0, count, &is_completed, (emstorage_rule_tbl_t**)filtering_set, true, &err))  {
+	
+	if (!emstorage_get_rule(0, 0, 0, count, &is_completed, (emstorage_rule_tbl_t**)filtering_set, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_rule failed [%d]", err);
+
+
 		goto FINISH_OFF;
 	} else
 		err = EMAIL_ERROR_NONE;
 
 FINISH_OFF:
-
-    EM_SAFE_FREE(multi_user_name);
-
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 
@@ -244,11 +245,11 @@ EXPORT_API int email_free_rule (email_rule_t** filtering_set, int count)
 	if (count > 0)  {
 		email_rule_t* p = *filtering_set;
 		
-		for (i = 0; i < count; i++)
-			emcore_free_rule(p + i);
+		for (i = 0; i < count; i++) {
+			EM_SAFE_FREE(p[i].value);
+		}
 		
-		EM_SAFE_FREE(p);
-		*filtering_set = NULL;
+		EM_SAFE_FREE(p); *filtering_set = NULL;
 	}
 	
 	EM_DEBUG_FUNC_END ("err[%d]", err);

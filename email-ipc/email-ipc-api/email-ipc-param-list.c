@@ -50,19 +50,21 @@ EXPORT_API emipc_param_list *emipc_create_param_list()
 	return new_param_list;
 }
 
-EXPORT_API void emipc_destroy_param_list(emipc_param_list *param_list)
+EXPORT_API bool emipc_destroy_param_list(emipc_param_list *param_list)
 {
 	int count = 10;
 	int index = 0;
 
-	if (!param_list)
-		return;
+	if (!param_list) {
+		return false;
+	}
 
 	for (index = 0; index < count; index++) {
 		emipc_free_param(param_list->params[index]);
 	}
 	EM_SAFE_FREE(param_list->byte_stream);
 	EM_SAFE_FREE(param_list);
+	return true;
 }
 
 /* making stream into param length and param data */

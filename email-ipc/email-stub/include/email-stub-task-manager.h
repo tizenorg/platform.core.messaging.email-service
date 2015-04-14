@@ -35,9 +35,7 @@ EXPORT_API bool emipc_stop_task_thread();
 
 EXPORT_API void *emipc_do_task_thread();
 
-EXPORT_API int emipc_create_task(unsigned char *task_stream, int response_channel);
-
-EXPORT_API void emipc_close_fd_in_task_queue (int fd);
+EXPORT_API bool emipc_create_task(unsigned char *task_stream, int response_channel);
 
 #endif	/* _IPC_TASK_MANAGER_H_ */
 

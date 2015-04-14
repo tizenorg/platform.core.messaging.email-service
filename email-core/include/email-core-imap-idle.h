@@ -34,21 +34,24 @@
 /**
 
 
- * @fn emcore_create_imap_idle_thread()
+ * @fn emcore_create_imap_idle_thread(int *err_code)
  * @brief	Creates a thread that listens for IMAP IDLE Notifications.
+ *
+ * @param[out] err_code	Specifies the error code returned.
  * @remarks N/A
- * @return Specifies the error code returned.
+ * @return This function returns true on success or false on failure.
  */
 
-INTERNAL_FUNC int emcore_create_imap_idle_thread();
+INTERNAL_FUNC int emcore_create_imap_idle_thread(int accountID, int *err_code);
 
 /**
 
 
- * @fn emcore_refresh_imap_idle_thread(int *err_code)
+ * @fn emcore_kill_imap_idle_thread(int *err_code)
  * @brief	Kills IMAP IDLE thread
  *
+ * @param[out] err_code	Specifies the error code returned.
  * @remarks N/A
- * @return Specifies the error code returned.
+ * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emcore_refresh_imap_idle_thread();
+INTERNAL_FUNC int emcore_kill_imap_idle_thread(int *err_code);

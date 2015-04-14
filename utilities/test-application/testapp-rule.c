@@ -45,44 +45,38 @@ static gboolean testapp_test_add_rule()
 	int type = 0;
 	int flag = 0;
 	char arg[500];
+	int result_from_scanf = 0;
 
 	rule = malloc(sizeof(email_rule_t));
 	testapp_print("> Enter account id: ");
-	if (0 >= scanf("%d", &account_id))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &account_id);
 	rule->account_id = account_id;
 
 	testapp_print("> Enter Type(FROM - 1 / SUBJECT - 2): ");
-	if (0 >= scanf("%d", &type))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &type);
 	rule->type= type;		
 
 	memset(arg, 0x00, 500);
 	testapp_print("\n> Enter Filtering Value:");
-	if (0 >= scanf("%s",arg))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%s",arg);
 	rule->value= strdup(arg);	
 
 	testapp_print("> Enter Action(MOVE - 1, BLOCK - 2, DELETE - 3): ");
-	if (0 >= scanf("%d", &action))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &action);
 	rule->faction= action;	
 
 	if (action == 1) {
 		testapp_print("\n> Enter target mailbox id:");
-		if (0 >= scanf("%d", &target_mailbox_id))
-			testapp_print("Invalid input. ");
+		result_from_scanf = scanf("%d", &target_mailbox_id);
 		rule->target_mailbox_id = target_mailbox_id;
 	}
 
-	testapp_print("> Enter Flag1 value [On/Off]: ");
-	if (0 >= scanf("%d", &flag))
-		testapp_print("Invalid input. ");
+	testapp_print("> Enter Flag1 value: ");
+	result_from_scanf = scanf("%d", &flag);
 	rule->flag1= flag;
 
-	testapp_print("> Enter Flag2 value [0:Exactly same as, 1:Include, 2:Compare Domain] : ");
-	if (0 >= scanf("%d", &flag))
-		testapp_print("Invalid input. ");
+	testapp_print("> Enter Flag2 value: ");
+	result_from_scanf = scanf("%d", &flag);
 	rule->flag2= flag;
 
 	if (email_add_rule(rule) < 0)
@@ -100,11 +94,11 @@ static gboolean testapp_test_add_rule()
 
 static gboolean testapp_test_delete_rule()
 {
+	int result_from_scanf = 0;
 	int filter_id = 0;
 
 	testapp_print("> Enter filter id: ");
-	if (0 >= scanf("%d", &filter_id))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &filter_id);
 
 	if(email_delete_rule(filter_id) < 0)
 		testapp_print("email_delete_rule failed..! ");
@@ -115,6 +109,7 @@ static gboolean testapp_test_delete_rule()
 
 static gboolean testapp_test_update_rule()
 {
+	int result_from_scanf = 0;
 	email_rule_t*  rule = NULL;
 	int account_id = 0;
 	int target_mailbox_id = 0;
@@ -127,45 +122,37 @@ static gboolean testapp_test_update_rule()
 	rule = malloc(sizeof(email_rule_t));
 	memset(rule,0X00,sizeof(email_rule_t));
 	testapp_print("> Enter filter id: ");
-	if (0 >= scanf("%d", &filter_id))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &filter_id);
 	
 	testapp_print("> Enter account id: ");
-	if (0 >= scanf("%d", &account_id))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &account_id);
 	rule->account_id = account_id;
 
 	testapp_print("> Enter Type(FROM - 1 / SUBJECT - 2): ");
-	if (0 >= scanf("%d", &type))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &type);
 	rule->type= type;		
 
 	memset(arg, 0x00, 500);
 	testapp_print("\n> Enter Filtering Value:");
-	if (0 >= scanf("%s",arg))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%s",arg);
 	rule->value= strdup(arg);	
 
 	testapp_print("> Enter Action(MOVE - 1, BLOCK - 2, DELETE - 3): ");
-	if (0 >= scanf("%d", &action))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &action);
 	rule->faction= action;	
 
 	if (action == 1) {
 		testapp_print("\n> Enter target mailbox id:");
-		if (0 >= scanf("%d", &target_mailbox_id))
-			testapp_print("Invalid input. ");
+		result_from_scanf = scanf("%d", &target_mailbox_id);
 		rule->target_mailbox_id = target_mailbox_id;
 	}
 
 	testapp_print("> Enter Flag1 value: ");
-	if (0 >= scanf("%d", &flag))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &flag);
 	rule->flag1= flag;
 
 	testapp_print("> Enter Flag2 value: ");
-	if (0 >= scanf("%d", &flag))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &flag);
 	rule->flag2= flag;
 	
 	if( !email_update_rule(filter_id, rule) < 0)
@@ -181,10 +168,10 @@ static gboolean testapp_test_get_rule(void)
 {
 	email_rule_t*  rule = NULL;
 	int filter_id = 0;
+	int result_from_scanf = 0;
 
 	testapp_print("> Enter filter id: ");
-	if (0 >= scanf("%d", &filter_id))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &filter_id);
 
 	if(email_get_rule(filter_id, &rule) >= 0)	
 		testapp_print("\n Got rule of account_id = %d and type = %d\n", rule->account_id, rule->type);
@@ -255,13 +242,13 @@ void email_test_rule_main()
 {
 	gboolean go_to_loop = TRUE;
 	int menu_number = 0;
+	int result_from_scanf = 0;
 	
 	while (go_to_loop) {
 		testapp_show_menu (EMAIL_RULE_MENU);
 		testapp_show_prompt (EMAIL_RULE_MENU);
 			
-		if (0 >= scanf("%d", &menu_number))
-			testapp_print("Invalid input. ");
+		result_from_scanf = scanf("%d", &menu_number);
 
 		go_to_loop = testapp_test_interpret_command (menu_number);
 	}

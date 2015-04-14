@@ -30,6 +30,7 @@
  *			email-service . 
  */
  
+#include "email-api.h"
 #include "string.h"
 #include "email-convert.h"
 #include "email-storage.h"
@@ -37,6 +38,7 @@
 #include "email-core-signal.h"
 #include "email-utilities.h"
 #include "email-ipc.h"
+#include "db-util.h"
 
 /* API - Create a mailbox */
 
@@ -47,22 +49,16 @@ EXPORT_API int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, in
 	int size = 0;
 	int err = EMAIL_ERROR_NONE;
 	char* local_mailbox_stream = NULL;
-    char *multi_user_name = NULL;
 	email_account_server_t account_server_type;
 	HIPC_API hAPI = NULL;
 	ASNotiData as_noti_data;
-
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        goto FINISH_OFF;
-    }
 
 	memset(&as_noti_data, 0x00, sizeof(ASNotiData));
 
 	EM_IF_NULL_RETURN_VALUE(new_mailbox, EMAIL_ERROR_INVALID_PARAM);
 
 	/*  check account bind type and branch off  */
-	if ( em_get_account_server_type_by_account_id(multi_user_name, new_mailbox->account_id, &account_server_type, false, &err) == false ) {
+	if ( em_get_account_server_type_by_account_id(new_mailbox->account_id, &account_server_type, false, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
@@ -78,13 +74,12 @@ EXPORT_API int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, in
 		}
 
 		/*  noti to active sync */
-		as_noti_data.add_mailbox.handle          = as_handle;
-		as_noti_data.add_mailbox.account_id      = new_mailbox->account_id;
-		as_noti_data.add_mailbox.mailbox_alias   = new_mailbox->alias;
-		as_noti_data.add_mailbox.mailbox_path    = new_mailbox->mailbox_name;
-		as_noti_data.add_mailbox.eas_data        = new_mailbox->eas_data;
+		as_noti_data.add_mailbox.handle        = as_handle;
+		as_noti_data.add_mailbox.account_id    = new_mailbox->account_id;
+		as_noti_data.add_mailbox.mailbox_alias = new_mailbox->alias;
+		as_noti_data.add_mailbox.mailbox_path  = new_mailbox->mailbox_name;
+		as_noti_data.add_mailbox.eas_data      = new_mailbox->eas_data;
 		as_noti_data.add_mailbox.eas_data_length = new_mailbox->eas_data_length;
-		as_noti_data.add_mailbox.multi_user_name = multi_user_name;
 
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_ADD_MAILBOX, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -136,7 +131,6 @@ EXPORT_API int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, in
 
 FINISH_OFF:
 	EM_SAFE_FREE(local_mailbox_stream);
-    EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
@@ -147,7 +141,6 @@ EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_na
 	EM_DEBUG_API_BEGIN ("input_mailbox_id[%d] input_mailbox_name[%p] input_mailbox_alias[%p] input_on_server[%d] output_handle[%p]", input_mailbox_id, input_mailbox_name, input_mailbox_alias, input_on_server, output_handle);
 
 	int err = EMAIL_ERROR_NONE;
-    char *multi_user_name = NULL;
 	email_account_server_t account_server_type;
 	HIPC_API hAPI = NULL;
 	ASNotiData as_noti_data;
@@ -157,18 +150,13 @@ EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_na
 	EM_IF_NULL_RETURN_VALUE(input_mailbox_name,  EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(input_mailbox_alias, EMAIL_ERROR_INVALID_PARAM);
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        goto FINISH_OFF;
-    }
-
-	if ((err = emstorage_get_mailbox_by_id(multi_user_name, input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE || !mailbox_tbl) {
+	if ((err = emstorage_get_mailbox_by_id(input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE || !mailbox_tbl) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed. [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	/*  check account bind type and branch off  */
-	if ( em_get_account_server_type_by_account_id(multi_user_name, mailbox_tbl->account_id, &account_server_type, false, &err) == false ) {
+	if ( em_get_account_server_type_by_account_id(mailbox_tbl->account_id, &account_server_type, false, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
@@ -184,14 +172,13 @@ EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_na
 		}
 
 		/*  noti to active sync */
-		as_noti_data.rename_mailbox.handle          = as_handle;
-		as_noti_data.rename_mailbox.account_id      = mailbox_tbl->account_id;
-		as_noti_data.rename_mailbox.mailbox_id      = input_mailbox_id;
-		as_noti_data.rename_mailbox.mailbox_name    = input_mailbox_name;
-		as_noti_data.rename_mailbox.mailbox_alias   = input_mailbox_alias;
+		as_noti_data.rename_mailbox.handle        = as_handle;
+		as_noti_data.rename_mailbox.account_id    = mailbox_tbl->account_id;
+		as_noti_data.rename_mailbox.mailbox_id    = input_mailbox_id;
+		as_noti_data.rename_mailbox.mailbox_name  = input_mailbox_name;
+		as_noti_data.rename_mailbox.mailbox_alias = input_mailbox_alias;
 		as_noti_data.rename_mailbox.eas_data        = NULL;
 		as_noti_data.rename_mailbox.eas_data_length = 0;
-		as_noti_data.rename_mailbox.multi_user_name = multi_user_name;
 
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_RENAME_MAILBOX, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -199,7 +186,7 @@ EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_na
 			goto FINISH_OFF;
 		}
 
-		if (output_handle)
+		if(output_handle)
 			*output_handle = as_handle;
 	}
 	else {
@@ -241,7 +228,6 @@ FINISH_OFF:
 	if (mailbox_tbl)
 		emstorage_free_mailbox(&mailbox_tbl, 1, NULL);
 
-    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -251,7 +237,6 @@ EXPORT_API int email_rename_mailbox_ex(int input_mailbox_id, char *input_mailbox
 	EM_DEBUG_API_BEGIN ("input_mailbox_id[%d] input_mailbox_name[%p] input_mailbox_alias[%p] input_eas_data[%p] input_eas_data_length[%d] input_on_server[%d] output_handle[%p]", input_mailbox_id, input_mailbox_name, input_mailbox_alias, input_eas_data, input_eas_data_length, input_on_server, output_handle);
 
 	int err = EMAIL_ERROR_NONE;
-    char *multi_user_name = NULL;
 	email_account_server_t account_server_type;
 	HIPC_API hAPI = NULL;
 	ASNotiData as_noti_data;
@@ -261,18 +246,13 @@ EXPORT_API int email_rename_mailbox_ex(int input_mailbox_id, char *input_mailbox
 	EM_IF_NULL_RETURN_VALUE(input_mailbox_name,  EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(input_mailbox_alias, EMAIL_ERROR_INVALID_PARAM);
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        goto FINISH_OFF;
-    }
-
-	if ((err = emstorage_get_mailbox_by_id(multi_user_name, input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE || !mailbox_tbl) {
+	if ((err = emstorage_get_mailbox_by_id(input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE || !mailbox_tbl) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed. [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	/*  check account bind type and branch off  */
-	if ( em_get_account_server_type_by_account_id(multi_user_name, mailbox_tbl->account_id, &account_server_type, false, &err) == false ) {
+	if ( em_get_account_server_type_by_account_id(mailbox_tbl->account_id, &account_server_type, false, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
@@ -295,7 +275,6 @@ EXPORT_API int email_rename_mailbox_ex(int input_mailbox_id, char *input_mailbox
 		as_noti_data.rename_mailbox.mailbox_alias   = input_mailbox_alias;
 		as_noti_data.rename_mailbox.eas_data        = input_eas_data;
 		as_noti_data.rename_mailbox.eas_data_length = input_eas_data_length;
-        as_noti_data.rename_mailbox.multi_user_name = multi_user_name;
 
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_RENAME_MAILBOX, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -350,7 +329,6 @@ FINISH_OFF:
 	if (mailbox_tbl)
 		emstorage_free_mailbox(&mailbox_tbl, 1, NULL);
 
-    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -363,7 +341,6 @@ EXPORT_API int email_delete_mailbox(int input_mailbox_id, int input_on_server, i
 	EM_DEBUG_API_BEGIN ("input_mailbox_id[%d] input_on_server[%d] output_handle[%p]", input_mailbox_id, input_on_server, output_handle);
 	
 	int err = EMAIL_ERROR_NONE;
-    char *multi_user_name = NULL;
 	email_account_server_t account_server_type;
 	emstorage_mailbox_tbl_t *mailbox_tbl = NULL;
 	HIPC_API hAPI = NULL;
@@ -371,18 +348,13 @@ EXPORT_API int email_delete_mailbox(int input_mailbox_id, int input_on_server, i
 	
 	EM_IF_NULL_RETURN_VALUE(input_mailbox_id, EMAIL_ERROR_INVALID_PARAM);
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        goto FINISH_OFF;
-    }
-
-	if ( (err = emstorage_get_mailbox_by_id(multi_user_name, input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE) {
+	if ( (err = emstorage_get_mailbox_by_id(input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed[%d]", err);
 		goto FINISH_OFF;
 	}
 
 	/*  check account bind type and branch off  */
-	if ( em_get_account_server_type_by_account_id(multi_user_name, mailbox_tbl->account_id, &account_server_type, false, &err) == false ) {
+	if ( em_get_account_server_type_by_account_id(mailbox_tbl->account_id, &account_server_type, false, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
@@ -398,10 +370,9 @@ EXPORT_API int email_delete_mailbox(int input_mailbox_id, int input_on_server, i
 		}
 
 		/*  noti to active sync */
-		as_noti_data.delete_mailbox.handle          = as_handle;
-		as_noti_data.delete_mailbox.account_id      = mailbox_tbl->account_id;
-		as_noti_data.delete_mailbox.mailbox_id      = input_mailbox_id;
-        as_noti_data.delete_mailbox.multi_user_name = multi_user_name;
+		as_noti_data.delete_mailbox.handle        = as_handle;
+		as_noti_data.delete_mailbox.account_id    = mailbox_tbl->account_id;
+		as_noti_data.delete_mailbox.mailbox_id    = input_mailbox_id;
 
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_DELETE_MAILBOX, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -448,7 +419,6 @@ FINISH_OFF:
 		emstorage_free_mailbox(&mailbox_tbl, 1, NULL);
 	}
 
-    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -457,7 +427,6 @@ EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_
 {
 	EM_DEBUG_API_BEGIN ("input_account_id[%d] input_mailbox_id_array[%p] input_mailbox_id_count[%d] input_on_server[%d] output_handle[%p]", input_mailbox_id_array, input_mailbox_id_array, input_mailbox_id_count, input_on_server, output_handle);
 	int err = EMAIL_ERROR_NONE;
-    char *multi_user_name = NULL;
 	email_account_server_t account_server_type;
 	task_parameter_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX task_parameter;
 
@@ -467,13 +436,8 @@ EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_
 		goto FINISH_OFF;
 	}
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        goto FINISH_OFF;
-    }
-
 	/*  check account bind type and branch off  */
-	if ( em_get_account_server_type_by_account_id(multi_user_name, input_account_id, &account_server_type, false, &err) == false ) {
+	if ( em_get_account_server_type_by_account_id(input_account_id, &account_server_type, false, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
@@ -495,7 +459,6 @@ EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_
 		as_noti_data.delete_mailbox_ex.mailbox_id_array  = input_mailbox_id_array;
 		as_noti_data.delete_mailbox_ex.mailbox_id_count  = input_mailbox_id_count;
 		as_noti_data.delete_mailbox_ex.on_server         = input_on_server;
-		as_noti_data.delete_mailbox_ex.multi_user_name   = multi_user_name;
 
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_DELETE_MAILBOX_EX, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -600,20 +563,16 @@ EXPORT_API int email_get_sync_mailbox_list(int account_id, email_mailbox_t** mai
 	int mailbox_count = 0;
 	int err = EMAIL_ERROR_NONE ;
 	int i = 0;
-    char *multi_user_name = NULL;
 	emstorage_mailbox_tbl_t* mailbox_tbl_list = NULL;
 
 	EM_IF_NULL_RETURN_VALUE(mailbox_list, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_ACCOUNT_ID_NULL(account_id, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(count, EMAIL_ERROR_INVALID_PARAM);
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        goto FINISH_OFF;
-    }
-
-	if (!emstorage_get_mailbox_list(multi_user_name, account_id, 0, EMAIL_MAILBOX_SORT_BY_NAME_ASC, &mailbox_count, &mailbox_tbl_list, true, &err)) {
+	if (!emstorage_get_mailbox_list(account_id, 0, EMAIL_MAILBOX_SORT_BY_NAME_ASC, &mailbox_count, &mailbox_tbl_list, true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox failed [%d]", err);
+
+
 		goto FINISH_OFF;
 	} else
 		err = EMAIL_ERROR_NONE;
@@ -631,12 +590,9 @@ EXPORT_API int email_get_sync_mailbox_list(int account_id, email_mailbox_t** mai
 	
 	*count = mailbox_count;
 	
-FINISH_OFF:
-
+	FINISH_OFF:
 	if (mailbox_tbl_list != NULL)
 		emstorage_free_mailbox(&mailbox_tbl_list, mailbox_count, NULL);
-
-    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -650,19 +606,22 @@ EXPORT_API int email_get_mailbox_list(int account_id, int mailbox_sync_type, ema
 	emstorage_mailbox_tbl_t* mailbox_tbl_list = NULL; 
 	int err =EMAIL_ERROR_NONE;
 	int i;
-    char *multi_user_name = NULL;
 	
 	EM_IF_NULL_RETURN_VALUE(mailbox_list, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_ACCOUNT_ID_NULL(account_id, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(count, EMAIL_ERROR_INVALID_PARAM);
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        goto FINISH_OFF;
-    }
+#ifdef __FEATURE_ACCESS_CONTROL__
+	err = em_check_db_privilege_by_pid(getpid());
+	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		goto FINISH_OFF;
+	}
+#endif
 
-	if (!emstorage_get_mailbox_list(multi_user_name, account_id, mailbox_sync_type, EMAIL_MAILBOX_SORT_BY_NAME_ASC, &mailbox_count, &mailbox_tbl_list, true, &err))  {
+	if (!emstorage_get_mailbox_list(account_id, mailbox_sync_type, EMAIL_MAILBOX_SORT_BY_NAME_ASC, &mailbox_count, &mailbox_tbl_list, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox failed [%d]", err);
+
 		goto FINISH_OFF;
 	} else
 		err = EMAIL_ERROR_NONE;
@@ -682,15 +641,14 @@ EXPORT_API int email_get_mailbox_list(int account_id, int mailbox_sync_type, ema
 	*count = mailbox_count;
 
 FINISH_OFF:
-
 	if (mailbox_tbl_list != NULL)
 		emstorage_free_mailbox(&mailbox_tbl_list, mailbox_count, NULL);
-
-    EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_API_END ("err [%d]", err);
 	return err;
 }
+
+
 
 EXPORT_API int email_get_mailbox_list_ex(int account_id, int mailbox_sync_type, int with_count, email_mailbox_t** mailbox_list, int* count)
 {
@@ -700,19 +658,22 @@ EXPORT_API int email_get_mailbox_list_ex(int account_id, int mailbox_sync_type, 
 	emstorage_mailbox_tbl_t* mailbox_tbl_list = NULL; 
 	int err =EMAIL_ERROR_NONE;
 	int i;
-    char *multi_user_name = NULL;
-
+	
 	EM_IF_NULL_RETURN_VALUE(mailbox_list, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_ACCOUNT_ID_NULL(account_id, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(count, EMAIL_ERROR_INVALID_PARAM);
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        goto FINISH_OFF;
-    }
+#ifdef __FEATURE_ACCESS_CONTROL__
+	err = em_check_db_privilege_by_pid(getpid());
+	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		goto FINISH_OFF;
+	}
+#endif
 
-	if (!emstorage_get_mailbox_list_ex(multi_user_name, account_id, mailbox_sync_type, with_count, &mailbox_count, &mailbox_tbl_list, true, &err))  {	
+	if (!emstorage_get_mailbox_list_ex(account_id, mailbox_sync_type, with_count, &mailbox_count, &mailbox_tbl_list, true, &err))  {	
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_list_ex failed [%d]", err);
+
 		goto FINISH_OFF;
 	} else
 		err = EMAIL_ERROR_NONE;
@@ -734,11 +695,8 @@ EXPORT_API int email_get_mailbox_list_ex(int account_id, int mailbox_sync_type, 
 		*count = mailbox_count;
 
 FINISH_OFF:
-
 	if (mailbox_tbl_list != NULL)
 		emstorage_free_mailbox(&mailbox_tbl_list, mailbox_count, NULL);
-
-    EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_FUNC_END ("err[%d]", err);
 	return err;
@@ -752,17 +710,19 @@ EXPORT_API int email_get_mailbox_list_by_keyword(int account_id, char *keyword, 
 	emstorage_mailbox_tbl_t* mailbox_tbl_list = NULL;
 	int err = EMAIL_ERROR_NONE;
 	int i = 0;
-    char *multi_user_name = NULL;
 
 	EM_IF_NULL_RETURN_VALUE(mailbox_list, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(count, EMAIL_ERROR_INVALID_PARAM);
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        goto FINISH_OFF;
-    }
+#ifdef __FEATURE_ACCESS_CONTROL__
+	err = em_check_db_privilege_by_pid(getpid());
+	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		goto FINISH_OFF;
+	}
+#endif
 
-	if (!emstorage_get_mailbox_by_keyword(multi_user_name, account_id, keyword, &mailbox_tbl_list, &mailbox_count, true, &err)) {
+	if (!emstorage_get_mailbox_by_keyword(account_id, keyword, &mailbox_tbl_list, &mailbox_count, true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_keyword failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -787,8 +747,6 @@ FINISH_OFF:
 	if (mailbox_tbl_list != NULL)
 		emstorage_free_mailbox(&mailbox_tbl_list, mailbox_count, NULL);
 
-    EM_SAFE_FREE(multi_user_name);
-
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -798,23 +756,26 @@ EXPORT_API int email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_t
 	EM_DEBUG_FUNC_BEGIN ();
 	
 	int err = EMAIL_ERROR_NONE;
-    char *multi_user_name = NULL;
 	email_mailbox_t* curr_mailbox = NULL;
 	emstorage_mailbox_tbl_t* local_mailbox = NULL;
 
 	EM_IF_NULL_RETURN_VALUE(mailbox, EMAIL_ERROR_INVALID_PARAM);	
 	EM_IF_NULL_RETURN_VALUE(account_id, EMAIL_ERROR_INVALID_PARAM)	;
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        goto FINISH_OFF;
-    }
-
 	if(mailbox_type < EMAIL_MAILBOX_TYPE_INBOX || mailbox_type > EMAIL_MAILBOX_TYPE_USER_DEFINED)
 		return EMAIL_ERROR_INVALID_PARAM;
 
-	if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name, account_id, mailbox_type, &local_mailbox, true, &err))  {
+#ifdef __FEATURE_ACCESS_CONTROL__
+	err = em_check_db_privilege_by_pid(getpid());
+	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		goto FINISH_OFF;
+	}
+#endif
+
+	if (!emstorage_get_mailbox_by_mailbox_type(account_id, mailbox_type, &local_mailbox, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
+
 		goto FINISH_OFF;
 	} else {
 		err = EMAIL_ERROR_NONE;
@@ -824,14 +785,10 @@ EXPORT_API int email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_t
 	}
 
 	*mailbox = curr_mailbox;	
-
 FINISH_OFF:
 
 	if(local_mailbox)
 		emstorage_free_mailbox(&local_mailbox, 1, NULL);
-
-    EM_SAFE_FREE(multi_user_name);
-
 	EM_DEBUG_FUNC_END ("err[%d]", err);
 	return err;
 }
@@ -841,18 +798,20 @@ EXPORT_API int email_get_mailbox_by_mailbox_id(int input_mailbox_id, email_mailb
 	EM_DEBUG_API_BEGIN ();
 
 	int err = EMAIL_ERROR_NONE;
-    char *multi_user_name = NULL;
 	email_mailbox_t* curr_mailbox = NULL;
 	emstorage_mailbox_tbl_t* local_mailbox = NULL;
 
 	EM_IF_NULL_RETURN_VALUE(output_mailbox, EMAIL_ERROR_INVALID_PARAM);
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        return err;
-    }
+#ifdef __FEATURE_ACCESS_CONTROL__
+	err = em_check_db_privilege_by_pid(getpid());
+	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		return err;
+	}
+#endif
 
-	if ((err = emstorage_get_mailbox_by_id(multi_user_name, input_mailbox_id, &local_mailbox)) != EMAIL_ERROR_NONE) {
+	if ( (err = emstorage_get_mailbox_by_id(input_mailbox_id, &local_mailbox)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed [%d]", err);
 		return err;
 	} else {
@@ -866,8 +825,6 @@ EXPORT_API int email_get_mailbox_by_mailbox_id(int input_mailbox_id, email_mailb
 	*output_mailbox = curr_mailbox;
 
 	emstorage_free_mailbox(&local_mailbox, 1, &err);
-
-    EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
@@ -929,18 +886,18 @@ EXPORT_API int email_stamp_sync_time_of_mailbox(int input_mailbox_id)
 	EM_DEBUG_API_BEGIN ("input_mailbox_id[%d]", input_mailbox_id);
 
 	int err = EMAIL_ERROR_NONE;
-    char *multi_user_name = NULL;
 
 	EM_IF_NULL_RETURN_VALUE(input_mailbox_id, EMAIL_ERROR_INVALID_PARAM);
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        return err;
-    }
+#ifdef __FEATURE_ACCESS_CONTROL__
+	err = em_check_db_privilege_by_pid(getpid());
+	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
+		EM_DEBUG_LOG("permission denied");
+		return err;
+	}
+#endif
 
-	err = emstorage_stamp_last_sync_time_of_mailbox(multi_user_name, input_mailbox_id, 1);
-
-    EM_SAFE_FREE(multi_user_name);
+	err = emstorage_stamp_last_sync_time_of_mailbox(input_mailbox_id, 1);
 
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
@@ -952,8 +909,6 @@ EXPORT_API int email_free_mailbox(email_mailbox_t** mailbox_list, int count)
 	int err = EMAIL_ERROR_NONE;
 
 	if (count <= 0 || !mailbox_list || !*mailbox_list) {
-		EM_DEBUG_LOG("EMAIL_ERROR_INVALID_PARAM");
-		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 

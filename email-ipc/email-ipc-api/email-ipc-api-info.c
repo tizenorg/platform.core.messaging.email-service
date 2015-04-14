@@ -104,13 +104,24 @@ EXPORT_API void *emipc_get_parameters_of_api_info(emipc_email_api_info *api_info
 	return api_info->params[direction];
 }
 
-EXPORT_API void emipc_free_api_info(emipc_email_api_info *api_info)
+EXPORT_API bool emipc_free_api_info(emipc_email_api_info *api_info)
 {
-	if (!api_info) 
-		return;
+	if (!api_info) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		return false;
+	}
 
-	emipc_destroy_param_list (api_info->params[ePARAMETER_IN]);
-	emipc_destroy_param_list (api_info->params[ePARAMETER_OUT]);
+	if (!emipc_destroy_param_list(api_info->params[ePARAMETER_IN])) {
+		EM_DEBUG_EXCEPTION("emipc_destroy_param_list failed : ePARAMETER[%d]", ePARAMETER_IN);
+		return false;
+	}
+
+	if (!emipc_destroy_param_list(api_info->params[ePARAMETER_OUT])) {
+		EM_DEBUG_EXCEPTION("emipc_destroy_param_list failed : ePARAMETER[%d]", ePARAMETER_OUT);
+		return false;
+	}
+
+	return true;
 }
 
 

@@ -54,25 +54,16 @@ static gboolean testapp_test_cancel_job	()
 {
 	int account_id = 0;
 	int handle = 0;
+	int result_from_scanf = 0;
 
 	testapp_print("\n > Enter account_id (0: all account): ");
-	if (0 >= scanf("%d", &account_id))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &account_id);
 
 	testapp_print("\n > Enter handle: ");
-	if (0 >= scanf("%d", &handle))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &handle);
 
 	if(email_cancel_job(account_id, handle, EMAIL_CANCELED_BY_USER) < 0)
 		testapp_print("email_cancel_job failed..!");
-	return FALSE;
-}
-
-static gboolean testapp_test_init_storage()
-{
-	if(email_init_storage() < 0)
-		testapp_print("email_init_storaege failed..!");
-
 	return FALSE;
 }
 
@@ -92,14 +83,14 @@ static gboolean testapp_test_get_dnet_proper_profile_type()
 
 static gboolean testapp_test_get_preview_text_from_file()
 {
+	int   result_from_scanf;
 	char *preview_buffer = NULL;
 	char  html_file_path[1024] = { 0, };
 
 	testapp_print("\n > Enter file path : ");
-	if (0 >= scanf("%s", html_file_path))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%s", html_file_path);
 
-	emcore_get_preview_text_from_file(NULL, NULL, html_file_path, 1024, &preview_buffer);
+	emcore_get_preview_text_from_file(NULL, html_file_path, 1024, &preview_buffer);
 
 	testapp_print("\n result :\n %s ", preview_buffer);
 
@@ -370,10 +361,10 @@ static gboolean email_test_dtt_Datastore_C()
 static gboolean testapp_test_show_user_message()
 {
 	int mail_id;
+	int result_from_scanf = 0;
 
 	testapp_print("\n > Enter mail id : ");
-	if (0 >= scanf("%d", &mail_id))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &mail_id);
 
 	email_show_user_message(mail_id, EMAIL_ACTION_SEND_MAIL, EMAIL_ERROR_NETWORK_NOT_AVAILABLE);
 	return FALSE;
@@ -382,11 +373,11 @@ static gboolean testapp_test_show_user_message()
 static gboolean testapp_test_get_mime_entity()
 {
 	char mime_path[512] = {0, };
+	int result_from_scanf = 0;
 	char *mime_entity = NULL;
 
 	testapp_print("\n > Enter mime path for parsing : ");
-	if (0 >= scanf("%s", mime_path))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%s", mime_path);
 	
 	email_get_mime_entity(mime_path, &mime_entity);
 
@@ -396,31 +387,14 @@ static gboolean testapp_test_get_mime_entity()
 
 static gboolean testapp_test_query_smtp_mail_size_limit()
 {
+	int result_from_scanf = 0;
 	int account_id = 0;
 	testapp_print("\n > Enter account id : ");
-	if (0 >= scanf("%d", &account_id))
-		testapp_print("Invalid input. ");
+	result_from_scanf = scanf("%d", &account_id);
 
 	email_query_smtp_mail_size_limit(account_id, NULL);
 	return true;
 }
-
-static gboolean testapp_test_verify_email_address()
-{
-	int err = EMAIL_ERROR_NONE;
-	char email_address[512] = {0, };
-
-	testapp_print("\n > Enter mime path for parsing : ");
-	if (0 >= scanf("%s", email_address))
-		testapp_print("Invalid input. ");
-
-	err = email_verify_email_address(email_address);
-
-	testapp_print("\nemail_verify_email_address returns [%d]\n", err);
-	return true;
-}
-
-
 
 static gboolean testapp_test_interpret_command (int menu_number)
 {
@@ -429,9 +403,6 @@ static gboolean testapp_test_interpret_command (int menu_number)
 	switch (menu_number) {
 		case 1:
 			testapp_test_ping_service();
-			break;
-		case 2:
-			testapp_test_init_storage();
 			break;
 		case 3:
 			testapp_test_cancel_job ();
@@ -468,9 +439,6 @@ static gboolean testapp_test_interpret_command (int menu_number)
 		case 17:
 			testapp_test_query_smtp_mail_size_limit();
 			break;
-		case 18:
-			testapp_test_verify_email_address();
-			break;
 		case 0:
 			go_to_loop = FALSE;
 			break;
@@ -485,13 +453,13 @@ void testapp_others_main()
 {
 	gboolean go_to_loop = TRUE;
 	int menu_number = 0;
+	int result_from_scanf = 0;
 
 	while (go_to_loop) {
 		testapp_show_menu (EMAIL_OTHERS_MENU);
 		testapp_show_prompt (EMAIL_OTHERS_MENU);
 
-		if (0 >= scanf ("%d", &menu_number))
-			testapp_print("Invalid input. ");
+		result_from_scanf = scanf ("%d", &menu_number);
 
 		go_to_loop = testapp_test_interpret_command (menu_number);
 	}

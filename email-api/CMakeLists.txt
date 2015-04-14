@@ -14,7 +14,6 @@ MESSAGE(">>> Build type: ${CMAKE_BUILD_TYPE}")
 
 SET(VISIBILITY "-DEXPORT_API=\"__attribute__((visibility(\\\"default\\\")))\"")
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${VISIBILITY} -fvisibility=hidden")
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--gc-sections")
 
 ##########################################################
 # Define Email API   
@@ -36,14 +35,15 @@ INCLUDE_DIRECTORIES(
 	${CMAKE_SOURCE_DIR}/email-api/include
 	${CMAKE_SOURCE_DIR}/email-api/socket/include
 	${CMAKE_SOURCE_DIR}/email-ipc/include
-	${CMAKE_SOURCE_DIR}/email-ipc/email-activation/include
 	${CMAKE_SOURCE_DIR}/email-core/include
 	${CMAKE_SOURCE_DIR}/email-core/email-storage/include
 	${CMAKE_SOURCE_DIR}/email-common-use/include
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(api_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf contacts-service2 uw-imap-toolkit gmime-2.6) 
+pkg_check_modules(api_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf db-util uw-imap-toolkit) 
+
+#pkg_check_modules(api_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf db-util contacts-service2 uw-imap-toolkit) 
 
 FOREACH(flag ${api_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")

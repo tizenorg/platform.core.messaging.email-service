@@ -36,7 +36,7 @@
 #include <malloc.h>
 #include <pthread.h>
 #include <regex.h>
-#include <locale.h>
+#include <security-server.h>
 
 #include "c-client.h"
 
@@ -182,56 +182,6 @@ INTERNAL_FUNC void em_skip_whitespace(char *addr_str, char **pAddr)
 	EM_DEBUG_FUNC_END("ptr[%s]", ptr);
 }
 
-INTERNAL_FUNC void em_skip_whitespace_without_alias(char *addr_str, char **pAddr)
-{
-	EM_DEBUG_FUNC_BEGIN("addr_str[%p]", addr_str);
-
-	if (!addr_str)
-		return ;
-	char *str = addr_str;
-	char ptr[EM_SAFE_STRLEN(addr_str) + 1];
-	int i = 0, j = 0;
-	char *first_qu = NULL;
-	char *last_qu = NULL;
-	char *first_c = NULL;
-	char *last_c = NULL;
-
-	// find first and last quatation
-	for (i = 0; str[i] != '\0'; i++) {
-		if (!first_qu && str[i] == '\"')
-			first_qu = str + i;
-		if (str[i] == '\"')
-			last_qu = str + i;
-	}
-
-	if (!first_qu || !last_qu) {
-		// if there is no qutation
-		for (i = 0; str[i] != NULL_CHAR ; i++) {
-			if (str[i] != SPACE && str[i] != TAB && str[i] != CR && str[i] != LF)
-				ptr[j++] = str[i];
-		}
-	} else {
-		// find first and last character except for space
-		for (first_c = first_qu + 1; *first_c == ' '; first_c++);
-		for (last_c = last_qu - 1; *last_c == ' '; last_c--);
-		for (i = 0; str[i] != '\0'; i++) {
-			if (str + i <= first_qu || str + i >= last_qu) {
-				if (str[i] != SPACE && str[i] != TAB && str[i] != CR && str[i] != LF)
-					ptr[j++] = str[i];
-			} else if (first_qu < str + i && str + i < last_qu) {
-				if (str + i < first_c || str + i > last_c)
-					continue;
-				else
-					ptr[j++] = str[i];
-			}
-		}
-	}
-	ptr[j++] = NULL_CHAR;
-
-	*pAddr = EM_SAFE_STRDUP(ptr);
-	EM_DEBUG_FUNC_END("ptr[%s]", ptr);
-}
-
 INTERNAL_FUNC char* em_skip_whitespace_without_strdup(char *source_string)
 {
 	EM_DEBUG_FUNC_BEGIN("source_string[%p]", source_string);
@@ -349,83 +299,6 @@ INTERNAL_FUNC char* em_replace_string(char *source_string, char *old_string, cha
 	return result_buffer;
 }
 
-INTERNAL_FUNC int em_replace_string_ex(char **input_source_string, char *input_old_string, char *input_new_string)
-{
-	EM_DEBUG_FUNC_BEGIN();
-	int   err = 0;
-	int   buffer_length = 0;
-	int   old_string_length = 0;
-	int   new_string_length = 0;
-	int   match_count = 0;
-
-	char *cursor_of_source_string = NULL;
-	char *cursor_of_result_buffer = NULL;
-	char *result_buffer = NULL;
-	char *source_string = NULL;
-	char *found_pos = NULL;
-
-	EM_IF_NULL_RETURN_VALUE(input_source_string, EMAIL_ERROR_INVALID_PARAM);
-	EM_IF_NULL_RETURN_VALUE(input_old_string, EMAIL_ERROR_INVALID_PARAM);
-	EM_IF_NULL_RETURN_VALUE(input_new_string, EMAIL_ERROR_INVALID_PARAM);
-
-	source_string = *input_source_string;
-
-	found_pos = strstr(source_string, input_old_string);
-
-	if (found_pos == NULL) {
-		err = EMAIL_ERROR_DATA_NOT_FOUND;
-		goto FINISH_OFF;
-	}
-
-	old_string_length = EM_SAFE_STRLEN(input_old_string);
-	new_string_length = EM_SAFE_STRLEN(input_new_string);
-
-	while (found_pos) {
-		match_count++;
-		found_pos++;
-		found_pos = strstr(found_pos, input_old_string);
-	}
-
-	buffer_length  = EM_SAFE_STRLEN(source_string) + ((new_string_length - old_string_length) * match_count) + 50;
-
-	result_buffer  = (char*)malloc(buffer_length);
-
-	if (!result_buffer) {
-		err = EMAIL_ERROR_OUT_OF_MEMORY;
-		goto FINISH_OFF;
-	}
-	memset(result_buffer, 0 , buffer_length);
-
-	cursor_of_source_string = source_string;
-	cursor_of_result_buffer = result_buffer;
-	found_pos = strstr(source_string, input_old_string);
-
-	while (found_pos) {
-		memcpy(cursor_of_result_buffer, cursor_of_source_string, found_pos - cursor_of_source_string);
-
-		cursor_of_result_buffer = result_buffer + EM_SAFE_STRLEN(result_buffer);
-		cursor_of_source_string = found_pos + old_string_length;
-
-		memcpy(cursor_of_result_buffer, input_new_string, new_string_length);
-
-		cursor_of_result_buffer = result_buffer + EM_SAFE_STRLEN(result_buffer);
-
-		found_pos++;
-		found_pos = strstr(found_pos, input_old_string);
-	}
-
-	EM_SAFE_STRCAT(result_buffer, cursor_of_source_string);
-
-	EM_SAFE_FREE(*input_source_string);
-	*input_source_string = result_buffer;
-
-FINISH_OFF:
-
-	EM_DEBUG_FUNC_END("err[%d]", err);
-	return err;
-}
-
-
 /* Memory clean up */
 #include <sys/mman.h>
 
@@ -537,7 +410,7 @@ INTERNAL_FUNC int em_get_file_name_and_extension_from_file_path(char *input_sour
 	char  file_name_string[MAX_PATH] = { 0, };
 	char  extension_string[MAX_PATH] = { 0, };
 
-	if (!input_source_file_path || !output_file_name || !output_extension || EM_SAFE_STRLEN(input_source_file_path) <= 0) {
+	if (!input_source_file_path || !output_file_name || !output_extension) {
 		EM_DEBUG_EXCEPTION("Invalid Parameter");
 		err  = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -594,12 +467,10 @@ INTERNAL_FUNC char *em_get_extension_from_file_path(char *source_file_path, int 
 
 	pos_on_string = EM_SAFE_STRLEN(source_file_path) - 1;
 
-	while(pos_on_string >= 0 && source_file_path[pos_on_string] != '.') {
-		pos_on_string--;
-	}
+	while(pos_on_string > 0 && source_file_path[pos_on_string--] != '.') ;
 
-	if (pos_on_string >= 0 && pos_on_string < EM_SAFE_STRLEN(source_file_path) - 1)
-		extension = source_file_path + pos_on_string + 1;
+	if(pos_on_string > 0)
+		extension = source_file_path + pos_on_string + 2;
 
 	EM_DEBUG_LOG("*extension [%s] pos_on_string [%d]", extension, pos_on_string);
 
@@ -610,61 +481,6 @@ FINISH_OFF:
 	return extension;
 }
 
-INTERNAL_FUNC char *em_shrink_filename(char *fname, int size_limit)
-{
-	EM_DEBUG_FUNC_BEGIN("fname[%s], size_limit[%d]", fname, size_limit);
-
-	char *modified_name = NULL;
-	char *extension = NULL;
-
-	modified_name = em_malloc(sizeof(char)*size_limit);
-	if (!modified_name) {
-		return NULL;
-	}
-
-	extension = em_get_extension_from_file_path(fname, NULL);
-
-	if (extension && EM_SAFE_STRLEN(extension) > 0) {
-		int ext_len = EM_SAFE_STRLEN(extension);
-		int name_len = EM_SAFE_STRLEN(fname) - EM_SAFE_STRLEN(extension) - 1;
-		int name_strip_len = size_limit - EM_SAFE_STRLEN(extension) - 2;
-
-		char *tmp_ext = NULL;
-		char *tmp_name = NULL;
-		char *tmp_name_strip = NULL;
-		tmp_ext = em_malloc(sizeof(char)*(ext_len+1));
-		tmp_name = em_malloc(sizeof(char)*(name_len+1));
-		tmp_name_strip = em_malloc(sizeof(char)*name_strip_len);
-
-		snprintf(tmp_ext, sizeof(char)*(ext_len+1), "%s", extension);
-		snprintf(tmp_name, sizeof(char)*(name_len+1), "%s", fname);
-
-		EM_DEBUG_LOG(">>>>> extention [%s]", tmp_ext);
-		EM_DEBUG_LOG(">>>>> name [%s]", tmp_name);
-
-		if (EM_SAFE_STRLEN(extension) > EM_SAFE_STRLEN(fname) - EM_SAFE_STRLEN(extension)) {
-			snprintf(modified_name, sizeof(char)*size_limit, "%s", fname);
-		} else {
-			if (tmp_name_strip && name_strip_len > 1) {
-				snprintf(tmp_name_strip, sizeof(char)*name_strip_len, "%s", tmp_name);
-				snprintf(modified_name, sizeof(char)*size_limit, "%s.%s", tmp_name_strip, tmp_ext);
-			} else {
-				snprintf(modified_name, sizeof(char)*size_limit, "%s", fname);
-			}
-		}
-
-		EM_SAFE_FREE(tmp_ext);
-		EM_SAFE_FREE(tmp_name);
-		EM_SAFE_FREE(tmp_name_strip);
-	} else {
-		snprintf(modified_name, sizeof(char)*size_limit, "%s", fname);
-	}
-
-	EM_DEBUG_FUNC_END();
-
-	return modified_name;
-}
-
 INTERNAL_FUNC int em_get_encoding_type_from_file_path(const char *input_file_path, char **output_encoding_type)
 {
 	EM_DEBUG_FUNC_BEGIN("input_file_path[%d], output_encoding_type[%p]", input_file_path, output_encoding_type);
@@ -673,6 +489,7 @@ INTERNAL_FUNC int em_get_encoding_type_from_file_path(const char *input_file_pat
 	int   pos_of_dot = 0;
 	int   enf_of_string = 0;
 	int   result_string_length = 0;
+	char *filename = NULL;
 	char *result_encoding_type = NULL;
 
 	if (!input_file_path || !output_encoding_type) {
@@ -683,7 +500,7 @@ INTERNAL_FUNC int em_get_encoding_type_from_file_path(const char *input_file_pat
 
 	enf_of_string = pos_of_filename = EM_SAFE_STRLEN(input_file_path);
 
-	while(pos_of_filename > 0 && input_file_path[pos_of_filename--] != '/') {
+	while(pos_of_filename >= 0 && input_file_path[pos_of_filename--] != '/') {
 		if(input_file_path[pos_of_filename] == '.')
 			pos_of_dot = pos_of_filename;
 	}
@@ -691,12 +508,16 @@ INTERNAL_FUNC int em_get_encoding_type_from_file_path(const char *input_file_pat
 	if(pos_of_filename != 0)
 		pos_of_filename += 2;
 
+	filename = (char*)input_file_path + pos_of_filename;
+
 	if(pos_of_dot != 0 && pos_of_dot > pos_of_filename)
 		result_string_length = pos_of_dot - pos_of_filename;
 	else
 		result_string_length = enf_of_string - pos_of_filename;
 
-	if( !(result_encoding_type = em_malloc(sizeof(char) * (result_string_length + 1))) ) {
+	EM_DEBUG_LOG("pos_of_dot [%d], pos_of_filename [%d], enf_of_string[%d],result_string_length [%d]", pos_of_dot, pos_of_filename, enf_of_string, result_string_length);
+
+	if( !(result_encoding_type = 	em_malloc(sizeof(char) * (result_string_length + 1))) ) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		err  = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
@@ -704,7 +525,7 @@ INTERNAL_FUNC int em_get_encoding_type_from_file_path(const char *input_file_pat
 
 	memcpy(result_encoding_type, input_file_path + pos_of_filename, result_string_length);
 
-	EM_DEBUG_LOG("result_encoding_type [%s]", result_encoding_type);
+	EM_DEBUG_LOG("*result_encoding_type [%s]", result_encoding_type);
 
 	*output_encoding_type = result_encoding_type;
 
@@ -717,7 +538,7 @@ INTERNAL_FUNC int em_get_content_type_from_extension_string(const char *extensio
 {
 	EM_DEBUG_FUNC_BEGIN("extension_string[%s]", extension_string);
 	int i = 0, err = EMAIL_ERROR_NONE, result_content_type = TYPEAPPLICATION;
-	char *image_extension[] = { "jpeg", "jpg", "png", "gif", "bmp", "pic", "agif", "tif", "wbmp" , "p7s", "p7m", "asc", NULL};
+	char *image_extension[] = { "jpeg", "jpg", "png", "gif", "bmp", "pic", "agif", "tif", "wbmp" , "p7s", "p7m", NULL};
 
 	if (!extension_string) {
 		EM_DEBUG_EXCEPTION("Invalid Parameter");
@@ -751,9 +572,6 @@ INTERNAL_FUNC int em_get_content_type_from_extension_string(const char *extensio
 	case EXTENSION_P7M:
 		result_content_type = TYPEPKCS7_MIME;
 		break;
-	case EXTENSION_ASC:
-		result_content_type = TYPEPGP;
-		break;
 	default:
 		break;
 	}
@@ -765,28 +583,20 @@ FINISH_OFF:
 	return result_content_type;
 }
 
-#define EMAIL_ATOM                             "([^]()<>@,;:\\\".[\x20\x01-\x1f\x7f])+"  // x20: space,
-#define EMAIL_QTEXT                            "[^\"\\\x0d]" /* " \ CR */
-#define EMAIL_DTEXT                            "[^][\\\x0d]" /* [ ] \ CR */
-#define EMAIL_QUOTED_PAIR                      "([\\].)" // first char :\ second char : anything (.)
-#define EMAIL_QUOTED_STRING                    "[\"](" EMAIL_QTEXT "|" EMAIL_QUOTED_PAIR ")*[\"]"
-#define EMAIL_WORD                             "(" EMAIL_ATOM "|" EMAIL_QUOTED_STRING ")"
-#define EMAIL_PHRASE                           "(" EMAIL_ATOM "|" EMAIL_QUOTED_STRING ")"
+#define EMAIL_ACCOUNT_RGEX                     "([a-z0-9!#$%&'*+/=?^_`{|}~-]+.)*[a-z0-9!#$%&'*+/=?^_`{|}~-]+"
+#define EMAIL_DOMAIN_RGEX                      "([a-z0-9!#$%&'*+/=?^_`{|}~-]+.)+[a-z0-9!#$%&'*+/=?^_`{|}~-]+"
 
-#define EMAIL_DOMAIN_LITERAL                   "\\[(" EMAIL_DTEXT "|" EMAIL_QUOTED_PAIR ")*\\]" /* literal match for "[" and "]"*/
-#define EMAIL_SUB_DOMAIN                       "(" EMAIL_ATOM "|" EMAIL_DOMAIN_LITERAL ")"
+#define EMAIL_ADDR_RGEX                        "[[:space:]]*<"EMAIL_ACCOUNT_RGEX"@"EMAIL_DOMAIN_RGEX">[[:space:]]*"
+#define EMAIL_ALIAS_RGEX                       "([[:space:]]*\"[^\"]*\")?"EMAIL_ADDR_RGEX
+#define EMAIL_ALIAS_LIST_RGEX                  "^("EMAIL_ALIAS_RGEX"[;,])*"EMAIL_ALIAS_RGEX"[;,]?[[:space:]]*$"
 
-#define EMAIL_LOCAL_PART                       "(" EMAIL_WORD "(\\." EMAIL_WORD ")*)"
-#define EMAIL_DOMAIN                           "(" EMAIL_SUB_DOMAIN "(\\." EMAIL_SUB_DOMAIN ")*)"
-#define EMAIL_ADDR_SPEC                        "(" EMAIL_LOCAL_PART "@" EMAIL_DOMAIN ")"
+#define EMAIL_ADDR_WITHOUT_BRACKET_RGEX        "[[:space:]]*"EMAIL_ACCOUNT_RGEX"@"EMAIL_DOMAIN_RGEX"[[:space:]]*"
+#define EMAIL_ALIAS_WITHOUT_BRACKET_RGEX       "([[:space:]]*\"[^\"]*\")?"EMAIL_ADDR_WITHOUT_BRACKET_RGEX
+#define EMAIL_ALIAS_LIST_WITHOUT_BRACKET_RGEX  "("EMAIL_ALIAS_WITHOUT_BRACKET_RGEX"[;,])*"EMAIL_ADDR_WITHOUT_BRACKET_RGEX"[;,]?[[:space:]]*$"
 
-#define EMAIL_MAILBOX                          "("EMAIL_ADDR_SPEC "|" EMAIL_PHRASE "[[:space:]]*" "<" EMAIL_ADDR_SPEC ">|<" EMAIL_ADDR_SPEC ">)"
-#define EMAIL_ADDRESS                          "^([:blank:]*" EMAIL_MAILBOX "[,;[:blank:]]*([,;][,;[:blank:]]*" EMAIL_MAILBOX "[,;[:blank:]]*)*)$"
-
-
-static int em_verify_email_address_by_using_regex(char *address)
+INTERNAL_FUNC int em_verify_email_address(char *address, int without_bracket)
 {
-	EM_DEBUG_FUNC_BEGIN_SEC("address[%s]", address);
+	EM_DEBUG_FUNC_BEGIN_SEC("address[%s] without_bracket[%d]", address, without_bracket);
 
 	/*  this following code verfies the email alias string using reg. exp. */
 	regex_t alias_list_regex = {0};
@@ -800,7 +610,10 @@ static int em_verify_email_address_by_using_regex(char *address)
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
-	reg_rule = EMAIL_ADDRESS;
+	if(without_bracket)
+		reg_rule = EMAIL_ALIAS_LIST_WITHOUT_BRACKET_RGEX;
+	else
+		reg_rule = EMAIL_ALIAS_LIST_RGEX;
 
 	if (regcomp (&alias_list_regex, reg_rule, REG_ICASE | REG_EXTENDED) != 0) {
 		EM_DEBUG_EXCEPTION("email alias regex unrecognized");
@@ -829,152 +642,16 @@ FINISH_OFF:
 	return error;
 }
 
-static int em_verify_email_address_without_regex(char *address)
+INTERNAL_FUNC int em_verify_email_address_of_mail_data (email_mail_data_t *mail_data, int without_bracket)
 {
-	EM_DEBUG_FUNC_BEGIN_SEC("address[%s]", address);
-	char *local_address = NULL;
-	char *address_start = NULL;
-	char *cur = NULL;
-	char *local_part = NULL;
-	char *domain = NULL;
-	char *saveptr = NULL;
-	char currunt_char;
-	int address_length = 0;
-	int i = 0;
-	int error = EMAIL_ERROR_NONE;
-	int occur = 0;
-
-	EM_DEBUG_LOG_SEC("address [%s]", address);
-
-        if (address == NULL) {
-            EM_DEBUG_EXCEPTION("Invalid parameter");
-            error = EMAIL_ERROR_INVALID_PARAM;
-            return error;
-        }
-
-	local_address = strdup(address);
-
-	address_start = local_address;
-
-	while ((cur = strchr(address_start, '\"'))) {
-		address_start = cur + 1;
-		if (local_address >= cur - 1 || *(cur - 1) != '\\')
-			occur++;
-	}
-
-	if (occur % 2) {
-		error = EMAIL_ERROR_INVALID_ADDRESS;
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_ADDRESS");
-		goto FINISH_OFF;
-	}
-
-	if ((cur = strchr(address_start, '<'))) {
-		char *close_pos = NULL;
-
-		address_start = cur + 1;
-		close_pos = address_start;
-
-		while ((cur = strchr(close_pos, '>'))) {
-			close_pos = cur + 1;
-		}
-
-		if (address_start == close_pos) {
-			error = EMAIL_ERROR_INVALID_ADDRESS;
-			EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_ADDRESS");
-			goto FINISH_OFF;
-		}
-
-		address_start[close_pos - 1 - address_start] = '\0';
-	}
-
-	EM_DEBUG_LOG_SEC("address_start [%s]", address_start);
-
-	address_length = EM_SAFE_STRLEN(address_start);
-
-	for (i = 0; i < address_length; i++) {
-		currunt_char = address_start[i];
-		if (!isalpha(currunt_char) && !isdigit(currunt_char) && currunt_char != '_' && currunt_char != '.' && currunt_char != '@') {
-			error = EMAIL_ERROR_INVALID_ADDRESS;
-			EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_ADDRESS");
-			goto FINISH_OFF;
-		}
-	}
-
-	if (strstr(address_start, "..") || strstr(address_start, ".@") || strstr(address_start, "@.") || strstr(address_start, "._.")) {
-		error = EMAIL_ERROR_INVALID_ADDRESS;
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_ADDRESS");
-		goto FINISH_OFF;
-	}
-
-	local_part = strtok_r(address_start, "@", &saveptr);
-
-	EM_DEBUG_LOG("local_part [%s]", local_part);
-
-	if (local_part == NULL || EM_SAFE_STRLEN(local_part) == 0) {
-		error = EMAIL_ERROR_INVALID_ADDRESS;
-		goto FINISH_OFF;
-	}
-
-	domain = strtok_r(NULL, "@", &saveptr);
-
-	EM_DEBUG_LOG("domain [%s]", domain);
-
-	if (domain == NULL || EM_SAFE_STRLEN(domain) < 3) {
-		error = EMAIL_ERROR_INVALID_ADDRESS;
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_ADDRESS");
-		goto FINISH_OFF;
-	}
-
-	if (strchr(domain, '.') == NULL) {
-		error = EMAIL_ERROR_INVALID_ADDRESS;
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_ADDRESS");
-		goto FINISH_OFF;
-	}
-
-	if (!isalpha(local_part[0])) {
-		error = EMAIL_ERROR_INVALID_ADDRESS;
-		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_ADDRESS");
-		goto FINISH_OFF;
-	}
-
-FINISH_OFF:
-	EM_SAFE_FREE(local_address);
-
-	EM_DEBUG_FUNC_END("error [%d]", error);
-	return error;
-}
-
-INTERNAL_FUNC int em_verify_email_address(char *address)
-{
-	EM_DEBUG_FUNC_BEGIN("address[%p]", address);
-	int error = EMAIL_ERROR_NONE;
-	char *result_locale = NULL;
-
-	setlocale(LC_ALL, "");
-
-	result_locale = setlocale(LC_ALL, NULL);
-
-	EM_DEBUG_LOG("LC_ALL[%s]" , result_locale);
-
-	if ( EM_SAFE_STRCMP(result_locale, "or_IN.UTF-8") == 0)
-		error = em_verify_email_address_without_regex(address);
-	else
-		error = em_verify_email_address_by_using_regex(address);
-
-	EM_DEBUG_FUNC_END("error [%d]", error);
-	return error;
-}
-
-INTERNAL_FUNC int em_verify_email_address_of_mail_data (email_mail_data_t *mail_data)
-{
-	EM_DEBUG_FUNC_BEGIN("mail_data[%p]", mail_data);
+	EM_DEBUG_FUNC_BEGIN("mail_data[%p] without_bracket[%d]", mail_data, without_bracket);
 	char *address_array[4] = { mail_data->full_address_from, mail_data->full_address_to, mail_data->full_address_cc, mail_data->full_address_bcc};
 	int  err = EMAIL_ERROR_NONE, i;
 
 	/* check for email_address validation */
 	for (i = 0; i < 4; i++) {
 		if (address_array[i] && address_array[i][0] != 0) {
-			err = em_verify_email_address (address_array[i]);
+			err = em_verify_email_address (address_array[i] , without_bracket);
 			if (err != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION_SEC("em_verify_email_address error[%d] idx[%d] addr[%s]", err, i, address_array[i]);
 				goto FINISH_OFF;
@@ -986,16 +663,16 @@ FINISH_OFF:
 	return err;
 }
 
-INTERNAL_FUNC int em_verify_email_address_of_mail_tbl(emstorage_mail_tbl_t *input_mail_tbl)
+INTERNAL_FUNC int em_verify_email_address_of_mail_tbl(emstorage_mail_tbl_t *input_mail_tbl, int input_without_bracket)
 {
-	EM_DEBUG_FUNC_BEGIN("input_mail_tbl[%p]", input_mail_tbl);
+	EM_DEBUG_FUNC_BEGIN("input_mail_tbl[%p] input_without_bracket[%d]", input_mail_tbl, input_without_bracket);
 	char *address_array[4] = { input_mail_tbl->full_address_to, input_mail_tbl->full_address_cc, input_mail_tbl->full_address_bcc, input_mail_tbl->full_address_from};
 	int  err = EMAIL_ERROR_NONE, i;
 
 	/* check for email_address validation */
 	for (i = 0; i < 4; i++) {
 		if (address_array[i] && address_array[i][0] != 0) {
-			if ((err = em_verify_email_address (address_array[i])) != EMAIL_ERROR_NONE) {
+			if ((err = em_verify_email_address (address_array[i] , input_without_bracket)) != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION_SEC("em_verify_email_address error[%d] idx[%d] addr[%s]", err, i, address_array[i]);
 				goto FINISH_OFF;
 			}
@@ -1026,7 +703,7 @@ INTERNAL_FUNC int em_find_tag_for_thread_view(char *subject, int *result)
 	}
 
 	em_upper_string(copy_of_subject);
-	EM_DEBUG_LOG_SEC("em_upper_string result : %s\n", copy_of_subject);
+	EM_DEBUG_LOG("em_upper_string result : %s\n", copy_of_subject);
 
 	if (strstr(copy_of_subject, "RE:") == NULL) {
 		if (strstr(copy_of_subject, "FWD:") == NULL) {
@@ -1067,21 +744,21 @@ INTERNAL_FUNC int em_find_pos_stripped_subject_for_thread_view(char *subject, ch
 	em_upper_string(copy_of_subject);
 	curpos = copy_of_subject;
 
-
+	EM_DEBUG_LOG("em_upper_string result : %s", copy_of_subject);
 
 	while ((result = strstr(curpos, "RE:")) != NULL) {
 		curpos = result + 3;
-		EM_DEBUG_LOG_SEC("RE result : %s", curpos);
+		EM_DEBUG_LOG("RE result : %s", curpos);
 	}
 
 	while ((result = strstr(curpos, "FWD:")) != NULL) {
 		curpos = result + 4;
-		EM_DEBUG_LOG_SEC("FWD result : %s", curpos);
+		EM_DEBUG_LOG("FWD result : %s", curpos);
 	}
 
 	while ((result = strstr(curpos, "FW:")) != NULL) {
 		curpos = result + 3;
-		EM_DEBUG_LOG_SEC("FW result : %s", curpos);
+		EM_DEBUG_LOG("FW result : %s", curpos);
 	}
 
 	while (curpos != NULL && *curpos == ' ') {
@@ -1094,6 +771,9 @@ INTERNAL_FUNC int em_find_pos_stripped_subject_for_thread_view(char *subject, ch
 
 FINISH_OFF:
 	EM_SAFE_FREE(copy_of_subject);
+
+	if (error_code == EMAIL_ERROR_NONE && stripped_subject)
+		EM_DEBUG_LOG("result[%s]", stripped_subject);
 
 	EM_DEBUG_FUNC_END("error_code[%d]", error_code);
 	return error_code;
@@ -1161,7 +841,7 @@ INTERNAL_FUNC int em_decode_base64(unsigned char *enc_text, unsigned long enc_le
     return ret;
 }
 
-INTERNAL_FUNC int em_get_account_server_type_by_account_id(char *multi_user_name, int account_id, email_account_server_t* account_server_type, int flag, int *error)
+INTERNAL_FUNC int em_get_account_server_type_by_account_id(int account_id, email_account_server_t* account_server_type, int flag, int *error)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	emstorage_account_tbl_t *account_tbl_data = NULL;
@@ -1175,7 +855,7 @@ INTERNAL_FUNC int em_get_account_server_type_by_account_id(char *multi_user_name
 		goto FINISH_OFF;
 	}
 
-	if( !emstorage_get_account_by_id(multi_user_name, account_id, WITHOUT_OPTION, &account_tbl_data, false, &err)) {
+	if( !emstorage_get_account_by_id(account_id, WITHOUT_OPTION, &account_tbl_data, false, &err)) {
 		EM_DEBUG_EXCEPTION ("emstorage_get_account_by_id failed [%d] ", err);
 		ret = false;
 		goto FINISH_OFF;
@@ -1253,11 +933,42 @@ FINISH_OFF:
 	return ret;
 }
 
+INTERNAL_FUNC int em_check_socket_privilege_by_pid(int pid)
+{
+	EM_DEBUG_FUNC_BEGIN("pid [%d]", pid);
+	int smack_ret = 0;
+
+	smack_ret = security_server_check_privilege_by_pid(pid, "email-service::write", "rw");
+	if (smack_ret == SECURITY_SERVER_API_ERROR_ACCESS_DENIED) {
+		EM_DEBUG_EXCEPTION("SECURITY_SERVER_API_ERROR_ACCESS_DENIED");
+		return EMAIL_ERROR_PERMISSION_DENIED;
+	}
+
+	EM_DEBUG_FUNC_END();
+	return EMAIL_ERROR_NONE;
+}
+
+INTERNAL_FUNC int em_check_db_privilege_by_pid(int pid)
+{
+	EM_DEBUG_FUNC_BEGIN("pid [%d]", pid);
+	int smack_ret = 0;
+
+	smack_ret = security_server_check_privilege_by_pid(pid, "email-service::db", "rw");
+	if (smack_ret == SECURITY_SERVER_API_ERROR_ACCESS_DENIED) {
+		EM_DEBUG_EXCEPTION("SECURITY_SERVER_API_ERROR_ACCESS_DENIED");
+		return EMAIL_ERROR_PERMISSION_DENIED;
+	}
+
+	EM_DEBUG_FUNC_END();
+	return EMAIL_ERROR_NONE;
+}
+
+
 /* thread with task queue generic functions */
 
 pthread_mutex_t g_mu = PTHREAD_MUTEX_INITIALIZER;
 
-email_thread_handle_t* em_thread_create(void *(*thread_exit)(void*), void *arg)
+email_thread_handle_t* em_thread_create (void *(*thread_exit)(void*), void *arg)
 {
 	pthread_mutex_lock(&g_mu);
 
@@ -1338,7 +1049,7 @@ static void* worker_func (void* arg)
 	do {
 		/* running thread main function */
 		if (warg->thread_func)
-			(warg->thread_func) (warg->arg);
+			(warg->thread_func) (warg->arg); 
 		if (warg->destroy)
 			(warg->destroy) (warg->arg);
 		EM_SAFE_FREE (warg);
@@ -1371,7 +1082,6 @@ void em_thread_run (email_thread_handle_t *thd_handle, void *(*thread_func)(void
 		return;
 	}
 	worker_handle->thread_func = thread_func;
-	worker_handle->destroy = destroy;
 	worker_handle->arg  = arg;
 	worker_handle->thd_handle = thd_handle;
 
@@ -1379,7 +1089,7 @@ void em_thread_run (email_thread_handle_t *thd_handle, void *(*thread_func)(void
 
 	/* adding task to queue */
 	if (thd_handle->running) {
-		g_queue_push_tail (thd_handle->q, worker_handle);
+		g_queue_push_tail (thd_handle->q, worker_handle);		
 	}
 	else {
 		thd_handle->running = 1;
@@ -1400,73 +1110,4 @@ void em_thread_join (email_thread_handle_t *thd_handle)
 	}
 }
 
-INTERNAL_FUNC int em_fopen(const char *filename, const char *mode, FILE **fp)
-{
-	EM_DEBUG_FUNC_BEGIN("filename : [%s]", filename);
 
-	int err = EMAIL_ERROR_NONE;
-
-	if (!filename) {
-		EM_DEBUG_EXCEPTION("Invalid param");
-		err = EMAIL_ERROR_INVALID_PARAM;
-		return err;
-	}
-
-	FILE *temp_fp = NULL;
-	char errno_buf[ERRNO_BUF_SIZE] = {0};
-
-	temp_fp = fopen(filename, mode);
-	if (temp_fp == NULL) {
-		EM_DEBUG_EXCEPTION("fopen failed : [%s][%d]", EM_STRERROR(errno_buf), errno);
-		if (errno == EACCES || errno == EPERM)
-			err = EMAIL_ERROR_PERMISSION_DENIED;
-		else if (errno == ENOSPC)
-			err = EMAIL_ERROR_MAIL_MEMORY_FULL;
-		else
-			err = EMAIL_ERROR_SYSTEM_FAILURE;
-	}
-
-	if (fp)
-		*fp = temp_fp;
-
-	EM_DEBUG_FUNC_END();
-	return err;
-}
-
-INTERNAL_FUNC int em_open(const char *filename, int oflags, mode_t mode, int *handle)
-{
-	EM_DEBUG_FUNC_BEGIN("filename : [%s]", filename);
-	int err = EMAIL_ERROR_NONE;
-
-	if (!filename) {
-		EM_DEBUG_EXCEPTION("Invalid param");
-		err = EMAIL_ERROR_INVALID_PARAM;
-		return err;
-	}
-
-	int temp_handle = -1;
-	char errno_buf[ERRNO_BUF_SIZE] = {0};
-
-	if (mode)
-		temp_handle = open(filename, oflags, mode);
-	else
-		temp_handle = open(filename, oflags);
-
-	if (temp_handle < 0) {
-		EM_DEBUG_EXCEPTION("open failed : [%s][%d]", EM_STRERROR(errno_buf), errno);
-		if (errno == EACCES || errno == EPERM)
-			err = EMAIL_ERROR_PERMISSION_DENIED;
-		else if (errno == ENOSPC)
-			err = EMAIL_ERROR_MAIL_MEMORY_FULL;
-		else
-			err = EMAIL_ERROR_SYSTEM_FAILURE;
-	}
-
-	if (handle)
-		*handle = temp_handle;
-	else
-		if (temp_handle >= 0) close(temp_handle);
-
-	EM_DEBUG_FUNC_END();
-	return err;
-}

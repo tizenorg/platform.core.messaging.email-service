@@ -22,35 +22,46 @@
 #ifndef __EMAIL_DBUS_ACTIVATION_H__
 #define __EMAIL_DBUS_ACTIVATION_H__
 
-#include <gio/gio.h>
+/* standard library header */
+#include <glib-object.h>
+
+typedef struct _email_service_t EmailService;
+typedef struct _email_service_class_t EmailServiceClass;
 
 #define EMAIL_SERVICE_NAME "org.tizen.email_service"
 #define EMAIL_SERVICE_PATH "/org/tizen/email_service"
 
-/* 
-note: it is not safe freeing the return-val
-*/
-#define EM_GDBUS_STR_NEW(str)    (str? str:"")
-/* input string is released in case of dummy val */
-#define EM_GDBUS_STR_GET(str)    \
-	({\
-		char* ret;\
-		if (g_strcmp0(str, "")) {\
-			ret = str;\
-		}\
-		else {\
-			g_free(str);\
-			str = NULL;\
-			ret = NULL;\
-		}\
-		ret;\
-	})
+GType email_service_get_type(void);
 
+struct _email_service_t {
+	GObject parent;
+	int status;
+};
 
+struct _email_service_class_t {
+	GObjectClass parent;
+};
+
+#define EMAIL_SERVICE_TYPE              (email_service_get_type())
+#define EMAIL_SERVICE(object)           (G_TYPE_CHECK_INSTANCE_CAST ((object), EMAIL_SERVICE_TYPE, EmailService))
+#define EMAIL_SERVICE_CLASS(klass)      (G_TYPE_CHECK_CLASS_CAST ((klass), EMAIL_SERVICE_TYPE, EmailServiceClass))
+#define IS_EMAIL_SERVICE(object)        (G_TYPE_CHECK_INSTANCE_TYPE ((object), EMAIL_SERVICE_TYPE))
+#define IS_EMAIL_SERVICE_CLASS(klass)   (G_TYPE_CHECK_CLASS_TYPE ((klass), EMAIL_SERVICE_TYPE))
+#define EMAIL_SERVICE_GET_CLASS(obj)    (G_TYPE_INSTANCE_GET_CLASS ((obj), EMAIL_SERVICE_TYPE, EmailServiceClass))
+
+typedef enum {
+	NFC_SERVICE_ERROR_INVALID_PRAM
+} email_servcie_error;
+
+/**
+ *     launch the email-service
+ */
+
+gboolean email_service_launch(EmailService *email_service, guint *result_val, GError **error);
+EXPORT_API int emipc_init_dbus_connection();
 EXPORT_API int emipc_launch_email_service();
-EXPORT_API GVariant* em_gdbus_set_contact_log (GVariant *parameters);
-EXPORT_API GVariant* em_gdbus_delete_contact_log (GVariant *parameters);
-EXPORT_API GVariant* em_gdbus_get_display_name (GVariant *parameters);
-EXPORT_API GVariant* em_gdbus_check_blocking_mode (GVariant *parameters);
-#endif /* __EMAIL_DBUS_ACTIVATION_H__ */
 
+EXPORT_API void emipc_set_launch_method(int input_launch_method);
+EXPORT_API int  emipc_get_launch_method();
+
+#endif /* __EMAIL_DBUS_ACTIVATION_H__ */

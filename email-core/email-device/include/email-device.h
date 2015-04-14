@@ -43,15 +43,8 @@ extern "C"
 #define DISPLAY_STATE_DIM 1
 #define DISPLAY_STATE_ON  2
 
-typedef enum {
-	STAY_AWAKE_FLAG_FOR_RECEVING_WORKER = 0,
-	STAY_AWAKE_FLAG_FOR_SENDING_WORKER,
-	STAY_AWAKE_FLAG_FOR_PARTIAL_BODY_WORKER,
-	STAY_AWAKE_FLAG_FOR_ALARM_CALLBACK,
-	STAY_AWAKE_FLAG_MAX,
-} email_stay_awake_flag_owner_t;
-
-INTERNAL_FUNC int emdevice_set_sleep_on_off(email_stay_awake_flag_owner_t input_flag_owner, int input_allow_to_sleep, int *error_code);
+INTERNAL_FUNC int emdevice_set_sleep_on_off(int on, int *error_code);
+INTERNAL_FUNC int emdevice_set_dimming_on_off(int on, int *error_code);
 
 #ifdef __cplusplus
 }

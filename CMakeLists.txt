@@ -27,16 +27,19 @@ ADD_SUBDIRECTORY(email-ipc)
 ##########################################################
 # Define STORAGE, NETWORK, CORE lib
 ##########################################################
+
 ADD_SUBDIRECTORY(email-core)
 
 ##########################################################
 # Define Email API   
 ##########################################################
+
 ADD_SUBDIRECTORY(email-api)
 
 ##########################################################
 # Define Execute File
 ##########################################################
+
 ADD_SUBDIRECTORY(email-daemon)
 
 ##########################################################
@@ -56,7 +59,7 @@ INSTALL(FILES ${CMAKE_BINARY_DIR}/email-service.pc DESTINATION ${LIB_INSTALL_DIR
 INSTALL(PROGRAMS ${CMAKE_CURRENT_SOURCE_DIR}/email-service DESTINATION /etc/rc.d/init.d/)
 
 # LICENSE file
-INSTALL(FILES ${CMAKE_SOURCE_DIR}/LICENSE DESTINATION /usr/share/license/email-service)
+INSTALL(FILES ${CMAKE_SOURCE_DIR}/LICENSE.BSD DESTINATION /usr/share/license RENAME email-service)
 
 INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/res/ DESTINATION ${TZ_SYS_DATA}/email/res/image FILES_MATCHING PATTERN "*.png")
 INSTALL(DIRECTORY ${CMAKE_SOURCE_DIR}/res/ DESTINATION ${TZ_SYS_DATA}/email/res FILES_MATCHING PATTERN "*.sql")

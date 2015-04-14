@@ -35,9 +35,26 @@
 #include "email-api-smime.h"
 #include "email-api-etc.h"
 
+
 /**
- * @file email-api.h
- * @brief This file contains the data structures and interfaces provided by email-service.
+* @defgroup EMAIL_SERVICE Email Service
+* @{
+*/
+
+/**
+* @{
+*/
+
+/**
+ *
+ * This file contains the data structures and interfaces needed for application,
+ * to interact with email-service.
+ * @file		email-api.h
+ * @author	Kyuho Jo <kyuho.jo@samsung.com>
+ * @author	Sunghyun Kwon <sh0701.kwon@samsung.com>
+ * @version	0.1
+ * @brief 		This file contains the data structures and interfaces provided by
+ *			email-service.
  */
 
 
@@ -50,6 +67,9 @@ extern "C" {
 }
 #endif
 
+/**
+* @} @}
+*/
 
 #endif /* __EMAIL_MAPI_H__ */
 

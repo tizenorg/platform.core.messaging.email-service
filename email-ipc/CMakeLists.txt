@@ -11,8 +11,6 @@ MESSAGE("")
 MESSAGE(">>> current directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 MESSAGE(">>> Build type: ${CMAKE_BUILD_TYPE}")
 
-SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--gc-sections")
-
 SET(IPC-LIB "email-ipc")
 SET(IPC-SRCS
 	${CMAKE_SOURCE_DIR}/email-ipc/email-ipc-api.c
@@ -48,7 +46,7 @@ INCLUDE_DIRECTORIES(
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(ipc_pkgs REQUIRED dlog dbus-1 glib-2.0 libsystemd-daemon contacts-service2)
+pkg_check_modules(ipc_pkgs REQUIRED dlog dbus-1 glib-2.0 libsystemd-daemon)
 
 FOREACH(flag ${ipc_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")

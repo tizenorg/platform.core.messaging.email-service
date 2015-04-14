@@ -31,6 +31,17 @@
 #ifndef __EMAIL_DAEMON_H__
 #define __EMAIL_DAEMON_H__
 
+/**
+* @defgroup EMAIL_SERVICE EmailFW
+* @{
+*/
+
+/**
+* @ingroup EMAIL_SERVICE
+* @defgroup EMAIL_SERVICE Email Service
+* @{
+*/
+
 #include "email-types.h"
 #include "email-internal-types.h"
 
@@ -51,7 +62,7 @@ extern "C"
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_initialize(char *multi_user_name, int* err_code);
+INTERNAL_FUNC int emdaemon_initialize(int* err_code);
 
 /**
  * Finalize Email-engine.
@@ -74,7 +85,7 @@ INTERNAL_FUNC int emdaemon_finalize(int* err_code);
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_create_account(char *multi_user_name, email_account_t* account, int* err_code);
+INTERNAL_FUNC int emdaemon_create_account(email_account_t* account, int* err_code);
 
 /**
  * Delete a email account.
@@ -84,7 +95,7 @@ INTERNAL_FUNC int emdaemon_create_account(char *multi_user_name, email_account_t
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_delete_account(char *multi_user_name, int account_id, int* err_code);
+INTERNAL_FUNC int emdaemon_delete_account(int account_id, int* err_code);
 
 /**
  * Validate a email account.
@@ -94,9 +105,9 @@ INTERNAL_FUNC int emdaemon_delete_account(char *multi_user_name, int account_id,
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_validate_account(char *multi_user_name, int account_id, int *handle, int* err_code);
+INTERNAL_FUNC int emdaemon_validate_account(int account_id, int *handle, int* err_code);
 
-INTERNAL_FUNC int emdaemon_validate_account_ex(char *multi_user_name, email_account_t* account, int *handle);
+INTERNAL_FUNC int emdaemon_validate_account_ex(email_account_t* account, int *handle);
 
 /**
  * Change the information of a email account.
@@ -107,7 +118,7 @@ INTERNAL_FUNC int emdaemon_validate_account_ex(char *multi_user_name, email_acco
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_update_account(char *multi_user_name, int account_id, email_account_t* new_account, int* err_code);
+INTERNAL_FUNC int emdaemon_update_account(int account_id, email_account_t* new_account, int* err_code);
 
 /**
  * Change the information of a email account after validation
@@ -119,7 +130,7 @@ INTERNAL_FUNC int emdaemon_update_account(char *multi_user_name, int account_id,
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_validate_account_and_update(char *multi_user_name, int old_account_id, email_account_t* new_account_info, int *handle,int *err_code);
+INTERNAL_FUNC int emdaemon_validate_account_and_update(int old_account_id, email_account_t* new_account_info, int *handle,int *err_code);
 
 /**
  * Get a email account by ID.
@@ -131,7 +142,7 @@ INTERNAL_FUNC int emdaemon_validate_account_and_update(char *multi_user_name, in
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_get_account(char *multi_user_name, int account_id, int pulloption, email_account_t* acount, int* err_code);
+INTERNAL_FUNC int emdaemon_get_account(int account_id, int pulloption, email_account_t* acount, int* err_code);
 
 /**
  * Get all emails.
@@ -142,7 +153,7 @@ INTERNAL_FUNC int emdaemon_get_account(char *multi_user_name, int account_id, in
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_get_account_list(char *multi_user_name, email_account_t** acount_list, int* count, int* err_code);
+INTERNAL_FUNC int emdaemon_get_account_list(email_account_t** acount_list, int* count, int* err_code);
 
 /**
  * Free allocated memory.
@@ -164,7 +175,7 @@ INTERNAL_FUNC int emdaemon_free_account(email_account_t** account_list, int coun
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_get_filter(char *multi_user_name, int filter_id, email_rule_t** filtering_set, int* err_code);
+INTERNAL_FUNC int emdaemon_get_filter(int filter_id, email_rule_t** filtering_set, int* err_code);
 
 /**
  * Get all filterings.
@@ -175,7 +186,7 @@ INTERNAL_FUNC int emdaemon_get_filter(char *multi_user_name, int filter_id, emai
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_get_filter_list(char *multi_user_name, email_rule_t** filtering_set, int* count, int* err_code);
+INTERNAL_FUNC int emdaemon_get_filter_list(email_rule_t** filtering_set, int* count, int* err_code);
 
 /**
  * find a filter already exists.
@@ -185,7 +196,7 @@ INTERNAL_FUNC int emdaemon_get_filter_list(char *multi_user_name, email_rule_t**
  * @remarks N/A
  * @return This function returns true if enable add filter, else returns false.
  */
-INTERNAL_FUNC int emdaemon_find_filter(char *multi_user_name, email_rule_t* filter_info, int* err_code);
+INTERNAL_FUNC int emdaemon_find_filter(email_rule_t* filter_info, int* err_code);
 
 /**
  * Add a filter information.
@@ -194,7 +205,7 @@ INTERNAL_FUNC int emdaemon_find_filter(char *multi_user_name, email_rule_t* filt
  * @remarks N/A
  * @return This function returns true on success or false on failure.(only EMAIL_FILTER_BLOCK supported.)
  */
-INTERNAL_FUNC int emdaemon_add_filter(char *multi_user_name, email_rule_t* filtering_set);
+INTERNAL_FUNC int emdaemon_add_filter(email_rule_t* filtering_set);
 
 /**
  * Change a filter information.
@@ -205,7 +216,7 @@ INTERNAL_FUNC int emdaemon_add_filter(char *multi_user_name, email_rule_t* filte
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_update_filter(char *multi_user_name, int filter_id, email_rule_t* new_set, int* err_code);
+INTERNAL_FUNC int emdaemon_update_filter(int filter_id, email_rule_t* new_set, int* err_code);
 
 /**
  * Delete a filter information.
@@ -215,7 +226,7 @@ INTERNAL_FUNC int emdaemon_update_filter(char *multi_user_name, int filter_id, e
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_delete_filter(char *multi_user_name, int filter_id, int* err_code);
+INTERNAL_FUNC int emdaemon_delete_filter(int filter_id, int* err_code);
 
 /**
  * Free allocated memory.
@@ -236,7 +247,7 @@ INTERNAL_FUNC int emdaemon_free_filter (email_rule_t** filtering_set, int count,
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_apply_filter(char *multi_user_name, int filter_id, int* err_code);
+INTERNAL_FUNC int emdaemon_apply_filter(int filter_id, int* err_code);
 
 /*****************************************************************************/
 /*  Mail                                                                     */
@@ -252,7 +263,7 @@ INTERNAL_FUNC int emdaemon_apply_filter(char *multi_user_name, int filter_id, in
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_send_mail(char *multi_user_name, int mail_id, int *handle, int* err_code);
+INTERNAL_FUNC int emdaemon_send_mail(int mail_id, int *handle, int* err_code);
 
 /**
  * Send all mails to been saved in Offline-mode.
@@ -264,11 +275,11 @@ INTERNAL_FUNC int emdaemon_send_mail(char *multi_user_name, int mail_id, int *ha
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_send_mail_saved(char *multi_user_name, int account_id, int *handle, int* err_code);
+INTERNAL_FUNC int emdaemon_send_mail_saved(int account_id, int *handle, int* err_code);
 
-INTERNAL_FUNC int emdaemon_add_mail(char *multi_user_name, email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t *input_meeting_request, int input_from_eas);
+INTERNAL_FUNC int emdaemon_add_mail(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t *input_meeting_request, int input_from_eas);
 
-INTERNAL_FUNC int emdaemon_add_meeting_request(char *multi_user_name, int account_id, int input_mailbox_id, email_meeting_request_t *meeting_req, int* err_code);
+INTERNAL_FUNC int emdaemon_add_meeting_request(int account_id, int input_mailbox_id, email_meeting_request_t *meeting_req, int* err_code);
 
 /**
  * Delete a mail or multiple mails.
@@ -284,7 +295,7 @@ INTERNAL_FUNC int emdaemon_add_meeting_request(char *multi_user_name, int accoun
  * @return This function returns true on success or false on failure.
  */
 
-INTERNAL_FUNC int emdaemon_delete_mail(char *multi_user_name, int mailbox_id, int mail_id[], int num, int from_server,  int *handle, int* err_code);
+INTERNAL_FUNC int emdaemon_delete_mail(int mailbox_id, int mail_id[], int num, int from_server,  int *handle, int* err_code);
 
 /**
  * Delete all mail from a mailbox.
@@ -296,7 +307,7 @@ INTERNAL_FUNC int emdaemon_delete_mail(char *multi_user_name, int mailbox_id, in
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_delete_mail_all(char *multi_user_name, int input_mailbox_id, int input_from_server, int *output_handle, int *output_err_code);
+INTERNAL_FUNC int emdaemon_delete_mail_all(int input_mailbox_id, int input_from_server, int *output_handle, int *output_err_code);
 
 /**
  * Move a email to another mailbox.
@@ -310,7 +321,7 @@ INTERNAL_FUNC int emdaemon_delete_mail_all(char *multi_user_name, int input_mail
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_move_mail(char *multi_user_name, int mail_ids[], int num, int dst_mailbox_id, int noti_param_1, int noti_param_2, int* err_code);
+INTERNAL_FUNC int emdaemon_move_mail(int mail_ids[], int num, int dst_mailbox_id, int noti_param_1, int noti_param_2, int* err_code);
 
 /**
  * Move all email to another mailbox.
@@ -322,7 +333,7 @@ INTERNAL_FUNC int emdaemon_move_mail(char *multi_user_name, int mail_ids[], int 
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_move_mail_all_mails(char *multi_user_name, int src_mailbox_id, int dst_mailbox_id, int* err_code);
+INTERNAL_FUNC int emdaemon_move_mail_all_mails(int src_mailbox_id, int dst_mailbox_id, int* err_code);
 
 
 /**
@@ -336,7 +347,7 @@ INTERNAL_FUNC int emdaemon_move_mail_all_mails(char *multi_user_name, int src_ma
  * @remarks N/A
  * @return This function returns EMAIL_ERROR_NONE on success or error code on failure.
  */
-INTERNAL_FUNC int emdaemon_update_mail(char *multi_user_name, email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t *input_meeting_request, int input_from_eas);
+INTERNAL_FUNC int emdaemon_update_mail(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t *input_meeting_request, int input_from_eas);
 
 
 /**
@@ -359,7 +370,7 @@ INTERNAL_FUNC void _OnMailSendRetryTimerCB( void* data );
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_download_body(char *multi_user_name, int account_id, int mail_id, int verbose, int with_attachment,  int *handle, int* err_code);
+INTERNAL_FUNC int emdaemon_download_body(int account_id, int mail_id, int verbose, int with_attachment,  int *handle, int* err_code);
 
 /**
  * Get a mail attachment.
@@ -371,7 +382,7 @@ INTERNAL_FUNC int emdaemon_download_body(char *multi_user_name, int account_id, 
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_get_attachment(char *multi_user_name, int attachment_id, email_attachment_data_t** attachment, int* err_code);
+INTERNAL_FUNC int emdaemon_get_attachment(int attachment_id, email_attachment_data_t** attachment, int* err_code);
 
 /**
  * Download a email nth-attachment from server.
@@ -385,7 +396,7 @@ INTERNAL_FUNC int emdaemon_get_attachment(char *multi_user_name, int attachment_
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_download_attachment(char *multi_user_name, int account_id, int mail_id, int nth,  int *handle, int* err_code);
+INTERNAL_FUNC int emdaemon_download_attachment(int account_id, int mail_id, int nth,  int *handle, int* err_code);
 
 
 /**
@@ -397,7 +408,7 @@ INTERNAL_FUNC int emdaemon_download_attachment(char *multi_user_name, int accoun
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_add_attachment(char *multi_user_name, int mail_id, email_attachment_data_t* attachment, int* err_code);
+INTERNAL_FUNC int emdaemon_add_attachment(int mail_id, email_attachment_data_t* attachment, int* err_code);
 
 /**
  * Delete a attachment from email.
@@ -408,7 +419,7 @@ INTERNAL_FUNC int emdaemon_add_attachment(char *multi_user_name, int mail_id, em
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_delete_mail_attachment(char *multi_user_name, int attachment_id, int* err_code);
+INTERNAL_FUNC int emdaemon_delete_mail_attachment(int attachment_id, int* err_code);
 
 /**
  * Free allocated memroy for email attachment.
@@ -432,12 +443,12 @@ INTERNAL_FUNC int emdaemon_free_attachment_data(email_attachment_data_t** atch_i
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_set_flags_field(char *multi_user_name, int account_id, int mail_ids[], int num, email_flags_field_type field_type, int value, int onserver, int* err_code);
+INTERNAL_FUNC int emdaemon_set_flags_field(int account_id, int mail_ids[], int num, email_flags_field_type field_type, int value, int onserver, int* err_code);
 
 /*****************************************************************************/
 /*  Mailbox                                                                  */
 /*****************************************************************************/
-INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(char *multi_user_name, int account_id, char* mailbox, int *handle, int* err_code);
+INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(int account_id, char* mailbox, int *handle, int* err_code);
 
 /**
  * Download header of new emails from mail server.
@@ -449,7 +460,7 @@ INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(char *multi_user_name, int acco
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_sync_header(char *multi_user_name, int input_account_id, int input_mailbox_id, int *handle, int* err_code);
+INTERNAL_FUNC int emdaemon_sync_header(int input_account_id, int input_mailbox_id, int *handle, int* err_code);
 
 
 /**
@@ -462,7 +473,7 @@ INTERNAL_FUNC int emdaemon_sync_header(char *multi_user_name, int input_account_
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_get_mail_count_of_mailbox(char *multi_user_name, email_mailbox_t* mailbox, int* total, int* unseen, int* err_code);
+INTERNAL_FUNC int emdaemon_get_mail_count_of_mailbox(email_mailbox_t* mailbox, int* total, int* unseen, int* err_code);
 
 /**
  * Get all mailboxes from account.
@@ -474,7 +485,7 @@ INTERNAL_FUNC int emdaemon_get_mail_count_of_mailbox(char *multi_user_name, emai
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_get_mailbox_list(char *multi_user_name, int account_id, email_mailbox_t** mailbox_list, int* count, int* err_code);
+INTERNAL_FUNC int emdaemon_get_mailbox_list(int account_id, email_mailbox_t** mailbox_list, int* count, int* err_code);
 
 /**
  * Create a new mailbox.
@@ -485,7 +496,7 @@ INTERNAL_FUNC int emdaemon_get_mailbox_list(char *multi_user_name, int account_i
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_add_mailbox(char *multi_user_name, email_mailbox_t* new_mailbox, int on_server, int *handle, int* err_code);
+INTERNAL_FUNC int emdaemon_add_mailbox(email_mailbox_t* new_mailbox, int on_server, int *handle, int* err_code);
 
 /**
  * Delete a mailbox.
@@ -496,7 +507,7 @@ INTERNAL_FUNC int emdaemon_add_mailbox(char *multi_user_name, email_mailbox_t* n
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_delete_mailbox(char *multi_user_name, int input_mailbox_id, int on_server, int *handle, int* err_code);
+INTERNAL_FUNC int emdaemon_delete_mailbox(int input_mailbox_id, int on_server, int *handle, int* err_code);
 
 /**
  * Delete all sub-mailboxes from a specific mailbox.
@@ -506,7 +517,7 @@ INTERNAL_FUNC int emdaemon_delete_mailbox(char *multi_user_name, int input_mailb
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emdaemon_delete_mailbox_all(char *multi_user_name, email_mailbox_t* mailbox, int* err_code);
+INTERNAL_FUNC int emdaemon_delete_mailbox_all(email_mailbox_t* mailbox, int* err_code);
 
 /**
  * Free allocated memory for mailbox information.
@@ -609,29 +620,31 @@ INTERNAL_FUNC int emdaemon_insert_accountinfo_to_contact(email_account_t* accoun
 
 INTERNAL_FUNC int emdaemon_update_accountinfo_to_contact(email_account_t* old_account, email_account_t* new_account);
 
-INTERNAL_FUNC int emdaemon_set_mailbox_type(char *multi_user_name, int input_mailbox_id, email_mailbox_type_e input_mailbox_type);
+INTERNAL_FUNC int emdaemon_set_mailbox_type(int input_mailbox_id, email_mailbox_type_e input_mailbox_type);
 
-INTERNAL_FUNC int emdaemon_set_local_mailbox(char *multi_user_name, int input_mailbox_id, int input_is_local_mailbox);
+INTERNAL_FUNC int emdaemon_set_local_mailbox(int input_mailbox_id, int input_is_local_mailbox);
 
-INTERNAL_FUNC int emdaemon_search_mail_on_server(char *multi_user_name, int input_account_id, int input_mailbox_id, email_search_filter_t *input_search_filter, int input_search_filter_count, unsigned int *output_handle, int *err_code);
+INTERNAL_FUNC int emdaemon_search_mail_on_server(int input_account_id, int input_mailbox_id, email_search_filter_t *input_search_filter, int input_search_filter_count, unsigned int *output_handle, int *err_code);
 
-INTERNAL_FUNC int emdaemon_clear_all_mail_data(char *multi_user_name, int* err_code);
+INTERNAL_FUNC int emdaemon_clear_all_mail_data(int* err_code);
 
-INTERNAL_FUNC int emdaemon_send_mail_retry(char *multi_user_name, int mail_id,  int timeout_in_sec, int* err_code);
+INTERNAL_FUNC int emdaemon_send_mail_retry( int mail_id,  int timeout_in_sec, int* err_code);
 
-INTERNAL_FUNC int emdaemon_validate_account_and_create(char *multi_user_name, email_account_t* new_account, int *handle, int* err_code);
+INTERNAL_FUNC int emdaemon_validate_account_and_create(email_account_t* new_account, int *handle, int* err_code);
 
-INTERNAL_FUNC int emdaemon_set_mail_slot_size_of_mailbox(char *multi_user_name, int account_id, int mailbox_id, int new_slot_size, int *handle, int *err_code);
+INTERNAL_FUNC int emdaemon_set_mail_slot_size_of_mailbox(int account_id, int mailbox_id, int new_slot_size, int *handle, int *err_code);
 
-INTERNAL_FUNC int emdaemon_rename_mailbox(char *multi_user_name, int input_mailbox_id, char *input_mailbox_path, char *input_mailbox_alias, void *input_eas_data, int input_eas_data_length, int input_on_server, int *output_handle);
+INTERNAL_FUNC int emdaemon_rename_mailbox(int input_mailbox_id, char *input_mailbox_path, char *input_mailbox_alias, void *input_eas_data, int input_eas_data_length, int input_on_server, int *output_handle);
 
-INTERNAL_FUNC int emdaemon_move_mail_thread_to_mailbox(char *multi_user_name, int thread_id, int target_mailbox_id, int move_always_flag, int *err_code);
+INTERNAL_FUNC int emdaemon_move_mail_thread_to_mailbox(int thread_id, int target_mailbox_id, int move_always_flag, int *err_code);
 
-INTERNAL_FUNC int emdaemon_delete_mail_thread(char *multi_user_name, int thread_id, int delete_always_flag, int *handle, int *err_code);
+INTERNAL_FUNC int emdaemon_delete_mail_thread(int thread_id, int delete_always_flag, int *handle, int *err_code);
 
-INTERNAL_FUNC int emdaemon_modify_seen_flag_of_thread(char *multi_user_name, int thread_id, int seen_flag, int on_server, int *handle, int *err_code);
+INTERNAL_FUNC int emdaemon_modify_seen_flag_of_thread(int thread_id, int seen_flag, int on_server, int *handle, int *err_code);
 
-INTERNAL_FUNC int emdaemon_expunge_mails_deleted_flagged(char *multi_user_name, int input_mailbox_id, int input_on_server, int *output_handle);
+INTERNAL_FUNC int emdaemon_expunge_mails_deleted_flagged(int input_mailbox_id, int input_on_server, int *output_handle);
+
+INTERNAL_FUNC int emdaemon_kill_daemon_if_no_account();
 
 INTERNAL_FUNC int emdaemon_check_smack_rule(int app_sockfd, char *file_path);
 
@@ -639,9 +652,9 @@ INTERNAL_FUNC int emdaemon_set_smack_label(char *file_path, char *label);
 
 INTERNAL_FUNC void emdaemon_start_alert(void);
 
-INTERNAL_FUNC int emdaemon_finalize_sync(char *multi_user_name, int account_id, int total_mail_count, int unread_mail_count, int vip_total_mail_count, int vip_unread_mail_count, int from_app, int *error);
+INTERNAL_FUNC int emdaemon_finalize_sync(int account_id, int total_mail_count, int unread_mail_count, int *error);
 
-INTERNAL_FUNC int emdaemon_query_smtp_mail_size_limit(char *multi_user_name, int account_id, int *handle, int* err_code);
+INTERNAL_FUNC int emdaemon_query_smtp_mail_size_limit(int account_id, int *handle, int* err_code);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
