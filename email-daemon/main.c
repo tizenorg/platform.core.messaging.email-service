@@ -3223,21 +3223,6 @@ void stb_API_mapper(HIPC_API a_hAPI)
 	int err = EMAIL_ERROR_NONE;
 	int nAPIID = emipc_get_api_id(a_hAPI);
 
-#ifdef __FEATURE_ACCESS_CONTROL__
-	int nAPPID = emipc_get_app_id(a_hAPI);
-		err = em_check_socket_privilege_by_pid(nAPPID);
-		if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-			EM_DEBUG_LOG("permission denied");
-			if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
-				EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-
-			if (!emipc_execute_stub_api(a_hAPI))
-				EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
-
-			return;
-		}
-#endif
-
 	switch(nAPIID) {
 		case _EMAIL_API_ADD_ACCOUNT:
 			stb_create_account(a_hAPI);

@@ -485,14 +485,6 @@ EXPORT_API int email_count_mail(email_list_filter_t *input_filter_list, int inpu
 	EM_IF_NULL_RETURN_VALUE(output_total_mail_count, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(output_unseen_mail_count, EMAIL_ERROR_INVALID_PARAM);
 
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
-
 	if( (err = emstorage_write_conditional_clause_for_getting_mail_list(input_filter_list, input_filter_count, NULL, 0, -1, -1, &conditional_clause_string)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_write_conditional_clause_for_getting_mail_list failed[%d]", err);
 		goto FINISH_OFF;
@@ -756,14 +748,6 @@ EXPORT_API int email_query_mails(char *conditional_clause_string, email_mail_dat
 	EM_IF_NULL_RETURN_VALUE(result_count, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(conditional_clause_string, EMAIL_ERROR_INVALID_PARAM);
 
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
-
 	if (!emstorage_query_mail_tbl(conditional_clause_string, true, &result_mail_tbl, result_count, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_query_mail_list failed [%d]", err);
 
@@ -791,14 +775,6 @@ EXPORT_API int email_query_mail_list(char *input_conditional_clause_string, emai
 	
 	EM_IF_NULL_RETURN_VALUE(input_conditional_clause_string, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(output_result_count, EMAIL_ERROR_INVALID_PARAM);
-
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
 
 	if (!emstorage_query_mail_list(input_conditional_clause_string, true, output_mail_list, output_result_count, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_query_mail_list failed [%d]", err);
@@ -888,14 +864,6 @@ EXPORT_API int email_get_attachment_data_list(int input_mail_id, email_attachmen
 	EM_DEBUG_API_BEGIN ("input_mail_id[%d] output_attachment_data[%p] output_attachment_count[%p]", input_mail_id, output_attachment_data, output_attachment_count);
 	int err = EMAIL_ERROR_NONE;
 	
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		return err;
-	}
-#endif
-
 	if((err = emcore_get_attachment_data_list(input_mail_id, output_attachment_data, output_attachment_count)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_get_attachment_data_list failed [%d]", err);
 	}
@@ -925,14 +893,6 @@ EXPORT_API int email_get_mail_list_ex(email_list_filter_t *input_filter_list, in
 
 	EM_IF_NULL_RETURN_VALUE(output_mail_list, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(output_result_count, EMAIL_ERROR_INVALID_PARAM);
-
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
 
 	if( (err = emstorage_write_conditional_clause_for_getting_mail_list(input_filter_list, input_filter_count, input_sorting_rule_list, input_sorting_rule_count, input_start_index, input_limit_count, &conditional_clause_string)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_write_conditional_clause_for_getting_mail_list failed[%d]", err);
@@ -981,14 +941,6 @@ EXPORT_API int email_get_mails(int account_id , int mailbox_id, int thread_id, i
 		goto FINISH_OFF;
 	}
 
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
-
 	if (!emstorage_get_mails(account_id, mailbox_id, NULL, thread_id, start_index, limit_count, sorting, true, &mail_tbl_list, result_count, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_mails failed [%d]", err);
 
@@ -1021,14 +973,6 @@ EXPORT_API int email_get_mail_list(int account_id , int mailbox_id, int thread_i
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
-
 	if (!emstorage_get_mail_list(account_id, mailbox_id, NULL, thread_id, start_index, limit_count, 0, NULL, sorting, true, mail_list, result_count, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_mail_list failed [%d]", err);
 
@@ -1057,14 +1001,6 @@ EXPORT_API int email_get_mail_by_address(int account_id , int mailbox_id, email_
 		return err;
 	}
 
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
-
 	if (!emstorage_get_mail_list(account_id, mailbox_id, addr_list, EMAIL_LIST_TYPE_NORMAL, start_index, limit_count, search_type, search_value, sorting, true, &mail_list_item, result_count, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mail_list failed [%d]", err);
 
@@ -1085,14 +1021,6 @@ EXPORT_API int email_get_thread_information_by_thread_id(int thread_id, email_ma
 	emstorage_mail_tbl_t *mail_table_data = NULL;
 	
 	EM_IF_NULL_RETURN_VALUE(thread_info, EMAIL_ERROR_INVALID_PARAM);
-
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
 
 	if (!emstorage_get_thread_information(thread_id, &mail_table_data , true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_thread_information  failed [%d]", err);
@@ -1121,14 +1049,6 @@ EXPORT_API int email_get_thread_information_ex(int thread_id, email_mail_list_it
 	email_mail_list_item_t *temp_thread_info = NULL;
 	
 	EM_IF_NULL_RETURN_VALUE(thread_info, EMAIL_ERROR_INVALID_PARAM);
-
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
 
 	if (!emstorage_get_thread_information(thread_id, &mail_table_data , true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_thread_information -- failed [%d]", err);
@@ -1181,14 +1101,6 @@ EXPORT_API int email_get_mail_data(int input_mail_id, email_mail_data_t **output
 	EM_DEBUG_API_BEGIN ("input_mail_id[%d]", input_mail_id);
 	int err = EMAIL_ERROR_NONE;
 	
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		return err;
-	}
-#endif
-
 	if ( ((err = emcore_get_mail_data(input_mail_id, output_mail_data)) != EMAIL_ERROR_NONE) || !output_mail_data) 
 		EM_DEBUG_EXCEPTION("emcore_get_mail_data failed [%d]", err);	
 		
@@ -1644,14 +1556,6 @@ EXPORT_API int email_get_address_info_list(int mail_id, email_address_info_list_
 		return err;
 	}
 	
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
-
 	if ( !emcore_get_mail_address_info_list(mail_id, &temp_address_info_list, &err) ) {
 		EM_DEBUG_EXCEPTION("emcore_get_mail_address_info_list failed [%d]", err);
 
@@ -1698,14 +1602,6 @@ EXPORT_API int email_query_meeting_request(char *input_conditional_clause_string
 	EM_IF_NULL_RETURN_VALUE(input_conditional_clause_string, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(output_count, EMAIL_ERROR_INVALID_PARAM);
 
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		return err;
-	}
-#endif
-
 	if ((err = emstorage_query_meeting_request(input_conditional_clause_string, output_meeting_req, output_count, true)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_query_meeting_request failed [%d]", err);
 	}
@@ -1729,14 +1625,6 @@ EXPORT_API int email_get_meeting_request(int mail_id, email_meeting_request_t **
 		return err;
 	}
 	
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
-
 	if ( !emstorage_get_meeting_request(mail_id, &temp_meeting_req, 1, &err) ) {
 		EM_DEBUG_EXCEPTION("emstorage_get_meeting_request failed[%d]", err);
 

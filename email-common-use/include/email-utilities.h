@@ -68,8 +68,6 @@ extern        char* strcasestr(__const char *__haystack, __const char *__needle)
 INTERNAL_FUNC int   em_get_account_server_type_by_account_id(int account_id, email_account_server_t* account_server_type, int flag, int *error);
 
 INTERNAL_FUNC int   em_get_handle_for_activesync(int *handle, int *error);
-INTERNAL_FUNC int   em_check_socket_privilege_by_pid(int pid);
-INTERNAL_FUNC int   em_check_db_privilege_by_pid(int pid);
 
 /* thread handle definition */
 typedef struct {

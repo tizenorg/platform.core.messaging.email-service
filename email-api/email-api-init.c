@@ -45,14 +45,6 @@ EXPORT_API int email_open_db(void)
 	EM_DEBUG_API_BEGIN ();
 	int error  = EMAIL_ERROR_NONE;
 	
-#ifdef __FEATURE_ACCESS_CONTROL__
-	error = em_check_db_privilege_by_pid(getpid());
-	if (error == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_EXCEPTION ("permission denied");
-		return error;
-	}
-#endif
-
 	if (emstorage_db_open(&error) == NULL)
 		EM_DEBUG_EXCEPTION("emstorage_db_open failed [%d]", error);
 	
@@ -110,14 +102,6 @@ EXPORT_API int email_init_storage(void)
 	EM_DEBUG_API_BEGIN ();
 	int error  = EMAIL_ERROR_NONE;
 	
-#ifdef __FEATURE_ACCESS_CONTROL__
-	error = em_check_db_privilege_by_pid(getpid());
-	if (error == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		return error;
-	}
-#endif
-
 	if (!emstorage_create_table(EMAIL_CREATE_DB_CHECK, &error))  {
 		EM_DEBUG_EXCEPTION("emstorage_create_table failed [%d]", error);
 	}

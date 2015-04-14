@@ -154,16 +154,7 @@ EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **
 	EM_IF_NULL_RETURN_VALUE(email_address, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(certificate, EMAIL_ERROR_INVALID_PARAM);
 
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		return err;
-	}
-#endif
-
 	SNPRINTF(temp_email_address, sizeof(temp_email_address), "<%s>", email_address);
-	
 	if (!emstorage_get_certificate_by_email_address(temp_email_address, &cert, false, 0, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_certificate_by_index failed - %d", err);
 		return err;
@@ -197,14 +188,6 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
 
 	if ((err = emcore_get_mail_data(mail_id, &p_output_mail_data)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_get_mail_data failed");

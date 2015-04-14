@@ -611,14 +611,6 @@ EXPORT_API int email_get_mailbox_list(int account_id, int mailbox_sync_type, ema
 	EM_IF_ACCOUNT_ID_NULL(account_id, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(count, EMAIL_ERROR_INVALID_PARAM);
 
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
-
 	if (!emstorage_get_mailbox_list(account_id, mailbox_sync_type, EMAIL_MAILBOX_SORT_BY_NAME_ASC, &mailbox_count, &mailbox_tbl_list, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox failed [%d]", err);
 
@@ -663,14 +655,6 @@ EXPORT_API int email_get_mailbox_list_ex(int account_id, int mailbox_sync_type, 
 	EM_IF_ACCOUNT_ID_NULL(account_id, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(count, EMAIL_ERROR_INVALID_PARAM);
 
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
-
 	if (!emstorage_get_mailbox_list_ex(account_id, mailbox_sync_type, with_count, &mailbox_count, &mailbox_tbl_list, true, &err))  {	
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_list_ex failed [%d]", err);
 
@@ -713,14 +697,6 @@ EXPORT_API int email_get_mailbox_list_by_keyword(int account_id, char *keyword, 
 
 	EM_IF_NULL_RETURN_VALUE(mailbox_list, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(count, EMAIL_ERROR_INVALID_PARAM);
-
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
 
 	if (!emstorage_get_mailbox_by_keyword(account_id, keyword, &mailbox_tbl_list, &mailbox_count, true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_keyword failed [%d]", err);
@@ -765,14 +741,6 @@ EXPORT_API int email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_t
 	if(mailbox_type < EMAIL_MAILBOX_TYPE_INBOX || mailbox_type > EMAIL_MAILBOX_TYPE_USER_DEFINED)
 		return EMAIL_ERROR_INVALID_PARAM;
 
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
-
 	if (!emstorage_get_mailbox_by_mailbox_type(account_id, mailbox_type, &local_mailbox, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
 
@@ -802,14 +770,6 @@ EXPORT_API int email_get_mailbox_by_mailbox_id(int input_mailbox_id, email_mailb
 	emstorage_mailbox_tbl_t* local_mailbox = NULL;
 
 	EM_IF_NULL_RETURN_VALUE(output_mailbox, EMAIL_ERROR_INVALID_PARAM);
-
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		return err;
-	}
-#endif
 
 	if ( (err = emstorage_get_mailbox_by_id(input_mailbox_id, &local_mailbox)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed [%d]", err);
@@ -888,14 +848,6 @@ EXPORT_API int email_stamp_sync_time_of_mailbox(int input_mailbox_id)
 	int err = EMAIL_ERROR_NONE;
 
 	EM_IF_NULL_RETURN_VALUE(input_mailbox_id, EMAIL_ERROR_INVALID_PARAM);
-
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		return err;
-	}
-#endif
 
 	err = emstorage_stamp_last_sync_time_of_mailbox(input_mailbox_id, 1);
 

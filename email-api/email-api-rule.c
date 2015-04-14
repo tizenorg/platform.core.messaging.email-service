@@ -46,14 +46,6 @@ EXPORT_API int email_get_rule(int filter_id, email_rule_t** filtering_set)
 	EM_IF_NULL_RETURN_VALUE(filtering_set, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(filter_id, EMAIL_ERROR_INVALID_PARAM);
 
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
-
 	if (!emstorage_get_rule_by_id(filter_id, (emstorage_rule_tbl_t**)filtering_set, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_rule_by_id failed [%d]", err);
 
@@ -76,14 +68,6 @@ EXPORT_API int email_get_rule_list(email_rule_t** filtering_set, int* count)
 	
 	EM_IF_NULL_RETURN_VALUE(filtering_set, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(count, EMAIL_ERROR_INVALID_PARAM);
-
-#ifdef __FEATURE_ACCESS_CONTROL__
-	err = em_check_db_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		goto FINISH_OFF;
-	}
-#endif
 
 	*count = 1000;
 	

@@ -58,15 +58,6 @@ EXPORT_API bool emipc_start_proxy_socket()
 		return false;
 	}
 
-#ifdef __FEATURE_ACCESS_CONTROL__
-	int err = EMAIL_ERROR_NONE;
-	err = em_check_socket_privilege_by_pid(getpid());
-	if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-		EM_DEBUG_LOG("permission denied");
-		return false;
-	}
-#endif
-
 	ret = emipc_connect_email_socket(socket_fd);
 	if (!ret) {
 		EM_DEBUG_EXCEPTION("emipc_connect_email_socket failed");
@@ -104,15 +95,6 @@ EXPORT_API bool emipc_end_proxy_socket()
 
 		/* close the socket of current thread */
 		if( tid == cur_socket->tid ) {
-#ifdef __FEATURE_ACCESS_CONTROL__
-			int err = EMAIL_ERROR_NONE;
-			err = em_check_socket_privilege_by_pid(cur_socket->pid);
-			if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-				LEAVE_CRITICAL_SECTION(proxy_mutex); /*prevent 30968*/
-				EM_DEBUG_LOG("permission denied");
-				return false;
-			}
-#endif
 			emipc_close_email_socket(&cur_socket->socket_fd);
 			EM_SAFE_FREE(cur_socket);
 			GList *del = cur;
@@ -142,16 +124,6 @@ EXPORT_API bool emipc_end_all_proxy_sockets()
 
 		/* close all sockets of the pid */
 		if( pid == cur_socket->pid ) {
-#ifdef __FEATURE_ACCESS_CONTROL__
-			int err = EMAIL_ERROR_NONE;
-			err = em_check_socket_privilege_by_pid(cur_socket->pid);
-			if (err == EMAIL_ERROR_PERMISSION_DENIED) {
-				LEAVE_CRITICAL_SECTION(proxy_mutex); /*prevent 30967*/
-				EM_DEBUG_LOG("permission denied");
-				return false;
-			}
-#endif
-
 			emipc_close_email_socket(&cur_socket->socket_fd);
 			EM_SAFE_FREE(cur_socket);
 			GList *del = cur;

@@ -36,7 +36,6 @@
 #include <malloc.h>
 #include <pthread.h>
 #include <regex.h>
-#include <security-server.h>
 
 #include "c-client.h"
 
@@ -932,37 +931,6 @@ FINISH_OFF:
 
 	return ret;
 }
-
-INTERNAL_FUNC int em_check_socket_privilege_by_pid(int pid)
-{
-	EM_DEBUG_FUNC_BEGIN("pid [%d]", pid);
-	int smack_ret = 0;
-
-	smack_ret = security_server_check_privilege_by_pid(pid, "email-service::write", "rw");
-	if (smack_ret == SECURITY_SERVER_API_ERROR_ACCESS_DENIED) {
-		EM_DEBUG_EXCEPTION("SECURITY_SERVER_API_ERROR_ACCESS_DENIED");
-		return EMAIL_ERROR_PERMISSION_DENIED;
-	}
-
-	EM_DEBUG_FUNC_END();
-	return EMAIL_ERROR_NONE;
-}
-
-INTERNAL_FUNC int em_check_db_privilege_by_pid(int pid)
-{
-	EM_DEBUG_FUNC_BEGIN("pid [%d]", pid);
-	int smack_ret = 0;
-
-	smack_ret = security_server_check_privilege_by_pid(pid, "email-service::db", "rw");
-	if (smack_ret == SECURITY_SERVER_API_ERROR_ACCESS_DENIED) {
-		EM_DEBUG_EXCEPTION("SECURITY_SERVER_API_ERROR_ACCESS_DENIED");
-		return EMAIL_ERROR_PERMISSION_DENIED;
-	}
-
-	EM_DEBUG_FUNC_END();
-	return EMAIL_ERROR_NONE;
-}
-
 
 /* thread with task queue generic functions */
 

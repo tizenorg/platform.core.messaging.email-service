@@ -81,7 +81,6 @@ extern "C"
 /* #define __FEATURE_BLOCKING_MODE__ */
 #define __FEATURE_BODY_SEARCH__
 /* #define __FEATURE_USE_APPSYNC__ */
-/* #define __FEATURE_ACCESS_CONTROL__ */
 /* #define __FEATURE_IMAP_QUOTA__ */
 
 
