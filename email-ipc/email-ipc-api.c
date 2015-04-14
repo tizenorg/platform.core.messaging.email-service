@@ -82,6 +82,12 @@ EXPORT_API long emipc_get_app_id(HIPC_API api)
 	return api_info->app_id;
 }
 
+EXPORT_API long emipc_get_permission(HIPC_API api)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
+	return api_info->permission;
+}
 /* note: there incurs additional cost (malloc & memcpy). */
 /* if data is a dynamic variable, please use emipc_dynamic_parameter instead */
 EXPORT_API bool emipc_add_parameter(HIPC_API api, EPARAMETER_DIRECTION direction, void *data, int data_length)

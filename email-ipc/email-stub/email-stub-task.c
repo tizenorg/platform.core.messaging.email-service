@@ -46,7 +46,7 @@ EXPORT_API void emipc_free_email_task(emipc_email_task *task)
 	EM_SAFE_FREE(task->api_info);
 }
 
-EXPORT_API bool emipc_parse_stream_email_task(emipc_email_task *task, void *stream, int response_id)
+EXPORT_API bool emipc_parse_stream_email_task(emipc_email_task *task, void *stream, int response_id, int permission)
 {
 	EM_DEBUG_FUNC_BEGIN();
 
@@ -62,7 +62,9 @@ EXPORT_API bool emipc_parse_stream_email_task(emipc_email_task *task, void *stre
 			EM_DEBUG_EXCEPTION("emipc_deserialize_api_info failed");
 			return false;
 		}
+
 		task->api_info->response_id = response_id;
+		task->api_info->permission  = permission;
 		return true;
 	}
 	return false;
