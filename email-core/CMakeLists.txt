@@ -178,6 +178,34 @@ SET_TARGET_PROPERTIES(${CORE-SOUND-LIB} PROPERTIES VERSION ${VERSION})
 INSTALL(TARGETS ${CORE-SOUND-LIB} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
 
 ##########################################################
+# Define cynara lib                                                  
+##########################################################
+
+SET(CYNARA-LIB "email-cynara")
+SET(CYNARA-SRCS 
+    ${CMAKE_SOURCE_DIR}/email-core/email-core-cynara.c
+)
+
+INCLUDE_DIRECTORIES(
+	${CMAKE_SOURCE_DIR}/email-common-use/include
+)
+
+INCLUDE(FindPkgConfig)
+SET(PKG_MODULES cynara-client cynara-creds-socket cynara-session)
+
+pkg_check_modules(cynara_pkgs REQUIRED ${PKG_MODULES})
+
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${cynara_pkgs_CFLAGS}")
+SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
+
+ADD_LIBRARY(${CYNARA-LIB} SHARED ${CYNARA-SRCS})
+TARGET_LINK_LIBRARIES(${CYNARA-LIB} ${cynara_pkgs_LDFLAGS} dl)
+SET_TARGET_PROPERTIES(${CYNARA-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
+SET_TARGET_PROPERTIES(${CYNARA-LIB} PROPERTIES VERSION ${VERSION})
+
+INSTALL(TARGETS ${CYNARA-LIB} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
+
+##########################################################
 # Define Core lib
 ##########################################################
 
@@ -215,9 +243,6 @@ INCLUDE_DIRECTORIES(
 INCLUDE(FindPkgConfig)
 pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys secure-storage openssl accounts-svc mm-player mm-session feedback alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge capi-appfw-application icu-i18n libtzplatform-config)
 
-
-#pkg_check_modules(core_pkgs REQUIRED glib-2.0 drm-client dlog dbus-1 gthread-2.0 uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage openssl accounts-svc mm-player mm-session feedback alarm-service notification libcurl libxml-2.0 cert-svc cert-svc-vcore badge capi-appfw-application icu-i18n libtzplatform-config)
-
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${core_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
@@ -248,7 +273,7 @@ SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
 
 ADD_LIBRARY(${CORE-LIB} SHARED ${CORE-SRCS})
 
-TARGET_LINK_LIBRARIES(${CORE-LIB} ${core_pkgs_LDFLAGS} ${STORAGE-LIB} ${NETWORK-LIB} ${DEVICE-LIB} ${CORE-SOUND-LIB})
+TARGET_LINK_LIBRARIES(${CORE-LIB} ${core_pkgs_LDFLAGS} ${STORAGE-LIB} ${NETWORK-LIB} ${DEVICE-LIB} ${CORE-SOUND-LIB} ${CYNARA-LIB})
 
 SET_TARGET_PROPERTIES(${CORE-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${CORE-LIB} PROPERTIES VERSION ${VERSION})

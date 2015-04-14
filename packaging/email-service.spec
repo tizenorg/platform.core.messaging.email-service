@@ -56,6 +56,10 @@ BuildRequires:  pkgconfig(pmapi)
 BuildRequires:  pkgconfig(libsmack)
 BuildRequires:  pkgconfig(deviced)
 BuildRequires:  pkgconfig(icu-i18n)
+BuildRequires:  pkgconfig(cynara-client)
+BuildRequires:  pkgconfig(cynara-creds-socket)
+BuildRequires:  pkgconfig(cynara-session)
+BuildRequires:  pkgconfig(cynara-creds-commons)
 BuildRequires:  pkgconfig(libtzplatform-config)
 Requires: libtzplatform-config
 

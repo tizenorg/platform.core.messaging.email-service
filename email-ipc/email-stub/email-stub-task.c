@@ -62,6 +62,7 @@ EXPORT_API bool emipc_parse_stream_email_task(emipc_email_task *task, void *stre
 			EM_DEBUG_EXCEPTION("emipc_deserialize_api_info failed");
 			return false;
 		}
+
 		task->api_info->response_id = response_id;
 		return true;
 	}

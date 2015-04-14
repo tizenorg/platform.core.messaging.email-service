@@ -3222,6 +3222,20 @@ void stb_API_mapper(HIPC_API a_hAPI)
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
 	int nAPIID = emipc_get_api_id(a_hAPI);
+	int client_fd = emipc_get_response_id(a_hAPI);
+
+	err = emcore_check_privilege(client_fd);
+	if (err != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_check_privilege failed : [%d]", err);
+
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+			EM_DEBUG_EXCEPTION("emipc_add_paramter failed");
+
+		if (!emipc_execute_stub_api(a_hAPI))
+			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
+
+		return;
+	}
 
 	switch(nAPIID) {
 		case _EMAIL_API_ADD_ACCOUNT:

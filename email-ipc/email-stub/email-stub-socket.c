@@ -107,7 +107,7 @@ static void *emipc_stub_socket_thread_proc()
 static int emipc_check_connected(int fd)
 {
 	EM_DEBUG_FUNC_BEGIN ("fd[%d]", fd);
-	int found = (g_list_find (connected_fd, (gpointer)fd))? true : false;
+	int found = (g_list_find(connected_fd, (gpointer)fd)) ? true : false;
 	EM_DEBUG_FUNC_END ("fd found?? [%d]", found);
 	return found;
 }
@@ -158,19 +158,22 @@ EXPORT_API void emipc_wait_for_ipc_request()
 		} else {
 			for (i = 0; i < event_num; i++) {
 				int event_fd = events[i].data.fd;
+				GList *tmp_list = NULL;
 
 				if (event_fd == stub_socket) { /*  if it is socket connection request */
 					int cfd = emipc_accept_email_socket (stub_socket);
 					if (cfd < 0) {
 						EM_DEBUG_EXCEPTION ("emipc_accept_email_socket failed [%d]", cfd);
-						/* EM_DEBUG_CRITICAL_EXCEPTION ("accept failed: %s[%d]", EM_STRERROR(errno_buf), errno);*/
+						continue;
 					}
 					ev.events = EPOLLIN;
 					ev.data.fd = cfd;
 					if (epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &ev) == -1) {
 						EM_DEBUG_EXCEPTION("epoll_ctl failed [%s][%d]", EM_STRERROR(errno_buf), errno);
-						/*EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl failed:%s[%d]", EM_STRERROR(errno_buf), errno);*/
+						close(cfd);
+						continue;
 					}
+
 					connected_fd = g_list_prepend (connected_fd, (gpointer)cfd);
 				} else {
 					int recv_len;
@@ -178,7 +181,7 @@ EXPORT_API void emipc_wait_for_ipc_request()
 					
 					recv_len = emipc_recv_email_socket(event_fd, &sz_buf);
 					
-					if(recv_len > 0) {
+					if (recv_len > 0) {
 						EM_DEBUG_LOG("[IPCLib]Stub Socket Recv [Socket ID = %d], [recv_len = %d]", event_fd, recv_len);
 
 						/* IPC request stream is at least 16byte */
@@ -186,13 +189,14 @@ EXPORT_API void emipc_wait_for_ipc_request()
 							emipc_create_task((unsigned char *)sz_buf, event_fd);
 						} else
 							EM_DEBUG_LOG("[IPCLib] Stream size is less than default size");
-					} else if( recv_len == 0 ) {
+					} else if (recv_len == 0) {
 						EM_DEBUG_LOG("[IPCLib] Client closed connection [%d]", event_fd);
 						if (epoll_ctl(epfd, EPOLL_CTL_DEL, event_fd, events) == -1) {
 							EM_DEBUG_EXCEPTION("epoll_ctl failed: %s[%d]", EM_STRERROR(errno_buf), errno);
 							EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl failed: %s[%d]", EM_STRERROR(errno_buf), errno);
 						}
-						connected_fd = g_list_remove (connected_fd, (gpointer)event_fd);
+						
+						connected_fd = g_list_remove(connected_fd, (gpointer)event_fd);
 						close(event_fd);
 					} 
 					EM_SAFE_FREE(sz_buf);
