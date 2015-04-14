@@ -452,6 +452,12 @@ INTERNAL_FUNC int emdaemon_initialize(int* err_code)
 
 	g_type_init();
 
+	err = emcore_init_cynara(NULL);
+	if (err != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_init_cynara failed : [%d]", err);
+		goto FINISH_OFF;
+	}
+
 	emstorage_shm_file_init(SHM_FILE_FOR_DB_LOCK);
 
 #ifdef __FEATURE_USE_SHARED_MUTEX_FOR_GENERATING_MAIL_ID__
@@ -542,7 +548,10 @@ INTERNAL_FUNC int emdaemon_finalize(int* err_code)
 		EM_DEBUG_EXCEPTION("_emdaemon_unload_email_core failed [%d]", err);
 		goto FINISH_OFF;
 	}
-	
+
+	/* Finish cynara */
+	emcore_finish_cynara();
+
 	/* free account reference list */
 	emcore_free_account_reference();
 	

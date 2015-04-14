@@ -1,7 +1,7 @@
 /*
 *  email-service
 *
-* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright (c) 2012 - 2015 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 * 
@@ -109,7 +109,7 @@ EXPORT_API void *emipc_do_task_thread()
 }
 
 /* code for ipc handler */
-EXPORT_API bool emipc_create_task(unsigned char *task_stream, int response_channel)
+EXPORT_API bool emipc_create_task(unsigned char *task_stream, int response_channel, int permission)
 {
 	emipc_email_task *task = NULL;
 	bool ret = true;
@@ -119,7 +119,7 @@ EXPORT_API bool emipc_create_task(unsigned char *task_stream, int response_chann
 		EM_DEBUG_EXCEPTION("Malloc failed.");
 		ret = false;
 	} else {
-		if (!emipc_parse_stream_email_task(task, task_stream, response_channel)) {
+		if (!emipc_parse_stream_email_task(task, task_stream, response_channel, permission)) {
 			EM_DEBUG_EXCEPTION("emipc_parse_stream_email_task failed");
 			return false;
 		}
