@@ -52,6 +52,7 @@ EXPORT_API bool emipc_deserialize_api_info(emipc_email_api_info *api_info, EPARA
 	api_info->api_id = *((long *)stream + eSTREAM_APIID);
 	api_info->app_id = *((long*)stream + eSTREAM_APPID);
 	api_info->response_id = *((long*)stream + eSTREAM_RESID);
+	api_info->permission = *((long*)stream + eSTREAM_PERM);
 
 	return emipc_parse_stream_of_param_list(api_info->params[direction], stream);
 }
@@ -79,6 +80,7 @@ EXPORT_API unsigned char *emipc_serialize_api_info(emipc_email_api_info *api_inf
 		memcpy(stream, &(api_info->api_id), sizeof(api_info->api_id));
 		memcpy(stream+(sizeof(long)*eSTREAM_RESID), &(api_info->response_id), sizeof(api_info->response_id));
 		memcpy(stream+(sizeof(long)*eSTREAM_APPID), &(api_info->app_id), sizeof(api_info->app_id));
+		memcpy(stream+(sizeof(long)*eSTREAM_PERM), &(api_info->permission), sizeof(api_info->permission));
 	}
 	EM_DEBUG_FUNC_END();
 	return stream;

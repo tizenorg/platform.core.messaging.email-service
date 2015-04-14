@@ -33,7 +33,7 @@ typedef struct {
 
 EXPORT_API void emipc_free_email_task(emipc_email_task *task);
 
-EXPORT_API bool emipc_parse_stream_email_task(emipc_email_task *task, void *stream, int response_id);
+EXPORT_API bool emipc_parse_stream_email_task(emipc_email_task *task, void *stream, int response_id, int permission);
 
 EXPORT_API emipc_email_api_info *emipc_get_api_info(emipc_email_task *task);
 

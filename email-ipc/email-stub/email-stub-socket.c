@@ -48,6 +48,11 @@ GList *connected_fd = NULL;
 
 static void *emipc_stub_socket_thread_proc();
 
+typedef struct _privilege_checked_fd {
+	int socket_fd;
+	bool permission;
+} privilege_checked_fd;
+
 EXPORT_API bool emipc_start_stub_socket()
 {
 	bool ret = true;
@@ -104,10 +109,32 @@ static void *emipc_stub_socket_thread_proc()
 	return NULL;
 }
 
-static int emipc_check_connected(int fd)
+static int emipc_check_connected(int fd, int *output_index, int *output_permission)
 {
 	EM_DEBUG_FUNC_BEGIN ("fd[%d]", fd);
-	int found = (g_list_find (connected_fd, (gpointer)fd))? true : false;
+	int found = false;
+	int index = 0;
+	GList *tmp_list = NULL;
+	privilege_checked_fd *tmp_checked_fd = NULL;
+
+	tmp_list = g_list_first(connected_fd);
+	while (tmp_list) {
+		tmp_checked_fd = (privilege_checked_fd *)tmp_list->data;
+		if (tmp_checked_fd->socket_fd == fd) {
+			found = true;
+			break;
+		}
+
+		tmp_list=g_list_next(tmp_list);
+		index++;
+	}
+
+	if (output_permission)
+		*output_permission = tmp_checked_fd->permission;
+
+	if (output_index)
+		*output_index = index;
+
 	EM_DEBUG_FUNC_END ("fd found?? [%d]", found);
 	return found;
 }
@@ -158,20 +185,42 @@ EXPORT_API void emipc_wait_for_ipc_request()
 		} else {
 			for (i = 0; i < event_num; i++) {
 				int event_fd = events[i].data.fd;
+				GList *tmp_list = NULL;
 
 				if (event_fd == stub_socket) { /*  if it is socket connection request */
 					int cfd = emipc_accept_email_socket (stub_socket);
 					if (cfd < 0) {
 						EM_DEBUG_EXCEPTION ("emipc_accept_email_socket failed [%d]", cfd);
-						/* EM_DEBUG_CRITICAL_EXCEPTION ("accept failed: %s[%d]", EM_STRERROR(errno_buf), errno);*/
+						continue;
 					}
 					ev.events = EPOLLIN;
 					ev.data.fd = cfd;
 					if (epoll_ctl(epfd, EPOLL_CTL_ADD, cfd, &ev) == -1) {
 						EM_DEBUG_EXCEPTION("epoll_ctl failed [%s][%d]", EM_STRERROR(errno_buf), errno);
-						/*EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl failed:%s[%d]", EM_STRERROR(errno_buf), errno);*/
+						continue;
 					}
-					connected_fd = g_list_prepend (connected_fd, (gpointer)cfd);
+
+					int err = EMAIL_ERROR_NONE;
+					privilege_checked_fd *tmp_checked_fd = NULL;
+
+					tmp_checked_fd = em_malloc(sizeof(privilege_checked_fd));
+					if (tmp_checked_fd == NULL) {
+						EM_DEBUG_EXCEPTION("em_malloc failed");
+						continue;
+					}
+
+					tmp_checked_fd->socket_fd = cfd;
+
+					/* When the first connection, check the privilege */
+					if ((err = emcore_check_privilege(cfd)) != EMAIL_ERROR_NONE) {
+						EM_DEBUG_LOG("emcore_check_privilege failed : [%d]", err);
+						tmp_checked_fd->permission = false;
+					} else {
+						tmp_checked_fd->permission = true;
+					}
+
+					connected_fd = g_list_prepend (connected_fd, (gpointer)tmp_checked_fd);
+
 				} else {
 					int recv_len;
 					char *sz_buf = NULL;
@@ -181,9 +230,15 @@ EXPORT_API void emipc_wait_for_ipc_request()
 					if(recv_len > 0) {
 						EM_DEBUG_LOG("[IPCLib]Stub Socket Recv [Socket ID = %d], [recv_len = %d]", event_fd, recv_len);
 
-						/* IPC request stream is at least 16byte */
+						/* IPC request stream is at least 20byte */
 						if (recv_len >= sizeof(long) * eSTREAM_DATA) {
-							emipc_create_task((unsigned char *)sz_buf, event_fd);
+							int permission = false;
+							if (!emipc_check_connected(event_fd, NULL, &permission)) {
+								EM_DEBUG_EXCEPTION("Not Found client socket : [%d]", event_fd);
+								continue;
+							}
+
+							emipc_create_task((unsigned char *)sz_buf, event_fd, permission);
 						} else
 							EM_DEBUG_LOG("[IPCLib] Stream size is less than default size");
 					} else if( recv_len == 0 ) {
@@ -192,7 +247,17 @@ EXPORT_API void emipc_wait_for_ipc_request()
 							EM_DEBUG_EXCEPTION("epoll_ctl failed: %s[%d]", EM_STRERROR(errno_buf), errno);
 							EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl failed: %s[%d]", EM_STRERROR(errno_buf), errno);
 						}
-						connected_fd = g_list_remove (connected_fd, (gpointer)event_fd);
+						
+						int index = 0;
+						gpointer data = NULL;
+
+						if (!emipc_check_connected(event_fd, &index, NULL)) {
+							EM_DEBUG_EXCEPTION("Not found client socket : [%d]", event_fd);
+							continue;
+						}
+
+						data = g_list_nth_data(connected_fd, (guint)index);
+						connected_fd = g_list_remove (connected_fd, data);
 						close(event_fd);
 					} 
 					EM_SAFE_FREE(sz_buf);
@@ -225,7 +290,7 @@ EXPORT_API int emipc_send_stub_socket(int sock_fd, void *data, int len)
 	EM_DEBUG_FUNC_BEGIN("Stub socket sending %d bytes", len);
 
 	int sending_bytes = 0;
-	if (emipc_check_connected(sock_fd)) { /* client may be shut down and the sock_fd can be reused by another module */
+	if (emipc_check_connected(sock_fd, NULL, NULL)) { /* client may be shut down and the sock_fd can be reused by another module */
 		sending_bytes = emipc_send_email_socket(sock_fd, data, len);
 	}
 
