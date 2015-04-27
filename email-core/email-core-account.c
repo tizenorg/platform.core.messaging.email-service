@@ -34,8 +34,10 @@
 #include <string.h>
 #include <time.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <vconf.h>
 #include <curl/curl.h>
+#include <sys/shm.h>
 
 #include "email-convert.h"
 #include "email-types.h"
@@ -51,11 +53,12 @@
 #include "email-core-mailbox.h"
 #include "email-core-signal.h"
 #include "email-core-imap-mailbox.h"
+#include "email-core-container.h"
 
-#if defined(__FEATURE_USING_ACCOUNT_SVC_FOR_ACCOUNT_MANAGEMENT__) || defined(__FEATURE_USING_ACCOUNT_SVC_FOR_SYNC_STATUS__)
+#include "imap4r1.h"
+
 #include "account.h"
 #include "account-types.h"
-#endif /*  __FEATURE_USING_ACCOUNT_SVC_FOR_ACCOUNT_MANAGEMENT__ */
 
 char *g_default_mbox_alias[MAILBOX_COUNT] =
 {
@@ -87,71 +90,119 @@ email_mailbox_type_e g_default_mbox_type[MAILBOX_COUNT] =
 	EMAIL_MAILBOX_TYPE_SPAMBOX,
 };
 
-static email_account_list_t *g_account_list = NULL;
-static int g_account_num = 0;
-static pthread_mutex_t _account_ref_lock = PTHREAD_MUTEX_INITIALIZER;
-
-INTERNAL_FUNC email_account_t* emcore_get_account_reference(int account_id)
+INTERNAL_FUNC email_account_t* emcore_get_account_reference(char *multi_user_name, int account_id)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d]", account_id);
-	email_account_list_t **p;
-	email_account_t *result_account = NULL;
+        int err = EMAIL_ERROR_NONE;
+        email_account_t *result_account = NULL;
+        emstorage_account_tbl_t *p_result_account = NULL;
 
-	if (account_id < 0){
-		emcore_get_account_from_unvalidated_account_list(account_id, &result_account);
-		return result_account;
-	}
-	else if (account_id > 0)  {
-		ENTER_CRITICAL_SECTION(_account_ref_lock);
-		p = &g_account_list;
-		while (*p)  {
-			if ((*p)->account->account_id == account_id) {
-				emcore_duplicate_account((*p)->account, &result_account, NULL);
-				break;
-			}
-			p = &(*p)->next;
-		}
-		LEAVE_CRITICAL_SECTION(_account_ref_lock);
+        if (account_id < 0){
+               emcore_get_account_from_unvalidated_account_list(account_id, &result_account);
+               return result_account;
+        } else if (account_id > 0) {
+                if (!emstorage_get_account_by_id(multi_user_name, account_id, EMAIL_ACC_GET_OPT_FULL_DATA, &p_result_account, false, &err)) {
+                    EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed : [%d]", err);
+                    return NULL;
+                }
 
-		if (result_account)
-			goto FINISH_OFF;
+                result_account = (email_account_t *)em_malloc(sizeof(email_account_t));
+                if (result_account == NULL) {
+                    EM_DEBUG_EXCEPTION("em_malloc failed");
+                    return NULL;
+                }
 
-		/*  refresh and check once again */
-		emcore_init_account_reference();
-		ENTER_CRITICAL_SECTION(_account_ref_lock);
-		if (g_account_num > 0 && g_account_list) {
-			p = &g_account_list;
-			while (*p)  {
-				if ((*p)->account->account_id == account_id) {
-					emcore_duplicate_account((*p)->account, &result_account, NULL);
-					break;
-				}
-				p = &(*p)->next;
-			}
-		}
-		LEAVE_CRITICAL_SECTION(_account_ref_lock);
-	}
+                em_convert_account_tbl_to_account(p_result_account, result_account);
 
-FINISH_OFF:
+                if (p_result_account)
+                    emstorage_free_account(&p_result_account, 1, NULL);
+        }
+
 	EM_DEBUG_FUNC_END("[%p]", result_account);
 	return result_account;
 }
 
-
-INTERNAL_FUNC int emcore_validate_account_with_account_info(email_account_t *account, email_event_type_t event_type, int *err_code)
+INTERNAL_FUNC int emcore_get_account_reference_list(char *multi_user_name, email_account_t **output_account_list, int *output_count)
 {
-	EM_DEBUG_FUNC_BEGIN_SEC("account[%p], err_code[%p], incoming_server_address [%s]", account, err_code, account->incoming_server_address);
+	EM_DEBUG_FUNC_BEGIN("account_list[%p], count[%p]", output_account_list, output_count);
+    int err = EMAIL_ERROR_NONE;
+    int i = 0;
+    int account_count = 0;
+    email_account_t *account_list = NULL;
+    emstorage_account_tbl_t *account_list_tbl = NULL;
+
+    if (!emstorage_get_account_list(multi_user_name, &account_count, &account_list_tbl, false, true, &err)) {
+        EM_DEBUG_EXCEPTION("emstorage_get_account_list failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
+    if (account_count > 0) {
+        account_list = em_malloc(sizeof(email_account_t) * (account_count));
+        if (account_list == NULL) {
+            EM_DEBUG_EXCEPTION("em_malloc failed");
+            err = EMAIL_ERROR_OUT_OF_MEMORY;
+            goto FINISH_OFF;
+        }
+    }
+
+    for (i = 0; i < account_count; i++) {
+        em_convert_account_tbl_to_account(&account_list_tbl[i], &account_list[i]);    
+    }
+
+FINISH_OFF:
+
+    if (account_list_tbl)
+        emstorage_free_account(&account_list_tbl, account_count, NULL);
+
+    if (output_account_list)
+        *output_account_list = account_list;
+
+    if (output_count)
+        *output_count = account_count;
+
+	EM_DEBUG_FUNC_END();
+	return err;
+}
+
+static char *emcore_get_imap_capability_string(MAILSTREAM *input_stream)
+{
+	EM_DEBUG_FUNC_BEGIN_SEC("input_stream[%p]", input_stream);
+	char *result_string = NULL;
+	IMAPCAP *imap_capability = NULL;
+	char capability_string[512] = { 0, };
+
+	if ((imap_capability = imap_cap(input_stream))) {
+		if (imap_capability->idle)
+			EM_SAFE_STRCAT(capability_string, "IDLE ");
+		if (imap_capability->quota)
+			EM_SAFE_STRCAT(capability_string, "QUOTA ");
+		if (imap_capability->starttls)
+			EM_SAFE_STRCAT(capability_string, "STARTTLS ");
+#ifdef __FEATURE_XLIST_SUPPORT__
+		if (imap_capability->xlist)
+			EM_SAFE_STRCAT(capability_string, "XLIST ");
+#endif /* __FEATURE_XLIST_SUPPORT__ */
+		result_string = EM_SAFE_STRDUP(capability_string);
+	}
+
+	EM_DEBUG_FUNC_END("[%s]", result_string);
+	return result_string;
+}
+
+INTERNAL_FUNC int emcore_validate_account_with_account_info(char *multi_user_name, email_account_t *account, email_event_type_t event_type, char **output_server_capability_string, int event_handle, int *err_code)
+{
+	EM_DEBUG_FUNC_BEGIN_SEC("account[%p] output_server_capability_string[%p] err_code[%p] incoming_server_address [%s]", account, output_server_capability_string, err_code, account->incoming_server_address);
 
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
+	int server_capability_string_length = 0;
 	email_session_t *session = NULL;
+	char *imap_capability_string = NULL;
+	char smtp_capability_string[128] = { 0, };
 	SENDSTREAM *stream = NULL;
 	MAILSTREAM *tmp_stream = NULL;
 
-	if (!emcore_check_thread_status()) {
-		err = EMAIL_ERROR_CANCELLED;
-		goto FINISH_OFF;
-	}
+	FINISH_OFF_IF_EVENT_CANCELED (err, event_handle);
 
 	if (!emnetwork_check_network_status(&err)) {
 		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
@@ -159,90 +210,100 @@ INTERNAL_FUNC int emcore_validate_account_with_account_info(email_account_t *acc
 	}
 	EM_DEBUG_LOG("Network available");
 
-	if (!emcore_check_thread_status()) {
-		err = EMAIL_ERROR_CANCELLED;
-		goto FINISH_OFF;
-	}
+	FINISH_OFF_IF_EVENT_CANCELED (err, event_handle);
 
 	if (!emcore_get_empty_session(&session)) {
 		EM_DEBUG_EXCEPTION("emcore_get_empty_session failed...");
-		err = EMAIL_ERROR_SESSION_NOT_FOUND;
-		goto FINISH_OFF;
+/*		err = EMAIL_ERROR_SESSION_NOT_FOUND;
+		goto FINISH_OFF; */
 	}
 
 	/* validate connection for pop3/imap */
 	EM_DEBUG_LOG("Validate connection for POP3/IMAP4");
-	if (EMAIL_ERROR_NONE == err) {
-		if (!emcore_check_thread_status()) {
-			err = EMAIL_ERROR_CANCELLED;
-			goto FINISH_OFF;
-		}
 
-		if (!emcore_connect_to_remote_mailbox_with_account_info(account, 0, (void **)&tmp_stream, &err) || !tmp_stream) {
-			EM_DEBUG_LOG("emcore_connect_to_remote_mailbox failed [%d]", err);
-			if (EMAIL_ERROR_AUTHENTICATE == err || EMAIL_ERROR_LOGIN_FAILURE == err) {	/*  wrong password or etc */
-				EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed : Login or Authentication failed - %d", err);
-			} else if (EMAIL_ERROR_CONNECTION_FAILURE != err) {
-				/* err = EMAIL_ERROR_VALIDATE_ACCOUNT */
-			}
-			goto FINISH_OFF;
+	FINISH_OFF_IF_EVENT_CANCELED (err, event_handle);
+
+	if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, account, 0, (void **)&tmp_stream, &err) || !tmp_stream) {
+		EM_DEBUG_LOG("emcore_connect_to_remote_mailbox failed [%d]", err);
+		if (EMAIL_ERROR_AUTHENTICATE == err || EMAIL_ERROR_LOGIN_FAILURE == err) {	/*  wrong password or etc */
+			EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed : Login or Authentication failed - %d", err);
+		} else if (EMAIL_ERROR_CONNECTION_FAILURE != err) {
+			/* err = EMAIL_ERROR_VALIDATE_ACCOUNT */
 		}
+		goto FINISH_OFF;
 	}
+
+	if (account->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4)
+		imap_capability_string = emcore_get_imap_capability_string(tmp_stream);
 
 #ifdef __FEATURE_SMTP_VALIDATION__
 	/* validate connection for SMTP */
 	EM_DEBUG_LOG("Validate connection for SMTP server");
 
-	if (!emcore_check_thread_status()) {
-		err = EMAIL_ERROR_CANCELLED;
+	FINISH_OFF_IF_EVENT_CANCELED (err, event_handle);
+
+	if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, account, EMAIL_CONNECT_FOR_SENDING, (void **)&stream, &err) || !stream) {
+		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
+		err = EMAIL_ERROR_VALIDATE_ACCOUNT_OF_SMTP;
 		goto FINISH_OFF;
-	}
 
-	if (!emcore_connect_to_remote_mailbox_with_account_info(account, EMAIL_CONNECT_FOR_SENDING, (void **)&stream, &err) || !stream) {
-		EM_DEBUG_LOG("emcore_connect_to_remote_mailbox failed [%d]", err);
-		if (EMAIL_ERROR_AUTHENTICATE == err || EMAIL_ERROR_LOGIN_FAILURE == err) {
-			/* Wrong password or etc */
-			EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
-			err = EMAIL_ERROR_VALIDATE_ACCOUNT_OF_SMTP;
-			goto FINISH_OFF;
-		}
-
+#if 0
 		if (account->outgoing_server_secure_connection == 0x01)	/*  0x01 == SSL */ {
-			if (!emcore_check_thread_status()) {
-				err = EMAIL_ERROR_CANCELLED;
-				goto FINISH_OFF;
-			}
+			FINISH_OFF_IF_EVENT_CANCELED (err, event_handle);
 
 			EM_DEBUG_LOG("Retry with TLS");
 			account->outgoing_server_secure_connection = 0x02;	/*  0x02 == TLS */
 
-			if (!emcore_connect_to_remote_mailbox_with_account_info(account, EMAIL_CONNECT_FOR_SENDING, (void **)&stream, &err) || !stream) {
+			if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, account, EMAIL_CONNECT_FOR_SENDING, (void **)&stream, &err) || !stream) {
 				EM_DEBUG_LOG("emcore_connect_to_remote_mailbox failed [%d]", err);
 				err = EMAIL_ERROR_VALIDATE_ACCOUNT_OF_SMTP;
 				account->outgoing_server_secure_connection = 0x01;	/*  restore to the previous value */
 				goto FINISH_OFF;
 			}
 
-			if (!emcore_check_thread_status()) {
-				err = EMAIL_ERROR_CANCELLED;
-				goto FINISH_OFF;
-			}
+			FINISH_OFF_IF_EVENT_CANCELED (err, event_handle);
 		}
 		else {
-			if (EMAIL_ERROR_CONNECTION_FAILURE != err)
-				err = EMAIL_ERROR_VALIDATE_ACCOUNT_OF_SMTP;
+			err = EMAIL_ERROR_VALIDATE_ACCOUNT_OF_SMTP;
 			goto FINISH_OFF;
+		}
+#endif
+	}
+	if (stream && stream->protocol.esmtp.ok) {
+		if (stream->protocol.esmtp.size.ok && stream->protocol.esmtp.size.limit > 0) {
+			account->outgoing_server_size_limit = stream->protocol.esmtp.size.limit;
+			SNPRINTF(smtp_capability_string, 128, "SMTP_MAIL_SIZE_LIMIT=%d ", account->outgoing_server_size_limit);
+			EM_DEBUG_LOG("%s", smtp_capability_string);
 		}
 	}
 #endif /* __FEATURE_SMTP_VALIDATION__ */
 
-	if (!emcore_check_thread_status()) {
+	int dummy = 0;
+	if (!emcore_check_event_thread_status(&dummy, event_handle)) {
+		EM_DEBUG_LOG ("canceled event: [%d]", dummy);
 		if (event_type == EMAIL_EVENT_VALIDATE_AND_CREATE_ACCOUNT || event_type == EMAIL_EVENT_VALIDATE_ACCOUNT_EX) {
-			if (!emcore_delete_account(account->account_id, NULL))
+			if (!emcore_delete_account(multi_user_name, account->account_id, false, NULL))
 				EM_DEBUG_EXCEPTION("emdaemon_delete_account failed [%d]", account->account_id);
 		}
 		err = EMAIL_ERROR_CANCELLED;
 		goto FINISH_OFF;
+	}
+
+	if (output_server_capability_string) {
+		server_capability_string_length = EM_SAFE_STRLEN(imap_capability_string) + EM_SAFE_STRLEN(smtp_capability_string);
+		if (server_capability_string_length) {
+			*output_server_capability_string = em_malloc(server_capability_string_length + 1);
+
+			if	(*output_server_capability_string == NULL) {
+				EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
+				err = EMAIL_ERROR_OUT_OF_MEMORY;
+				goto FINISH_OFF;
+			}
+
+			EM_SAFE_STRCAT(*output_server_capability_string, smtp_capability_string);
+			EM_SAFE_STRCAT(*output_server_capability_string, imap_capability_string);
+			EM_DEBUG_LOG("%s", *output_server_capability_string);
+		}
 	}
 
 	ret = true;
@@ -257,6 +318,8 @@ FINISH_OFF:
 	if (err_code != NULL)
 		*err_code = err;
 
+	EM_SAFE_FREE(imap_capability_string);
+
 	emcore_clear_session(session);
 
 	EM_DEBUG_FUNC_END();
@@ -264,7 +327,7 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC int emcore_validate_account(int account_id, int *err_code)
+INTERNAL_FUNC int emcore_validate_account(char *multi_user_name, int account_id, int handle, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], err_code[%p]", account_id, err_code);
 
@@ -278,9 +341,9 @@ INTERNAL_FUNC int emcore_validate_account(int account_id, int *err_code)
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, account_id);
 
-	if (ref_account && emcore_validate_account_with_account_info(ref_account, EMAIL_EVENT_VALIDATE_ACCOUNT, &err) == false) {
+	if (ref_account && emcore_validate_account_with_account_info(multi_user_name, ref_account, EMAIL_EVENT_VALIDATE_ACCOUNT, NULL, handle, &err) == false) {
 		EM_DEBUG_EXCEPTION("emcore_validate_account_with_account_info failed (%d)", err);
 		goto FINISH_OFF;
 	}
@@ -302,9 +365,30 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
+key_t del_account_key = 4511; /* name of the segment d/4 e/5 l/11 */
+
+INTERNAL_FUNC int emcore_delete_account(char *multi_user_name, int account_id, int input_delete_from_account_svc, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], err_code[%p]", account_id, err_code);
+
+	int shmid = 0;
+	int *del_account_id = NULL;
+
+	EM_DEBUG_LOG ("begin account_id [%d]", account_id);
+	/* worker thread is single instance, so multiple accounts cant be deleted concurrently */
+	if ((shmid = shmget (del_account_key, sizeof (int), IPC_CREAT | 0666)) != -1) {
+		/* attaching the segment to the current process space */
+		if ((del_account_id = (int*) shmat (shmid, NULL, 0)) != (int*) -1) {
+			/* write it */
+			*del_account_id = account_id;
+			EM_DEBUG_LOG ("recorded account_id [%d]", *del_account_id);
+		}
+		else
+			EM_DEBUG_EXCEPTION ("shmget error[%d]", errno);
+
+	}
+	else
+		EM_DEBUG_EXCEPTION ("shmget error[%d]", errno);
 
 	/*  default variabl */
 	int ret = false;
@@ -314,20 +398,20 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 	if (account_id < FIRST_ACCOUNT_ID)  {
 		EM_DEBUG_EXCEPTION("account_id[%d]", account_id);
 		err = EMAIL_ERROR_INVALID_PARAM;
+		before_tr_begin = 1;
 		goto FINISH_OFF;
 	}
 
 #ifdef __FEATURE_LOCAL_ACTIVITY__
 	/* Delete all local activities of previous account */
-	
-
 	emstorage_activity_tbl_t activity;
 	memset(&activity, 0x00, sizeof(emstorage_activity_tbl_t));
 	activity.account_id = account_id;
+    activity.multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
 	if (!emcore_delete_activity(&activity, &err)) {
 		EM_DEBUG_LOG("\t emcore_delete_activity failed - %d", err);
-
+		before_tr_begin = 1;
 		goto FINISH_OFF;
 	}
 #endif
@@ -336,25 +420,43 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 	if (false == emcore_clear_partial_body_thd_event_que(&err))
 		EM_DEBUG_EXCEPTION(" emcore_clear_partial_body_thd_event_que [%d]", err);
 
-	if (false == emstorage_delete_full_pbd_activity_data(account_id, true, &err))
+	if (false == emstorage_delete_full_pbd_activity_data(multi_user_name, account_id, true, &err))
 		EM_DEBUG_EXCEPTION("emstorage_delete_full_pbd_activity_data failed [%d]", err);
 
 #endif
 
-#ifdef __FEATURE_USING_ACCOUNT_SVC_FOR_ACCOUNT_MANAGEMENT__
-	{
-		int error_code;
-		email_account_t *account_to_be_deleted;
+#ifdef __FEATURE_WIFI_AUTO_DOWNLOAD__
+	if (!emcore_clear_auto_download_queue())
+		EM_DEBUG_EXCEPTION("emcore_clear_auto_download_queue failed");
 
-		account_to_be_deleted = emcore_get_account_reference(account_id);
+	if (!emstorage_delete_all_auto_download_activity(multi_user_name, account_id, true, &err))
+		EM_DEBUG_EXCEPTION("emstorage_delete_all_auto_download_activity failed [%d]", err);
+#endif
+
+	if (input_delete_from_account_svc == true) {
+		int error_code_from_account_svc = 0;
+		email_account_t *account_to_be_deleted;
+		void *join_zone = NULL;
+
+		account_to_be_deleted = emcore_get_account_reference(multi_user_name, account_id);
 		if (account_to_be_deleted && account_to_be_deleted->incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
 			EM_DEBUG_LOG("Calling account_svc_delete with account_svc_id[%d]", account_to_be_deleted->account_svc_id);
-			error_code = account_connect();
-			EM_DEBUG_LOG("account_connect returns [%d]", error_code);
-			error_code = account_delete_from_db_by_id(account_to_be_deleted->account_svc_id);
-			EM_DEBUG_LOG("account_delete_from_db_by_id returns [%d]", error_code);
-			error_code = account_disconnect();
-			EM_DEBUG_LOG("account_disconnect returns [%d]", error_code);
+			if (EM_SAFE_STRLEN(multi_user_name) > 0) {
+				if ((err = emcore_set_join_zone(multi_user_name, &join_zone)) != EMAIL_ERROR_NONE) {
+					EM_DEBUG_EXCEPTION("emcore_set_join_zone failed : [%d]", err);
+					goto FINISH_OFF;
+				}
+			}
+			
+			error_code_from_account_svc = account_connect();
+
+			EM_DEBUG_LOG("account_connect returns [%d]", error_code_from_account_svc);
+			error_code_from_account_svc = account_delete_from_db_by_id(account_to_be_deleted->account_svc_id);
+			EM_DEBUG_LOG("account_delete_from_db_by_id returns [%d]", error_code_from_account_svc);
+			error_code_from_account_svc = account_disconnect();
+			EM_DEBUG_LOG("account_disconnect returns [%d]", error_code_from_account_svc);
+
+			emcore_unset_join_zone(join_zone);
 		}
 
 		if (account_to_be_deleted) {
@@ -362,26 +464,27 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 			EM_SAFE_FREE(account_to_be_deleted);
 		}
 	}
-#endif
-	if (emcore_cancel_all_threads_of_an_account(account_id) < EMAIL_ERROR_NONE) {
+
+	if (emcore_cancel_all_threads_of_an_account(multi_user_name, account_id) < EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("There are some remaining jobs. I couldn't stop them.");
 		err = EMAIL_ERROR_CANNOT_STOP_THREAD;
+		before_tr_begin = 1;
 		goto FINISH_OFF;
 	}
 
 	/* Delete contact log */
-	if ( ((err = emcore_delete_contacts_log(account_id)) != EMAIL_ERROR_NONE) && (err != EMAIL_ERROR_DATA_NOT_FOUND) ) {
-			EM_DEBUG_EXCEPTION("emcore_delete_contacts_log failed : [%d]", err);
+	if (((err = emcore_delete_contacts_log(multi_user_name, account_id)) != EMAIL_ERROR_NONE) && (err != EMAIL_ERROR_DATA_NOT_FOUND)) {
+        EM_DEBUG_EXCEPTION("emcore_delete_contacts_log failed : [%d]", err);
 	}
 
 	/*  BEGIN TRANSACTION;		 */
-	if (!emstorage_begin_transaction(NULL, NULL, &err)) {
+	if (!emstorage_begin_transaction(multi_user_name, NULL, NULL, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_begin_transaction failed [%d]", err);
 		before_tr_begin = 1;
 		goto FINISH_OFF;
 	}
-	
-	if (!emstorage_delete_account(account_id, false, &err))  {
+
+	if (!emstorage_delete_account(multi_user_name, account_id, false, &err)) {
 		if(err != EMAIL_ERROR_SYSTEM_FAILURE) {
 			EM_DEBUG_EXCEPTION("emstorage_delete_account failed [%d]", err);
 			goto FINISH_OFF;
@@ -393,13 +496,13 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 	emcore_remove_connection_info(account_id);
 #endif
 	
-	if ((err = emcore_delete_all_mails_of_acount(account_id)) != EMAIL_ERROR_NONE)  {
+	if ((err = emcore_delete_all_mails_of_acount(multi_user_name, account_id)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_delete_all_mails_of_acount failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	/*  delete all mailboxes */
-	if (!emstorage_delete_mailbox(account_id, -1, 0, false, &err))  {
+	if (!emstorage_delete_mailbox(multi_user_name, account_id, -1, 0, false, &err)) {
 		if(err != EMAIL_ERROR_MAILBOX_NOT_FOUND) {
 			EM_DEBUG_EXCEPTION("emstorage_delete_mailbox failed - %d", err);
 			goto FINISH_OFF;
@@ -407,20 +510,19 @@ INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code)
 	}
 
 	/*  delete local imap sync mailbox from imap mailbox table */
-	if (!emstorage_remove_downloaded_mail(account_id, NULL, NULL, false, &err))  {
+	if (!emstorage_remove_downloaded_mail(multi_user_name, account_id, NULL, NULL, false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_remove_downloaded_mail failed - %d", err);
 		goto FINISH_OFF;
 	}
 
-	emcore_display_unread_in_badge();
-	emcore_delete_notification_by_account(account_id, true);
-	emcore_init_account_reference();
+	emcore_display_unread_in_badge(multi_user_name);
+	emcore_delete_notification_by_account(multi_user_name, account_id, true);
 
 	ret = true;
 
 FINISH_OFF:
 	if (ret == true) {	/*  COMMIT TRANSACTION; */
-		if (emstorage_commit_transaction(NULL, NULL, NULL) == false) {
+		if (emstorage_commit_transaction(multi_user_name, NULL, NULL, NULL) == false) {
 			err = EMAIL_ERROR_DB_FAILURE;
 			ret = false;
 		}
@@ -429,7 +531,7 @@ FINISH_OFF:
 
 	}
 	else {	/*  ROLLBACK TRANSACTION; */
-		if (!before_tr_begin && emstorage_rollback_transaction(NULL, NULL, NULL) == false)
+		if (!before_tr_begin && emstorage_rollback_transaction(multi_user_name, NULL, NULL, NULL) == false)
 			err = EMAIL_ERROR_DB_FAILURE;
 		if (!emcore_notify_storage_event (NOTI_ACCOUNT_DELETE_FAIL, account_id, err, NULL, 0))
 			EM_DEBUG_EXCEPTION (" emcore_notify_storage_event[ NOTI_ACCOUNT_DELETE] : Notification Failed >>> ");
@@ -438,14 +540,19 @@ FINISH_OFF:
 	if (err_code)
 		*err_code = err;
 
+	/* del the segment */
+	if (shmid != -1) {
+		shmctl (shmid, IPC_RMID, NULL);
+	}
+
 	EM_DEBUG_FUNC_END();
 
 	return ret;
 }
 
-INTERNAL_FUNC int emcore_create_account(email_account_t *account, int *err_code)
+INTERNAL_FUNC int emcore_create_account(char *multi_user_name, email_account_t *account, int add_account_to_account_svc, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("account[%p], err_code[%p]", account, err_code);
+	EM_DEBUG_FUNC_BEGIN("account[%p] add_account_to_account_svc [%d] err_code[%p]", account, add_account_to_account_svc, err_code);
 
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
@@ -461,7 +568,7 @@ INTERNAL_FUNC int emcore_create_account(email_account_t *account, int *err_code)
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_get_account_count(&count, true, &err))  {
+	if (!emstorage_get_account_count(multi_user_name, &count, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_account_count failed - %d", err);
 		goto FINISH_OFF;
 	}
@@ -485,100 +592,117 @@ INTERNAL_FUNC int emcore_create_account(email_account_t *account, int *err_code)
 	/* check for email address validation */
 	EM_DEBUG_LOG_SEC("account->user_email_address[%s]", account->user_email_address);
 	if (account->user_email_address) {
-		if ((err = em_verify_email_address (account->user_email_address, true)) != EMAIL_ERROR_NONE) {
+		if ((err = em_verify_email_address (account->user_email_address)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("em_verify_email_address error [%d]", err);
 			goto FINISH_OFF;
 		}
 	}
 
-#ifdef __FEATURE_USING_ACCOUNT_SVC_FOR_ACCOUNT_MANAGEMENT__
-	if (account->incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
-		int account_svc_id = 0;
-		int error_code;
-		account_h account_handle = NULL;
-
-		error_code = account_connect();
-		if(error_code != ACCOUNT_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("account_connect failed [%d]", error_code);
-			err = error_code;
-			goto FINISH_OFF;
-		}
-
-		error_code = account_create(&account_handle);
-		if(error_code != ACCOUNT_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("account_create failed [%d]", error_code);
-			err = error_code;
-			account_disconnect();
-			goto FINISH_OFF;
-		}
-
-		error_code = account_set_user_name(account_handle, account->incoming_server_user_name);
-		if(error_code != ACCOUNT_ERROR_NONE) {
-			EM_DEBUG_LOG("account_set_user_name failed [%d]", error_code);
-		}
-
-		error_code = account_set_domain_name(account_handle, account->account_name);
-		if(error_code != ACCOUNT_ERROR_NONE) {
-			EM_DEBUG_LOG("account_set_domain_name failed [%d]", error_code);
-		}
-
-		error_code = account_set_email_address(account_handle,  account->user_email_address);
-		if(error_code != ACCOUNT_ERROR_NONE) {
-			EM_DEBUG_LOG("account_set_email_address failed [%d]", error_code);
-		}
-
-		error_code = account_set_source(account_handle, "SLP EMAIL");
-		if(error_code != ACCOUNT_ERROR_NONE) {
-			EM_DEBUG_LOG("account_set_source failed [%d]", error_code);
-		}
-
-		error_code = account_set_package_name(account_handle, "email-setting-efl");
-		if(error_code != ACCOUNT_ERROR_NONE) {
-			EM_DEBUG_LOG("account_set_package_name failed [%d]", error_code);
-		}
-
-		/* account_set_capability(account_handle , ACCOUNT_CAPABILITY_EMAIL, ACCOUNT_CAPABILITY_ENABLED); OLD API */
-		error_code = account_set_capability(account_handle , ACCOUNT_SUPPORTS_CAPABILITY_EMAIL , ACCOUNT_CAPABILITY_ENABLED);
-		if(error_code != ACCOUNT_ERROR_NONE) {
-			EM_DEBUG_LOG("account_set_capability failed [%d]", error_code);
-		}
-
-		error_code = account_set_sync_support(account_handle, ACCOUNT_SYNC_STATUS_IDLE); /* This means "The account is supporting 'sync' and initialized as idle status" */
-		if(error_code != ACCOUNT_ERROR_NONE) {
-			EM_DEBUG_LOG("account_set_sync_support failed [%d]", error_code);
-		}
-
-		if (account->logo_icon_path) {
-			error_code = account_set_icon_path(account_handle, account->logo_icon_path);
-			if(error_code != ACCOUNT_ERROR_NONE) {
-				EM_DEBUG_LOG("account_set_icon_path failed [%d]", error_code);
-			}
-		}
-
-		error_code = account_insert_to_db(account_handle, &account_svc_id); 
-		if (error_code != ACCOUNT_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("account_insert_to_db failed [%d]", error_code);
-		}
-		else {
-			account->account_svc_id = account_svc_id;
-			EM_DEBUG_LOG("account_insert_to_db succeed");
-		}
-
-		if (account_handle)
-			account_destroy(account_handle);
-
-		account_disconnect();
+	if (EM_SAFE_STRLEN(account->options.alert_ringtone_path) == 0) {
+		account->options.alert_ringtone_path = EM_SAFE_STRDUP(vconf_get_str(VCONFKEY_SETAPPL_NOTI_MSG_RINGTONE_PATH_STR));
 	}
-#endif  /*  __FEATURE_USING_ACCOUNT_SVC_FOR_ACCOUNT_MANAGEMENT__ */
+
+	if (add_account_to_account_svc) {
+		if (account->incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
+			int account_svc_id = 0;
+			int error_code = 0;
+			account_h account_handle = NULL;
+			void *join_zone = NULL;
+
+			if (EM_SAFE_STRLEN(multi_user_name) > 0) {
+				err = emcore_set_join_zone(multi_user_name, &join_zone);
+				if (err != EMAIL_ERROR_NONE) {
+					EM_DEBUG_EXCEPTION("emcore_set_join_zone failed : [%d]", err);
+					goto FINISH_OFF;
+				}
+			}
+
+			error_code = account_connect();
+			if(error_code != ACCOUNT_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("account_connect_to_container failed [%d]", error_code);
+				err = error_code;
+				emcore_unset_join_zone(join_zone);
+				goto FINISH_OFF;
+			}
+
+			error_code = account_create(&account_handle);
+			if(error_code != ACCOUNT_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("account_create failed [%d]", error_code);
+				err = error_code;
+				account_disconnect();
+				emcore_unset_join_zone(join_zone);
+				goto FINISH_OFF;
+			}
+
+			error_code = account_set_user_name(account_handle, account->incoming_server_user_name);
+			if(error_code != ACCOUNT_ERROR_NONE) {
+				EM_DEBUG_LOG("account_set_user_name failed [%d]", error_code);
+			}
+
+			error_code = account_set_domain_name(account_handle, account->account_name);
+			if(error_code != ACCOUNT_ERROR_NONE) {
+				EM_DEBUG_LOG("account_set_domain_name failed [%d]", error_code);
+			}
+
+			error_code = account_set_email_address(account_handle,  account->user_email_address);
+			if(error_code != ACCOUNT_ERROR_NONE) {
+				EM_DEBUG_LOG("account_set_email_address failed [%d]", error_code);
+			}
+
+			error_code = account_set_source(account_handle, "SLP EMAIL");
+			if(error_code != ACCOUNT_ERROR_NONE) {
+				EM_DEBUG_LOG("account_set_source failed [%d]", error_code);
+			}
+
+			error_code = account_set_package_name(account_handle, "email-setting-efl");
+			if(error_code != ACCOUNT_ERROR_NONE) {
+				EM_DEBUG_LOG("account_set_package_name failed [%d]", error_code);
+			}
+
+			/* account_set_capability(account_handle , ACCOUNT_CAPABILITY_EMAIL, ACCOUNT_CAPABILITY_ENABLED); OLD API */
+			error_code = account_set_capability(account_handle , ACCOUNT_SUPPORTS_CAPABILITY_EMAIL , ACCOUNT_CAPABILITY_ENABLED);
+			if(error_code != ACCOUNT_ERROR_NONE) {
+				EM_DEBUG_LOG("account_set_capability failed [%d]", error_code);
+			}
+
+			error_code = account_set_sync_support(account_handle, ACCOUNT_SYNC_STATUS_IDLE); /* This means "The account is supporting 'sync' and initialized as idle status" */
+			if(error_code != ACCOUNT_ERROR_NONE) {
+				EM_DEBUG_LOG("account_set_sync_support failed [%d]", error_code);
+			}
+
+			if (account->logo_icon_path) {
+				error_code = account_set_icon_path(account_handle, account->logo_icon_path);
+				if(error_code != ACCOUNT_ERROR_NONE) {
+					EM_DEBUG_LOG("account_set_icon_path failed [%d]", error_code);
+				}
+			}
+
+			error_code = account_insert_to_db(account_handle, &account_svc_id);
+			if (error_code != ACCOUNT_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("account_insert_to_db failed [%d]", error_code);
+			}
+			else {
+				account->account_svc_id = account_svc_id;
+				EM_DEBUG_LOG("account_insert_to_db succeed");
+			}
+
+			if (account_handle)
+				account_destroy(account_handle);
+
+			account_disconnect();
+			emcore_unset_join_zone(join_zone);
+		}
+	}
 
 	temp_account_tbl = em_malloc(sizeof(emstorage_account_tbl_t));
 	if (!temp_account_tbl) {
 		EM_DEBUG_EXCEPTION("allocation failed [%d]", err);
 		goto FINISH_OFF;
 	}
+
 	em_convert_account_to_account_tbl(account, temp_account_tbl);
 
-	if (!emstorage_add_account(temp_account_tbl, true, &err))  {
+	if (!emstorage_add_account(multi_user_name, temp_account_tbl, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_add_account failed - %d", err);
 		goto FINISH_OFF;
 	}
@@ -592,7 +716,7 @@ INTERNAL_FUNC int emcore_create_account(email_account_t *account, int *err_code)
 			local_mailbox.account_id      = temp_account_tbl->account_id;
 			local_mailbox.mailbox_name    = EM_SAFE_STRDUP(g_default_mbox_name[i]);
 			local_mailbox.alias           = EM_SAFE_STRDUP(g_default_mbox_alias[i]);
-			local_mailbox.mailbox_type	  = g_default_mbox_type[i];
+			local_mailbox.mailbox_type    = g_default_mbox_type[i];
 			local_mailbox.mail_slot_size  = temp_account_tbl->default_mail_slot_size;
 			local_mailbox.eas_data        = NULL;
 			local_mailbox.eas_data_length = 0;
@@ -602,17 +726,17 @@ INTERNAL_FUNC int emcore_create_account(email_account_t *account, int *err_code)
 			else
 				local_mailbox.local = EMAIL_MAILBOX_FROM_LOCAL;
 
-			if (!emcore_create_mailbox(&local_mailbox, 0, &err))  {
+			if (!emcore_create_mailbox(multi_user_name, &local_mailbox, 0, account->incoming_server_type, account->default_mail_slot_size, &err)) {
 				EM_DEBUG_EXCEPTION("emcore_create failed [%d]", err);
 				emcore_free_mailbox(&local_mailbox);
 				goto FINISH_OFF;
 			}
-			
+
 			emcore_free_mailbox(&local_mailbox);
 		}
 	}
 
-	/* Initialize the noti private id */	
+	/* Initialize the noti private id */
 	SNPRINTF(vconf_private_id, sizeof(vconf_private_id), "%s/%d", VCONF_KEY_NOTI_PRIVATE_ID, account->account_id);
 	if (vconf_get_int(vconf_private_id, &private_id) != 0) {
 		EM_DEBUG_EXCEPTION("vconf_get_int failed");
@@ -621,18 +745,18 @@ INTERNAL_FUNC int emcore_create_account(email_account_t *account, int *err_code)
 			EM_DEBUG_EXCEPTION("vconf_set_int failed : [NOTI key initialize]");
 		}
 	}
-	
+
 	ret = true;
-	
-FINISH_OFF: 
+
+FINISH_OFF:
 	if (temp_account_tbl)
 		emstorage_free_account(&temp_account_tbl, 1, NULL);
-	
+
 	if (ret == false && account != NULL)  {
-		if (!emcore_delete_account(account->account_id, NULL))
+		if (!emcore_delete_account(multi_user_name, account->account_id, false, NULL))
 			EM_DEBUG_EXCEPTION("emdaemon_delete_account Failed [%d]", account->account_id);
 	}
-	
+
 	if (err_code)
 		*err_code = err;
 
@@ -640,112 +764,29 @@ FINISH_OFF:
 	return ret;
 }
 
-
-INTERNAL_FUNC int emcore_init_account_reference()
-{
-	EM_DEBUG_FUNC_BEGIN();
-	
-	int err = EMAIL_ERROR_NONE;
-	
-	email_account_list_t *account_list = NULL;
-	email_account_list_t **p = NULL;
-	email_account_t *account = NULL;
-	emstorage_account_tbl_t *account_tbl_array = NULL;
-	int count = 0;		
-	int i = 0;
-	
-	/* free account reference if any */
-	emcore_free_account_reference();
-
-	if (!emstorage_get_account_list(&count, &account_tbl_array, true, true, &err)) {
-		EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [%d]", err);
-		goto FINISH_OFF;
-	}
-
-	for (p = &account_list, i = 0; i < count; i++) {
-		account = em_malloc(sizeof(email_account_t));
-		if (!account) {
-			EM_DEBUG_EXCEPTION("malloc failed...");
-			err = EMAIL_ERROR_OUT_OF_MEMORY;
-			goto FINISH_OFF;
-		}
-		
-		em_convert_account_tbl_to_account(account_tbl_array + i, account);
-
-		*p = (email_account_list_t*) em_malloc(sizeof(email_account_list_t));
-		if (!(*p)) {
-			EM_DEBUG_EXCEPTION("malloc failed...");
-			emcore_free_account(account);
-			EM_SAFE_FREE(account);
-			err = EMAIL_ERROR_OUT_OF_MEMORY;
-			goto FINISH_OFF;
-		}
-
-		(*p)->account = account;
-
-		p = &(*p)->next;
-	}
-
-	ENTER_CRITICAL_SECTION(_account_ref_lock);
-	g_account_num = count;
-	g_account_list = account_list;
-	LEAVE_CRITICAL_SECTION(_account_ref_lock);
-
-FINISH_OFF: 
-	if (account_tbl_array)
-		emstorage_free_account(&account_tbl_array, count, NULL);
-
-	EM_DEBUG_FUNC_END("err [%d]", err);
-	return err;
-}
-
-INTERNAL_FUNC int emcore_free_account_reference()
-{
-	EM_DEBUG_FUNC_BEGIN();
-	ENTER_CRITICAL_SECTION(_account_ref_lock);
-
-	email_account_list_t *p = g_account_list;
-	email_account_list_t *p_next = NULL;
-	while (p) {
-		emcore_free_account(p->account);
-		EM_SAFE_FREE(p->account);
-		
-		p_next = p->next;
-		EM_SAFE_FREE(p);
-		p = p_next;
-	}
-
-	g_account_num = 0;
-	g_account_list = NULL;
-
-	LEAVE_CRITICAL_SECTION(_account_ref_lock);
-	EM_DEBUG_FUNC_END();
-	return true;
-}
-
 INTERNAL_FUNC int emcore_free_account_list(email_account_t **account_list, int count, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_list[%p], count[%d], err_code[%p]", account_list, count, err_code);
-	
+
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	
+
 	if (count <= 0 || !account_list || !*account_list) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-		
+
 	email_account_t *p = *account_list;
 	int i;
 	for (i = 0; i < count; i++)
 		emcore_free_account(p+i);
-		
+
 	EM_SAFE_FREE(p);
 	*account_list = NULL;
-	
+
 	ret = true;
-	
-FINISH_OFF: 
+
+FINISH_OFF:
 	if (err_code)
 		*err_code = err;
 	EM_DEBUG_FUNC_END();
@@ -764,22 +805,21 @@ INTERNAL_FUNC void emcore_free_account(email_account_t *account)
 	if(!account) return;
 
 	EM_SAFE_FREE(account->account_name);
-	EM_SAFE_FREE(account->incoming_server_address);
+	EM_SAFE_FREE(account->logo_icon_path);
+	EM_SAFE_FREE(account->user_data);
+	account->user_data_length = 0;
+	EM_SAFE_FREE(account->user_display_name);
 	EM_SAFE_FREE(account->user_email_address);
+	EM_SAFE_FREE(account->reply_to_address);
+	EM_SAFE_FREE(account->return_address);
+	EM_SAFE_FREE(account->incoming_server_address);
 	EM_SAFE_FREE(account->incoming_server_user_name);
 	EM_SAFE_FREE(account->incoming_server_password);
 	EM_SAFE_FREE(account->outgoing_server_address);
 	EM_SAFE_FREE(account->outgoing_server_user_name);
 	EM_SAFE_FREE(account->outgoing_server_password);
-	EM_SAFE_FREE(account->user_display_name);
-	EM_SAFE_FREE(account->reply_to_address);
-	EM_SAFE_FREE(account->return_address);
-	EM_SAFE_FREE(account->logo_icon_path);
-	EM_SAFE_FREE(account->certificate_path);
-	EM_SAFE_FREE(account->user_data);
-	account->user_data_length = 0;
 	emcore_free_option(&account->options);
-
+	EM_SAFE_FREE(account->certificate_path);
 
 	EM_DEBUG_FUNC_END();
 }
@@ -815,7 +855,7 @@ INTERNAL_FUNC void emcore_duplicate_account(const email_account_t *account, emai
 
 	if(!account || !account_dup) { /*prevent 40514*/
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-		if(err_code) *err_code = EMAIL_ERROR_INVALID_PARAM; 
+		if(err_code) *err_code = EMAIL_ERROR_INVALID_PARAM;
 		return;
 	}
 
@@ -832,66 +872,6 @@ INTERNAL_FUNC void emcore_duplicate_account(const email_account_t *account, emai
 		*err_code = EMAIL_ERROR_NONE;
 
 	EM_DEBUG_FUNC_END();
-}
-
-INTERNAL_FUNC int emcore_get_account_reference_list(email_account_t **account_list, int *count, int *err_code)
-{
-	EM_DEBUG_FUNC_BEGIN("account_list[%p], count[%p], err_code[%p]", account_list, count, err_code);
-	int i, countOfAccounts = 0;
-	int ret = false;
-	int err = EMAIL_ERROR_NONE;
-	email_account_t *accountRef;
-	email_account_list_t *p;
-
-	ENTER_CRITICAL_SECTION(_account_ref_lock);
-
-	if (!account_list || !count)  {
-		EM_DEBUG_EXCEPTION("account_list[%p], count[%p]", account_list, count);
-		err = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF;
-	}
-
-	p = g_account_list;
-
-	while (p) {
-		countOfAccounts++;
-		p = p->next;
-	}
-
-	EM_DEBUG_LOG("Result count[%d]", countOfAccounts);
-	*count = countOfAccounts;
-
-	if (countOfAccounts > 0) {
-		*account_list = malloc(sizeof(email_account_t) * countOfAccounts);
-		if (!*account_list)  {
-			EM_DEBUG_LOG("malloc failed...");
-			err = EMAIL_ERROR_OUT_OF_MEMORY;
-			goto FINISH_OFF;
-		}
-	}
-
-	p = g_account_list;
-	for (i = 0; i < countOfAccounts; i++)  {
-		accountRef = (*account_list) + i;
-		emcore_duplicate_account_members(p->account, accountRef);
-		EM_DEBUG_LOG_SEC("Result account id[%d], name[%s]", accountRef->account_id, accountRef->account_name);
-		p = p->next;
-	}
-
-	ret = true;
-
-FINISH_OFF:
-	if (ret == false) {
-		if (account_list && *account_list)
-			EM_SAFE_FREE(*account_list);
-	}
-
-	LEAVE_CRITICAL_SECTION(_account_ref_lock);
-
-	if (err_code != NULL)
-		*err_code = err;
-	EM_DEBUG_FUNC_END();
-	return ret;
 }
 
 #ifdef __FEATURE_BACKUP_ACCOUNT__
@@ -928,7 +908,7 @@ static int append_data_into_buffer(char **target_buffer, int *target_buffer_lent
 
 	ret_code = true;
 
-FINISH_OFF: 
+FINISH_OFF:
 
 	if (error_code)
 		*error_code = local_error_code;
@@ -948,7 +928,7 @@ static int emcore_write_account_into_buffer(char **target_buffer, int *target_bu
 	if (em_convert_account_tbl_to_account(account_tbl_ptr, &temp_account)) {
 		byte_stream = em_convert_account_to_byte_stream(&temp_account, &stream_length);
 		EM_DEBUG_LOG("stream_length [%d]", stream_length);
-		/*  EM_DEBUG_LOG("incoming_server_password [%s]", temp_account->password) */
+		/*  EM_DEBUG_LOG_SEC("incoming_server_password [%s]", temp_account->password) */
 
 		if (byte_stream) {
 			if (!append_data_into_buffer(target_buffer, target_buffer_lenth, (char *)&stream_length, sizeof(int), &local_error_code)) {
@@ -971,7 +951,7 @@ static int emcore_write_account_into_buffer(char **target_buffer, int *target_bu
 	}
 
 	ret_code = true;
-FINISH_OFF: 
+FINISH_OFF:
 	emcore_free_account(&temp_account);
 	if (error_code)
 		*error_code = local_error_code;
@@ -982,30 +962,46 @@ FINISH_OFF:
 	return ret_code;
 }
 
-INTERNAL_FUNC int emcore_backup_accounts(const char *file_path, int *error_code)
+INTERNAL_FUNC int emcore_backup_accounts(char *multi_user_name, const char *file_path, int *error_code)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("file_path [%s], error_code [%p]", file_path, error_code);
 	int local_error_code = EMAIL_ERROR_NONE, local_error_code_2 = EMAIL_ERROR_NONE, ret_code = false;
 	int select_num, i, target_buff_length = 0;
+	int normal_email_account_count = 0;
 	char *target_buffer = NULL;
 	emstorage_account_tbl_t *account_list = NULL;
+	int fd = 0;
 
 	if (!file_path) {
 		local_error_code = EMAIL_ERROR_INVALID_PARAM;
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-		goto FINISH_OFF;	
+		goto FINISH_OFF;
 	}
 
 	select_num = 1000;
-	
-	if (!emstorage_get_account_list(&select_num, &account_list, true, true, &local_error_code)) {
+
+	if (!emstorage_get_account_list(multi_user_name, &select_num, &account_list, true, true, &local_error_code)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [%d]", local_error_code);
-		goto FINISH_OFF;	
+		goto FINISH_OFF;
 	}
-	
+
 	EM_DEBUG_LOG("select_num [%d]", select_num);
-	
+
 	if (account_list) {
+		for (i = 0; i < select_num; i++) {
+			if (account_list[i].incoming_server_type == EMAIL_SERVER_TYPE_POP3 || account_list[i].incoming_server_type == EMAIL_SERVER_TYPE_IMAP4)
+				normal_email_account_count++;
+		}
+	}
+
+	EM_DEBUG_LOG("normal_email_account_count [%d]", normal_email_account_count);
+
+	if (normal_email_account_count == 0) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_ACCOUNT_NOT_FOUND");
+		local_error_code = EMAIL_ERROR_ACCOUNT_NOT_FOUND;
+		goto FINISH_OFF;
+	}
+	else {
 		target_buffer = em_malloc(sizeof(int));
 		if (!target_buffer)  {
 			EM_DEBUG_EXCEPTION("malloc failed");
@@ -1013,13 +1009,15 @@ INTERNAL_FUNC int emcore_backup_accounts(const char *file_path, int *error_code)
 			goto FINISH_OFF;
 		}
 
-		memcpy(target_buffer, (char *)&select_num, sizeof(int));
+		memcpy(target_buffer, (char *)&normal_email_account_count, sizeof(int));
 		target_buff_length = sizeof(int);
 
 		for (i = 0; i < select_num; i++) {
-			if (!emcore_write_account_into_buffer(&target_buffer, &target_buff_length, account_list + i, &local_error_code)) {
-				EM_DEBUG_EXCEPTION("emcore_write_account_into_buffer failed [%d]", local_error_code);
-				goto FINISH_OFF;	
+			if (account_list[i].incoming_server_type == EMAIL_SERVER_TYPE_POP3 || account_list[i].incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
+				if (!emcore_write_account_into_buffer(&target_buffer, &target_buff_length, account_list + i, &local_error_code)) {
+					EM_DEBUG_EXCEPTION("emcore_write_account_into_buffer failed [%d]", local_error_code);
+					goto FINISH_OFF;
+				}
 			}
 		}
 
@@ -1030,15 +1028,16 @@ INTERNAL_FUNC int emcore_backup_accounts(const char *file_path, int *error_code)
 		if (ssm_write_buffer(target_buffer, target_buff_length, file_path, SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
 			EM_DEBUG_EXCEPTION("ssm_write_buffer failed [%d]", local_error_code);
 			local_error_code = EMAIL_ERROR_SYSTEM_FAILURE;
-			goto FINISH_OFF;	
+			goto FINISH_OFF;
 		}
-		
 	}
 
 	ret_code = true;	
 FINISH_OFF: 
 
+	EM_SAFE_CLOSE (fd);
 	EM_SAFE_FREE(target_buffer);
+
 	if (account_list)
 		emstorage_free_account(&account_list, select_num, &local_error_code_2);
 
@@ -1049,29 +1048,33 @@ FINISH_OFF:
 	return ret_code;
 }
 
-INTERNAL_FUNC int emcore_restore_accounts(const char *file_path, int *error_code)
+INTERNAL_FUNC int emcore_restore_accounts(char *multi_user_name, const char *file_path)
 {
-	EM_DEBUG_FUNC_BEGIN_SEC("file_path [%s], error_code [%p]", file_path, error_code);
-	int local_error_code = EMAIL_ERROR_NONE, ret_code = false, buffer_length = 0, read_length = 0;
+	EM_DEBUG_FUNC_BEGIN_SEC("file_path [%s]", file_path);
+	int err = EMAIL_ERROR_NONE, buffer_length = 0, read_length = 0;
 	int account_count = 0, i = 0, account_stream_length = 0;
 	char *temp_buffer = NULL, *account_stream = NULL, *buffer_ptr = NULL;
 	email_account_t temp_account = {0};
 	email_account_t *account_list = NULL;
+	char errno_buf[ERRNO_BUF_SIZE] = {0};
+	char *encrypt_buffer = NULL;
 
 	ssm_file_info_t sfi;
 
+	if (!emcore_notify_storage_event (NOTI_ACCOUNT_RESTORE_START, 0, 0, NULL, 0))
+		EM_DEBUG_EXCEPTION ("emcore_notify_storage_event [NOTI_ACCOUNT_RESTORE_START] failed");
+
 	if (!file_path) {
-		local_error_code = EMAIL_ERROR_INVALID_PARAM;
+		err = EMAIL_ERROR_INVALID_PARAM;
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-		goto FINISH_OFF;	
+		goto FINISH_OFF;
 	}
 
-	if (emcore_get_account_reference_list(&account_list, &account_count, &ret_code)) {
+	if ((err = emcore_get_account_reference_list(multi_user_name, &account_list, &account_count)) == EMAIL_ERROR_NONE) {
 		for (i = 0; i < account_count; i++) {
 			if (account_list[i].incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
-				if (!emcore_delete_account(account_list[i].account_id, &ret_code)) {
-					local_error_code = EMAIL_ERROR_INVALID_ACCOUNT;
-					EM_DEBUG_EXCEPTION("emcore_delete_account failed");
+				if (!emcore_delete_account(multi_user_name, account_list[i].account_id, true, &err)) {
+					EM_DEBUG_EXCEPTION("emcore_delete_account failed [%d]", err);
 					goto FINISH_OFF;
 				}
 			}
@@ -1085,21 +1088,21 @@ INTERNAL_FUNC int emcore_restore_accounts(const char *file_path, int *error_code
 
 	if (ssm_getinfo(file_path, &sfi, SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
 		EM_DEBUG_EXCEPTION("ssm_getinfo() failed.");
-		ret_code = EMAIL_ERROR_SYSTEM_FAILURE;
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 
 	buffer_length = sfi.originSize;
 	EM_DEBUG_LOG("account buffer_length[%d]", buffer_length);
-	if ((temp_buffer = (char *)em_malloc(buffer_length + 1)) == NULL) {
+	if ((encrypt_buffer = (char *)em_malloc(buffer_length + 1)) == NULL) {
 		EM_DEBUG_EXCEPTION("em_malloc failed...");
-		ret_code = EMAIL_ERROR_OUT_OF_MEMORY;
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}
 
 	if (ssm_read(file_path, temp_buffer, buffer_length, (size_t *)&read_length, SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
 		EM_DEBUG_EXCEPTION("ssm_read() failed.");
-		ret_code = EMAIL_ERROR_SYSTEM_FAILURE;
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 
@@ -1109,7 +1112,7 @@ INTERNAL_FUNC int emcore_restore_accounts(const char *file_path, int *error_code
 		memcpy((void *)&account_count, temp_buffer, sizeof(int));
 		buffer_ptr = temp_buffer + sizeof(int);
 
-		EM_DEBUG_LOG("account_count[%d]", account_count);		
+		EM_DEBUG_LOG("account_count[%d]", account_count);
 
 		for (i = 0; i < account_count; i++) {
 			memcpy((void *)&account_stream_length, buffer_ptr, sizeof(int));
@@ -1119,16 +1122,25 @@ INTERNAL_FUNC int emcore_restore_accounts(const char *file_path, int *error_code
 				account_stream = em_malloc(account_stream_length);
 				if (!account_stream) {
 					EM_DEBUG_EXCEPTION("em_malloc() failed.");
-					ret_code = EMAIL_ERROR_OUT_OF_MEMORY ;
+					err = EMAIL_ERROR_OUT_OF_MEMORY ;
 					goto FINISH_OFF;
 				}
 				memcpy(account_stream, buffer_ptr, account_stream_length);
 
 				em_convert_byte_stream_to_account(account_stream, account_stream_length, &temp_account);
 				EM_SAFE_FREE(account_stream);
-			
-				if (!emcore_create_account(&temp_account, &ret_code)) {
-					EM_DEBUG_EXCEPTION("emcore_create_account() failed.");
+
+				if ((emstorage_check_duplicated_account(multi_user_name, &temp_account, true, &err) == false) && (err = EMAIL_ERROR_ALREADY_EXISTS)) {
+					EM_DEBUG_EXCEPTION("An account is duplicated. ");
+					buffer_ptr += account_stream_length;
+					account_stream_length = 0;
+					emcore_free_account(&temp_account);
+					err = EMAIL_ERROR_NONE;
+					continue;
+				}
+
+				if (!emcore_create_account(multi_user_name, &temp_account, true, &err)) {
+					EM_DEBUG_EXCEPTION("emcore_create_account() failed. [%d]", err);
 					goto FINISH_OFF;
 				}
 
@@ -1139,11 +1151,24 @@ INTERNAL_FUNC int emcore_restore_accounts(const char *file_path, int *error_code
 		}
 	} else {
 		EM_DEBUG_EXCEPTION("ssm_read() failed.");
-		ret_code = EMAIL_ERROR_SYSTEM_FAILURE;
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
-	ret_code = true;	
-FINISH_OFF: 
+
+FINISH_OFF:
+#ifdef FEATURE_SSS_ENABLE
+	EM_SAFE_CLOSE (fd);
+#endif
+
+	if (err == EMAIL_ERROR_NONE) {
+		if (!emcore_notify_storage_event (NOTI_ACCOUNT_RESTORE_FINISH, 0, 0, NULL, err))
+			EM_DEBUG_EXCEPTION ("emcore_notify_storage_event [NOTI_ACCOUNT_RESTORE_FINISH] failed");
+	}
+	else {
+		if (!emcore_notify_storage_event (NOTI_ACCOUNT_RESTORE_FAIL, 0, 0, NULL, err))
+			EM_DEBUG_EXCEPTION ("emcore_notify_storage_event [NOTI_ACCOUNT_RESTORE_FAIL] failed");
+	}
+
 	if(account_list) {
 		emcore_free_account_list(&account_list, account_count, NULL);
 		account_list = NULL;
@@ -1151,45 +1176,15 @@ FINISH_OFF:
 	emcore_free_account(&temp_account);
 	EM_SAFE_FREE(account_stream);
 	EM_SAFE_FREE(temp_buffer);
+	EM_SAFE_FREE(encrypt_buffer);
 
-	EM_DEBUG_FUNC_END("ret_code [%d]", ret_code);
-	return ret_code;
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
 }
 
 #endif /*  __FEATURE_BACKUP_ACCOUNT_ */
 
-
-
-INTERNAL_FUNC int emcore_query_server_info(const char* domain_name, email_server_info_t **result_server_info)
-{
-	EM_DEBUG_FUNC_BEGIN_SEC("domain_name [%s], result_server_info [%p]", domain_name, result_server_info);
-	int ret_code = EMAIL_ERROR_NONE;
-
-	EM_DEBUG_FUNC_END("ret_code [%d]", ret_code);
-	return ret_code;
-}
-
-
-INTERNAL_FUNC int emcore_free_server_info(email_server_info_t **target_server_info)
-{
-	EM_DEBUG_FUNC_BEGIN("result_server_info [%p]", target_server_info);
-	int i, ret_code = EMAIL_ERROR_NONE;
-	email_server_info_t *server_info = NULL;
-
-	if(target_server_info && *target_server_info) {
-		server_info = *target_server_info;
-		EM_SAFE_FREE(server_info->service_name);
-		for(i = 0; i < server_info->protocol_conf_count; i++) {
-			EM_SAFE_FREE(server_info->protocol_config_array[i].server_addr);
-		}
-		EM_SAFE_FREE(server_info->protocol_config_array);
-		EM_SAFE_FREE(server_info);
-	}
-	EM_DEBUG_FUNC_END("ret_code [%d]", ret_code);
-	return ret_code;	
-}
-
-INTERNAL_FUNC int emcore_save_default_account_id(int input_account_id)
+INTERNAL_FUNC int emcore_save_default_account_id(char *multi_user_name, int input_account_id)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id [%d]", input_account_id);
 	int ret_code = EMAIL_ERROR_NONE, result_value = 0;
@@ -1201,10 +1196,10 @@ INTERNAL_FUNC int emcore_save_default_account_id(int input_account_id)
 	}
 
 	EM_DEBUG_FUNC_END("ret_code [%d]", ret_code);
-	return ret_code;	
+	return ret_code;
 }
 
-static int _recover_from_invalid_default_account_id(int *output_account_id)
+static int _recover_from_invalid_default_account_id(char *multi_user_name, int *output_account_id)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id [%p]", output_account_id);
 	int ret_code = EMAIL_ERROR_NONE;
@@ -1216,9 +1211,9 @@ static int _recover_from_invalid_default_account_id(int *output_account_id)
 		goto FINISH_OFF;
 	}
 
-	if(!emstorage_get_account_list(&account_count, &result_account_list, false, false, &ret_code) || !result_account_list) {
+	if(!emstorage_get_account_list(multi_user_name, &account_count, &result_account_list, false, false, &ret_code) || !result_account_list) {
 		if (ret_code == EMAIL_ERROR_ACCOUNT_NOT_FOUND)
-			EM_DEBUG_LOG ("no account found");			
+			EM_DEBUG_LOG ("no account found");
 		else
 			EM_DEBUG_EXCEPTION ("emstorage_get_account_list() failed [%d]", ret_code);
 		*output_account_id = 0;
@@ -1240,13 +1235,13 @@ FINISH_OFF:
 	return ret_code;
 }
 
-INTERNAL_FUNC int emcore_load_default_account_id(int *output_account_id)
+INTERNAL_FUNC int emcore_load_default_account_id(char *multi_user_name, int *output_account_id)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id [%p]", output_account_id);
 	int ret_code = EMAIL_ERROR_NONE;
 	int result_value = 0;
 	emstorage_account_tbl_t *result_account = NULL;
-	
+
 	if (output_account_id == NULL) {
 		ret_code = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -1261,7 +1256,7 @@ INTERNAL_FUNC int emcore_load_default_account_id(int *output_account_id)
 	}
 
 	if (*output_account_id != 0) {
-		if (!emstorage_get_account_by_id(*output_account_id, EMAIL_ACC_GET_OPT_DEFAULT, &result_account, false, &ret_code)) {
+		if (!emstorage_get_account_by_id(multi_user_name, *output_account_id, EMAIL_ACC_GET_OPT_DEFAULT, &result_account, false, &ret_code)) {
 			if (ret_code == EMAIL_ERROR_ACCOUNT_NOT_FOUND) {
 				EM_DEBUG_LOG ("no account found account_id[%d]", *output_account_id);
 				*output_account_id = 0;
@@ -1274,10 +1269,10 @@ INTERNAL_FUNC int emcore_load_default_account_id(int *output_account_id)
 	}
 
 	if (*output_account_id == 0) {
-		if ((ret_code = _recover_from_invalid_default_account_id (output_account_id)) != EMAIL_ERROR_NONE) {
+		if ((ret_code = _recover_from_invalid_default_account_id (multi_user_name, output_account_id)) != EMAIL_ERROR_NONE) {
 			if (ret_code == EMAIL_ERROR_ACCOUNT_NOT_FOUND)
 				EM_DEBUG_LOG ("no account found");
-			else 
+			else
 				EM_DEBUG_EXCEPTION("_recover_from_invalid_default_account() failed [%d]", ret_code);
 			*output_account_id = 0;
 		}
@@ -1286,12 +1281,12 @@ INTERNAL_FUNC int emcore_load_default_account_id(int *output_account_id)
 FINISH_OFF:
 	if (result_account)
 		emstorage_free_account(&result_account, 1, NULL);
-	
+
 	EM_DEBUG_FUNC_END("ret_code [%d]", ret_code);
-	return ret_code;	
+	return ret_code;
 }
 
-INTERNAL_FUNC int emcore_recover_from_secured_storage_failure()
+INTERNAL_FUNC int emcore_recover_from_secured_storage_failure(char *multi_user_name)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
@@ -1300,15 +1295,15 @@ INTERNAL_FUNC int emcore_recover_from_secured_storage_failure()
 	emstorage_account_tbl_t *temp_account_tbl_list = NULL;
 	emstorage_account_tbl_t *temp_account_tbl      = NULL;
 
-	if (!emstorage_get_account_list(&account_count, &temp_account_tbl_list, true, false, &err)) {
+	if (!emstorage_get_account_list(multi_user_name, &account_count, &temp_account_tbl_list, true, false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	for (i = 0; i < account_count; i++) {
-		if(!emstorage_get_account_by_id(temp_account_tbl_list[i].account_id, EMAIL_ACC_GET_OPT_DEFAULT | EMAIL_ACC_GET_OPT_PASSWORD, &temp_account_tbl, true, &err)) {
+		if(!emstorage_get_account_by_id(multi_user_name, temp_account_tbl_list[i].account_id, EMAIL_ACC_GET_OPT_DEFAULT | EMAIL_ACC_GET_OPT_PASSWORD, &temp_account_tbl, true, &err)) {
 			if(err == EMAIL_ERROR_SECURED_STORAGE_FAILURE) {
-				if(!emcore_delete_account(temp_account_tbl_list[i].account_id, &err)) {
+				if(!emcore_delete_account(multi_user_name, temp_account_tbl_list[i].account_id, true, &err)) {
 					EM_DEBUG_EXCEPTION("emcore_delete_account failed [%d]", err);
 					goto FINISH_OFF;
 				}
@@ -1325,7 +1320,7 @@ FINISH_OFF:
 	return err;
 }
 
-INTERNAL_FUNC int emcore_update_sync_status_of_account(int input_account_id, email_set_type_t input_set_operator, int input_sync_status)
+INTERNAL_FUNC int emcore_update_sync_status_of_account(char *multi_user_name, int input_account_id, email_set_type_t input_set_operator, int input_sync_status)
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], input_set_operator [%d], input_sync_status [%d]", input_account_id, input_set_operator, input_sync_status);
 	int err = EMAIL_ERROR_NONE;
@@ -1333,10 +1328,20 @@ INTERNAL_FUNC int emcore_update_sync_status_of_account(int input_account_id, ema
 #ifdef __FEATURE_USING_ACCOUNT_SVC_FOR_SYNC_STATUS__
 	int err_from_account_svc = 0;
 	emstorage_account_tbl_t *account_tbl_data = NULL;
+	void *join_zone = NULL;
+
 	if (input_account_id != ALL_ACCOUNT && (input_sync_status == SYNC_STATUS_SYNCING)) {
-		if (!emstorage_get_account_by_id(input_account_id, EMAIL_ACC_GET_OPT_DEFAULT | EMAIL_ACC_GET_OPT_OPTIONS, &account_tbl_data, true, &err)) {
+		if (!emstorage_get_account_by_id(multi_user_name, input_account_id, EMAIL_ACC_GET_OPT_DEFAULT | EMAIL_ACC_GET_OPT_OPTIONS, &account_tbl_data, true, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed [%d]", err);
 			goto FINISH_OFF;
+		}
+
+		if (EM_SAFE_STRLEN(multi_user_name) > 0) {
+			err = emcore_set_join_zone(multi_user_name, &join_zone);
+			if (err != EMAIL_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("emcore_set_join_zone failed : [%d]", err);
+				goto FINISH_OFF;
+			}
 		}
 
 		err_from_account_svc = account_connect();
@@ -1347,14 +1352,15 @@ INTERNAL_FUNC int emcore_update_sync_status_of_account(int input_account_id, ema
 		else if(input_set_operator == SET_TYPE_MINUS)
 			err_from_account_svc = account_update_sync_status_by_id(account_tbl_data->account_svc_id, ACCOUNT_SYNC_STATUS_IDLE);
 
-		EM_DEBUG_LOG("account_update_sync_status_by_id returns [%d] by id[%d]", err_from_account_svc, account_tbl_data->account_svc_id); 
+		EM_DEBUG_LOG("account_update_sync_status_by_id returns [%d] by id[%d]", err_from_account_svc, account_tbl_data->account_svc_id);
 
 		err_from_account_svc = account_disconnect();
-		EM_DEBUG_LOG_DEV("account_disconnect returns [%d]", err_from_account_svc); 
+		EM_DEBUG_LOG_DEV("account_disconnect returns [%d]", err_from_account_svc);
+		emcore_unset_join_zone(join_zone);
 	}
 #endif /* __FEATURE_USING_ACCOUNT_SVC_FOR_SYNC_STATUS__ */
 
-	if (!emstorage_update_sync_status_of_account(input_account_id, input_set_operator, input_sync_status, true, &err))
+	if (!emstorage_update_sync_status_of_account(multi_user_name, input_account_id, input_set_operator, input_sync_status, true, &err))
 		EM_DEBUG_EXCEPTION("emstorage_update_sync_status_of_account failed [%d]", err);
 
 #ifdef __FEATURE_USING_ACCOUNT_SVC_FOR_SYNC_STATUS__
@@ -1404,7 +1410,7 @@ size_t emcore_curl_write_callback(char* data, size_t size, size_t nmemb, void* t
 	}
 
 	memcpy(*result_string + last_pos, data, received_length);
-	/*EM_DEBUG_LOG("result_string[%s]", *result_string);*/
+	/*EM_DEBUG_LOG_SEC("result_string[%s]", *result_string);*/
 
 FINISH_OFF:
 	EM_DEBUG_FUNC_END("received_length [%d]", received_length);
@@ -1461,7 +1467,7 @@ static int emcore_get_xoauth2_access_token(char *input_refresh_token, char **out
 
 	curl_ressult_code = curl_easy_perform(curl);
 
-	EM_DEBUG_LOG("CURLcode: %d (%s)", curl_ressult_code, curl_easy_strerror(curl_ressult_code));
+	EM_DEBUG_LOG_SEC("CURLcode: %d (%s)", curl_ressult_code, curl_easy_strerror(curl_ressult_code));
 
 	if (0 == curl_ressult_code) {
 		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
@@ -1519,7 +1525,7 @@ FINISH_OFF:
 	return err;
 }
 
-INTERNAL_FUNC int emcore_refresh_xoauth2_access_token(int input_account_id)
+INTERNAL_FUNC int emcore_refresh_xoauth2_access_token(char *multi_user_name, int input_account_id)
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_id [%d]", input_account_id);
 	int err = EMAIL_ERROR_NONE;
@@ -1532,7 +1538,7 @@ INTERNAL_FUNC int emcore_refresh_xoauth2_access_token(int input_account_id)
 	email_account_t *ref_account = NULL;
 
 
-	ref_account = emcore_get_account_reference(input_account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, input_account_id);
 
 	if(ref_account == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference() failed");
@@ -1576,12 +1582,10 @@ INTERNAL_FUNC int emcore_refresh_xoauth2_access_token(int input_account_id)
 
 	SNPRINTF(new_password_string, new_password_string_length, "%s\001%s", new_access_token, refresh_token);
 
-	if((err = emstorage_update_account_password(input_account_id, new_password_string, new_password_string)) != EMAIL_ERROR_NONE) {
+	if((err = emstorage_update_account_password(multi_user_name, input_account_id, new_password_string, new_password_string)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_update_account_password() failed [%d]", err);
 		goto FINISH_OFF;
 	}
-
-	emcore_init_account_reference();
 
 FINISH_OFF:
 
@@ -1594,7 +1598,7 @@ FINISH_OFF:
 		emcore_free_account(ref_account);
 		EM_SAFE_FREE(ref_account);
 	}
-	
+
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }

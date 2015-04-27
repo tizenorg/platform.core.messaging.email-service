@@ -31,6 +31,7 @@
 #include <sys/types.h>
 #include <signal.h>
 #include <time.h>
+#include <gio/gio.h>
 
 #include "email-daemon.h"
 #include "email-ipc.h"
@@ -50,11 +51,16 @@
 #include "email-core-mailbox.h"
 #include "email-core-utils.h"
 #include "email-core-smime.h"
+#include "email-core-pgp.h"
 #include "email-core-cert.h"
 #include "email-core-task-manager.h"
 #include "email-core-signal.h"
+#include "email-core-imap-idle.h"
+#include "email-core-gmime.h"
 #include "email-storage.h"
 #include "email-dbus-activation.h"
+#include "email-core-container.h"
+#include "email-core-cynara.h"
 
 void stb_create_account(HIPC_API a_hAPI)
 {
@@ -65,6 +71,13 @@ void stb_create_account(HIPC_API a_hAPI)
 	email_account_t account;
 	int err = EMAIL_ERROR_NONE;
 
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_name failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 	/* Initialize the email_account_t */
 	memset(&account, 0x00, sizeof(email_account_t));
 
@@ -77,11 +90,13 @@ void stb_create_account(HIPC_API a_hAPI)
 	local_account_stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0);
 	/* Convert account stream to structure */
 	em_convert_byte_stream_to_account(local_account_stream, buffer_size, &account);
+    account.user_name = EM_SAFE_STRDUP(multi_user_name);
 
 	EM_DEBUG_LOG_SEC("Account name - %s", account.account_name);
 	EM_DEBUG_LOG_SEC("Email Address - %s", account.user_email_address);
+    EM_DEBUG_LOG("Multi user name - %s", account.user_name);
 
-	if(!emdaemon_create_account(&account, &err)) {
+	if(!emdaemon_create_account(multi_user_name, &account, &err)) {
 		EM_DEBUG_EXCEPTION("emdaemon_create_account fail ");
 		goto FINISH_OFF;
 	}
@@ -89,14 +104,16 @@ void stb_create_account(HIPC_API a_hAPI)
 
 #ifdef __FEATURE_AUTO_POLLING__
 	/* start auto polling, if check_interval not zero */
-	if(account.check_interval > 0 || (account.peak_days && account.peak_interval > 0)) {
-		if(!emdaemon_add_polling_alarm(account.account_id))
+	if(account.check_interval > 0 || (account.peak_days > 0 && account.peak_interval > 0)) {
+		if(!emdaemon_add_polling_alarm(multi_user_name, account.account_id))
 			EM_DEBUG_EXCEPTION("emdaemon_add_polling_alarm[NOTI_ACCOUNT_ADD] : start auto poll failed >>> ");
 	}
-#endif
+#ifdef __FEATURE_IMAP_IDLE__
+	else if(account.check_interval == 0 || (account.peak_days > 0 && account.peak_interval == 0))
+		emcore_refresh_imap_idle_thread();
+#endif /* __FEATURE_IMAP_IDLE__ */
 
-	/* add account details to contact DB */
-	emdaemon_insert_accountinfo_to_contact(&account);
+#endif
 
 	local_result = 1;
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
@@ -108,22 +125,30 @@ void stb_create_account(HIPC_API a_hAPI)
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &(account.account_id), sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
-	/* pass result to app */
-	if (!emipc_execute_stub_api(a_hAPI))
-		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
-
 FINISH_OFF:
-	
+
 	if ( local_result == 0 ) {
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed : local_result ");
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed : err");
-		if (!emipc_execute_stub_api(a_hAPI))
-			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 	}
+	if (!emipc_execute_stub_api(a_hAPI))
+		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
 	emcore_free_account(&account); /* valgrind */
+
+	//emcore_init_account_reference();
+
+	if (local_result == 1) {
+		if (!emcore_notify_storage_event (NOTI_ACCOUNT_ADD_FINISH, account.account_id, 0, NULL, 0))
+			EM_DEBUG_EXCEPTION("emcore_notify_storage_event[NOTI_ACCOUNT_ADD] : Notification failed");
+	} else {
+		if (!emcore_notify_storage_event (NOTI_ACCOUNT_ADD_FAIL, account.account_id, 0, NULL, 0))
+			EM_DEBUG_EXCEPTION("emcore_notify_storage_event[NOTI_ACCOUNT_ADD] : Notification failed");
+	}
+
+	EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -134,6 +159,13 @@ void stb_delete_account(HIPC_API a_hAPI)
 	int local_result = 0;
 	int *ret_nth_value = NULL;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* account_id */
 	if ((ret_nth_value = (int *)emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0)))
@@ -143,9 +175,10 @@ void stb_delete_account(HIPC_API a_hAPI)
 		goto FINISH_OFF;
 	}
 	
-	if(!emdaemon_delete_account(account_id, &err)) {
+	if(!emdaemon_delete_account(multi_user_name, account_id, &err)) {
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 			EM_DEBUG_LOG("emipc_add_parameter failed ");
+
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
@@ -169,21 +202,32 @@ void stb_delete_account(HIPC_API a_hAPI)
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
+	/* if file is not deleted, main thread kills the thread */
+	emcore_send_signal_for_del_account (EMAIL_SIGNAL_DB_DELETED);
+	EM_DEBUG_LOG ("publish db of account deleted");
+
 FINISH_OFF:
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
 void stb_update_account(HIPC_API a_hAPI)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int account_id = 0, buffer_size = 0, local_result = 0, with_validation = 0;
+	int account_id = 0, buffer_size = 0, with_validation = 0;
 	int *ret_nth_value = NULL;
 	char* local_account_stream = NULL;
 	email_account_t new_account_info = {0};
-	email_account_t old_account_info = {0};
 	int err = EMAIL_ERROR_NONE;
 	int handle = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	if ((ret_nth_value = (int *)emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0)))
 		account_id = *ret_nth_value;
@@ -191,6 +235,7 @@ void stb_update_account(HIPC_API a_hAPI)
 		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
 		goto FINISH_OFF;
 	}
+
 	/* get account structure from stream */
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, 1);
 	EM_DEBUG_LOG("size [%d]", buffer_size);
@@ -205,79 +250,31 @@ void stb_update_account(HIPC_API a_hAPI)
 		goto FINISH_OFF;
 	}
 
-	if(!emdaemon_get_account(account_id, EMAIL_ACC_GET_OPT_FULL_DATA, &old_account_info, &err)) {
-		EM_DEBUG_EXCEPTION("emdaemon_get_account failed ");
-		goto FINISH_OFF;
-	}
-
-
-	if( EM_SAFE_STRLEN (new_account_info.incoming_server_password) == 0 ) {
-		EM_SAFE_FREE(new_account_info.incoming_server_password); /* be allocated but has zero length */
-		EM_DEBUG_LOG_SEC("old_account_info->incoming_server_password [%s]", old_account_info.incoming_server_password);
-		new_account_info.incoming_server_password = EM_SAFE_STRDUP(old_account_info.incoming_server_password);
-		if(new_account_info.incoming_server_password == NULL) {
-				EM_DEBUG_EXCEPTION("allocation for new_account_info->password failed");
-				err = EMAIL_ERROR_OUT_OF_MEMORY;
-				goto FINISH_OFF;
-			}
-		}
-
-
-	if( EM_SAFE_STRLEN (new_account_info.outgoing_server_password) == 0 ) {
-		EM_SAFE_FREE(new_account_info.outgoing_server_password);
-		if(old_account_info.outgoing_server_password) {
-			new_account_info.outgoing_server_password = strdup (old_account_info.outgoing_server_password);
-			if(new_account_info.outgoing_server_password == NULL) {
-				EM_DEBUG_EXCEPTION("allocation for new_account_info->outgoing_server_password failed");
-				err = EMAIL_ERROR_OUT_OF_MEMORY;
-				goto FINISH_OFF;
-			}
-		}
-	}
-
 	if(with_validation) {
-		emdaemon_validate_account_and_update(account_id, &new_account_info, &handle, &err);
-		local_result = 1;
+		if(!emdaemon_validate_account_and_update(multi_user_name, account_id, &new_account_info, &handle, &err)){
+			EM_DEBUG_EXCEPTION("emdaemon_validate_account_and_update failed [%d]", err);
+			goto FINISH_OFF;
+		}
 	}
 	else {
-		if(emdaemon_update_account(account_id, &new_account_info, &err)) {
-			emdaemon_update_accountinfo_to_contact(&old_account_info, &new_account_info);
-			local_result = 1;
-		}
-		else {
+		if(!emdaemon_update_account(multi_user_name, account_id, &new_account_info, &err)) {
 			EM_DEBUG_EXCEPTION("emdaemon_update_account failed [%d]", err);
 			goto FINISH_OFF;
 		}
 
 	}
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
-		EM_DEBUG_EXCEPTION("emipc_add_parameter for result failed");
+FINISH_OFF:
 
-	if(with_validation) {
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
-			EM_DEBUG_EXCEPTION("emipc_add_parameter for handle failed");
-	}
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
-FINISH_OFF:
-	if ( local_result == 0 ) {
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
-			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
-			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-
-		if (!emipc_execute_stub_api(a_hAPI))
-			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
-	}
-
-	emcore_free_account(&old_account_info);
-
 	emcore_free_account(&new_account_info);
 
+	EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -289,16 +286,23 @@ void stb_validate_account(HIPC_API a_hAPI)
 	int local_result = 0;
 	int err_code = 0;
 	int handle = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err_code = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err_code);
+        multi_user_name = NULL;
+    }
 
 	/* account_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
-	local_result = emdaemon_validate_account(account_id, &handle,&err_code);
+	local_result = emdaemon_validate_account(multi_user_name, account_id, &handle, &err_code);
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 		EM_DEBUG_LOG("emipc_add_parameter failed ");
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err_code, sizeof(int)))
-			EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
+        EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter result failed ");
@@ -306,6 +310,7 @@ void stb_validate_account(HIPC_API a_hAPI)
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -321,8 +326,15 @@ void stb_get_account_list(HIPC_API a_hAPI)
 	int count;
 	int size = 0;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
 
-	if(emdaemon_get_account_list(&account_list, &count, &err)) {
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
+
+	if(emdaemon_get_account_list(multi_user_name, &account_list, &count, &err)) {
 		EM_DEBUG_LOG("emdaemon_get_account_list success");
 		local_result = 1;
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
@@ -366,6 +378,7 @@ void stb_get_account_list(HIPC_API a_hAPI)
 	}
 
  	EM_SAFE_FREE(local_stream);
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -376,6 +389,13 @@ void stb_sync_header(HIPC_API a_hAPI)
 	int err = EMAIL_ERROR_NONE;
 	int handle = -1;
 	int account_id = 0, maibox_id = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* account_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
@@ -383,7 +403,7 @@ void stb_sync_header(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &maibox_id);
 	EM_DEBUG_LOG("account_id [%d] maibox_id [%d]", account_id, maibox_id);
 
-	if(!emdaemon_sync_header(account_id, maibox_id, &handle, &err)) {
+	if(!emdaemon_sync_header(multi_user_name, account_id, maibox_id, &handle, &err)) {
 		EM_DEBUG_EXCEPTION ("emdaemon_sync_header failed [%d]", err);
 	}
 
@@ -393,6 +413,8 @@ void stb_sync_header(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -404,6 +426,13 @@ void stb_download_body(HIPC_API a_hAPI)
 	int attachment_count = 0;
 	int handle = 0;
 	int account_id = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* Account Id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
@@ -415,7 +444,7 @@ void stb_download_body(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, sizeof(int), &attachment_count);
 
 	/*Download Body */
-	if (!emdaemon_download_body(account_id, mail_id, 1, attachment_count, &handle, &err)) {
+	if (!emdaemon_download_body(multi_user_name, account_id, mail_id, 1, attachment_count, &handle, &err)) {
 		EM_DEBUG_EXCEPTION("emdaemon_download_body - failed");
 		goto FINISH_OFF;
 	}
@@ -425,11 +454,15 @@ void stb_download_body(HIPC_API a_hAPI)
 FINISH_OFF:
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
-	EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
+	    EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
+
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
+
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+
+    EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_FUNC_END();
 }
@@ -445,6 +478,13 @@ void stb_create_mailbox(HIPC_API a_hAPI)
 	int 		      on_server 		= 0;
 	email_mailbox_t   mailbox = { 0 };
 	int               handle = 0; /* Added for cancelling mailbox creating  */
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, 0);
 	EM_DEBUG_LOG("size [%d]", buffer_size);
@@ -464,7 +504,7 @@ void stb_create_mailbox(HIPC_API a_hAPI)
 	else
 		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
 
-	emdaemon_add_mailbox(&mailbox, on_server, &handle, &err);
+	emdaemon_add_mailbox(multi_user_name, &mailbox, on_server, &handle, &err);
 
 FINISH_OFF:
 
@@ -482,6 +522,7 @@ FINISH_OFF:
 		return;
 	}
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -493,6 +534,13 @@ void stb_delete_mailbox(HIPC_API a_hAPI)
 	int 	 on_server		= 0;
 	int      handle = 0; /* Added for cancelling mailbox deleting */
 	int      input_mailbox_id = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* src_mailbox_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &input_mailbox_id);
@@ -505,7 +553,7 @@ void stb_delete_mailbox(HIPC_API a_hAPI)
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &on_server);
 
-	if(emdaemon_delete_mailbox(input_mailbox_id, on_server, &handle, &err))
+	if(emdaemon_delete_mailbox(multi_user_name, input_mailbox_id, on_server, &handle, &err))
 		err = EMAIL_ERROR_NONE;
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -516,6 +564,7 @@ void stb_delete_mailbox(HIPC_API a_hAPI)
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -525,6 +574,13 @@ void stb_set_mailbox_type(HIPC_API a_hAPI)
 	int	err = EMAIL_ERROR_NONE;
 	int mailbox_id = 0;
 	int mailbox_type = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+            EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+            multi_user_name = NULL;
+    }
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &mailbox_id);
 	EM_DEBUG_LOG("mailbox_id[%d]", mailbox_id);
@@ -532,7 +588,7 @@ void stb_set_mailbox_type(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &mailbox_type);
 	EM_DEBUG_LOG("mailbox_type[%d]", mailbox_type);
 
-	if( (err = emdaemon_set_mailbox_type(mailbox_id, mailbox_type)) != EMAIL_ERROR_NONE)
+	if( (err = emdaemon_set_mailbox_type(multi_user_name, mailbox_id, mailbox_type)) != EMAIL_ERROR_NONE)
 		err = EMAIL_ERROR_NONE;
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -541,6 +597,7 @@ void stb_set_mailbox_type(HIPC_API a_hAPI)
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -550,6 +607,13 @@ void stb_set_local_mailbox(HIPC_API a_hAPI)
 	int	err = EMAIL_ERROR_NONE;
 	int mailbox_id = 0;
 	int is_local_mailbox = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &mailbox_id);
 	EM_DEBUG_LOG("mailbox_id[%d]", mailbox_id);
@@ -557,7 +621,7 @@ void stb_set_local_mailbox(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &is_local_mailbox);
 	EM_DEBUG_LOG("is_local_mailbox[%d]", is_local_mailbox);
 
-	if( (err = emdaemon_set_local_mailbox(mailbox_id, is_local_mailbox)) != EMAIL_ERROR_NONE)
+	if( (err = emdaemon_set_local_mailbox(multi_user_name, mailbox_id, is_local_mailbox)) != EMAIL_ERROR_NONE)
 		err = EMAIL_ERROR_NONE;
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -566,6 +630,7 @@ void stb_set_local_mailbox(HIPC_API a_hAPI)
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -577,6 +642,13 @@ void stb_set_mail_slot_size_of_mailbox(HIPC_API a_hAPI)
 	int account_id = 0;
 	int mailbox_id = 0;
 	int mail_slot_size = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 	EM_DEBUG_LOG("account_id[%d]", account_id);
@@ -587,7 +659,7 @@ void stb_set_mail_slot_size_of_mailbox(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, sizeof(int), &mail_slot_size);
 	EM_DEBUG_LOG("mail_slot_size[%d]", mail_slot_size);
 
-	if(emdaemon_set_mail_slot_size_of_mailbox(account_id, mailbox_id, mail_slot_size, &handle, &err))
+	if(emdaemon_set_mail_slot_size_of_mailbox(multi_user_name, account_id, mailbox_id, mail_slot_size, &handle, &err))
 		err = EMAIL_ERROR_NONE;
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed 1");
@@ -598,6 +670,7 @@ void stb_set_mail_slot_size_of_mailbox(HIPC_API a_hAPI)
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -611,6 +684,13 @@ void stb_rename_mailbox(HIPC_API a_hAPI)
 	int on_server = 0;
 	char *mailbox_path = NULL;
 	char *mailbox_alias = NULL;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &mailbox_id);
 	EM_DEBUG_LOG("mailbox_id[%d]", mailbox_id);
@@ -620,7 +700,7 @@ void stb_rename_mailbox(HIPC_API a_hAPI)
 	if(buffer_size > 0)	  {
 		mailbox_path = (char*)em_malloc(buffer_size);
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, buffer_size, mailbox_path);
-		EM_DEBUG_LOG("mailbox_path [%s]", mailbox_path);
+		EM_DEBUG_LOG_SEC("mailbox_path [%s]", mailbox_path);
 	}
 
 	buffer_size = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 2);
@@ -628,13 +708,13 @@ void stb_rename_mailbox(HIPC_API a_hAPI)
 	if(buffer_size > 0)	  {
 		mailbox_alias = (char*)em_malloc(buffer_size);
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, buffer_size, mailbox_alias);
-		EM_DEBUG_LOG("mailbox_alias [%s]", mailbox_alias);
+		EM_DEBUG_LOG_SEC("mailbox_alias [%s]", mailbox_alias);
 	}
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 3, sizeof(int), &on_server);
 	EM_DEBUG_LOG("on_server[%d]", on_server);
 
-	if ((err = emdaemon_rename_mailbox(mailbox_id, mailbox_path, mailbox_alias, NULL, 0, on_server, &handle)) != EMAIL_ERROR_NONE) {
+	if ((err = emdaemon_rename_mailbox(multi_user_name, mailbox_id, mailbox_path, mailbox_alias, NULL, 0, on_server, &handle)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emdaemon_rename_mailbox failed [%d]", err);
 	}
 
@@ -650,6 +730,7 @@ void stb_rename_mailbox(HIPC_API a_hAPI)
 	EM_SAFE_FREE(mailbox_alias);
 	EM_SAFE_FREE(mailbox_path);
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -665,6 +746,13 @@ void stb_rename_mailbox_ex(HIPC_API a_hAPI)
 	char *mailbox_path = NULL;
 	char *mailbox_alias = NULL;
 	void *eas_data = NULL;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &mailbox_id);
 	EM_DEBUG_LOG("mailbox_id[%d]", mailbox_id);
@@ -674,7 +762,7 @@ void stb_rename_mailbox_ex(HIPC_API a_hAPI)
 	if(buffer_size > 0)	  {
 		mailbox_path = (char*)em_malloc(buffer_size);
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, buffer_size, mailbox_path);
-		EM_DEBUG_LOG("mailbox_path [%s]", mailbox_path);
+		EM_DEBUG_LOG_SEC("mailbox_path [%s]", mailbox_path);
 	}
 
 	buffer_size = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 2);
@@ -682,7 +770,7 @@ void stb_rename_mailbox_ex(HIPC_API a_hAPI)
 	if(buffer_size > 0)	  {
 		mailbox_alias = (char*)em_malloc(buffer_size);
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, buffer_size, mailbox_alias);
-		EM_DEBUG_LOG("mailbox_alias [%s]", mailbox_alias);
+		EM_DEBUG_LOG_SEC("mailbox_alias [%s]", mailbox_alias);
 	}
 
 	eas_data_length = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 3);
@@ -695,7 +783,7 @@ void stb_rename_mailbox_ex(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 4, sizeof(int), &on_server);
 	EM_DEBUG_LOG("on_server[%d]", on_server);
 
-	if ((err = emdaemon_rename_mailbox(mailbox_id, mailbox_path, mailbox_alias, eas_data, eas_data_length, on_server, &handle)) != EMAIL_ERROR_NONE) {
+	if ((err = emdaemon_rename_mailbox(multi_user_name, mailbox_id, mailbox_path, mailbox_alias, eas_data, eas_data_length, on_server, &handle)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emdaemon_rename_mailbox failed [%d]", err);
 	}
 
@@ -712,6 +800,7 @@ void stb_rename_mailbox_ex(HIPC_API a_hAPI)
 	EM_SAFE_FREE(mailbox_path);
 	EM_SAFE_FREE(eas_data);
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -722,12 +811,19 @@ void stb_send_mail(HIPC_API a_hAPI)
 	int mail_id;
 	int handle;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* Mail_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &mail_id);
 	EM_DEBUG_LOG("mail_id [%d]", mail_id);
 
-	if(emdaemon_send_mail(mail_id, &handle, &err)) {
+	if(emdaemon_send_mail(multi_user_name, mail_id, &handle, &err)) {
 		err = EMAIL_ERROR_NONE;
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter result failed ");
@@ -745,6 +841,7 @@ void stb_send_mail(HIPC_API a_hAPI)
 
 	EM_SAFE_FREE(local_stream);
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -755,12 +852,19 @@ void stb_query_smtp_mail_size_limit(HIPC_API a_hAPI)
 	int account_id;
 	int handle;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* Mail_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 	EM_DEBUG_LOG("account_id [%d]", account_id);
 
-	if(emdaemon_query_smtp_mail_size_limit(account_id, &handle, &err)) {
+	if(emdaemon_query_smtp_mail_size_limit(multi_user_name, account_id, &handle, &err)) {
 		err = EMAIL_ERROR_NONE;
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter result failed ");
@@ -775,6 +879,7 @@ void stb_query_smtp_mail_size_limit(HIPC_API a_hAPI)
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 	}
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -789,10 +894,17 @@ void stb_get_mailbox_list(HIPC_API a_hAPI)
 	email_mailbox_t* mailbox_list = NULL;
 	int count = 0;
 	int size = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+            EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+            multi_user_name = NULL;
+    }
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 
-	if(emdaemon_get_mailbox_list(account_id, &mailbox_list, &count, &err))
+	if(emdaemon_get_mailbox_list(multi_user_name, account_id, &mailbox_list, &count, &err))
 		EM_DEBUG_LOG("emdaemon_get_mailbox_list - success");
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -827,6 +939,7 @@ void stb_get_mailbox_list(HIPC_API a_hAPI)
 
 	emcore_free_mailbox_list(&mailbox_list, count);
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -836,6 +949,13 @@ void stb_delete_all_mails(HIPC_API a_hAPI)
 	int mailbox_id = 0;
 	int from_server = 0;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+            EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+            multi_user_name = NULL;
+    }
 
 	/* mailbox_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &mailbox_id);
@@ -843,13 +963,14 @@ void stb_delete_all_mails(HIPC_API a_hAPI)
 	/* from_server */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &from_server);
 
-	emdaemon_delete_mail_all(mailbox_id, from_server, NULL, &err);
+	emdaemon_delete_mail_all(multi_user_name, mailbox_id, from_server, NULL, &err);
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -862,6 +983,13 @@ void stb_delete_mail(HIPC_API a_hAPI)
 	int counter = 0;
 	int num;
 	int *mail_ids = NULL;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+            EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+            multi_user_name = NULL;
+    }
 
 	/* Mailbox */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &mailbox_id);
@@ -890,7 +1018,7 @@ void stb_delete_mail(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 3, sizeof(int), &from_server);
 	EM_DEBUG_LOG("from_server [%d]", from_server);
 
-	emdaemon_delete_mail(mailbox_id, mail_ids, num, from_server, NULL, &err);
+	emdaemon_delete_mail(multi_user_name, mailbox_id, mail_ids, num, from_server, NULL, &err);
 
 FINISH_OFF:
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -901,21 +1029,33 @@ FINISH_OFF:
 
 	EM_SAFE_FREE(mail_ids);
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
+
 void stb_clear_mail_data (HIPC_API a_hAPI)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
 
-	if(emdaemon_clear_all_mail_data(&err)) {
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
+
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed : err");
+	if (!emipc_execute_stub_api(a_hAPI))
+		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+
+	if(emdaemon_clear_all_mail_data(multi_user_name, &err)) {
 		EM_DEBUG_LOG(">>> stb_clear_mail_data Success [ %d]  >> ", err);
 	}
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
-			EM_DEBUG_EXCEPTION("emipc_add_parameter failed : err");
-	if (!emipc_execute_stub_api(a_hAPI))
-		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -926,6 +1066,13 @@ void stb_add_rule(HIPC_API a_hAPI)
 	int err = EMAIL_ERROR_NONE;
 	char* local_rule_stream = NULL;
 	email_rule_t rule = { 0 };
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, 0);
 	if(buffer_size <= 0) {
@@ -942,7 +1089,7 @@ void stb_add_rule(HIPC_API a_hAPI)
 	EM_DEBUG_LOG("account ID  [%d]", rule.account_id);
 
 	/* call add_filter handler */
-	err = emdaemon_add_filter(&rule);
+	err = emdaemon_add_filter(multi_user_name, &rule);
 
 FINISH_OFF:
 
@@ -955,6 +1102,7 @@ FINISH_OFF:
 
 	emcore_free_rule(&rule);
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -969,15 +1117,22 @@ void stb_get_rule(HIPC_API a_hAPI)
 	email_rule_t* rule = NULL;
 	int size =0;
 	char* local_rule_stream = NULL;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	if ((ret_nth_value = emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0))) {
 		filter_id = *ret_nth_value;
 
-		emdaemon_get_filter(filter_id, &rule, &err);
+		emdaemon_get_filter(multi_user_name, filter_id, &rule, &err);
 	} else {
-		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;	
+		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
-		
+
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
@@ -1004,6 +1159,7 @@ void stb_get_rule(HIPC_API a_hAPI)
 		return;
 	}
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1017,8 +1173,15 @@ void stb_get_rule_list(HIPC_API a_hAPI)
 	int count = 0;
 	int size = 0;
 	email_rule_t* filtering_list = NULL;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
 
-	emdaemon_get_filter_list(&filtering_list, &count, &err);
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
+
+	emdaemon_get_filter_list(multi_user_name, &filtering_list, &count, &err);
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
@@ -1047,6 +1210,7 @@ void stb_get_rule_list(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 	}
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1058,6 +1222,13 @@ void stb_find_rule(HIPC_API a_hAPI)
 	int err = EMAIL_ERROR_NONE;
 	char* local_rule_stream = NULL;
 	email_rule_t rule = { 0 };
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 
 	buffer_size = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 0);
@@ -1071,7 +1242,7 @@ void stb_find_rule(HIPC_API a_hAPI)
 			EM_SAFE_FREE(local_rule_stream);
 			EM_DEBUG_LOG("account ID  [%d]", rule.account_id);
 
-			if(emdaemon_find_filter(&rule, &err))
+			if(emdaemon_find_filter(multi_user_name, &rule, &err))
 				err = EMAIL_ERROR_NONE;
 
 			if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -1081,6 +1252,8 @@ void stb_find_rule(HIPC_API a_hAPI)
 
 		}
 	}
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1094,7 +1267,13 @@ void stb_update_rule(HIPC_API a_hAPI)
 	int *ret_nth_value = NULL;
 	char* rule_stream = NULL;
 	email_rule_t rule = {0};
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
 
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* get filter_id */
 	if ((ret_nth_value = emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0))) {
@@ -1119,7 +1298,7 @@ void stb_update_rule(HIPC_API a_hAPI)
 	em_convert_byte_stream_to_rule(rule_stream, buffer_size, &rule);
 
 	/* call update handler */
-	emdaemon_update_filter(filter_id, &rule, &err);
+	emdaemon_update_filter(multi_user_name, filter_id, &rule, &err);
 
 FINISH_OFF:
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -1130,6 +1309,7 @@ FINISH_OFF:
 
 	emcore_free_rule(&rule);
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1138,6 +1318,13 @@ void stb_move_all_mails(HIPC_API a_hAPI)
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
 	int src_mailbox_id = 0, dst_mailbox_id = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* src_mailbox_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &src_mailbox_id);
@@ -1157,7 +1344,7 @@ void stb_move_all_mails(HIPC_API a_hAPI)
 	else
 		EM_DEBUG_LOG("dst_mailbox_id == 0");
 
-	if(emdaemon_move_mail_all_mails(src_mailbox_id, dst_mailbox_id, &err))
+	if(emdaemon_move_mail_all_mails(multi_user_name, src_mailbox_id, dst_mailbox_id, &err))
 		EM_DEBUG_LOG("emdaemon_move_mail_all_mails:Success");
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
@@ -1168,6 +1355,8 @@ void stb_move_all_mails(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 		return;
 	}
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1182,6 +1371,13 @@ void stb_set_flags_field(HIPC_API a_hAPI)
 	int num = 0;
 	int counter = 0;
 	int *mail_ids = NULL;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* account_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
@@ -1217,7 +1413,7 @@ void stb_set_flags_field(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 5, sizeof(int), &onserver);
 	EM_DEBUG_LOG("onserver [%d]", onserver);
 
-	if(emdaemon_set_flags_field(account_id, mail_ids, num, field_type, value, onserver, &err))
+	if(emdaemon_set_flags_field(multi_user_name, account_id, mail_ids, num, field_type, value, onserver, &err))
 		EM_DEBUG_LOG("emdaemon_set_flags_field - success");
 
 FINISH_OFF:
@@ -1231,6 +1427,7 @@ FINISH_OFF:
 	if (mail_ids)
 		EM_SAFE_FREE(mail_ids);
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1243,17 +1440,25 @@ void stb_add_mail(HIPC_API a_hAPI)
 	int param_index = 0;
 	int sync_server = 0;
 	int err = EMAIL_ERROR_NONE;
-	int mdm_err = EMAIL_ERROR_NONE;
 	int i = 0;
 	email_mail_data_t result_mail_data = {0};
 	email_attachment_data_t *result_attachment_data = NULL;
 	email_meeting_request_t result_meeting_request = {0};
 	emipc_email_api_info *api_info = (emipc_email_api_info *)a_hAPI;
+	email_account_server_t account_server_type = EMAIL_SERVER_TYPE_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+    char *prefix_path = NULL;
+    char real_file_path[255] = {0};
 
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* email_mail_data_t */;
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
-	EM_DEBUG_LOG("email_attachment_data_t buffer_size[%d]", buffer_size);
+	EM_DEBUG_LOG("email_mail_data_t buffer_size[%d]", buffer_size);
 
 	/* mail_data */
 	if(buffer_size > 0)	 {
@@ -1261,25 +1466,50 @@ void stb_add_mail(HIPC_API a_hAPI)
 		em_convert_byte_stream_to_mail_data(stream, buffer_size, &result_mail_data);
 	}
 
+	if (em_get_account_server_type_by_account_id(multi_user_name, result_mail_data.account_id, &account_server_type, true, &err) == false) {
+		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
+		goto FINISH_OFF;
+	}
+
+    /* Get the absolute path */
+    if (EM_SAFE_STRLEN(multi_user_name) > 0) {
+		err = emcore_get_container_path(multi_user_name, &prefix_path);
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_get_container_path failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+	} else {
+		prefix_path = strdup("");
+	}
+
 	/* check smack rule for accessing file path */
-	if (result_mail_data.file_path_html) {
-		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data.file_path_html)) {
+	if ((account_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) && result_mail_data.file_path_html) {
+        memset(real_file_path, 0x00, sizeof(real_file_path));
+        SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, result_mail_data.file_path_html);
+
+		if (!emdaemon_check_smack_rule(api_info->response_id, real_file_path)) {
 			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
 			err = EMAIL_ERROR_NO_SMACK_RULE;
 			goto FINISH_OFF;
 		}
 	}
 
-	if (result_mail_data.file_path_plain) {
-		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data.file_path_plain)) {
+	if ((account_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) && result_mail_data.file_path_plain) {
+        memset(real_file_path, 0x00, sizeof(real_file_path));
+        SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, result_mail_data.file_path_plain);
+
+		if (!emdaemon_check_smack_rule(api_info->response_id, real_file_path)) {
 			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
 			err = EMAIL_ERROR_NO_SMACK_RULE;
 			goto FINISH_OFF;
 		}
 	}
 
-	if (result_mail_data.file_path_mime_entity) {
-		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data.file_path_mime_entity)) {
+	if ((account_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) && result_mail_data.file_path_mime_entity) {
+        memset(real_file_path, 0x00, sizeof(real_file_path));
+        SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, result_mail_data.file_path_mime_entity);
+
+		if (!emdaemon_check_smack_rule(api_info->response_id, real_file_path)) {
 			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
 			err = EMAIL_ERROR_NO_SMACK_RULE;
 			goto FINISH_OFF;
@@ -1304,14 +1534,17 @@ void stb_add_mail(HIPC_API a_hAPI)
 				err = EMAIL_ERROR_ON_PARSING;
 				goto FINISH_OFF;
 			}
-			param_index++;
 		}
 	}
+	param_index++;
 
 	/* check smack rule for accessing file path */
 	for (i = 0; i < result_attachment_data_count ; i++) {
-		if (result_attachment_data[i].attachment_path) {
-			if (!emdaemon_check_smack_rule(api_info->response_id, result_attachment_data[i].attachment_path)) {
+		if ((account_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) && result_attachment_data[i].attachment_path && result_attachment_data[i].save_status) {
+            memset(real_file_path, 0x00, sizeof(real_file_path));
+            SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, result_attachment_data[i].attachment_path);
+
+			if (!emdaemon_check_smack_rule(api_info->response_id, real_file_path)) {
 				EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
 				err = EMAIL_ERROR_NO_SMACK_RULE;
 				goto FINISH_OFF;
@@ -1335,7 +1568,7 @@ void stb_add_mail(HIPC_API a_hAPI)
 	EM_DEBUG_LOG("sync_server");
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, param_index++, sizeof(int), &sync_server);
 
-	if( (err = emdaemon_add_mail(&result_mail_data, result_attachment_data, result_attachment_data_count, &result_meeting_request, sync_server)) != EMAIL_ERROR_NONE) {
+	if( (err = emdaemon_add_mail(multi_user_name, &result_mail_data, result_attachment_data, result_attachment_data_count, &result_meeting_request, sync_server)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emdaemon_add_mail failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1358,6 +1591,8 @@ FINISH_OFF:
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 	}
 
+	EM_SAFE_FREE(prefix_path);
+
 	emcore_free_mail_data(&result_mail_data);
 
 	if(result_attachment_data)
@@ -1367,6 +1602,7 @@ FINISH_OFF:
 
 	em_flush_memory();
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1386,6 +1622,15 @@ void stb_update_mail(HIPC_API a_hAPI)
 	email_attachment_data_t *result_attachment_data = NULL;
 	email_meeting_request_t result_meeting_request = {0};
 	emipc_email_api_info *api_info = (emipc_email_api_info *)a_hAPI;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+    char *prefix_path = NULL;
+    char real_file_path[255] = {0};
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	EM_DEBUG_LOG("email_mail_data_t");
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
@@ -1395,9 +1640,23 @@ void stb_update_mail(HIPC_API a_hAPI)
 		em_convert_byte_stream_to_mail_data(stream, buffer_size, &result_mail_data);
 	}
 
+    /* Get the absolute path */
+    if (EM_SAFE_STRLEN(multi_user_name) > 0) {
+		err = emcore_get_container_path(multi_user_name, &prefix_path);
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_get_container_path failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+	} else {
+		prefix_path = strdup("");
+	}
+
 	/* check smack rule for accessing file path */
 	if (result_mail_data.file_path_html) {
-		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data.file_path_html)) {
+        memset(real_file_path, 0x00, sizeof(real_file_path));
+        SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, result_mail_data.file_path_html);
+
+		if (!emdaemon_check_smack_rule(api_info->response_id, real_file_path)) {
 			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
 			err = EMAIL_ERROR_NO_SMACK_RULE;
 			goto FINISH_OFF;
@@ -1405,7 +1664,10 @@ void stb_update_mail(HIPC_API a_hAPI)
 	}
 
 	if (result_mail_data.file_path_plain) {
-		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data.file_path_plain)) {
+        memset(real_file_path, 0x00, sizeof(real_file_path));
+        SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, result_mail_data.file_path_plain);
+
+		if (!emdaemon_check_smack_rule(api_info->response_id, real_file_path)) {
 			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
 			err = EMAIL_ERROR_NO_SMACK_RULE;
 			goto FINISH_OFF;
@@ -1413,7 +1675,10 @@ void stb_update_mail(HIPC_API a_hAPI)
 	}
 
 	if (result_mail_data.file_path_mime_entity) {
-		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data.file_path_mime_entity)) {
+        memset(real_file_path, 0x00, sizeof(real_file_path));
+        SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, result_mail_data.file_path_mime_entity);
+
+		if (!emdaemon_check_smack_rule(api_info->response_id, real_file_path)) {
 			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
 			err = EMAIL_ERROR_NO_SMACK_RULE;
 			goto FINISH_OFF;
@@ -1434,14 +1699,17 @@ void stb_update_mail(HIPC_API a_hAPI)
 				err = EMAIL_ERROR_ON_PARSING;
 				goto FINISH_OFF;
 			}
-			param_index++;
 		}
 	}
+	param_index++;
 
 	/* check smack rule for accessing file path */
 	for (i = 0; i < result_attachment_data_count ; i++) {
 		if (result_attachment_data[i].attachment_path) {
-			if (!emdaemon_check_smack_rule(api_info->response_id, result_attachment_data[i].attachment_path)) {
+            memset(real_file_path, 0x00, sizeof(real_file_path));
+            SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, result_attachment_data[i].attachment_path);
+
+			if (!emdaemon_check_smack_rule(api_info->response_id, real_file_path)) {
 				EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
 				err = EMAIL_ERROR_NO_SMACK_RULE;
 				goto FINISH_OFF;
@@ -1473,7 +1741,7 @@ void stb_update_mail(HIPC_API a_hAPI)
 
 	sync_server = *temp_buffer;
 
-	if( (err = emdaemon_update_mail(&result_mail_data, result_attachment_data,
+	if( (err = emdaemon_update_mail(multi_user_name, &result_mail_data, result_attachment_data,
 			result_attachment_data_count, &result_meeting_request, sync_server)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emdaemon_update_mail failed [%d]", err);
 		goto FINISH_OFF;
@@ -1499,12 +1767,16 @@ FINISH_OFF:
 
 	emcore_free_mail_data(&result_mail_data);
 
+	EM_SAFE_FREE(prefix_path);
+
 	if(result_attachment_data)
 		emcore_free_attachment_data(&result_attachment_data, result_attachment_data_count, NULL);
 
 	emstorage_free_meeting_request(&result_meeting_request);
 
 	em_flush_memory();
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1515,6 +1787,13 @@ void stb_move_thread_to_mailbox(HIPC_API a_hAPI)
 	int mailbox_id = 0, thread_id = 0, move_always_flag = 0;
 	int err = EMAIL_ERROR_NONE;
 	char *target_mailbox_name = NULL;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &thread_id);
 	EM_DEBUG_LOG("thread_id [%d]", thread_id);
@@ -1525,7 +1804,7 @@ void stb_move_thread_to_mailbox(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, sizeof(int), &move_always_flag);
 	EM_DEBUG_LOG("move_always_flag [%d]", move_always_flag);
 
-	if(emdaemon_move_mail_thread_to_mailbox(thread_id, mailbox_id, move_always_flag, &err))
+	if(emdaemon_move_mail_thread_to_mailbox(multi_user_name, thread_id, mailbox_id, move_always_flag, &err))
 		EM_DEBUG_LOG("emdaemon_move_mail_thread_to_mailbox success");
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
@@ -1541,6 +1820,7 @@ void stb_move_thread_to_mailbox(HIPC_API a_hAPI)
 	}
 
 	EM_SAFE_FREE(target_mailbox_name);
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1551,6 +1831,13 @@ void stb_delete_thread(HIPC_API a_hAPI)
 	int thread_id = 0, delete_always_flag = 0;
 	int handle = 0;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &thread_id);
 	EM_DEBUG_LOG("thread_id [%d]", thread_id);
@@ -1558,7 +1845,7 @@ void stb_delete_thread(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &delete_always_flag);
 	EM_DEBUG_LOG("delete_always_flag [%d]", delete_always_flag);
 
-	if(emdaemon_delete_mail_thread(thread_id, delete_always_flag, &handle, &err))
+	if(emdaemon_delete_mail_thread(multi_user_name, thread_id, delete_always_flag, &handle, &err))
 		EM_DEBUG_LOG("emdaemon_delete_mail_thread success");
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
@@ -1570,6 +1857,8 @@ void stb_delete_thread(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api fail");
 		return;
 	}
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1580,6 +1869,13 @@ void stb_modify_seen_flag_of_thread(HIPC_API a_hAPI)
 	int thread_id = 0, seen_flag = 0, on_server = 0;
 	int handle = 0;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &thread_id);
 	EM_DEBUG_LOG("thread_id [%d]", thread_id);
@@ -1590,7 +1886,7 @@ void stb_modify_seen_flag_of_thread(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, sizeof(int), &on_server);
 	EM_DEBUG_LOG("on_server [%d]", on_server);
 
-	if(emdaemon_modify_seen_flag_of_thread(thread_id, seen_flag, on_server, &handle, &err))
+	if(emdaemon_modify_seen_flag_of_thread(multi_user_name, thread_id, seen_flag, on_server, &handle, &err))
 		EM_DEBUG_LOG("emdaemon_modify_seen_flag_of_thread success");
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
@@ -1602,6 +1898,8 @@ void stb_modify_seen_flag_of_thread(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api fail");
 		return;
 	}
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1612,6 +1910,13 @@ void stb_expunge_mails_deleted_flagged(HIPC_API a_hAPI)
 	int mailbox_id = 0, on_server = 0;
 	int handle = 0;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), (void*)&mailbox_id);
 	EM_DEBUG_LOG("mailbox_id [%d]", mailbox_id);
@@ -1619,7 +1924,7 @@ void stb_expunge_mails_deleted_flagged(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), (void*)&on_server);
 	EM_DEBUG_LOG("on_server [%d]", on_server);
 
-	if( (err = emdaemon_expunge_mails_deleted_flagged(mailbox_id, on_server, &handle)) != EMAIL_ERROR_NONE)
+	if( (err = emdaemon_expunge_mails_deleted_flagged(multi_user_name, mailbox_id, on_server, &handle)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_LOG("emdaemon_expunge_mails_deleted_flagged success");
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
@@ -1636,6 +1941,8 @@ void stb_expunge_mails_deleted_flagged(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api fail");
 		return;
 	}
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1643,6 +1950,13 @@ void stb_move_mail(HIPC_API a_hAPI)
 {
 	int err = EMAIL_ERROR_NONE;
 	int num = 0, counter = 0, mailbox_id = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* Number of mail_ids */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &num);
@@ -1664,7 +1978,7 @@ void stb_move_mail(HIPC_API a_hAPI)
 	else
 		EM_DEBUG_LOG("mailbox_id == 0");
 
-	if(emdaemon_move_mail(mail_ids, num, mailbox_id, EMAIL_MOVED_BY_COMMAND, 0, &err))
+	if(emdaemon_move_mail(multi_user_name, mail_ids, num, mailbox_id, EMAIL_MOVED_BY_COMMAND, 0, &err))
 		EM_DEBUG_LOG("emdaemon_move_mail success");
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -1672,6 +1986,8 @@ void stb_move_mail(HIPC_API a_hAPI)
 
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api fail");
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1681,11 +1997,18 @@ void stb_delete_rule(HIPC_API a_hAPI)
 
 	int filter_id = 0;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* filter_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &filter_id);
 
-	if(emdaemon_delete_filter(filter_id, &err))
+	if(emdaemon_delete_filter(multi_user_name, filter_id, &err))
 		err = EMAIL_ERROR_NONE;
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -1693,6 +2016,8 @@ void stb_delete_rule(HIPC_API a_hAPI)
 
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1702,11 +2027,18 @@ void stb_apply_rule(HIPC_API a_hAPI)
 
 	int filter_id = 0;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* filter_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &filter_id);
 
-	if(emdaemon_apply_filter(filter_id, &err))
+	if(emdaemon_apply_filter(multi_user_name, filter_id, &err))
 		err = EMAIL_ERROR_NONE;
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -1714,6 +2046,8 @@ void stb_apply_rule(HIPC_API a_hAPI)
 
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1728,6 +2062,15 @@ void stb_add_attachment(HIPC_API a_hAPI)
 	char* attachment_stream = NULL;
 	email_attachment_data_t* attachment = NULL;
 	emipc_email_api_info *api_info = (emipc_email_api_info *)a_hAPI;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+    char *prefix_path = NULL;
+    char real_file_path[255] = {0};
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* mail_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &mail_id);
@@ -1751,10 +2094,24 @@ void stb_add_attachment(HIPC_API a_hAPI)
 		goto FINISH_OFF;
 	}
 
+    /* Get the absolute path */
+    if (EM_SAFE_STRLEN(multi_user_name) > 0) {
+		err = emcore_get_container_path(multi_user_name, &prefix_path);
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_get_container_path failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+	} else {
+		prefix_path = strdup("");
+	}
+
 	/* check smack rule for accessing file path */
 	for (i = 0; i < attachment_count ; i++) {
 		if (attachment[i].attachment_path) {
-			if (!emdaemon_check_smack_rule(api_info->response_id, attachment[i].attachment_path)) {
+            memset(real_file_path, 0x00, sizeof(real_file_path));
+            SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, attachment[i].attachment_path);
+
+			if (!emdaemon_check_smack_rule(api_info->response_id, real_file_path)) {
 				EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
 				err = EMAIL_ERROR_NO_SMACK_RULE;
 				goto FINISH_OFF;
@@ -1762,7 +2119,7 @@ void stb_add_attachment(HIPC_API a_hAPI)
 		}
 	}
 
-	emdaemon_add_attachment(mail_id, attachment, &err);
+	emdaemon_add_attachment(multi_user_name, mail_id, attachment, &err);
 
 FINISH_OFF:
 
@@ -1778,6 +2135,9 @@ FINISH_OFF:
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
 	EM_SAFE_FREE(attachment);
+    EM_SAFE_FREE(multi_user_name);
+	EM_SAFE_FREE(prefix_path);
+
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1789,11 +2149,18 @@ void stb_get_attachment(HIPC_API a_hAPI)
 	char* attachment_stream = NULL;
 	email_attachment_data_t* attachment = NULL;
 	int size = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* attachment_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &attachment_id);
 
-	emdaemon_get_attachment(attachment_id, &attachment, &err);
+	emdaemon_get_attachment(multi_user_name, attachment_id, &attachment, &err);
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
@@ -1819,6 +2186,7 @@ void stb_get_attachment(HIPC_API a_hAPI)
 	EM_SAFE_FREE(attachment_stream);
 	emcore_free_attachment_data(&attachment, 1, &err);
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1828,11 +2196,19 @@ void stb_get_imap_mailbox_list(HIPC_API a_hAPI)
 	int err = EMAIL_ERROR_NONE;
 	int account_id = 0;
 	int handle = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+            EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+            multi_user_name = NULL;
+    }
 
 	/* account_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 
-	if(emdaemon_get_imap_mailbox_list(account_id, "", &handle, &err))
+	/*need to check: why err value is changed? */
+	if(emdaemon_get_imap_mailbox_list(multi_user_name, account_id, "", &handle, &err))
 		err = EMAIL_ERROR_NONE;
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -1841,6 +2217,8 @@ void stb_get_imap_mailbox_list(HIPC_API a_hAPI)
 		EM_DEBUG_LOG("ipcAPI_AddParameter local_result failed ");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_LOG("emipc_execute_stub_api failed  ");
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1849,17 +2227,25 @@ void stb_delete_attachment(HIPC_API a_hAPI)
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
 	int attachment_id = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* attachment_index */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &attachment_id);
 
-	emdaemon_delete_mail_attachment(attachment_id, &err);
+	emdaemon_delete_mail_attachment(multi_user_name, attachment_id, &err);
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1872,6 +2258,13 @@ void stb_download_attachment(HIPC_API a_hAPI)
 	int nth = 0;
 	int handle = 0;
 	int account_id = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	EM_DEBUG_LOG("account_id");
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
@@ -1882,7 +2275,7 @@ void stb_download_attachment(HIPC_API a_hAPI)
 	EM_DEBUG_LOG("nth");
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, sizeof(int), &nth);
 
-	if(emdaemon_download_attachment(account_id, mail_id, nth, &handle, &err)) {
+	if(emdaemon_download_attachment(multi_user_name, account_id, mail_id, nth, &handle, &err)) {
 		err = EMAIL_ERROR_NONE;
 
 		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -1904,6 +2297,7 @@ void stb_download_attachment(HIPC_API a_hAPI)
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 	}
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1912,12 +2306,19 @@ void stb_mail_send_saved(HIPC_API a_hAPI)
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
 	int account_id = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* account_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 
 	EM_DEBUG_LOG("calling emdaemon_send_mail_saved");
-	if(emdaemon_send_mail_saved(account_id, NULL, &err))
+	if(emdaemon_send_mail_saved(multi_user_name, account_id, NULL, &err))
 		err = EMAIL_ERROR_NONE;
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -1926,6 +2327,7 @@ void stb_mail_send_saved(HIPC_API a_hAPI)
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1934,12 +2336,19 @@ void stb_add_read_receipt(HIPC_API a_hAPI){
 	int read_mail_id = 0;
 	int receipt_mail_id = 0;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* read_mail_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &read_mail_id);
 	EM_DEBUG_LOG("read_mail_id [%d]", read_mail_id);
 
-	if( (err = emcore_add_read_receipt(read_mail_id, &receipt_mail_id)) != EMAIL_ERROR_NONE )
+	if( (err = emcore_add_read_receipt(multi_user_name, read_mail_id, &receipt_mail_id)) != EMAIL_ERROR_NONE )
 		EM_DEBUG_EXCEPTION("emcore_add_read_receipt failed [%d]", err);
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -1953,6 +2362,7 @@ void stb_add_read_receipt(HIPC_API a_hAPI){
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END("err [%d]", err);
 }
 
@@ -1963,6 +2373,13 @@ void stb_retry_sending_mail(HIPC_API a_hAPI)
 	int mail_id = 0;
 	int timeout_in_sec = 0;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* Mail_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &mail_id);
@@ -1972,14 +2389,16 @@ void stb_retry_sending_mail(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &timeout_in_sec);
 	EM_DEBUG_LOG("timeout_in_sec [%d]", timeout_in_sec);
 
-	if(emdaemon_send_mail_retry(mail_id, timeout_in_sec,&err))
+	if(emdaemon_send_mail_retry(multi_user_name, mail_id, timeout_in_sec,&err))
 		EM_DEBUG_LOG("emdaemon_get_mailbox_list - success");
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
-		if (!emipc_execute_stub_api(a_hAPI))
-			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+    if (!emipc_execute_stub_api(a_hAPI))
+            EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -1989,6 +2408,13 @@ void stb_cancel_job(HIPC_API a_hAPI)
 	int account_id = 0;
 	int handle = 0;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &handle);
@@ -2001,6 +2427,8 @@ void stb_cancel_job(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -2010,6 +2438,13 @@ void stb_cancel_send_mail_job(HIPC_API a_hAPI)
 	int mail_id = 0;
 	int err = EMAIL_ERROR_NONE;
 	int account_id = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* account_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
@@ -2027,112 +2462,10 @@ void stb_cancel_send_mail_job(HIPC_API a_hAPI)
 
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
-
-void stb_search_mail_on_server(HIPC_API a_hAPI)
-{
-	EM_DEBUG_FUNC_BEGIN();
-	int                    i = 0;
-	int                    err = EMAIL_ERROR_NONE;
-	int                    account_id = 0;
-	int					   mailbox_id = 0;
-	int                    buffer_size = 0;
-	int                    search_filter_count = 0;
-	char                  *stream_for_search_filter_list = NULL;
-	unsigned int           job_handle = 0;
-	email_search_filter_t *search_filter_list = NULL;
-
-	/* account_id */
-	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
-	EM_DEBUG_LOG("account_id [%d]", account_id);
-
-	/* mailbox_id */
-	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &mailbox_id);
-	EM_DEBUG_LOG("mailbox_id [%d]", mailbox_id);
-
-	/* search_filter_list */
-	buffer_size = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 2);
-
-	if(buffer_size > 0)	 {
-		stream_for_search_filter_list = (char*)em_malloc(buffer_size);
-		EM_NULL_CHECK_FOR_VOID(stream_for_search_filter_list);
-		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, buffer_size, stream_for_search_filter_list);
-		em_convert_byte_stream_to_search_filter(stream_for_search_filter_list, &search_filter_list, &search_filter_count);
-		EM_SAFE_FREE(stream_for_search_filter_list);
-	}
-
-	if(!emdaemon_search_mail_on_server(account_id ,mailbox_id, search_filter_list, search_filter_count, &job_handle, &err))
-		EM_DEBUG_LOG("success");
-
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
-		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &job_handle, sizeof(int)))
-		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
-
-	if (!emipc_execute_stub_api(a_hAPI))
-		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
-
-	if(search_filter_list) {
-		for(i = 0; i < search_filter_count; i++) {
-			switch(search_filter_list[i].search_filter_type) {
-				case EMAIL_SEARCH_FILTER_TYPE_BCC              :
-				case EMAIL_SEARCH_FILTER_TYPE_CC               :
-				case EMAIL_SEARCH_FILTER_TYPE_FROM             :
-				case EMAIL_SEARCH_FILTER_TYPE_KEYWORD          :
-				case EMAIL_SEARCH_FILTER_TYPE_SUBJECT          :
-				case EMAIL_SEARCH_FILTER_TYPE_TO               :
-				case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
-					EM_SAFE_FREE(search_filter_list[i].search_filter_key_value.string_type_key_value);
-					break;
-				default :
-					break;
-			}
-		}
-	}
-
-	EM_SAFE_FREE(search_filter_list);
-
-	EM_DEBUG_FUNC_END();
-}
-
-void stb_clear_result_of_search_mail_on_server(HIPC_API a_hAPI)
-{
-	EM_DEBUG_FUNC_BEGIN();
-	int                      err = EMAIL_ERROR_NONE;
-	int                      account_id = 0;
-	emstorage_mailbox_tbl_t *mailbox_tbl = NULL;
-
-	/* account_id */
-	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
-
-	EM_DEBUG_LOG("account_id [%d]", account_id);
-
-	if (!emstorage_get_mailbox_by_mailbox_type(account_id, EMAIL_MAILBOX_TYPE_SEARCH_RESULT, &mailbox_tbl, true, &err)) {
-		EM_DEBUG_EXCEPTION(" emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
-		goto FINISH_OFF;
-	}
-
-	if (!emstorage_delete_mail_by_mailbox(account_id, mailbox_tbl->mailbox_id, true, &err))
-		EM_DEBUG_EXCEPTION(" emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
-
-FINISH_OFF:
-
-	if (mailbox_tbl) {
-		emstorage_free_mailbox(&mailbox_tbl, 1, NULL);
-	}
-
-	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
-		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-
-	if (!emipc_execute_stub_api(a_hAPI))
-		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
-
-	EM_DEBUG_FUNC_END();
-}
-
-
 
 void stb_add_account_with_validation(HIPC_API a_hAPI)
 {
@@ -2146,6 +2479,13 @@ void stb_add_account_with_validation(HIPC_API a_hAPI)
 	int ref_check_interval = 0;
 	int ref_account_id = 0;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* get account info */
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, 0);
@@ -2170,13 +2510,14 @@ void stb_add_account_with_validation(HIPC_API a_hAPI)
 	}
 
 	em_convert_byte_stream_to_account(stream, buffer_size, account);
+    account->user_name = EM_SAFE_STRDUP(multi_user_name);
 
 	if((err = emcore_add_account_to_unvalidated_account_list(account)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_add_account_to_unvalidated_account_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(account->account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, account->account_id);
 
 	if (!ref_account) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", err);
@@ -2186,16 +2527,20 @@ void stb_add_account_with_validation(HIPC_API a_hAPI)
 	ref_check_interval = ref_account->check_interval;
 	ref_account_id     = ref_account->account_id;
 
-	if(!emdaemon_validate_account_and_create(ref_account, &handle, &err)) {
+	if(!emdaemon_validate_account_and_create(multi_user_name, ref_account, &handle, &err)) {
 		EM_DEBUG_EXCEPTION("emdaemon_validate_account_and_create fail [%d]", err);
 		goto FINISH_OFF;
 	}
 #ifdef __FEATURE_AUTO_POLLING__
 	/*  start auto polling, if check_interval not zero */
-	if(ref_check_interval > 0 || (ref_account->peak_days && ref_account->peak_interval > 0)) {
-		if(!emdaemon_add_polling_alarm(ref_account_id))
+	if(ref_check_interval > 0 || (ref_account->peak_days > 0 && ref_account->peak_interval > 0)) {
+		if(!emdaemon_add_polling_alarm(multi_user_name, ref_account_id))
 			EM_DEBUG_EXCEPTION("emdaemon_add_polling_alarm[NOTI_ACCOUNT_ADD] : start auto poll failed >>> ");
 	}
+#ifdef __FEATURE_IMAP_IDLE__
+	else if(ref_check_interval == 0 || (ref_account->peak_days > 0 && ref_account->peak_interval == 0))
+		emcore_refresh_imap_idle_thread();
+#endif /* __FEATURE_IMAP_IDLE__ */
 #endif /*  __FEATURE_AUTO_POLLING__ */
 	/*  add account details to contact DB  */
 	/*  emdaemon_insert_accountinfo_to_contact(account); */
@@ -2221,6 +2566,7 @@ FINISH_OFF:
 /*	note: account is freed in thread_func_branch_command, which is run by other thread */
 /*	emcore_free_account(account); */
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -2231,6 +2577,13 @@ void stb_backup_account(HIPC_API a_hAPI)
 #ifdef __FEATURE_BACKUP_ACCOUNT__
 	char *file_path = NULL;
 	int local_result = 0, err_code = 0, handle = 0, file_path_length = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err_code = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+            EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err_code);
+            multi_user_name = NULL;
+    }
 
 	/* file_path_length */
 	file_path_length = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 0);
@@ -2239,7 +2592,7 @@ void stb_backup_account(HIPC_API a_hAPI)
 		file_path = em_malloc(file_path_length);
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, file_path_length, file_path);
 		EM_DEBUG_LOG_SEC("file_path [%s]", file_path);
-		local_result = emcore_backup_accounts((const char*)file_path, &err_code);
+		local_result = emcore_backup_accounts(multi_user_name, (const char*)file_path, &err_code);
 	}
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
@@ -2255,6 +2608,7 @@ void stb_backup_account(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
 	EM_SAFE_FREE(file_path);
+    EM_SAFE_FREE(multi_user_name);
 #endif /*  __FEATURE_BACKUP_ACCOUNT__ */
 	EM_DEBUG_FUNC_END();
 }
@@ -2264,7 +2618,14 @@ void stb_restore_account(HIPC_API a_hAPI)
 	EM_DEBUG_FUNC_BEGIN();
 #ifdef __FEATURE_BACKUP_ACCOUNT__
 	char *file_path = NULL;
-	int local_result = 0, err_code = 0, handle = 0, file_path_length = 0;
+	int result = 0, err_code = 0, handle = 0, file_path_length = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err_code = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+            EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err_code);
+            multi_user_name = NULL;
+    }
 
 	/* file_path_length */
 	file_path_length = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 0);
@@ -2273,22 +2634,27 @@ void stb_restore_account(HIPC_API a_hAPI)
 		file_path = em_malloc(file_path_length);
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, file_path_length, file_path);
 		EM_DEBUG_LOG_SEC("file_path [%s]", file_path);
-		local_result = emcore_restore_accounts((const char*)file_path, &err_code);
 	}
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+	/* file_path could be NULL */
+	err_code = emcore_restore_accounts(multi_user_name, (const char*)file_path);
+
+	result = (err_code == EMAIL_ERROR_NONE)?1:0;
+
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result, sizeof(int)))
 		EM_DEBUG_LOG("emipc_add_parameter failed ");
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err_code, sizeof(int)))
-			EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter result failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
-		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
 	EM_SAFE_FREE(file_path);
+    EM_SAFE_FREE(multi_user_name);
 #endif /*  __FEATURE_BACKUP_ACCOUNT__ */
 	EM_DEBUG_FUNC_END();
 }
@@ -2302,12 +2668,19 @@ void stb_get_password_length(HIPC_API a_hAPI)
 	int local_result = 0;
 	int err_code = 0;
 	int password_length = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err_code = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+            EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err_code);
+            multi_user_name = NULL;
+    }
 
 	/* account_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &password_type);
 
-	local_result = emstorage_get_password_length_of_account(account_id, password_type, &password_length,&err_code);
+	local_result = emstorage_get_password_length_of_account(multi_user_name, account_id, password_type, &password_length,&err_code);
 
 	EM_DEBUG_LOG("password_length [%d]", password_length);
 
@@ -2322,6 +2695,8 @@ void stb_get_password_length(HIPC_API a_hAPI)
 
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -2333,6 +2708,13 @@ void stb_get_task_information(HIPC_API a_hAPI)
 	int stream_length;
 	email_task_information_t *task_information = NULL;
 	char *task_information_stream = NULL;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	err = emcore_get_task_information(&task_information, &task_information_count);
 
@@ -2356,6 +2738,7 @@ void stb_get_task_information(HIPC_API a_hAPI)
 		EM_SAFE_FREE(task_information);
 	}
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -2367,6 +2750,26 @@ void stb_add_certificate(HIPC_API a_hAPI)
 	char *cert_file_path = NULL;
 	char *email_address = NULL;
 	emipc_email_api_info *api_info = (emipc_email_api_info *)a_hAPI;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+    char *prefix_path = NULL;
+    char real_file_path[255] = {0};
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
+
+    /* Get the absolute path */
+    if (EM_SAFE_STRLEN(multi_user_name) > 0) {
+		err = emcore_get_container_path(multi_user_name, &prefix_path);
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_get_container_path failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+	} else {
+		prefix_path = strdup("");
+	}
 
 	cert_file_len = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 0);
 	if (cert_file_len > 0) {
@@ -2376,7 +2779,10 @@ void stb_add_certificate(HIPC_API a_hAPI)
 
 	/* check smack rule for accessing file path */
 	if (cert_file_path) {
-		if (!emdaemon_check_smack_rule(api_info->response_id, cert_file_path)) {
+        memset(real_file_path, 0x00, sizeof(real_file_path));
+        SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, cert_file_path);
+
+		if (!emdaemon_check_smack_rule(api_info->response_id, real_file_path)) {
 			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
 			err = EMAIL_ERROR_NO_SMACK_RULE;
 			goto FINISH_OFF;
@@ -2389,7 +2795,7 @@ void stb_add_certificate(HIPC_API a_hAPI)
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, email_address_len, email_address);
 	}
 
-	if (!emcore_add_public_certificate(cert_file_path, email_address, &err)) {
+	if (!emcore_add_public_certificate(multi_user_name, cert_file_path, email_address, &err)) {
 		EM_DEBUG_EXCEPTION("em_core_smime_add_certificate failed");
 	}
 
@@ -2405,8 +2811,10 @@ FINISH_OFF:
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
+	EM_SAFE_FREE(prefix_path);
 	EM_SAFE_FREE(cert_file_path);
 	EM_SAFE_FREE(email_address);
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -2416,6 +2824,13 @@ void stb_delete_certificate(HIPC_API a_hAPI)
 	int email_address_len = 0;
 	char *email_address = NULL;
 	char temp_email_address[130] = {0, };
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	email_address_len = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 0);
 	if (email_address_len > 0) {
@@ -2426,7 +2841,7 @@ void stb_delete_certificate(HIPC_API a_hAPI)
 	}
 
 	SNPRINTF(temp_email_address, sizeof(temp_email_address), "<%s>", email_address);
-	if (!emcore_delete_public_certificate(temp_email_address, &err)) {
+	if (!emcore_delete_public_certificate(multi_user_name, temp_email_address, &err)) {
 		EM_DEBUG_EXCEPTION("em_core_smime_add_certificate failed");
 	}
 
@@ -2442,6 +2857,7 @@ void stb_delete_certificate(HIPC_API a_hAPI)
 
 	
 	EM_SAFE_FREE(email_address);
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();    
 }
 
@@ -2454,6 +2870,13 @@ void stb_verify_signature(HIPC_API a_hAPI)
 	int attachment_tbl_count = 0;
 	email_mail_data_t *mail_data = NULL;
 	emstorage_attachment_tbl_t *attachment_tbl_list = NULL;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	err = emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &mail_id);
 	if (err != EMAIL_ERROR_NONE) {
@@ -2461,12 +2884,12 @@ void stb_verify_signature(HIPC_API a_hAPI)
 		goto FINISH_OFF;
 	}
 
-	if (!emcore_get_mail_data(mail_id, &mail_data)) {
+	if (!emcore_get_mail_data(multi_user_name, mail_id, &mail_data)) {
 		EM_DEBUG_EXCEPTION("emcore_get_mail_data failed");
 		goto FINISH_OFF;
 	}
 
-	if ((err = emstorage_get_attachment_list(mail_id, true, &attachment_tbl_list, &attachment_tbl_count)) != EMAIL_ERROR_NONE) {
+	if ((err = emstorage_get_attachment_list(multi_user_name, mail_id, true, &attachment_tbl_list, &attachment_tbl_count)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_get_attachment_list failed : [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -2477,16 +2900,24 @@ void stb_verify_signature(HIPC_API a_hAPI)
 		goto FINISH_OFF;
 	}
 
-	for (count = 0; count < attachment_tbl_count; count++) {
-		if (strcasestr(attachment_tbl_list[count].attachment_name, "p7s") == NULL)
-			continue;
-
-		break;	
+	for (count = 0; count < attachment_tbl_count ; count++) {
+		if (attachment_tbl_list[count].attachment_mime_type && strcasestr(attachment_tbl_list[count].attachment_mime_type, "SIGNATURE"))
+			break;
 	}
 
-	if (!emcore_verify_signature(attachment_tbl_list[count].attachment_path, mail_data->file_path_mime_entity, &verify, &err)) {
-		EM_DEBUG_EXCEPTION("emcore_verify_signature failed");
-		goto FINISH_OFF;
+	if (mail_data->smime_type == EMAIL_SMIME_SIGNED) {
+		if (!emcore_verify_signature(attachment_tbl_list[count].attachment_path, mail_data->file_path_mime_entity, &verify, &err)) {
+			EM_DEBUG_EXCEPTION("emcore_verify_signature failed");
+			goto FINISH_OFF;
+		}
+	} else if (mail_data->smime_type == EMAIL_PGP_SIGNED) {
+		if ((err = emcore_pgp_get_verify_signature(attachment_tbl_list[count].attachment_path, mail_data->file_path_mime_entity, mail_data->digest_type, &verify)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_pgp_get_verify_signature failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+	} else {
+		EM_DEBUG_LOG("Invalid signed mail");
+		err = EMAIL_ERROR_INVALID_PARAM;
 	}
 
 FINISH_OFF:
@@ -2510,6 +2941,7 @@ FINISH_OFF:
 		EM_SAFE_FREE(mail_data);
 	}
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -2519,6 +2951,13 @@ void stb_verify_certificate(HIPC_API a_hAPI)
 	int verify = 0;
 	int cert_file_len = 0;
 	char *cert_file_path = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	cert_file_len = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 0);
 	if (cert_file_len > 0) {
@@ -2541,6 +2980,7 @@ void stb_verify_certificate(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
 	EM_SAFE_FREE(cert_file_path);           
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();    
 }
 
@@ -2563,6 +3003,15 @@ void stb_update_notification_bar_for_unread_mail(HIPC_API a_hAPI)
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE, account_id;
 	int total_mail_count = 0, unread_mail_count = 0;
+	int input_from_eas = 0;
+    /* Get Container name */
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* account_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
@@ -2574,7 +3023,12 @@ void stb_update_notification_bar_for_unread_mail(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, sizeof(int), &unread_mail_count);
 	EM_DEBUG_LOG("unread_mail_count [%d]", unread_mail_count);
 
-	if(!emdaemon_finalize_sync(account_id, total_mail_count, unread_mail_count, &err)) {
+	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 3, sizeof(int), &input_from_eas);
+	EM_DEBUG_LOG("unread_mail_count [%d]", input_from_eas);
+
+	emcore_display_unread_in_badge(multi_user_name);
+
+	if(!emdaemon_finalize_sync(multi_user_name, account_id, total_mail_count, unread_mail_count, 0, 0, input_from_eas, &err)) {
 		EM_DEBUG_EXCEPTION("emdaemon_finalize_sync failed [%d]", err);
 	}
 
@@ -2583,6 +3037,37 @@ void stb_update_notification_bar_for_unread_mail(HIPC_API a_hAPI)
 
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+
+    EM_SAFE_FREE(multi_user_name);
+	EM_DEBUG_FUNC_END();
+}
+
+void stb_clear_notification_bar(HIPC_API a_hAPI)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int err = EMAIL_ERROR_NONE, account_id;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
+
+	/* account_id */
+	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
+	EM_DEBUG_LOG("account_id [%d]", account_id);
+
+	if((err = emcore_clear_notifications(multi_user_name, account_id)) != EMAIL_ERROR_NONE) 
+		EM_DEBUG_EXCEPTION("emdaemon_finalize_sync failed [%d]", err);
+
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
+
+	if (!emipc_execute_stub_api(a_hAPI))
+		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
 
@@ -2593,6 +3078,13 @@ void stb_show_user_message(HIPC_API a_hAPI)
 	int param_id = 0;
 	int param_error = 0;
 	email_action_t param_action = 0;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* param_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &param_id);
@@ -2606,8 +3098,8 @@ void stb_show_user_message(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, sizeof(int), &param_error);
 	EM_DEBUG_LOG("param_error [%d]", param_error);
 
-	if( (err = emcore_show_user_message(param_id, param_action, param_error)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emcore_show_user_message failed [%d]", err);
+	if(!emcore_show_user_message(multi_user_name, param_id, param_action, param_error)) {
+		EM_DEBUG_EXCEPTION("emcore_show_user_message failed");
 	}
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
@@ -2616,185 +3108,21 @@ void stb_show_user_message(HIPC_API a_hAPI)
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END("err [%d]", err);
 }
 
 void stb_write_mime_file(HIPC_API a_hAPI)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	int i = 0;
-	int exist_file_path = 0;
-	int buffer_size = 0;
-	int local_result = 0;
-	int result_attachment_data_count = 0;
-	int param_index = 0;
 	int err = EMAIL_ERROR_NONE;
-	int ret = EMAIL_ERROR_NONE;
-	char *file_path = NULL;
-	char *output_file_path = NULL;
-	email_mail_data_t result_mail_data = {0};
-	email_attachment_data_t *result_attachment_data = NULL;
-	emstorage_mail_tbl_t *input_mail_tbl_data = NULL;
-	emstorage_attachment_tbl_t *input_attachment_tbl_data = NULL;
-	emipc_email_api_info *api_info = (emipc_email_api_info *)a_hAPI;
-	
-	/* email_mail_data_t */;
-	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
-	EM_DEBUG_LOG("email_mail_data_t buffer_size[%d]", buffer_size);
 
-	/* mail_data */
-	if(buffer_size > 0)	 {
-		char *stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
-		em_convert_byte_stream_to_mail_data(stream, buffer_size, &result_mail_data);
-	}
-
-	/* check smack rule for accessing file path */
-	if (result_mail_data.file_path_html) {
-		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data.file_path_html)) {
-			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
-			err = EMAIL_ERROR_NO_SMACK_RULE;
-			goto FINISH_OFF;
-		}
-	}
-
-	if (result_mail_data.file_path_plain) {
-		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data.file_path_plain)) {
-			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
-			err = EMAIL_ERROR_NO_SMACK_RULE;
-			goto FINISH_OFF;
-		}
-	}
-
-	if (result_mail_data.file_path_mime_entity) {
-		if (!emdaemon_check_smack_rule(api_info->response_id, result_mail_data.file_path_mime_entity)) {
-			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
-			err = EMAIL_ERROR_NO_SMACK_RULE;
-			goto FINISH_OFF;
-		}
-	}
-	/* check smack rule - END */
-
-	/* attachment */
-	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
-	EM_DEBUG_LOG("email_attachment_data_t buffer_size[%d]", buffer_size);
-
-	if(buffer_size > 0) {
-		char *stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index);
-		em_convert_byte_stream_to_attachment_data(stream, buffer_size, &result_attachment_data, &result_attachment_data_count);
-
-		EM_DEBUG_LOG("result_attachment_data_count[%d]", result_attachment_data_count);
-		if (!result_attachment_data_count) {
-			EM_DEBUG_LOG("Not include attachment data");
-		} else {
-			if(!result_attachment_data) {
-				EM_DEBUG_EXCEPTION("em_convert_byte_stream_to_attachment_data failed");
-				err = EMAIL_ERROR_ON_PARSING;
-				goto FINISH_OFF;
-			}
-			param_index++;
-		}
-	}
-
-	/* check smack rule for accessing file path */
-	for (i = 0; i < result_attachment_data_count ; i++) {
-		if (result_attachment_data[i].attachment_path && result_attachment_data[i].save_status) {
-			if (!emdaemon_check_smack_rule(api_info->response_id, result_attachment_data[i].attachment_path)) {
-				EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
-				err = EMAIL_ERROR_NO_SMACK_RULE;
-				goto FINISH_OFF;
-			}
-		}
-	}
-
-	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
-	if (buffer_size > 0) {
-		output_file_path = (char *)emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index);
-		EM_DEBUG_LOG_SEC("output_file_path : [%s]", output_file_path);
-	}
-
-	/* Convert mail_data to mail_tbl */
-	if (!em_convert_mail_data_to_mail_tbl(&result_mail_data, 1, &input_mail_tbl_data, &err)) {
-		EM_DEBUG_EXCEPTION("em_convert_mail_data_to_mail_tbl failed");
-		goto FINISH_OFF;
-	}
-
-	/* Convert attachment_data to attachment_tbl */
-	if (result_attachment_data_count > 0) {
-		input_attachment_tbl_data = (emstorage_attachment_tbl_t *)em_malloc(sizeof(emstorage_attachment_tbl_t) * result_attachment_data_count);
-		if (input_attachment_tbl_data == NULL) {
-			EM_DEBUG_EXCEPTION("em_malloc failed");
-			err = EMAIL_ERROR_OUT_OF_MEMORY;
-			goto FINISH_OFF;
-		}
-	}
-
-	for (i = 0; i < result_attachment_data_count ; i++) {
-		input_attachment_tbl_data[i].attachment_id = result_attachment_data[i].attachment_id;
-		input_attachment_tbl_data[i].attachment_name = EM_SAFE_STRDUP(result_attachment_data[i].attachment_name);
-		input_attachment_tbl_data[i].attachment_path = EM_SAFE_STRDUP(result_attachment_data[i].attachment_path);
-		input_attachment_tbl_data[i].attachment_size = result_attachment_data[i].attachment_size;
-		input_attachment_tbl_data[i].mail_id = result_attachment_data[i].mail_id;
-		input_attachment_tbl_data[i].account_id = result_attachment_data[i].account_id;
-		input_attachment_tbl_data[i].mailbox_id = result_attachment_data[i].mailbox_id;
-		input_attachment_tbl_data[i].attachment_save_status = result_attachment_data[i].save_status;
-		input_attachment_tbl_data[i].attachment_drm_type = result_attachment_data[i].drm_status;
-		input_attachment_tbl_data[i].attachment_inline_content_status = result_attachment_data[i].inline_content_status;
-		input_attachment_tbl_data[i].attachment_mime_type = EM_SAFE_STRDUP(result_attachment_data[i].attachment_mime_type);
-	}
-
-	if (!emcore_make_rfc822_file_from_mail(input_mail_tbl_data, input_attachment_tbl_data, result_attachment_data_count, NULL, &file_path, NULL, &err)) {
-		EM_DEBUG_EXCEPTION("emcore_make_rfc822_file_from_mail failed");
-		goto FINISH_OFF;
-	}
-
-	if (output_file_path) {
-		if (!emstorage_move_file(file_path, output_file_path, false, &err)) {
-			EM_DEBUG_EXCEPTION("emstorage_move_file failed : [%d]", err);
-			goto FINISH_OFF;
-		}
-	} else {
-		exist_file_path = 1;
-		output_file_path = EM_SAFE_STRDUP(file_path);
-	}
-
-	if (!emdaemon_set_smack_label(output_file_path, "system::media")) {
-		EM_DEBUG_EXCEPTION("emdaemon_set_smack_label failed");
-	}
-
-	local_result = 1;
-
-FINISH_OFF:
-	if ( local_result == 0 ) {
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
-			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-	} else {
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
-			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-
-		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, (char *)output_file_path, EM_SAFE_STRLEN(output_file_path) + 1)) {
-			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-			err = EMAIL_ERROR_NULL_VALUE;
-			goto FINISH_OFF;
-		}
-	}
+	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
-		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
+		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
-	emstorage_free_attachment(&input_attachment_tbl_data, result_attachment_data_count, &ret);
-
-	emstorage_free_mail(&input_mail_tbl_data, 1, &ret);
-
-	emcore_free_mail_data(&result_mail_data);
-
-	if(result_attachment_data)
-		emcore_free_attachment_data(&result_attachment_data, result_attachment_data_count, NULL);
-
-	EM_SAFE_FREE(file_path);
-	if (exist_file_path)
-		EM_SAFE_FREE(output_file_path);
-
-	em_flush_memory();
 	EM_DEBUG_FUNC_END();
 }
 
@@ -2809,6 +3137,13 @@ void stb_validate_account_ex(HIPC_API a_hAPI)
 	email_account_t *account = NULL;
 	email_account_t *ref_account = NULL;
 	int err = EMAIL_ERROR_NONE;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_name failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* get account info */
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, 0);
@@ -2833,13 +3168,14 @@ void stb_validate_account_ex(HIPC_API a_hAPI)
 	}
 
 	em_convert_byte_stream_to_account(stream, buffer_size, account);
+    account->user_name = EM_SAFE_STRDUP(multi_user_name);
 
 	if((err = emcore_add_account_to_unvalidated_account_list(account)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_add_account_to_unvalidated_account_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(account->account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, account->account_id);
 
 	if (!ref_account) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", err);
@@ -2847,7 +3183,7 @@ void stb_validate_account_ex(HIPC_API a_hAPI)
 	}
 
 	/* ref_account will be removed by worker_event_queue() */
-	if((err = emdaemon_validate_account_ex(ref_account, &handle)) != EMAIL_ERROR_NONE) {
+	if((err = emdaemon_validate_account_ex(multi_user_name, ref_account, &handle)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emdaemon_validate_account_ex fail [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -2870,8 +3206,10 @@ FINISH_OFF:
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 	}
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
+
 void stb_handle_task(int task_type, HIPC_API a_hAPI)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -2893,7 +3231,7 @@ void stb_handle_task(int task_type, HIPC_API a_hAPI)
 
 	if(is_async_task) {
 		/* add async task */
-		if((err = emcore_add_task_to_task_table(task_type, EMAIL_TASK_PRIORITY_MID, task_parameter, task_parameter_length, &task_id)) != EMAIL_ERROR_NONE) {
+		if((err = emcore_add_task_to_task_table(NULL, task_type, EMAIL_TASK_PRIORITY_MID, task_parameter, task_parameter_length, &task_id)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_add_task_to_task_pool failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -2944,7 +3282,7 @@ void* thread_func_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT(void
 		EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
 
 	for(i = 0; i < task_param->mail_id_count; i++) {
-		if((err = emcore_move_mail_to_another_account(task_param->mail_id_array[i], task_param->source_mailbox_id, task_param->target_mailbox_id, task_id)) != EMAIL_ERROR_NONE) {
+		if((err = emcore_move_mail_to_another_account(task_param->multi_user_name, task_param->mail_id_array[i], task_param->source_mailbox_id, task_param->target_mailbox_id, task_id)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_move_mail_to_another_account failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -2966,9 +3304,11 @@ FINISH_OFF:
 	}
 
 	/* Free task parameter */
+        EM_SAFE_FREE(task_param->multi_user_name);
 	EM_SAFE_FREE(task_param->mail_id_array);
 	EM_SAFE_FREE(task_param);
 
+	emcore_close_recv_stream_list();
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return SUCCESS;
 }
@@ -2983,6 +3323,14 @@ void stb_move_mails_to_mailbox_of_another_account(HIPC_API a_hAPI)
 	thread_t task_id;
 	char *task_parameter = NULL;
 	task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT *decoded_parameter = NULL;
+
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+            EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+            multi_user_name = NULL;
+    }
 
 	/* task_parameter_length */;
 	task_parameter_length = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
@@ -3000,6 +3348,8 @@ void stb_move_mails_to_mailbox_of_another_account(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("email_decode_task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT failed[%d]", err);
 		goto FINISH_OFF;
 	}
+
+    decoded_parameter->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
 	THREAD_CREATE(task_id, thread_func_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT, (void*)decoded_parameter, thread_error);
 
@@ -3021,6 +3371,8 @@ FINISH_OFF:
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
+    EM_SAFE_FREE(multi_user_name);
+
 	EM_DEBUG_FUNC_END("err [%d]", err);
 }
 
@@ -3034,7 +3386,7 @@ void* thread_func_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX(void *input_param)
 	email_account_t* ref_account = NULL;
 	task_parameter_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX *task_param = input_param;
 
-	ref_account = emcore_get_account_reference(task_param->account_id);
+	ref_account = emcore_get_account_reference(task_param->multi_user_name, task_param->account_id);
 
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", task_param->account_id);
@@ -3051,7 +3403,7 @@ void* thread_func_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX(void *input_param)
 	if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, task_id, EMAIL_TASK_STATUS_STARTED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
 
-	if((err = emcore_delete_mailbox_ex(task_param->account_id, task_param->mailbox_id_array, task_param->mailbox_id_count, task_param->on_server, recursive)) != EMAIL_ERROR_NONE) {
+	if((err = emcore_delete_mailbox_ex(task_param->multi_user_name, task_param->account_id, task_param->mailbox_id_array, task_param->mailbox_id_count, task_param->on_server, recursive)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_delete_mailbox_ex failed[%d]", err);
 		goto FINISH_OFF;
 	}
@@ -3074,6 +3426,7 @@ FINISH_OFF:
 
 	/* Free task parameter */
 	EM_SAFE_FREE(task_param->mailbox_id_array);
+    EM_SAFE_FREE(task_param->multi_user_name);
 	EM_SAFE_FREE(task_param);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
@@ -3090,6 +3443,13 @@ void stb_delete_mailbox_ex(HIPC_API a_hAPI)
 	thread_t task_id;
 	char *task_parameter = NULL;
 	task_parameter_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX *decoded_parameter = NULL;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* task_parameter_length */;
 	task_parameter_length = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
@@ -3107,6 +3467,8 @@ void stb_delete_mailbox_ex(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("email_decode_task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT failed[%d]", err);
 		goto FINISH_OFF;
 	}
+
+    decoded_parameter->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
 	THREAD_CREATE(task_id, thread_func_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, (void*)decoded_parameter, thread_error);
 
@@ -3128,6 +3490,7 @@ FINISH_OFF:
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END("err [%d]", err);
 }
 
@@ -3143,7 +3506,7 @@ void* thread_func_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIG
 	if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, task_id, EMAIL_TASK_STATUS_STARTED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
 
-	if((err = emcore_send_mail_with_downloading_attachment_of_original_mail(task_param->mail_id)) != EMAIL_ERROR_NONE) {
+	if((err = emcore_send_mail_with_downloading_attachment_of_original_mail(task_param->multi_user_name, task_param->mail_id)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_send_mail_with_downloading_attachment_of_original_mail failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -3160,8 +3523,9 @@ FINISH_OFF:
 	}
 
 	/* Free task parameter */
+    EM_SAFE_FREE(task_param->multi_user_name);
 	EM_SAFE_FREE(task_param);
-
+	emcore_close_smtp_stream_list();
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return SUCCESS;
 }
@@ -3176,6 +3540,13 @@ void stb_send_mail_with_downloading_attachment_of_original_mail(HIPC_API a_hAPI)
 	thread_t task_id;
 	char *task_parameter = NULL;
 	task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL *decoded_parameter = NULL;
+    int nAPPID = emipc_get_app_id(a_hAPI);
+    char *multi_user_name = NULL;
+
+    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+        multi_user_name = NULL;
+    }
 
 	/* task_parameter_length */;
 	task_parameter_length = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
@@ -3193,6 +3564,8 @@ void stb_send_mail_with_downloading_attachment_of_original_mail(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("email_decode_task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT failed[%d]", err);
 		goto FINISH_OFF;
 	}
+
+    decoded_parameter->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
 	THREAD_CREATE(task_id, thread_func_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, (void*)decoded_parameter, thread_error);
 
@@ -3214,7 +3587,41 @@ FINISH_OFF:
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END("err [%d]", err);
+}
+
+void stb_get_user_name(HIPC_API a_hAPI)
+{
+    EM_DEBUG_FUNC_BEGIN();
+
+    int err = EMAIL_ERROR_NONE;
+    int pid = 0;
+
+    char *user_name = NULL;
+
+    pid = emipc_get_app_id(a_hAPI);
+    EM_DEBUG_LOG("Peer PID : [%d]", pid);
+
+    if (pid > 0) {
+        if ((err = emcore_get_user_name(pid, &user_name)) != EMAIL_ERROR_NONE) 
+            EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
+
+        EM_DEBUG_LOG("Domain name : [%s]", user_name);
+
+        if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) 
+                EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+
+        if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, user_name, EM_SAFE_STRLEN(user_name) + 1)) 
+            EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+    }
+
+    if (!emipc_execute_stub_api(a_hAPI))
+        EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
+
+    EM_SAFE_FREE(user_name);
+
+    EM_DEBUG_FUNC_END();
 }
 
 void stb_API_mapper(HIPC_API a_hAPI)
@@ -3422,14 +3829,6 @@ void stb_API_mapper(HIPC_API a_hAPI)
 			stb_cancel_send_mail_job(a_hAPI);
 			break;
 
-		case _EMAIL_API_SEARCH_MAIL_ON_SERVER :
-			stb_search_mail_on_server(a_hAPI);
-			break;
-
-		case _EMAIL_API_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER :
-			stb_clear_result_of_search_mail_on_server(a_hAPI);
-			break;
-
 		case _EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION :
 			stb_add_account_with_validation(a_hAPI);
 			break;
@@ -3474,6 +3873,10 @@ void stb_API_mapper(HIPC_API a_hAPI)
 			stb_update_notification_bar_for_unread_mail(a_hAPI);
 			break;
 
+		case _EMAIL_API_CLEAR_NOTIFICATION_BAR :
+			stb_clear_notification_bar(a_hAPI);
+			break;
+
 		case _EMAIL_API_SHOW_USER_MESSAGE :
 			stb_show_user_message(a_hAPI);
 			break;
@@ -3498,6 +3901,10 @@ void stb_API_mapper(HIPC_API a_hAPI)
 			stb_send_mail_with_downloading_attachment_of_original_mail(a_hAPI);
 			break;
 
+        case _EMAIL_API_GET_USER_NAME :
+            stb_get_user_name(a_hAPI);
+            break;
+
 		default :
 			if(EMAIL_SYNC_TASK_BOUNDARY_START < nAPIID && nAPIID < EMAIL_ASYNC_TASK_BOUNDARY_END)
 				stb_handle_task(nAPIID, a_hAPI);
@@ -3507,6 +3914,70 @@ void stb_API_mapper(HIPC_API a_hAPI)
 }
 
 GMainLoop *g_mainloop = NULL;
+
+/* this func should be called in main_loop */
+INTERNAL_FUNC int kill_daemon_if_no_account()
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int err = EMAIL_ERROR_NONE;
+	email_account_t *account_list = NULL;
+	int account_count = 0;
+    int total_account_count = 0;
+    GList *node = NULL;
+    GList *zone_name_list = NULL;
+
+    /* each container check the account */
+    if ((err = emcore_get_zone_name_list(&zone_name_list)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_zone_name_list failed : err[%d]", err);
+		if (zone_name_list) g_list_free(zone_name_list);
+		goto FINISH_OFF;
+    }
+
+    if (g_list_length(zone_name_list) == 1) {
+        if ((err = emcore_get_account_reference_list(NULL, &account_list, &account_count)) != EMAIL_ERROR_NONE) {
+            EM_DEBUG_LOG("emcore_get_account_reference_list failed [%d]", err);
+        }
+
+        if (account_list)
+            emcore_free_account_list(&account_list, account_count, NULL);
+
+        total_account_count += account_count;
+    } else {
+        node = g_list_first(zone_name_list);
+        while (node != NULL) {
+            if (!node->data) {
+                node = g_list_next(node);
+				continue;
+			}
+
+            if ((err = emcore_get_account_reference_list(node->data, &account_list, &account_count)) != EMAIL_ERROR_NONE) {
+                EM_DEBUG_LOG("emcore_get_account_reference_list failed [%d]", err);
+            }
+
+            if (account_list)
+                emcore_free_account_list(&account_list, account_count, NULL);
+
+            total_account_count += account_count;
+            EM_SAFE_FREE(node->data);
+            node = g_list_next(node);
+        }
+    }
+
+	if (zone_name_list)
+		g_list_free(zone_name_list);
+
+	EM_DEBUG_LOG("account_count [%d]", total_account_count);
+
+	if (total_account_count == 0) {
+		EM_DEBUG_LOG("email-service is going to shutdown");
+		g_main_loop_quit (g_mainloop);
+	}
+
+FINISH_OFF:
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+}
 
 static void callback_for_sigterm(int signum)
 {
@@ -3518,12 +3989,14 @@ static void callback_for_sigterm(int signum)
 	EM_DEBUG_FUNC_END();
 }
 
-gboolean callback_for_timeout(gpointer user_data)
+extern int launch_pid;
+
+gboolean callback_for_shutdown(gpointer user_data)
 {
 	EM_DEBUG_FUNC_BEGIN("user_data[%p]", user_data);
 
-	if(emipc_get_launch_method() != EMAIL_LAUNCHED_BY_DBUS_ACTIVATION) {
-		emdaemon_kill_daemon_if_no_account();
+	if (launch_pid == 0) {
+		kill_daemon_if_no_account();
 	}
 
 	EM_DEBUG_FUNC_END();
@@ -3546,25 +4019,122 @@ gboolean callback_for_del_account (GIOChannel *ch, GIOCondition cond, gpointer d
 	}
 	EM_DEBUG_LOG ("callback_for_del_account called file_del[%d] db_del[%d]", file_del, db_del);
 
-	/* if called twice, process termination begins. 
+	/* if called twice, process termination begins.
 	   two threads should complete the delete task */
 	if (file_del && db_del) {
-		emdaemon_kill_daemon_if_no_account();
+		kill_daemon_if_no_account();
 		file_del = db_del = 0; /* if there is an account, reset status */
 	}
 	return TRUE;
 }
 
+/* gdbus variables */
+static GDBusNodeInfo *introspection_data = NULL;
+extern gchar introspection_xml[];
+
+static void
+handle_method_call (GDBusConnection         *connection,
+                      const gchar           *sender,
+                      const gchar           *object_path,
+                      const gchar           *interface_name,
+                      const gchar           *method_name,
+                      GVariant              *parameters,
+                      GDBusMethodInvocation *invocation,
+                      gpointer               user_data)
+{
+	/* called by emipc_launch_email_service */
+	if (g_strcmp0 (method_name, "Launch") == 0) {
+		int caller_pid = 0;
+		g_variant_get (parameters, "(i)", &caller_pid);
+
+		launch_pid = caller_pid;
+		g_dbus_method_invocation_return_value (invocation, g_variant_new ("(i)", EMAIL_ERROR_NONE));
+		EM_DEBUG_LOG ("email-service launched by pid [%d]", caller_pid);
+	}
+/*
+	else if (g_strcmp0 (method_name, "SetContactsLog") == 0) {
+		GVariant* ret = em_gdbus_set_contact_log(parameters);
+		g_dbus_method_invocation_return_value (invocation, ret);
+	}
+	else if (g_strcmp0 (method_name, "DeleteContactsLog") == 0) {
+		GVariant* ret = em_gdbus_delete_contact_log(parameters);
+		g_dbus_method_invocation_return_value (invocation, ret);
+	}
+*/
+	else if (g_strcmp0 (method_name, "GetDisplayName") == 0) {
+		GVariant* ret = em_gdbus_get_display_name(parameters);
+		g_dbus_method_invocation_return_value (invocation, ret);
+	}
+	else if (g_strcmp0 (method_name, "CheckBlockingMode") == 0) {
+		GVariant* ret = em_gdbus_check_blocking_mode(parameters);
+		g_dbus_method_invocation_return_value (invocation, ret);
+	}
+}
+
+static const
+GDBusInterfaceVTable interface_vtable =
+{
+	handle_method_call,
+	NULL,
+	NULL
+};
+
+static void
+on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer user_data)
+{
+	EM_DEBUG_LOG ("on_bus_acquired begin");
+
+	guint reg_id;
+	GError *error = NULL;
+
+	reg_id = g_dbus_connection_register_object (connection,
+                                             EMAIL_SERVICE_PATH,
+                                             introspection_data->interfaces[0],
+                                             &interface_vtable,
+                                             NULL,  /* user_data */
+                                             NULL,  /* user_data_free_func */
+                                             &error); /* GError** */
+	if (reg_id == 0) {
+		EM_DEBUG_EXCEPTION ("g_dbus_connection_register_object error[%s]",error->message);
+		g_error_free (error);
+	}
+	EM_DEBUG_LOG ("on_bus_acquired end [%d]", reg_id);
+}
+
+static void on_name_acquired (GDBusConnection *connection,
+                               const gchar *name,
+                               gpointer     user_data)
+{
+	EM_DEBUG_LOG ("on_name_acquired [%s]", name);
+}
+
+static void on_name_lost (GDBusConnection *connection,
+                           const gchar *name,
+                           gpointer     user_data)
+{
+	EM_DEBUG_EXCEPTION ("on_name_lost [%p] [%s]", connection, name);
+}
+
 INTERNAL_FUNC int main(int argc, char *argv[])
 {
-	/* Do the email-service Initialization 
+	/* Do the email-service Initialization
        1. Create all DB tables and load the email engine */
 	EM_DEBUG_LOG("Email service begin");
 	int err = 0, ret;
-	GMainLoop *mainloop;
+	GMainLoop *mainloop = NULL;
+	int owner_id = 0;
+    GList *node = NULL;
+    GList *zone_name_list = NULL;
+
+#if !GLIB_CHECK_VERSION(2, 36, 0) 
+	g_type_init(); 
+#endif
+
+    /* Init container for daemon */
+    emcore_create_container();
 
 	EM_DEBUG_LOG("ipcEmailStub_Initialize Start");
-	
+
 	ret = emipc_initialize_stub(stb_API_mapper);
 
 	if(ret == true)
@@ -3575,28 +4145,90 @@ INTERNAL_FUNC int main(int argc, char *argv[])
 	signal(SIGPIPE, SIG_IGN);              /* to ignore signal 13(SIGPIPE) */
 	signal(SIGTERM, callback_for_sigterm); /* to handle signal 15(SIGTERM) - power off case*/
 
-	emdaemon_initialize(&err);
+	emcore_gmime_init();
 
-	/* Start auto polling */
-#ifdef __FEATURE_AUTO_POLLING__
-	emdaemon_start_auto_polling(&err);
-#endif
+    /* each container initialize */
+    if ((err = emcore_get_zone_name_list(&zone_name_list)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emcore_get_zone_name_list failed : err[%d]", err);
+		if (zone_name_list) g_list_free(zone_name_list);
+		goto FINISH_OFF;
+    }
+
+    if (g_list_length(zone_name_list) == 1) {
+        emdaemon_initialize(NULL, &err);
+        emcore_connect_contacts_service(NULL);
+    } else {
+		node = g_list_first(zone_name_list);
+        while (node != NULL) {
+            if (!node->data)
+                node = g_list_next(node);
+
+			emdaemon_initialize(node->data, &err);
+			emcore_connect_contacts_service(node->data);
+
+            EM_SAFE_FREE(node->data);
+            node = g_list_next(node);
+        }
+    }
+
+	if (zone_name_list)
+		g_list_free(zone_name_list);
+
+	g_timeout_add(5000, callback_for_shutdown, NULL);
+
+	/* pipe between main and del account thread */
+	int *pipefd = emcore_init_pipe_for_del_account ();
+	/* main loop uses IO channel for listening an event */
+	if (pipefd) {
+		GIOChannel *ch = g_io_channel_unix_new (pipefd[0]);
+		EM_DEBUG_LOG ("main pipe[%d][%d]", pipefd[0], pipefd[1]);
+		/* non-blocking mode */
+		g_io_channel_set_flags (ch, g_io_channel_get_flags (ch) | G_IO_FLAG_NONBLOCK, NULL);
+		/* main loop watches the IO, and call the cb when data is ready */
+		g_io_add_watch (ch, G_IO_IN, &callback_for_del_account, NULL);
+	}
+
+	/* gdbus setup */
+	GError *error = NULL;
+	introspection_data = g_dbus_node_info_new_for_xml (introspection_xml, &error);
+	if (!introspection_data) {
+		/* introspection_xml may be invalid */
+		EM_DEBUG_EXCEPTION ("g_dbus_node_info_new_for_xml error [%s]", error->message);
+		g_error_free (error);
+	}
+
+	owner_id = g_bus_own_name (G_BUS_TYPE_SYSTEM,
+                                EMAIL_SERVICE_NAME,
+                                G_BUS_NAME_OWNER_FLAGS_NONE,
+                                on_bus_acquired,
+                                on_name_acquired,
+                                on_name_lost,
+                                NULL,
+                                NULL);
+	if (!owner_id) {
+		EM_DEBUG_EXCEPTION ("g_bus_own_name error");
+	}
+	EM_DEBUG_LOG ("owner_id [%d]", owner_id);
 
 	mainloop = g_main_loop_new(NULL, 0);
 	g_mainloop = mainloop;
 
-	g_type_init();
-
 	g_main_loop_run(mainloop);
-	
+
 	/* Clean up resources */
+	g_bus_unown_name (owner_id);
 	g_main_loop_unref(mainloop);
 	g_mainloop = NULL;
 
+FINISH_OFF:
+
 	emipc_finalize_stub();
 	emdaemon_finalize(NULL);
+	emcore_gmime_shutdown();
 
+	EM_DEBUG_LOG ("Goodbye, world");
 	EM_DEBUG_FUNC_END();
+	exit(44); /* exit with exit code 44 to prevent restarting */
 	return 0;
 }
 

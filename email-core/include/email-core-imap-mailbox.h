@@ -33,7 +33,6 @@
 #ifndef __EMAIL_CORE_IMAP_MAILBOX_H__
 #define __EMAIL_CORE_IMAP_MAILBOX_H__
 
-
 #ifdef __cplusplus
 extern "C"
 {
@@ -50,7 +49,7 @@ extern "C"
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emcore_sync_mailbox_list(int account_id, char *mailbox, int handle, int *err_code);
+INTERNAL_FUNC int emcore_sync_mailbox_list(char *multi_user_name, int account_id, char *mailbox, int event_handle, int *err_code);
 
 /**
  * Download mailbox list from imap server.
@@ -64,12 +63,12 @@ INTERNAL_FUNC int emcore_sync_mailbox_list(int account_id, char *mailbox, int ha
  * @return This function returns true on success or false on failure.
  */
 INTERNAL_FUNC int emcore_download_mailbox_list(void *mail_stream, char *mailbox, email_internal_mailbox_t **mailbox_list, int *count, int *err_code);
-INTERNAL_FUNC int emcore_delete_imap_mailbox(int input_mailbox_id, int *err_code);
-INTERNAL_FUNC int emcore_create_imap_mailbox(email_mailbox_t *mailbox, int *err_code);
-INTERNAL_FUNC int emcore_rename_mailbox_on_imap_server(int input_account_id, int input_mailbox_id, char *input_old_mailbox_path, char *input_new_mailbox_path, int handle_to_be_published);
-INTERNAL_FUNC int emcore_set_mail_slot_size(int account_id, int mailbox_id, int new_slot_size, int *err_code);
-INTERNAL_FUNC int emcore_remove_overflowed_mails(emstorage_mailbox_tbl_t *intput_mailbox_tbl, int *err_code);	
-INTERNAL_FUNC int emcore_get_default_mail_slot_count(int input_account_id, int *output_count);
+INTERNAL_FUNC int emcore_delete_imap_mailbox(char *multi_user_name, int input_mailbox_id, int *err_code);
+INTERNAL_FUNC int emcore_create_imap_mailbox(char *multi_user_name, email_mailbox_t *mailbox, int *err_code);
+INTERNAL_FUNC int emcore_rename_mailbox_on_imap_server(char *multi_user_name, int input_account_id, int input_mailbox_id, char *input_old_mailbox_path, char *input_new_mailbox_path, int handle_to_be_published);
+INTERNAL_FUNC int emcore_set_mail_slot_size(char *multi_user_name, int account_id, int mailbox_id, int new_slot_size, int *err_code);
+INTERNAL_FUNC int emcore_remove_overflowed_mails(char *multi_user_name, emstorage_mailbox_tbl_t *intput_mailbox_tbl, int *err_code);	
+INTERNAL_FUNC int emcore_get_default_mail_slot_count(char *multi_user_name, int input_account_id, int *output_count);
 
 #ifdef __FEATURE_IMAP_QUOTA__
 INTERNAL_FUNC int emcore_register_quota_callback();

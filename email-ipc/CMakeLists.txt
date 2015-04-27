@@ -11,6 +11,8 @@ MESSAGE("")
 MESSAGE(">>> current directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 MESSAGE(">>> Build type: ${CMAKE_BUILD_TYPE}")
 
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--gc-sections")
+
 SET(IPC-LIB "email-ipc")
 SET(IPC-SRCS
 	${CMAKE_SOURCE_DIR}/email-ipc/email-ipc-api.c
@@ -46,7 +48,7 @@ INCLUDE_DIRECTORIES(
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(ipc_pkgs REQUIRED dlog dbus-1 glib-2.0 libsystemd-daemon)
+pkg_check_modules(ipc_pkgs REQUIRED dlog dbus-1 glib-2.0 libsystemd-daemon contacts-service2)
 
 FOREACH(flag ${ipc_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
@@ -72,7 +74,7 @@ TARGET_LINK_LIBRARIES(${IPC-LIB} ${ipc_pkgs_LDFLAGS} email-common-use pthread)
 SET_TARGET_PROPERTIES(${IPC-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
 SET_TARGET_PROPERTIES(${IPC-LIB} PROPERTIES VERSION ${VERSION})
 
-INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/email-activation/email-service.service DESTINATION share/dbus-1/services)
+INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/email-activation/email-service.service DESTINATION share/dbus-1/system-services)
 INSTALL(TARGETS ${IPC-LIB} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
 
 

@@ -53,8 +53,8 @@ INTERNAL_FUNC int emcore_remove_connection_info(int account_id);
 #endif /* __FEATURE_KEEP_CONNECTION__ */
 /*  in SMTP case, path argument must be (ENCODED_PATH_SMTP) */
 /*  ex) emcore_connect_to_remote_mailbox(xxx, (char *)ENCODED_PATH_SMTP, xxx, xxx); */
-INTERNAL_FUNC int  emcore_connect_to_remote_mailbox_with_account_info(email_account_t *ref_account, int input_mailbox_id, void **mail_stream, int *err_code);
-INTERNAL_FUNC int  emcore_connect_to_remote_mailbox(int account_id, int input_mailbox_id, void **mail_stream, int *err_code);
+INTERNAL_FUNC int  emcore_connect_to_remote_mailbox_with_account_info(char *multi_user_name, email_account_t *ref_account, int input_mailbox_id, void **mail_stream, int *err_code);
+INTERNAL_FUNC int  emcore_connect_to_remote_mailbox(char *multi_user_name, int account_id, int input_mailbox_id, void **mail_stream, int *err_code);
 INTERNAL_FUNC int  emcore_close_mailbox(int account_id, void *mail_stream);
 #ifdef __FEATURE_KEEP_CONNECTION__
 INTERNAL_FUNC void emcore_close_mailbox_receiving_stream();
@@ -62,18 +62,18 @@ INTERNAL_FUNC void emcore_close_mailbox_partial_body_stream();
 INTERNAL_FUNC void emcore_reset_streams();
 #endif
 
-INTERNAL_FUNC int  emcore_get_mailbox_list_to_be_sync(int account_id, email_mailbox_t **mailbox_list, int *p_count, int *err_code);
-INTERNAL_FUNC int  emcore_get_mailbox_list(int account_id, email_mailbox_t **mailbox_list, int *p_count, int *err_code);
-INTERNAL_FUNC int  emcore_get_mail_count(email_mailbox_t *mailbox, int *total, int *unseen, int *err_code);
-INTERNAL_FUNC int  emcore_create_mailbox(email_mailbox_t *new_mailbox, int on_server, int *err_code);
-INTERNAL_FUNC int  emcore_delete_mailbox(int input_mailbox_id, int input_on_server, int input_recursive);
-INTERNAL_FUNC int  emcore_delete_mailbox_ex(int input_account_id, int *input_mailbox_id_array, int input_mailbox_id_count, int input_on_server, int input_recursive);
-INTERNAL_FUNC int  emcore_delete_mailbox_all(email_mailbox_t *mailbox, int *err_code);
-INTERNAL_FUNC int  emcore_rename_mailbox(int input_mailbox_id, char *input_new_mailbox_name, char *input_new_mailbox_alias, void *input_eas_data, int input_eas_data_length, int input_on_server, int input_recursive, int handle_to_be_published);
+INTERNAL_FUNC int  emcore_get_mailbox_list_to_be_sync(char *multi_user_name, int account_id, email_mailbox_t **mailbox_list, int *p_count, int *err_code);
+INTERNAL_FUNC int  emcore_get_mailbox_list(char *multi_user_name, int account_id, email_mailbox_t **mailbox_list, int *p_count, int *err_code);
+INTERNAL_FUNC int  emcore_get_mail_count(char *multi_user_name, email_mailbox_t *mailbox, int *total, int *unseen, int *err_code);
+INTERNAL_FUNC int  emcore_create_mailbox(char *multi_user_name, email_mailbox_t *new_mailbox, int on_server, int server_type, int slot_size, int *err_code);
+INTERNAL_FUNC int  emcore_delete_mailbox(char *multi_user_name, int input_mailbox_id, int input_on_server, int input_recursive);
+INTERNAL_FUNC int  emcore_delete_mailbox_ex(char *multi_user_name, int input_account_id, int *input_mailbox_id_array, int input_mailbox_id_count, int input_on_server, int input_recursive);
+INTERNAL_FUNC int  emcore_delete_mailbox_all(char *multi_user_name, email_mailbox_t *mailbox, int *err_code);
+INTERNAL_FUNC int  emcore_rename_mailbox(char *multi_user_name, int input_mailbox_id, char *input_new_mailbox_name, char *input_new_mailbox_alias, void *input_eas_data, int input_eas_data_length, int input_on_server, int input_recursive, int handle_to_be_published);
 INTERNAL_FUNC int  emcore_save_local_activity_sync(int account_id, int *err_code);
 INTERNAL_FUNC int  emcore_send_mail_event(email_mailbox_t *mailbox, int mail_id , int *err_code);
-INTERNAL_FUNC int  emcore_partial_body_thd_local_activity_sync(int *is_event_inserted, int *err_code);
-INTERNAL_FUNC int  emcore_get_mailbox_by_type(int account_id, email_mailbox_type_e mailbox_type, email_mailbox_t *spam_mailbox, int *err_code);
+INTERNAL_FUNC int  emcore_partial_body_thd_local_activity_sync(char *multi_user_name, int *is_event_inserted, int *err_code);
+INTERNAL_FUNC int  emcore_get_mailbox_by_type(char *multi_user_name, int account_id, email_mailbox_type_e mailbox_type, email_mailbox_t *spam_mailbox, int *err_code);
 INTERNAL_FUNC void emcore_free_mailbox_list(email_mailbox_t **mailbox_list, int count);
 INTERNAL_FUNC void emcore_free_mailbox(email_mailbox_t *mailbox);
 
@@ -81,7 +81,8 @@ INTERNAL_FUNC void emcore_bind_mailbox_type(email_internal_mailbox_t *mailbox_li
 INTERNAL_FUNC int  emcore_free_internal_mailbox(email_internal_mailbox_t **mailbox_list, int count, int *err_code);
 
 
-
+INTERNAL_FUNC void emcore_close_recv_stream_list (void);
+INTERNAL_FUNC MAILSTREAM** emcore_get_recv_stream (char *multi_user_name, int account_id, int mailbox_id, int *error);
 
 #ifdef __FEATURE_LOCAL_ACTIVITY__
 INTERNAL_FUNC int  emcore_local_activity_sync(int account_id, int *err_code);

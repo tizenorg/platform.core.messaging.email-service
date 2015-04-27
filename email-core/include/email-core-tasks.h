@@ -63,6 +63,7 @@ typedef struct
 	int  target_mailbox_id;
 	int  mail_id_count;
 	int *mail_id_array;
+	char *multi_user_name;
 } task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT;
 
 DECLARE_CONVERTER_FOR_TASK_PARAMETER(EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT);
@@ -76,6 +77,7 @@ typedef struct
 	int  mailbox_id_count;
 	int *mailbox_id_array;
 	int  on_server;
+    char *multi_user_name;
 } task_parameter_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX;
 
 DECLARE_CONVERTER_FOR_TASK_PARAMETER(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX);
@@ -85,6 +87,7 @@ INTERNAL_FUNC void* task_handler_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX(void *input_
 typedef struct
 {
 	int  mail_id;
+    char *multi_user_name;
 } task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL;
 
 DECLARE_CONVERTER_FOR_TASK_PARAMETER(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL);
@@ -93,6 +96,7 @@ INTERNAL_FUNC void* task_handler_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATT
 /* to handle EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL */
 typedef struct
 {
+    char  *multi_user_name;
 	int    mail_id;
 	time_t scheduled_time;
 } task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL;
@@ -109,6 +113,7 @@ typedef struct
 	email_mail_attribute_type attribute_type;
 	int  value_length;
 	email_mail_attribute_value_t value;
+    char *multi_user_name;
 } task_parameter_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE;
 
 DECLARE_CONVERTER_FOR_TASK_PARAMETER(EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE);

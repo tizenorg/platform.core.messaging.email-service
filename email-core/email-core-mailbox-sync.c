@@ -32,6 +32,8 @@
 #include <ctype.h>
 #include <vconf.h>
 #include <unicode/ucsdet.h>
+#include <glib.h>
+#include <glib/gstdio.h>
 
 #include "email-internal-types.h"
 
@@ -45,7 +47,6 @@
 #include "email-utilities.h"
 #include "email-convert.h"
 #include "email-core-mailbox-sync.h"
-#include "email-core-global.h"
 #include "email-core-imap-mailbox.h"
 #include "email-core-event.h"
 #include "email-core-mailbox.h"
@@ -56,6 +57,7 @@
 #include "email-core-account.h"
 #include "email-storage.h"
 #include "email-core-signal.h"
+#include "email-core-gmime.h"
 #include "flstring.h"
 #include "email-debug-log.h"
 
@@ -69,13 +71,36 @@ extern void imap_parse_body_structure (MAILSTREAM *stream, BODY *body, unsigned 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
 static void emcore_free_email_partial_buffer(email_partial_buffer **partial_buffer, int item_count);
 static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream, char *tag, IMAPPARSEDREPLY **reply, int input_download_size, int item_count);
-static int emcore_initiate_pbd(MAILSTREAM *stream, int account_id, int mail_id, char *uid, int mailbox_id, int *err_code);
+static int emcore_initiate_pbd(char *multi_user_name, MAILSTREAM *stream, int account_id, int mail_id, char *uid, int mailbox_id, int *err_code);
 #endif
 
 #ifdef __FEATURE_SYNC_CLIENT_TO_SERVER__
 static char g_append_uid_rsp[129]; /* added for getting server response  */
 #endif
 
+static struct {
+	const char *charset;
+	const char *tm_zone;
+} known_zone_charset[] = {
+	{"euc-kr",      "kst"},
+        {"euc-jp",      "jst"}
+#if 0
+        {"Big5",        "zh" },
+        {"BIG5HKSCS",   "zh" },
+        {"gb2312",      "zh" },
+        {"gb18030",     "zh" },
+        {"gbk",         "zh" },
+        {"euc-tw",      "zh" },
+        {"iso-2022-jp", "ja" },
+        {"Shift-JIS",   "ja" },
+        {"sjis",        "ja" },
+        {"ujis",        "ja" },
+        {"eucJP",       "ja" },
+        {"euc-kr",      "ko" },
+        {"koi8-r",      "ru" },
+        {"koi8-u",      "uk" }
+#endif
+};
 
 int pop3_mail_calc_rfc822_size(MAILSTREAM *stream, int msgno, int *size, int *err_code)
 {
@@ -356,16 +381,17 @@ FINISH_OFF:
 	return ret;
 }
 
-int imap4_mailbox_get_uids(MAILSTREAM *stream, emcore_uid_list** uid_list, int *err_code)
+int imap4_mailbox_get_uids(MAILSTREAM *stream, char *input_target_uid_string, emcore_uid_list** uid_list, int *err_code)
 {
 	EM_PROFILE_BEGIN(ImapMailboxGetUids);
-	EM_DEBUG_FUNC_BEGIN("stream[%p], uid_list[%p], err_code[%p]", stream, uid_list, err_code);
+	EM_DEBUG_FUNC_BEGIN("stream[%p] input_target_uid_string[%p] uid_list[%p] err_code[%p]", stream, input_target_uid_string, uid_list, err_code);
 
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-
+	int command_length = 0;
 	IMAPLOCAL *imaplocal = NULL;
-	char tag[16], command[64];
+	char tag[16];
+	char *command= NULL;
 	char *response = NULL;
 	emcore_uid_list *uid_elem = NULL;
 
@@ -385,11 +411,22 @@ int imap4_mailbox_get_uids(MAILSTREAM *stream, emcore_uid_list** uid_list, int *
 		err = EMAIL_ERROR_MAIL_NOT_FOUND_ON_SERVER;
 		goto FINISH_OFF;
 	}
+
+	command_length = sizeof(char) * (EM_SAFE_STRLEN(input_target_uid_string) + sizeof(tag) + 100);
+	command = em_malloc(command_length);
+	if (command == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
 	memset(tag, 0x00, sizeof(tag));
-	memset(command, 0x00, sizeof(command));
 
 	SNPRINTF(tag, sizeof(tag), "%08lx", 0xffffffff & (stream->gensym++));
-	SNPRINTF(command, sizeof(command), "%s FETCH 1:* (FLAGS UID)\015\012", tag);
+	if (input_target_uid_string)
+		SNPRINTF(command, command_length, "%s UID FETCH %s (FLAGS UID INTERNALDATE)\015\012", tag, input_target_uid_string);
+	else
+		SNPRINTF(command, command_length, "%s FETCH 1:* (FLAGS UID INTERNALDATE)\015\012", tag);
 	EM_DEBUG_LOG("COMMAND [%s] \n", command);
 #ifdef FEATURE_CORE_DEBUG
 	EM_DEBUG_LOG(" [IMAP4] >>> [%s]", command);
@@ -406,6 +443,7 @@ int imap4_mailbox_get_uids(MAILSTREAM *stream, emcore_uid_list** uid_list, int *
 
 	while (imaplocal->netstream) {
 		char *p = NULL;
+		char *p_date = NULL;
 		char *s = NULL;
 		int seen = 0;
 		int forwarded = 0;
@@ -443,6 +481,19 @@ int imap4_mailbox_get_uids(MAILSTREAM *stream, emcore_uid_list** uid_list, int *
 				forwarded = strstr(p, "$Forwarded") ? 1  :  0;
 
 				if ((p = strstr(p, "UID "))) {
+
+					/* get INTERNALDATE */
+					char internaldate[100] = {0,};
+					if ((p_date = strstr(p, "INTERNALDATE \""))) {
+						int i = 0;
+						p_date += strlen("INTERNALDATE \"");
+						while (*p_date != '"' && i < 99) {
+							internaldate[i] = *p_date;
+							i++;
+							p_date++;
+						}
+					}
+
 					s = p + strlen("UID ");
 
 					while (isdigit(*s))
@@ -462,6 +513,7 @@ int imap4_mailbox_get_uids(MAILSTREAM *stream, emcore_uid_list** uid_list, int *
 					uid_elem->flag.draft = draft;
 					uid_elem->flag.forwarded = forwarded;
 					uid_elem->flag.flagged = flagged;
+					uid_elem->internaldate = EM_SAFE_STRDUP(internaldate);
 					if (*uid_list  != NULL)
 						uid_elem->next = *uid_list;		/*  prepend new data to list */
 
@@ -478,13 +530,14 @@ int imap4_mailbox_get_uids(MAILSTREAM *stream, emcore_uid_list** uid_list, int *
 			goto FINISH_OFF;
 		}
 
-		EM_SAFE_FREE(response);;
+		EM_SAFE_FREE(response);
 	}
 
 	ret = true;
 
 FINISH_OFF:
 	EM_SAFE_FREE(response);
+	EM_SAFE_FREE(command);
 
 	if (err_code  != NULL)
 		*err_code = err;
@@ -494,52 +547,159 @@ FINISH_OFF:
 	return ret;
 }
 
-static char *__em_get_month_in_string(int month)
+int emcore_get_uids_order_by_datetime_from_imap_server(MAILSTREAM *stream, int count_to_download, emcore_uid_list** output_uid_list)
 {
-	EM_DEBUG_FUNC_BEGIN("month [%d]", month);
+	EM_PROFILE_BEGIN(emcore_get_uids_order_by_datetime_from_imap_server);
+	EM_DEBUG_FUNC_BEGIN("stream[%p] count_to_download [%d] output_uid_list[%p]", stream, count_to_download, output_uid_list);
 
-	char *mon = NULL;
+	int err = EMAIL_ERROR_NONE;
 
-	switch (month){
-	    case 0:
-			mon = strdup("jan");
-	    	break;
-	    case 1:
-			mon = strdup("feb");
-	    	break;
-	    case 2:
-			mon = strdup("mar");
-	    	break;
-	    case 3:
-			mon = strdup("apr");
-	    	break;
-	    case 4:
-			mon = strdup("may");
-	    	break;
-	    case 5:
-			mon = strdup("jun");
-	    	break;
-	    case 6:
-			mon = strdup("jul");
-	    	break;
-	    case 7:
-			mon = strdup("aug");
-	    	break;
-	    case 8:
-			mon = strdup("sep");
-	    	break;
-	    case 9:
-			mon = strdup("oct");
-	    	break;
-	    case 10:
-			mon = strdup("nov");
-	    	break;
-	    case 11:
-			mon = strdup("dec");
-	    	break;
+	IMAPLOCAL *imaplocal = NULL;
+	char tag[16], command[64];
+	char *response = NULL;
+	emcore_uid_list *uid_elem = NULL;
+	char delims[] = " ";
+	char *result = NULL;
+	int  uid_count = 0;
+	time_t         RawTime = 0;
+	char           since_date_string[20];
+	char           before_date_string[20];
+	char          *uid_range_string = NULL;
+	emcore_uid_list *uid_list_for_listing = NULL;
+
+	if (!stream || !output_uid_list) {
+		EM_DEBUG_EXCEPTION(" stream[%p], output_uid_list[%p]", stream, output_uid_list);
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
 	}
-	return mon;
+
+	if (!(imaplocal = stream->local) || !imaplocal->netstream) {
+		EM_DEBUG_EXCEPTION(" invalid IMAP4 stream detected...");
+		err = EMAIL_ERROR_INVALID_PARAM;		/* EMAIL_ERROR_UNKNOWN */
+		goto FINISH_OFF;
+	}
+
+	/* Fetch the System time and Retrieve the a Week before time */
+	time(&RawTime);
+
+	while (uid_count <= count_to_download) {
+		RawTime = RawTime - (604800 * 4); //4 Weeks Before
+
+		emcore_make_date_string_for_search(RawTime, since_date_string);
+
+		memset(tag, 0x00, sizeof(tag));
+		memset(command, 0x00, sizeof(command));
+
+		SNPRINTF(tag, sizeof(tag), "%08lx", 0xffffffff & (stream->gensym++));
+		if (EM_SAFE_STRLEN(before_date_string) > 0)
+			SNPRINTF(command, sizeof(command), "%s UID SEARCH 1:* SINCE %s BEFORE %s\015\012", tag, since_date_string, before_date_string);
+		else
+			SNPRINTF(command, sizeof(command), "%s UID SEARCH 1:* SINCE %s\015\012", tag, since_date_string);
+		EM_DEBUG_LOG("COMMAND [%s] ", command);
+
+#ifdef FEATURE_CORE_DEBUG
+		EM_DEBUG_LOG(" [IMAP4] >>> [%s]", command);
+#endif
+
+		/*  send command  :  get msgno/uid for all message */
+		if (!net_sout(imaplocal->netstream, command, (int)EM_SAFE_STRLEN(command))) {
+			EM_DEBUG_EXCEPTION(" net_sout failed...");
+			err = EMAIL_ERROR_CONNECTION_BROKEN;
+			goto FINISH_OFF;
+		}
+
+		while (imaplocal->netstream) {
+			char *p = NULL;
+			/*  receive response */
+			if (!(response = net_getline(imaplocal->netstream))) {
+				EM_DEBUG_EXCEPTION(" net_getline failed...");
+				err = EMAIL_ERROR_INVALID_RESPONSE;
+				goto FINISH_OFF;
+			}
+#ifdef FEATURE_CORE_DEBUG
+			EM_DEBUG_LOG(" [IMAP4] <<< [%s]", response);
+#endif
+
+			if (!strncmp(response, tag, EM_SAFE_STRLEN(tag))) {
+				if (!strncmp(response + EM_SAFE_STRLEN(tag) + 1, "OK", 2)) {
+					EM_SAFE_FREE (response);
+					break;
+				}
+				else {	/*  'NO' or 'BAD' */
+					err = EMAIL_ERROR_IMAP4_FETCH_UID_FAILURE;		/* EMAIL_ERROR_INVALID_RESPONSE; */
+					goto FINISH_OFF;
+				}
+			}
+
+			if ((p = strstr(response, " SEARCH "))) {
+				*p = '\0'; p  += strlen(" SEARCH ");
+
+				result = strtok(p, delims);
+
+				while (result  != NULL)
+				{
+					EM_DEBUG_LOG("UID VALUE DEEP is [%s]", result);
+
+					if (!(uid_elem = em_malloc(sizeof(emcore_uid_list)))) {
+						EM_DEBUG_EXCEPTION(" malloc failed...");
+						err = EMAIL_ERROR_OUT_OF_MEMORY;
+						goto FINISH_OFF;
+					}
+
+					uid_elem->uid = EM_SAFE_STRDUP(result);
+
+					if (uid_list_for_listing != NULL)
+						uid_elem->next = uid_list_for_listing;
+					uid_list_for_listing = uid_elem;
+					result = strtok(NULL, delims);
+					uid_count++;
+				}
+
+				EM_SAFE_FREE(response);
+				continue;
+			}
+			else if ((p = strstr(response, " SEARCH"))){
+				/* there is no mail */
+				continue;
+			}
+			else {
+				err = EMAIL_ERROR_INVALID_RESPONSE;
+				goto FINISH_OFF;
+			}
+		}
+
+		EM_SAFE_STRCPY(before_date_string, since_date_string);
+		EM_DEBUG_LOG("uid_count [%d] ", uid_count);
+	}
+
+	EM_DEBUG_LOG("uid_count [%d] ", uid_count);
+
+	if ((err = emcore_make_uid_range_string(uid_list_for_listing, uid_count, &uid_range_string)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_make_uid_range_string failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	EM_DEBUG_LOG("uid_range_string [%s] ", uid_range_string);
+
+	/* Get uids with flags */
+	if(!imap4_mailbox_get_uids(stream, uid_range_string, output_uid_list, &err)) {
+		EM_DEBUG_EXCEPTION("imap4_mailbox_get_uids failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+FINISH_OFF:
+
+	if (uid_list_for_listing)
+		emcore_free_uids(uid_list_for_listing, NULL);
+
+	EM_SAFE_FREE (response);
+        EM_SAFE_FREE (uid_range_string);
+
+	EM_PROFILE_END(emcore_get_uids_order_by_datetime_from_imap_server);
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
 }
+
 
 int imap4_mailbox_get_uids_by_timestamp(MAILSTREAM *stream, emcore_uid_list** uid_list,  int *err_code)
 {
@@ -581,6 +741,11 @@ int imap4_mailbox_get_uids_by_timestamp(MAILSTREAM *stream, emcore_uid_list** ui
 	EM_DEBUG_LOG("RawTime Info [%lu]", RawTime);
 
 	timeinfo = localtime (&RawTime);
+	if (timeinfo == NULL) {
+		EM_DEBUG_EXCEPTION("localtime failed");
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
+		goto FINISH_OFF;
+	}
 
 	EM_DEBUG_LOG(">>>>>Current TIme %d %d %d %d %d %d", 1900+timeinfo->tm_year, timeinfo->tm_mon+1, timeinfo->tm_mday);
 
@@ -706,7 +871,7 @@ static int emcore_parse_header(char *rfc822_header, char **subject, char **from,
 	int len, i, j;
 	int subject_flag = 0;
 
-	EM_DEBUG_LOG("Buffer length [%d]", PARSE_BUFFER_LENGTH);
+
 
 	*priority = 3;
 
@@ -726,7 +891,7 @@ static int emcore_parse_header(char *rfc822_header, char **subject, char **from,
 			EM_DEBUG_LOG_DEV("buf:%s", buf);
 
 			/*  disposition_notification_to */
-			if (buf[0] == 'D' && buf[11] == '-' && buf[12] == 'N' && buf[24] == '-' && buf[25] == 'T') {
+			if ((buf[0] == 'D' || buf[0] == 'd') && buf[11] == '-' && (buf[12] == 'N' || buf[12] == 'n') && buf[24] == '-' && (buf[25] == 'T' || buf[25] == 't')) {
 				em_upper_string(buf);
 				if (req_read_receipt)
 					*req_read_receipt = 1;
@@ -735,7 +900,7 @@ static int emcore_parse_header(char *rfc822_header, char **subject, char **from,
 			}
 
 			/*  x-priority */
-			if (buf[0] == 'X' && buf[2] == 'P' && buf[9] == 'Y'){
+			if ((buf[0] == 'X' || buf[0] == 'x') && (buf[2] == 'P' || buf[2] == 'p') && (buf[9] == 'Y' || buf[9] == 'y')) {
 				em_upper_string(buf);
 				size_t len_2 = EM_SAFE_STRLEN(buf);
 				if (len_2 >= 12){
@@ -747,16 +912,27 @@ static int emcore_parse_header(char *rfc822_header, char **subject, char **from,
 			}
 
 			/*  x-msmail-priority */
-			if (buf[0] == 'X' && buf[2] == 'M' && buf[9] == 'P' && buf[16] == 'Y'){
+			if ((buf[0] == 'X' || buf[0] == 'x') && (buf[2] == 'M' || buf[2] == 'm') && (buf[9] == 'P' || buf[9] == 'p') && (buf[16] == 'Y' || buf[16] == 'y')) {
 				em_upper_string(buf);
-				if (strstr(buf, "HIGH"))
+				if (strcasestr(buf, "HIGH"))
 					*priority = 1;
-				if (strstr(buf, "NORMAL"))
+				if (strcasestr(buf, "NORMAL"))
 					*priority = 3;
-				if (strstr(buf, "LOW"))
+				if (strcasestr(buf, "LOW"))
 					*priority = 5;
 				memset(buf, 0x00, PARSE_BUFFER_LENGTH);
 				continue;
+			}
+
+			/* Importance */
+			if ((buf[0] == 'I' || buf[0] == 'i') && (buf[2] == 'P' || buf[2] == 'p') && (buf[6] == 'A' || buf[6] == 'a')) {
+				em_upper_string(buf);
+				if (strcasestr(buf, "HIGH"))
+					*priority = 1;
+				if (strcasestr(buf, "NORMAL"))
+					*priority = 3;
+				if (strcasestr(buf, "LOW"))
+					*priority = 5;
 			}
 
 			/* subject */
@@ -765,7 +941,7 @@ static int emcore_parse_header(char *rfc822_header, char **subject, char **from,
 					subject_flag = 0;
 				}
 
-				if (buf[0] == 'S' && buf[1] == 'u' && buf[2] == 'b') {
+				if ((buf[0] == 'S' || buf[0] == 's') && (buf[1] == 'u' || buf[1] == 'U') && (buf[2] == 'b' || buf[2] == 'B')) {
 					char *deli = NULL;
 					char *r = NULL;
 
@@ -774,6 +950,7 @@ static int emcore_parse_header(char *rfc822_header, char **subject, char **from,
 					if (r) *r = '\0';
 
 					if (deli) {
+						if (*subject) EM_SAFE_FREE(*subject);
 						*subject = g_strdup(deli+1);
 						EM_DEBUG_LOG_DEV("subject:%s", *subject);
 					}
@@ -802,7 +979,7 @@ static int emcore_parse_header(char *rfc822_header, char **subject, char **from,
 
 			/* From */
 			if (from) {
-				if (buf[0] == 'F' && buf[1] == 'r' && buf[2] == 'o') {
+				if ((buf[0] == 'F' || buf[0] == 'f') && (buf[1] == 'r' || buf[1] == 'R') && (buf[2] == 'o' || buf[2] == 'O')) {
 					char *deli = NULL;
 					char *r = NULL;
 
@@ -811,6 +988,7 @@ static int emcore_parse_header(char *rfc822_header, char **subject, char **from,
 					if (r) *r = '\0';
 
 					if (deli) {
+						if (*from) EM_SAFE_FREE(*from);
 						*from = g_strdup(deli+1);
 						EM_DEBUG_LOG_DEV("from:%s", *from);
 					}
@@ -850,7 +1028,7 @@ static int emcore_get_mail_extra_info(MAILSTREAM *stream, int msgno, char **subj
 #ifdef __FEATURE_HEADER_OPTIMIZATION__
 	/* Check if header already available in cache */
 	if (stream && stream->cache && stream->cache[msgno-1]->private.msg.header.text.data){
-		EM_DEBUG_LOG("I found the header in stream->cache!!");
+
 		rfc822_header = (char *) stream->cache[msgno-1]->private.msg.header.text.data;
 	}
 	else{
@@ -891,7 +1069,96 @@ FINISH_OFF:
 #define EMAIL_SYNC_STATUS_SEEN_FLAG_CHANGED    2
 #define EMAIL_SYNC_STATUS_FLAG_CHANGED         3
 
-static int emcore_get_uids_to_download(MAILSTREAM *stream, email_account_t *account, emstorage_mailbox_tbl_t *input_mailbox_tbl, int limit_count, emcore_uid_list** uid_list, int *uids, int retrieve_mode ,  int *err_code)
+static GDateTime *emcore_convert_strftime(char *time_str)
+{
+	GDateTime *datetime = NULL;
+	gchar **token_list = NULL;
+	int i = 0;
+	int index = 0;
+	int day = 0;
+	int month = 0;
+	int year = 0;
+	int hh = 0;
+	int mm = 0;
+	int ss = 0;
+	char *month_str = NULL;
+	char *ar_month[13] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", NULL};
+
+	token_list = g_strsplit_set(time_str, "-: ", -1);
+
+	if(token_list == NULL) {
+		EM_DEBUG_LOG("g_strsplit_set failed.");
+		return NULL;
+	}
+
+	while (token_list[index] != NULL) {
+		index++;
+	}
+
+	for (i = 0; i < index; i++) {
+		switch (i) {
+		case 0:		//Day
+			day = atoi(token_list[i]);
+			break;
+		case 1:		//Month
+			month_str = g_strdup(token_list[i]);
+			break;
+		case 2:		//Year
+			year = atoi(token_list[i]);
+			break;
+		case 3:		//HH
+			hh = atoi(token_list[i]);
+			break;
+		case 4:		//MM
+			mm = atoi(token_list[i]);
+			break;
+		case 5:		//SS
+			ss = atoi(token_list[i]);
+			break;
+		}
+	}
+
+	if (month_str) {
+		i = 0;
+		while (ar_month[i]) {
+			if (g_ascii_strcasecmp(month_str, ar_month[i]) == 0) {
+				month = i+1;
+				break;
+			}
+			i++;
+		}
+	}
+
+	EM_DEBUG_LOG_DEV("%d/%d/%d %d:%d:%d", day, month, year, hh, mm, ss);
+
+	datetime = g_date_time_new_utc(year, month, day, hh, mm, ss);
+
+	g_strfreev(token_list);
+	g_free(month_str);
+
+	return datetime;
+}
+
+static gint emcore_compare_uid_elem(gconstpointer a, gconstpointer b)
+{
+	emcore_uid_list *item_a = NULL;
+	emcore_uid_list *item_b = NULL;
+	GDateTime *datetime_a = NULL;
+	GDateTime *datetime_b = NULL;
+	int ret = 0;
+
+	item_a = (emcore_uid_list *)a;
+	item_b = (emcore_uid_list *)b;
+
+	datetime_a = emcore_convert_strftime(item_a->internaldate);
+	datetime_b = emcore_convert_strftime(item_b->internaldate);
+
+	ret = g_date_time_compare(datetime_b, datetime_a);
+
+	return ret;
+}
+
+static int emcore_get_uids_to_download(char *multi_user_name, MAILSTREAM *stream, email_account_t *account, emstorage_mailbox_tbl_t *input_mailbox_tbl, int limit_count, emcore_uid_list** uid_list, int *uids, int retrieve_mode ,  int *err_code)
 {
 	EM_PROFILE_BEGIN(emCoreGetUidsDownload);
 	EM_DEBUG_FUNC_BEGIN("account[%p], input_mailbox_tbl[%p], limit_count[%d], uid_list[%p], err_code[%p]", account, input_mailbox_tbl, limit_count, uid_list, err_code);
@@ -905,6 +1172,11 @@ static int emcore_get_uids_to_download(MAILSTREAM *stream, email_account_t *acco
 	emcore_uid_list *head_uid_elem = NULL, *end =  NULL;
 	emcore_uid_list *next_uid_elem = NULL;
 	emstorage_mail_tbl_t *mail = NULL;
+
+	emcore_uid_list *elem_item = NULL;
+	GList *item_list = NULL;
+	GList *item_iter = NULL;
+	GList *item_next = NULL;
 
 	if (!account || !input_mailbox_tbl || !uid_list) {
 		EM_DEBUG_EXCEPTION("account[%p], input_mailbox_tbl[%p], uid_list[%p]", account, input_mailbox_tbl, uid_list);
@@ -921,17 +1193,24 @@ static int emcore_get_uids_to_download(MAILSTREAM *stream, email_account_t *acco
 		}
 	}
 	else {	/*  EMAIL_SERVER_TYPE_IMAP4 */
-		/*  sowmya.kr commented , since imap4_mailbox_get_uids_by_timestamp will fetch mails since last week and not all mails  */
-
-		EM_DEBUG_LOG("calling imap4_mailbox_get_uids");
-		if (!imap4_mailbox_get_uids(stream, uid_list, &err)) {
-			EM_DEBUG_EXCEPTION("imap4_mailbox_get_uids failed [%d]", err);
-			if (err  != EMAIL_ERROR_MAIL_NOT_FOUND_ON_SERVER)
-				goto FINISH_OFF;
+		EM_DEBUG_LOG("nmsgs[%d]", ((MAILSTREAM *)stream)->nmsgs);
+		if ((limit_count < ((MAILSTREAM *)stream)->nmsgs)) {
+			if ((err = emcore_get_uids_order_by_datetime_from_imap_server(stream, limit_count, uid_list)) != EMAIL_ERROR_NONE ) {
+				EM_DEBUG_EXCEPTION("emcore_get_uids_order_by_datetime_from_imap_server failed [%d]", err);
+				if (err  != EMAIL_ERROR_MAIL_NOT_FOUND_ON_SERVER)
+					goto FINISH_OFF;
+			}
+		}
+		else {
+			if(!imap4_mailbox_get_uids(stream, NULL, uid_list, &err)) {
+				EM_DEBUG_EXCEPTION("imap4_mailbox_get_uids failed [%d]", err);
+				if (err  != EMAIL_ERROR_MAIL_NOT_FOUND_ON_SERVER)
+					goto FINISH_OFF;
+			}
 		}
 	}
 
-	if (!emstorage_get_downloaded_list(input_mailbox_tbl->account_id,
+	if (!emstorage_get_downloaded_list(multi_user_name, input_mailbox_tbl->account_id,
 		(account->incoming_server_type == EMAIL_SERVER_TYPE_POP3) ? 0 : input_mailbox_tbl->mailbox_id,
 		&downloaded_uids, &downloaded_uid_count, true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_downloaded_list failed [%d]", err);
@@ -950,36 +1229,75 @@ static int emcore_get_uids_to_download(MAILSTREAM *stream, email_account_t *acco
 
 	EM_PROFILE_BEGIN(emCoreGetUidsDownloadWhilwLoop);
 
+	/* Sort uid_elem list based on datetime */
+	elem_item = uid_elem;
+
+	while (elem_item) {
+		item_list = g_list_append(item_list, elem_item);
+		elem_item = elem_item->next;
+	}
+
+	if (item_list) {
+		item_list = g_list_sort(item_list, emcore_compare_uid_elem);
+		item_iter = g_list_first(item_list);
+
+		while (item_iter) {
+			item_next = g_list_next(item_iter);
+			if (item_next) {
+				elem_item = item_iter->data;
+				elem_item->next = (emcore_uid_list *)item_next->data;
+			} else {
+				elem_item = item_iter->data;
+				elem_item->next = NULL;
+			}
+
+			item_iter = g_list_next(item_iter);
+		}
+
+		item_iter = g_list_first(item_list);
+		uid_elem = item_iter->data;
+
+		g_list_free(item_list);
+	}
+	/* Sorting completed */
+
 	while (uid_elem) {
 		next_uid_elem = uid_elem->next;
 
-		if ((account->retrieval_mode == EMAIL_IMAP4_RETRIEVAL_MODE_NEW) && (uid_elem->flag.seen != 0)) {		/*  already seen */
+		if ((account->retrieval_mode & EMAIL_IMAP4_RETRIEVAL_MODE_NEW) && (uid_elem->flag.seen != 0)) {		/*  already seen */
 			EM_SAFE_FREE (uid_elem->uid);
+			EM_SAFE_FREE (uid_elem->internaldate);
 			EM_SAFE_FREE (uid_elem);
 		}
 		else {
 			int to_be_downloaded = 1;
 
 			if (limit_count > 0 && uid_count >= limit_count){
-				/*  EM_DEBUG_LOG("hit the limit[%d] for [%s]", limit_count, uid_elem->uid);		 */
+				/* EM_DEBUG_LOG("hit the limit[%d] for [%s]", limit_count, uid_elem->uid); */
 				to_be_downloaded = 0;
 			}
 			else{
 				for (i = downloaded_uid_count; i > 0; i--) {
-					if (downloaded_uids[i - 1].sync_status == EMAIL_SYNC_STATUS_NOT_EXIST_ON_SERVER && !EM_SAFE_STRCMP(uid_elem->uid, downloaded_uids[i - 1].server_uid)) {
-						/* The mail exists on server and local storage, so it should not be downloaded, just check seen flag */
-						if(downloaded_uids[i - 1].flags_seen_field != uid_elem->flag.seen ||
-								downloaded_uids[i - 1].flags_flagged_field != uid_elem->flag.flagged) {
-							if(downloaded_uids[i - 1].flags_seen_field != uid_elem->flag.seen) {
-								downloaded_uids[i - 1].sync_status = EMAIL_SYNC_STATUS_FLAG_CHANGED;
-								downloaded_uids[i - 1].flags_seen_field = uid_elem->flag.seen;
+					if (downloaded_uids[i - 1].sync_status == EMAIL_SYNC_STATUS_NOT_EXIST_ON_SERVER
+							&& !EM_SAFE_STRCMP(uid_elem->uid, downloaded_uids[i - 1].server_uid)) {
+						if (downloaded_uids[i - 1].mailbox_id != input_mailbox_tbl->mailbox_id) {
+							uid_count--;
+						}
+						else {
+							/* The mail exists on server and local storage, so it should not be downloaded, just check seen flag */
+							if(downloaded_uids[i - 1].flags_seen_field != uid_elem->flag.seen ||
+									downloaded_uids[i - 1].flags_flagged_field != uid_elem->flag.flagged) {
+								if(downloaded_uids[i - 1].flags_seen_field != uid_elem->flag.seen) {
+									downloaded_uids[i - 1].sync_status = EMAIL_SYNC_STATUS_FLAG_CHANGED;
+									downloaded_uids[i - 1].flags_seen_field = uid_elem->flag.seen;
+								}
+								if (downloaded_uids[i - 1].flags_flagged_field != uid_elem->flag.flagged) {
+									downloaded_uids[i - 1].sync_status = EMAIL_SYNC_STATUS_FLAG_CHANGED;
+									downloaded_uids[i - 1].flags_flagged_field = uid_elem->flag.flagged;
+								}
+							} else {
+								downloaded_uids[i - 1].sync_status = EMAIL_SYNC_STATUS_EXIST_ON_SERVER;
 							}
-							if (downloaded_uids[i - 1].flags_flagged_field != uid_elem->flag.flagged) {
-								downloaded_uids[i - 1].sync_status = EMAIL_SYNC_STATUS_FLAG_CHANGED;
-								downloaded_uids[i - 1].flags_flagged_field = uid_elem->flag.flagged;
-							}
-						} else {
-							downloaded_uids[i - 1].sync_status = EMAIL_SYNC_STATUS_EXIST_ON_SERVER;
 						}
 						to_be_downloaded = 0;
 						break;
@@ -987,7 +1305,7 @@ static int emcore_get_uids_to_download(MAILSTREAM *stream, email_account_t *acco
 				}
 			}
 
-			/*  EM_DEBUG_LOG("Is uid[%s] going to be downloded ? [%d]", uid_elem->uid, to_be_downloaded); */
+			//EM_DEBUG_LOG("Is uid[%s] datetime[%s] going to be downloaded ? [%d]", uid_elem->uid, uid_elem->internaldate, to_be_downloaded);
 
 			if (to_be_downloaded) {
 				if (retrieve_mode == EMAIL_SYNC_OLDEST_MAILS_FIRST){
@@ -1025,8 +1343,9 @@ static int emcore_get_uids_to_download(MAILSTREAM *stream, email_account_t *acco
 
 	for (i = 0; i < downloaded_uid_count; i++) {
 		/*  EM_DEBUG_LOG("input_mailbox_tbl[%s] sync_status[%d]", input_mailbox_tbl->name, downloaded_uids[i].sync_status); */
-		if (downloaded_uids[i].sync_status == EMAIL_SYNC_STATUS_NOT_EXIST_ON_SERVER) {		/*  deleted on server */
-			if (!emstorage_get_maildata_by_servermailid(input_mailbox_tbl->mailbox_id, downloaded_uids[i].server_uid, &mail, true, &err)){
+		if ((downloaded_uids[i].sync_status == EMAIL_SYNC_STATUS_NOT_EXIST_ON_SERVER) &&
+			(EM_SAFE_STRCMP(downloaded_uids[i].mailbox_name, EMAIL_SEARCH_RESULT_MAILBOX_NAME) != 0)) {		/*  deleted on server */
+			if (!emstorage_get_maildata_by_servermailid(multi_user_name, input_mailbox_tbl->mailbox_id, downloaded_uids[i].server_uid, &mail, true, &err)){
 				EM_DEBUG_EXCEPTION("emstorage_get_maildata_by_servermailid for uid[%s] Failed [%d] \n ", downloaded_uids[i].server_uid, err);
 				if (err == EMAIL_ERROR_MAIL_NOT_FOUND){
 					continue;
@@ -1034,15 +1353,16 @@ static int emcore_get_uids_to_download(MAILSTREAM *stream, email_account_t *acco
 			}
 
 			if (account->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
-				if (!emcore_delete_mails_from_local_storage(input_mailbox_tbl->account_id, &(mail->mail_id), 1, EMAIL_DELETED_FROM_SERVER, false, &err)) {
+				ret = emcore_delete_mails_from_local_storage(multi_user_name, input_mailbox_tbl->account_id, &(mail->mail_id), 1, EMAIL_DELETED_FROM_SERVER, false, &err);
+				/* Update badge count */
+				emcore_display_unread_in_badge(multi_user_name);
+				if (!ret) {
 					EM_DEBUG_EXCEPTION("emcore_delete_mails_from_local_storage falied - %d", err);
 					goto FINISH_OFF;
 				}
-				/* emcore_delete_notification_for_read_mail(mail->mail_id); */
-				emcore_display_unread_in_badge();
 			}
 
-			if (!emstorage_remove_downloaded_mail(input_mailbox_tbl->account_id, input_mailbox_tbl->mailbox_name, downloaded_uids[i].server_uid, true, &err)) {   /*  remove uid from uid list */
+			if (!emstorage_remove_downloaded_mail(multi_user_name, input_mailbox_tbl->account_id, input_mailbox_tbl->mailbox_name, downloaded_uids[i].server_uid, true, &err)) {   /*  remove uid from uid list */
 				EM_DEBUG_EXCEPTION("emstorage_remove_downloaded_mail failed - %d", err);
 				/* goto FINISH_OFF; */
 			}
@@ -1051,15 +1371,15 @@ static int emcore_get_uids_to_download(MAILSTREAM *stream, email_account_t *acco
 		else if (account->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
 			/* set seen flag of downloaded mail */
 			if (downloaded_uids[i].sync_status == EMAIL_SYNC_STATUS_FLAG_CHANGED) {
-				if (!emcore_set_flags_field(downloaded_uids[i].account_id, &(downloaded_uids[i].local_uid), 1, EMAIL_FLAGS_FLAGGED_FIELD, downloaded_uids[i].flags_flagged_field, &err)) {
+				if (!emcore_set_flags_field(multi_user_name, downloaded_uids[i].account_id, &(downloaded_uids[i].local_uid), 1, EMAIL_FLAGS_FLAGGED_FIELD, downloaded_uids[i].flags_flagged_field, &err)) {
 					EM_DEBUG_EXCEPTION("emcore_set_flags_field failed [%d]", err);
 				}
 
-				if (!emcore_set_flags_field(downloaded_uids[i].account_id, &(downloaded_uids[i].local_uid), 1, EMAIL_FLAGS_SEEN_FIELD, downloaded_uids[i].flags_seen_field, &err)) {
+				if (!emcore_set_flags_field(multi_user_name, downloaded_uids[i].account_id, &(downloaded_uids[i].local_uid), 1, EMAIL_FLAGS_SEEN_FIELD, downloaded_uids[i].flags_seen_field, &err)) {
 					EM_DEBUG_EXCEPTION("emcore_set_flags_field failed [%d]", err);
 				}
 				else
-					emcore_display_unread_in_badge();
+					emcore_display_unread_in_badge(multi_user_name);
 			}
 
 
@@ -1096,7 +1416,7 @@ FINISH_OFF:
 }
 
 /* insert received mail UID to read mail uid table */
-static int emcore_add_read_mail_uid(emstorage_mailbox_tbl_t *input_maibox_data, char *server_mailbox_name, int mail_id, char *uid, int rfc822_size, int rule_id, int *err_code)
+static int emcore_add_read_mail_uid(char *multi_user_name, emstorage_mailbox_tbl_t *input_maibox_data, char *server_mailbox_name, int mail_id, char *uid, int rfc822_size, int rule_id, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("input_maibox_data[%p], server_mailbox_name[%s], uid[%s], rfc822_size[%d], rule_id[%d], err_code[%p]", input_maibox_data, server_mailbox_name, uid, rfc822_size, rule_id, err_code);
 
@@ -1114,8 +1434,8 @@ static int emcore_add_read_mail_uid(emstorage_mailbox_tbl_t *input_maibox_data, 
 
 	read_mail_uid.account_id = input_maibox_data->account_id;
 
-	if (!(input_maibox_data->mailbox_id) || !(server_mailbox_name)){
-		if (!emstorage_get_mailbox_by_mailbox_type(input_maibox_data->account_id, EMAIL_MAILBOX_TYPE_INBOX, &mailbox_tbl, false, &err)) {
+	if (!(input_maibox_data->mailbox_id) || !(server_mailbox_name)) {
+		if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name, input_maibox_data->account_id, EMAIL_MAILBOX_TYPE_INBOX, &mailbox_tbl, false, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -1127,7 +1447,7 @@ static int emcore_add_read_mail_uid(emstorage_mailbox_tbl_t *input_maibox_data, 
 		read_mail_uid.mailbox_id = mailbox_tbl->mailbox_id;
 
 	read_mail_uid.local_uid = mail_id;
-	EM_DEBUG_LOG("MAIL ID [%d] LOCAL_UID [%d]", mail_id, read_mail_uid.local_uid);
+
 
 	if (server_mailbox_name)
 		read_mail_uid.mailbox_name = server_mailbox_name;
@@ -1137,9 +1457,8 @@ static int emcore_add_read_mail_uid(emstorage_mailbox_tbl_t *input_maibox_data, 
 	read_mail_uid.server_uid = uid;
 	read_mail_uid.rfc822_size = rfc822_size;
 
-	if (!emstorage_add_downloaded_mail(&read_mail_uid, false, &err)) {
+	if (!emstorage_add_downloaded_mail(multi_user_name, &read_mail_uid, false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_add_downloaded_mail failed [%d]", err);
-
 		goto FINISH_OFF;
 	}
 
@@ -1157,7 +1476,7 @@ FINISH_OFF:
 }
 
 #ifdef __FEATURE_BODY_SEARCH__
-int emcore_add_mail_text(emstorage_mailbox_tbl_t *input_maibox_data, emstorage_mail_tbl_t *input_new_mail_tbl_data, char *stripped_text, int *err_code)
+int emcore_add_mail_text(char *multi_user_name, emstorage_mailbox_tbl_t *input_maibox_data, emstorage_mail_tbl_t *input_new_mail_tbl_data, char *stripped_text, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("input_maibox_data[%p], input_new_mail_tbl_data[%p], err_code[%p]", input_maibox_data, input_new_mail_tbl_data, err_code);
 
@@ -1181,7 +1500,7 @@ int emcore_add_mail_text(emstorage_mailbox_tbl_t *input_maibox_data, emstorage_m
 	else
 		mail_text.body_text = NULL;
 
-	if (!emstorage_add_mail_text(&mail_text, false, &err)) {
+	if (!emstorage_add_mail_text(multi_user_name, &mail_text, false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_add_mail_text failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1200,7 +1519,7 @@ FINISH_OFF:
 }
 #endif
 
-INTERNAL_FUNC int emcore_add_mail_to_mailbox(emstorage_mailbox_tbl_t *input_maibox_data, emstorage_mail_tbl_t *input_new_mail_tbl_data, int *output_mail_id, int *output_thread_id)
+INTERNAL_FUNC int emcore_add_mail_to_mailbox(char *multi_user_name, emstorage_mailbox_tbl_t *input_maibox_data, emstorage_mail_tbl_t *input_new_mail_tbl_data, int *output_mail_id, int *output_thread_id)
 {
 	EM_DEBUG_FUNC_BEGIN("input_maibox_data[%p], input_new_mail_tbl_data[%p], uid_elem[%p], output_mail_id[%p], output_thread_id[%p]", mail_stream, input_maibox_data, input_new_mail_tbl_data, output_mail_id, output_thread_id);
 
@@ -1219,15 +1538,16 @@ INTERNAL_FUNC int emcore_add_mail_to_mailbox(emstorage_mailbox_tbl_t *input_maib
 	input_new_mail_tbl_data->mailbox_id            = input_maibox_data->mailbox_id;
 	input_new_mail_tbl_data->mailbox_type          = input_maibox_data->mailbox_type;
 
-	emstorage_begin_transaction(NULL, NULL, NULL);
+	emstorage_begin_transaction(multi_user_name, NULL, NULL, NULL);
 
 	/* Get the Mail_id */
-	if (!emstorage_increase_mail_id(&(input_new_mail_tbl_data->mail_id), false, &err)) {
+	if (!emstorage_increase_mail_id(multi_user_name, &(input_new_mail_tbl_data->mail_id), false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_increase_mail_id failed [%d]", err);
+		emstorage_rollback_transaction(multi_user_name, NULL, NULL, NULL);
 		goto FINISH_OFF;
 	}
 
-	if (emstorage_get_thread_id_of_thread_mails(input_new_mail_tbl_data, &thread_id, &latest_mail_id_in_thread, &thread_item_count)  != EMAIL_ERROR_NONE)
+	if (emstorage_get_thread_id_of_thread_mails(multi_user_name, input_new_mail_tbl_data, &thread_id, &latest_mail_id_in_thread, &thread_item_count) != EMAIL_ERROR_NONE)
 		EM_DEBUG_LOG(" emstorage_get_thread_id_of_thread_mails is failed.");
 
 	if (thread_id == -1){
@@ -1239,43 +1559,53 @@ INTERNAL_FUNC int emcore_add_mail_to_mailbox(emstorage_mailbox_tbl_t *input_maib
 		thread_item_count++;
 	}
 
-	if (!emstorage_add_mail(input_new_mail_tbl_data, 0, false, &err)) {
+        EM_DEBUG_LOG("MULTI USER NAME: [%s]", multi_user_name);
+        input_new_mail_tbl_data->user_name = EM_SAFE_STRDUP(multi_user_name);
+
+	if (!emstorage_add_mail(multi_user_name, input_new_mail_tbl_data, 0, false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_add_mail failed [%d]", err);
-		emstorage_rollback_transaction(NULL, NULL, NULL);
+		emstorage_rollback_transaction(multi_user_name, NULL, NULL, NULL);
 		goto FINISH_OFF;
 	}
 
-	if (thread_item_count > 1){
-		if (!emstorage_update_latest_thread_mail(input_new_mail_tbl_data->account_id, input_new_mail_tbl_data->thread_id, 0, 0, false, &err)) {
+	if (thread_item_count > 1) {
+		if (!emstorage_update_latest_thread_mail(multi_user_name, input_new_mail_tbl_data->account_id, input_new_mail_tbl_data->mailbox_id, input_new_mail_tbl_data->thread_id, NULL, -1, -1, NOTI_THREAD_ID_CHANGED_BY_ADD, false, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_update_latest_thread_mail failed [%d]", err);
-			emstorage_rollback_transaction(NULL, NULL, NULL);
+			emstorage_rollback_transaction(multi_user_name, NULL, NULL, NULL);
+			goto FINISH_OFF;
+		}
+
+		if (!emstorage_update_latest_thread_mail(multi_user_name, input_new_mail_tbl_data->account_id, input_new_mail_tbl_data->mailbox_id, input_new_mail_tbl_data->thread_id, NULL, 0, 0, NOTI_THREAD_ID_CHANGED_BY_ADD, false, &err)) {
+			EM_DEBUG_EXCEPTION("emstorage_update_latest_thread_mail failed [%d]", err);
+			emstorage_rollback_transaction(multi_user_name, NULL, NULL, NULL);
 			goto FINISH_OFF;
 		}
 	}
+
+	if (emstorage_get_thread_id_of_thread_mails(multi_user_name, input_new_mail_tbl_data, &thread_id, &latest_mail_id_in_thread, &thread_item_count) != EMAIL_ERROR_NONE)
+		EM_DEBUG_LOG(" emstorage_get_thread_id_of_thread_mails is failed.");
+
 	if (output_thread_id)
-		*output_thread_id = input_new_mail_tbl_data->thread_id;
+		*output_thread_id = thread_id;
 
 	if (output_mail_id != NULL)
 		*output_mail_id = input_new_mail_tbl_data->mail_id;
 
-	EM_DEBUG_LOG("mail_table_data.mail_id [%d]", input_new_mail_tbl_data->mail_id);
-	EM_DEBUG_LOG("mail_table_data.thread_id [%d]", input_new_mail_tbl_data->thread_id);
-
-	if (!emcore_add_read_mail_uid(input_maibox_data, input_maibox_data->mailbox_name, input_new_mail_tbl_data->mail_id, input_new_mail_tbl_data->server_mail_id, input_new_mail_tbl_data->mail_size, 0, &err)) {
+	if (!emcore_add_read_mail_uid(multi_user_name, input_maibox_data, input_maibox_data->mailbox_name, input_new_mail_tbl_data->mail_id, input_new_mail_tbl_data->server_mail_id, input_new_mail_tbl_data->mail_size, 0, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_add_read_mail_uid failed [%d]", err);
-		emstorage_rollback_transaction(NULL, NULL, NULL);
+		emstorage_rollback_transaction(multi_user_name, NULL, NULL, NULL);
 		goto FINISH_OFF;
 	}
 
 #ifdef __FEATURE_BODY_SEARCH__
-	if (!emcore_add_mail_text(input_maibox_data, input_new_mail_tbl_data, NULL, &err)) {
+	if (!emcore_add_mail_text(multi_user_name, input_maibox_data, input_new_mail_tbl_data, NULL, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_add_mail_text failed [%d]", err);
-		emstorage_rollback_transaction(NULL, NULL, NULL);
+		emstorage_rollback_transaction(multi_user_name, NULL, NULL, NULL);
 		goto FINISH_OFF;
 	}
 #endif
 
-	emstorage_commit_transaction(NULL, NULL, NULL);
+	emstorage_commit_transaction(multi_user_name, NULL, NULL, NULL);
 
 FINISH_OFF:
 
@@ -1349,7 +1679,7 @@ int emcore_check_rule(const char *input_full_address_from, const char *input_sub
 					else if (RULE_TYPE_EXACTLY == rule[i].flag2) {
 						if (!strcasecmp(input_subject, rule[i].value))
 							*blocked = true;
-					}      
+					}
 				}
 			}
 
@@ -1363,9 +1693,17 @@ int emcore_check_rule(const char *input_full_address_from, const char *input_sub
 						if (!strcasecmp(from_address, rule[i].value2))
 							*blocked = true;
 					}
+#ifdef __FEATURE_COMPARE_DOMAIN__
+					else if (RULE_TYPE_COMPARE_DOMAIN == rule[i].flag2) {
+						char *domain_start = NULL;
+						domain_start = strchr(from_address, '@');
+						if (domain_start && strncmp(domain_start, rule[i].value2, strlen(rule[i].value2)) == 0)
+							*blocked = true;
+					}
+#endif /* __FEATURE_COMPARE_DOMAIN__ */
 				}
 			}
-		
+
 			break;
 
 		default:
@@ -1376,11 +1714,11 @@ int emcore_check_rule(const char *input_full_address_from, const char *input_sub
 				if (RULE_TYPE_INCLUDES == rule[i].flag2) {
 					if (strcasestr(from_address, rule[i].value2))
 						*priority_sender = 1;
-				}      
+				}
 				else if (RULE_TYPE_EXACTLY == rule[i].flag2) {
-					if (!strcasecmp(from_address, rule[i].value2)) 
+					if (!strcasecmp(from_address, rule[i].value2))
 						*priority_sender = 1;
-				}  	
+				}
 			}
 			break;
 		}
@@ -1404,7 +1742,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(int account_id, MAILSTREAM *mail_stream, ENVELOPE *input_envelope, emcore_uid_list *input_uid_elem, emstorage_mail_tbl_t **output_mail_tbl_data,  int *err_code)
+INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(char *multi_user_name, int account_id, MAILSTREAM *mail_stream, ENVELOPE *input_envelope, emcore_uid_list *input_uid_elem, emstorage_mail_tbl_t **output_mail_tbl_data,  int *err_code)
 {
 	EM_PROFILE_BEGIN(emCoreParseEnvelope);
 	EM_DEBUG_FUNC_BEGIN("input_envelope[%p], input_uid_elem [%p], output_mail_tbl_data[%p],  err_code[%p]", input_envelope, input_uid_elem, output_mail_tbl_data, err_code);
@@ -1421,7 +1759,7 @@ INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(int account_id, MAILST
 	char *rfc822_subject = NULL;
 	char *rfc822_from = NULL;
 
-	account_ref = emcore_get_account_reference(account_id);
+	account_ref = emcore_get_account_reference(multi_user_name, account_id);
 	if (!account_ref) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed - %d", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -1467,7 +1805,7 @@ INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(int account_id, MAILST
 	if (rfc822_subject) {
 		EM_SAFE_FREE(input_envelope->subject);
 		input_envelope->subject = g_strdup(rfc822_subject);
-		EM_DEBUG_LOG("rfc822_subject:%s", input_envelope->subject);
+		EM_DEBUG_LOG_SEC("rfc822_subject:%s", input_envelope->subject);
 		EM_SAFE_FREE(rfc822_subject);
 	}
 
@@ -1475,14 +1813,31 @@ INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(int account_id, MAILST
 		if (input_envelope->from) {
 			EM_SAFE_FREE(input_envelope->from->personal);
 			input_envelope->from->personal = g_strdup(rfc822_from);
-			EM_DEBUG_LOG("rfc822_from:%s", input_envelope->from->personal);
+			EM_DEBUG_LOG_SEC("rfc822_from:%s", input_envelope->from->personal);
 		}
 		EM_SAFE_FREE(rfc822_from);
 	}
 
 	if (input_envelope->subject) {
-		temp_mail_tbl_data->subject = emcore_decode_rfc2047_text(input_envelope->subject, &err);
-		EM_DEBUG_LOG("subject[%s]", temp_mail_tbl_data->subject);
+		temp_mail_tbl_data->subject = emcore_gmime_get_decoding_text(input_envelope->subject);
+		em_trim_left(temp_mail_tbl_data->subject);
+
+		char *charset = NULL;
+		char *charset_end = NULL;
+		char *charset_start = NULL;
+		if(g_str_has_prefix(input_envelope->subject, "=?")) {
+			charset_start = input_envelope->subject + 2;
+			charset_end = strstr(charset_start, "?");
+			if (charset_end) {
+				charset = g_strndup(charset_start, charset_end - charset_start);
+			}
+		}
+
+		EM_DEBUG_LOG("DEFAULT CHARSET : %s", charset);
+		if (charset) {
+			temp_mail_tbl_data->default_charset = g_ascii_strup(charset, -1);
+			EM_SAFE_FREE(charset);
+		}
 	}
 
 	if (input_envelope->from) {
@@ -1491,7 +1846,7 @@ INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(int account_id, MAILST
 			goto FINISH_OFF;
 		}
 
-		EM_DEBUG_LOG_SEC("full_address_from[%s]", temp_mail_tbl_data->full_address_from);
+
 	}
 
 	if (input_envelope->to) {
@@ -1500,7 +1855,7 @@ INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(int account_id, MAILST
 			goto FINISH_OFF;
 		}
 
-		EM_DEBUG_LOG_SEC("full_address_to[%s]", temp_mail_tbl_data->full_address_to);
+
 	}
 
 	if (input_envelope->cc) {
@@ -1542,7 +1897,7 @@ INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(int account_id, MAILST
 
 	memset((void*)&temp_time_info, 0,  sizeof(struct tm));
 
-	EM_DEBUG_LOG("tm_hour[%d] zhours [%d] tm_min[%d] zminutes[%d] zoocident[%d]", mail_cache_element->hours, mail_cache_element->zhours,  mail_cache_element->minutes, mail_cache_element->zminutes, mail_cache_element->zoccident);
+
 
 	zone_hour = mail_cache_element->zhours * (mail_cache_element->zoccident?-1:1);
 
@@ -1579,7 +1934,7 @@ INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(int account_id, MAILST
 	temp_mail_tbl_data->eas_data              = NULL;
 
 	temp_mail_tbl_data->account_id            = account_id;
-	emcore_fill_address_information_of_mail_tbl(temp_mail_tbl_data);
+	emcore_fill_address_information_of_mail_tbl(multi_user_name, temp_mail_tbl_data);
 
 	*output_mail_tbl_data = temp_mail_tbl_data;
 	temp_mail_tbl_data = NULL;
@@ -1588,8 +1943,12 @@ INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(int account_id, MAILST
 
 FINISH_OFF:
 
-	if (ret != true)
-		EM_SAFE_FREE(temp_mail_tbl_data);
+	if (ret != true) {
+		if (temp_mail_tbl_data) {
+			emstorage_free_mail(&temp_mail_tbl_data, 1, NULL);
+			temp_mail_tbl_data = NULL;
+		}
+	}
 
 	if (account_ref) {
 		emcore_free_account(account_ref);
@@ -1604,8 +1963,17 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emcore_sync_header (emstorage_mailbox_tbl_t *input_mailbox_tbl, void **stream, 
-                                     emcore_uid_list **input_uid_list, int *mail_count, int *unread_mail, int *err_code)
+INTERNAL_FUNC int emcore_sync_header (char *multi_user_name, 
+                                       emstorage_mailbox_tbl_t *input_mailbox_tbl, 
+                                       void **stream, 
+                                       emcore_uid_list **input_uid_list, 
+                                       int *mail_count, 
+                                       int *unread_mail,
+                                       int *vip_mail_count,
+                                       int *vip_unread_mail,
+                                       int  cancellable, /*0: excluding event thd*/
+                                       int  event_handle,
+                                       int *err_code)
 {
 	EM_PROFILE_BEGIN(emCoreSyncHeader);
 	EM_DEBUG_FUNC_BEGIN("input_mailbox_tbl[%p], input_uid_list [%p], err_code[%p]", input_mailbox_tbl, input_uid_list, err_code);
@@ -1619,7 +1987,6 @@ INTERNAL_FUNC int emcore_sync_header (emstorage_mailbox_tbl_t *input_mailbox_tbl
 	int ret = false;
 	int err = EMAIL_ERROR_NONE, err_2 = EMAIL_ERROR_NONE;
 	int err_from_vconf = 0;
-	int status = EMAIL_LIST_FAIL;
 	int download_limit_count;
 	email_account_t      *account_ref = NULL;
 	emstorage_rule_tbl_t *rule = NULL;
@@ -1629,7 +1996,8 @@ INTERNAL_FUNC int emcore_sync_header (emstorage_mailbox_tbl_t *input_mailbox_tbl
 	emstorage_mailbox_tbl_t *destination_mailbox = NULL;
 
 	ENVELOPE *env = NULL;
-	int account_id = 0, mail_id = 0, rule_count = 1000, total = 0, unread = 0, i = 0, percentage  = 0, thread_id = -1;
+	int account_id = 0, mail_id = 0, rule_count = 1000, i = 0, percentage  = 0, thread_id = -1;
+	int total = 0, unread = 0, vip_total = 0, vip_unread = 0;
 	char *uid_range = NULL;
 	char mailbox_id_param_string[10] = {0,};
 
@@ -1641,47 +2009,63 @@ INTERNAL_FUNC int emcore_sync_header (emstorage_mailbox_tbl_t *input_mailbox_tbl
 
 	account_id = input_mailbox_tbl->account_id;
 	g_current_sync_account_id = account_id;
-	account_ref = emcore_get_account_reference(account_id);
+	account_ref = emcore_get_account_reference(multi_user_name, account_id);
 	if (!account_ref) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed - %d", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
 
-	if(account_ref->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4 && input_mailbox_tbl->local_yn == 1) {
-		EM_DEBUG_EXCEPTION("local_yn flag is false for this mailbox");
-		err = EMAIL_ERROR_INVALID_MAILBOX;
+	if (account_ref->sync_disabled == 1) {
+		err = EMAIL_ERROR_ACCOUNT_SYNC_IS_DISALBED;
+		EM_DEBUG_LOG("Sync disabled for this account. Do not sync.");
 		goto FINISH_OFF;
 	}
 
-	FINISH_OFF_IF_CANCELED;
+
+	if (account_ref->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4 && input_mailbox_tbl->local_yn == 1) {
+		/* mailbox recovery starts */
+		if (input_mailbox_tbl->mailbox_type == EMAIL_MAILBOX_TYPE_INBOX) {
+			if (!emcore_sync_mailbox_list (multi_user_name, account_id, "", event_handle, &err)) {
+				EM_DEBUG_EXCEPTION("emcore_sync_mailbox_list error [%d] account_id [%d]", err, account_id);
+				goto FINISH_OFF;
+			}
+		}
+		else {
+			EM_DEBUG_EXCEPTION("because mailbox_name[%s] mailbox_type[%d] of account[%d] is a local box, it cant be synced",
+                              input_mailbox_tbl->mailbox_name, input_mailbox_tbl->mailbox_type, account_id);
+			err = EMAIL_ERROR_INVALID_MAILBOX;
+			goto FINISH_OFF;
+		}
+	}
+
+	if (cancellable)
+		FINISH_OFF_IF_EVENT_CANCELED(err, event_handle);
 
 #ifdef __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__
 	if ((err_from_vconf = vconf_set_int(VCONFKEY_EMAIL_SYNC_STATE, 1)) != 0 ) {
-		EM_DEBUG_LOG("vconf_set_int failed [%d]", err_from_vconf);
+		EM_DEBUG_EXCEPTION("vconf_set_int failed (sync state) [%d]", err_from_vconf);
 	}
 #endif /* __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__ */
 
-	if (!emcore_connect_to_remote_mailbox(account_id, input_mailbox_tbl->mailbox_id, (void **)stream, &err) || !*stream){
+	if (!emcore_connect_to_remote_mailbox(multi_user_name, account_id, input_mailbox_tbl->mailbox_id, (void **)stream, &err) || !*stream) {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed - %d", err);
-		status = EMAIL_LIST_CONNECTION_FAIL;
-		err = EMAIL_ERROR_CONNECTION_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	FINISH_OFF_IF_CANCELED;
+	if (cancellable)
+		FINISH_OFF_IF_EVENT_CANCELED(err, event_handle);
 
 	/*  save total mail count on server to DB */
-	if (!emstorage_update_mailbox_total_count(account_id, input_mailbox_tbl->mailbox_id, ((MAILSTREAM *)*stream)->nmsgs, 1, &err)){
+	if (!emstorage_update_mailbox_total_count(multi_user_name, account_id, input_mailbox_tbl->mailbox_id, ((MAILSTREAM *)*stream)->nmsgs, 1, &err)){
 		EM_DEBUG_EXCEPTION("emstorage_update_mailbox_total_count failed [%d]", err);
-
 		goto FINISH_OFF;
 	}
 
 	/* if (((MAILSTREAM *)stream)->nmsgs > 0) */
 	{
 		email_option_t *opt_ref = &account_ref->options;
-		EM_DEBUG_LOG("block_address = %d, block_subject = %d", opt_ref->block_address, opt_ref->block_subject);
+		EM_DEBUG_LOG_SEC("block_address = %d, block_subject = %d", opt_ref->block_address, opt_ref->block_subject);
 
 		if (opt_ref->block_address || opt_ref->block_subject) {
 			int is_completed = false;
@@ -1692,20 +2076,21 @@ INTERNAL_FUNC int emcore_sync_header (emstorage_mailbox_tbl_t *input_mailbox_tbl
 			else if (!opt_ref->block_subject)
 				type = EMAIL_FILTER_FROM;
 
-			if (!emstorage_get_rule(ALL_ACCOUNT, type, 0, &rule_count, &is_completed, &rule, true, &err) || !rule) {
+			if (!emstorage_get_rule(multi_user_name, ALL_ACCOUNT, type, 0, &rule_count, &is_completed, &rule, true, &err) || !rule) {
 				if ( err != EMAIL_ERROR_FILTER_NOT_FOUND )
 					EM_DEBUG_EXCEPTION ("emstorage_get_rule error [%d]", err);
 			}
 		}
+
 		download_limit_count = input_mailbox_tbl->mail_slot_size;
-		if (!emcore_get_uids_to_download(*stream, account_ref, input_mailbox_tbl, download_limit_count, &uid_list, 
+		if (!emcore_get_uids_to_download(multi_user_name, *stream, account_ref, input_mailbox_tbl, download_limit_count, &uid_list, 
                                                                          &total, EMAIL_SYNC_LATEST_MAILS_FIRST, &err)){
 			EM_DEBUG_EXCEPTION("emcore_get_uids_to_download failed [%d]", err);
-			uid_list = NULL;
 			goto FINISH_OFF;
 		}
 
-		FINISH_OFF_IF_CANCELED;
+		if (cancellable)
+			FINISH_OFF_IF_EVENT_CANCELED(err, event_handle);
 
 		if (input_uid_list && *input_uid_list){
 			emcore_free_uids(*input_uid_list, NULL);
@@ -1716,76 +2101,20 @@ INTERNAL_FUNC int emcore_sync_header (emstorage_mailbox_tbl_t *input_mailbox_tbl
 		EM_PROFILE_BEGIN(emCoreSyncHeaderwhileloop);
 
 #ifdef  __FEATURE_HEADER_OPTIMIZATION__
-		/* g.shyamakshi@samsung.com : Bulk fetch of headers only if the recieving server type is IMAP */
+		/* g.shyamakshi@samsung.com : Bulk fetch of headers only if the receiving server type is IMAP */
 
 		EM_DEBUG_LOG("((MAILSTREAM *)stream)->nmsgs [%d]", ((MAILSTREAM *)*stream)->nmsgs);
 		EM_DEBUG_LOG("uid_list [%p]", uid_list);
-		if (account_ref->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4 && uid_list  != NULL){
-			emcore_uid_list *uid_list_prev = NULL;
-			emcore_uid_list *uid_list_fast = uid_list;
-			int index = 0;
-			int msg_count = total;
-			int uid_range_size = msg_count * 8 + 1000;
 
-			EM_DEBUG_LOG("memory allocation for uid_range [%d, %d]", msg_count, uid_range_size);
-			uid_range = malloc(sizeof(char) * uid_range_size);
+		if (account_ref->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4 && uid_list  != NULL) {
 
-			if (uid_range == NULL){
-				EM_DEBUG_EXCEPTION("memory allocation for uid_range failed");
-				err  = EMAIL_ERROR_OUT_OF_MEMORY;
+			if ((err = emcore_make_uid_range_string(uid_list, total, &uid_range)) != EMAIL_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("emcore_make_uid_range_string failed [%d]", err);
 				goto FINISH_OFF;
 			}
 
-			uid_list_prev = uid_list_fast;
-
-			if (uid_list_fast->next == NULL){
-				/* Single list entry */
-				snprintf(uid_range, uid_range_size, "%d", atoi(uid_list_fast->uid));
-			}
-			else{
-				/* forming range of uids to be passed */
-				while (uid_list_fast  != NULL){
-					/* uid_list_fast = uid_list_fast->next; */
-
-					if ((uid_list_fast->next != NULL) && (((atoi(uid_list_prev->uid)) - (atoi(uid_list_fast->next->uid))) == 1)){
-						index += snprintf(uid_range+index, uid_range_size, "%d", atoi(uid_list_prev->uid));
-
-						uid_list_fast = uid_list_fast->next;
-						uid_list_prev = uid_list_fast;
-
-						/* to make UID range string "abc, XX : YY" */
-						while (uid_list_fast  != NULL){
-							if (uid_list_fast->next == NULL)
-								break;
-							if (((atoi(uid_list_prev->uid)) - (atoi(uid_list_fast->next->uid))) == 1){
-								uid_list_fast = uid_list_fast->next;
-								uid_list_prev = uid_list_fast;
-							}
-							else
-								break;
-						}
-						if ((uid_list_fast  != NULL) && (uid_list_fast->next  != NULL))
-							index  += snprintf(uid_range+index, uid_range_size, ":%d,", atoi(uid_list_prev->uid));
-						else
-							index  += snprintf(uid_range+index, uid_range_size, ":%d", atoi(uid_list_prev->uid));
-
-						uid_list_fast = uid_list_fast->next;
-						uid_list_prev = uid_list_fast;
-					}
-					else{
-						if (uid_list_fast->next  != NULL)
-							index  += snprintf(uid_range+index, uid_range_size, "%d,", atoi(uid_list_prev->uid));
-						else
-							index  += snprintf(uid_range+index, uid_range_size, "%d", atoi(uid_list_prev->uid));
-						uid_list_fast = uid_list_fast->next;
-						uid_list_prev = uid_list_fast;
-					}
-				}
-			}
-
-			FINISH_OFF_IF_CANCELED;
-
-			EM_DEBUG_LOG("index [%d]", index);
+			if (cancellable)
+				FINISH_OFF_IF_EVENT_CANCELED(err, event_handle);
 
 			uid_elem = uid_list;
 			if (*stream && uid_elem){
@@ -1817,11 +2146,11 @@ INTERNAL_FUNC int emcore_sync_header (emstorage_mailbox_tbl_t *input_mailbox_tbl
 
 			env = NULL;
 
-			if (uid_elem->msgno > ((MAILSTREAM *)*stream)->nmsgs)
-				EM_DEBUG_LOG ("WARN: msgno[%d] can't be greater than nmsgs[%d].", uid_elem->msgno, 
-                                                                                       ((MAILSTREAM *)*stream)->nmsgs);
+			if (uid_elem->msgno > ((MAILSTREAM *)*stream)->nmsgs) {
+				EM_DEBUG_LOG ("WARN: msgno[%d] can't be greater than nmsgs[%d].",
+						uid_elem->msgno, ((MAILSTREAM *)*stream)->nmsgs);
+			}
 			else{
-
 #ifdef __FEATURE_HEADER_OPTIMIZATION__
 				if (account_ref->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) /* Fetch env from cache in case of IMAP */
 					env = mail_fetchstructure_full (*stream, uid_elem->msgno, NULL, FT_PEEK, 0);
@@ -1831,24 +2160,32 @@ INTERNAL_FUNC int emcore_sync_header (emstorage_mailbox_tbl_t *input_mailbox_tbl
 				env = mail_fetchstructure_full (*stream, uid_elem->msgno, NULL, FT_PEEK);
 #endif
 			}
-			FINISH_OFF_IF_CANCELED;
+
+			if (cancellable)
+				FINISH_OFF_IF_EVENT_CANCELED(err, event_handle);
 
 			if (env != NULL) {
 				int searched_mail_id = 0;
 				int blocked = false;
 				int priority_sender = false;
 
-				if (!emcore_make_mail_tbl_data_from_envelope (account_id, *stream, env, uid_elem, 
+				if (!emcore_make_mail_tbl_data_from_envelope (multi_user_name, account_id, *stream, env, uid_elem, 
                                                                      &new_mail_tbl_data, &err) || !new_mail_tbl_data) {
 					EM_DEBUG_EXCEPTION("emcore_make_mail_tbl_data_from_envelope failed [%d]", err);
 					goto CONTINUE_NEXT;
 				}
 
 				/* Check message_id for duplicated mail in sentbox */
-				if ((input_mailbox_tbl->mailbox_type == EMAIL_MAILBOX_TYPE_SENTBOX) && (emstorage_check_and_update_server_uid_by_message_id(new_mail_tbl_data->account_id, input_mailbox_tbl->mailbox_type, new_mail_tbl_data->message_id, new_mail_tbl_data->server_mail_id, &searched_mail_id) == EMAIL_ERROR_NONE)) {
+				if ((input_mailbox_tbl->mailbox_type == EMAIL_MAILBOX_TYPE_SENTBOX) && 
+                                        (emstorage_check_and_update_server_uid_by_message_id(multi_user_name, 
+                                                                                             new_mail_tbl_data->account_id, 
+                                                                                             input_mailbox_tbl->mailbox_type, 
+                                                                                             new_mail_tbl_data->message_id, 
+                                                                                             new_mail_tbl_data->server_mail_id, 
+                                                                                             &searched_mail_id) == EMAIL_ERROR_NONE)) {
 					EM_DEBUG_LOG("Existed the duplicated mail : message_id[%s]", new_mail_tbl_data->message_id);
 
-					if (!emcore_add_read_mail_uid(input_mailbox_tbl, input_mailbox_tbl->mailbox_name, searched_mail_id, new_mail_tbl_data->server_mail_id, new_mail_tbl_data->mail_size, 0, &err)) {
+					if (!emcore_add_read_mail_uid(multi_user_name, input_mailbox_tbl, input_mailbox_tbl->mailbox_name, searched_mail_id, new_mail_tbl_data->server_mail_id, new_mail_tbl_data->mail_size, 0, &err)) {
 						EM_DEBUG_EXCEPTION("emcore_add_read_mail_uid failed");
 					}
 
@@ -1862,70 +2199,112 @@ INTERNAL_FUNC int emcore_sync_header (emstorage_mailbox_tbl_t *input_mailbox_tbl
 				if(destination_mailbox) /* cleanup before reusing */
 					emstorage_free_mailbox(&destination_mailbox, 1, NULL);
 
-				if (priority_sender)
+				if (priority_sender) {
 					new_mail_tbl_data->tag_id = PRIORITY_SENDER_TAG_ID;
-
-				if (blocked) {
-					EM_DEBUG_LOG("mail[%d] added to spambox", mail_id);
-					if (!emstorage_get_mailbox_by_mailbox_type(account_id, EMAIL_MAILBOX_TYPE_SPAMBOX, 
-                                                                                  &destination_mailbox, false, &err)) {
-						EM_DEBUG_LOG("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
-					}
+					vip_total ++;
 				}
 
-				if (destination_mailbox) {
-					if ((err = emcore_add_mail_to_mailbox(destination_mailbox, new_mail_tbl_data, &mail_id, 
-                                                                                    &thread_id)) != EMAIL_ERROR_NONE) {
-						EM_DEBUG_EXCEPTION("emcore_add_mail_to_mailbox falied [%d]", err);
-						goto CONTINUE_NEXT;
+				if (blocked && (input_mailbox_tbl->mailbox_type == EMAIL_MAILBOX_TYPE_INBOX)) {
+					if (input_mailbox_tbl->mailbox_type != EMAIL_MAILBOX_TYPE_SPAMBOX) {
+						EM_DEBUG_LOG("This mail would be added to spambox");
+						if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name, 
+                                                                account_id, 
+                                                                EMAIL_MAILBOX_TYPE_SPAMBOX, 
+                                                                &destination_mailbox, 
+                                                                false, 
+                                                                &err)) {
+							EM_DEBUG_LOG("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
+						}
 					}
-			
-					if (account_ref->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
-						if (!emcore_move_mail_on_server(account_id, input_mailbox_tbl->mailbox_id,  &mail_id, 
-                                                                           1, destination_mailbox->mailbox_name, &err)){
-							EM_DEBUG_EXCEPTION("emcore_move_mail_on_server falied [%d]", err);
+					else
+						blocked = 0;
+				}
+
+				/* Set the noti waited */
+				new_mail_tbl_data->save_status = EMAIL_MAIL_STATUS_NOTI_WAITED;
+
+				if (destination_mailbox) {
+					if (destination_mailbox->local_yn == 0 || account_ref->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
+						if ((err = emcore_move_mail_on_server_by_server_mail_id((void*)*stream, new_mail_tbl_data->server_mail_id, destination_mailbox->mailbox_name)) != EMAIL_ERROR_NONE){
+							EM_DEBUG_EXCEPTION("emcore_move_mail_on_server_by_server_mail_id falied [%d]", err);
 							goto CONTINUE_NEXT;
 						}
 					}
+					else { /* local mailbox */
+						if ((err = emcore_add_mail_to_mailbox(multi_user_name, 
+                                                            destination_mailbox, 
+                                                            new_mail_tbl_data, 
+                                                            &mail_id, 
+                                                            &thread_id)) != EMAIL_ERROR_NONE) {
+							EM_DEBUG_EXCEPTION("emcore_add_mail_to_mailbox falied [%d]", err);
+							goto CONTINUE_NEXT;
+						}
+
+					}
+					SNPRINTF(mailbox_id_param_string, 10, "%d", destination_mailbox->mailbox_id);
 				} else {
 					/*  add mails to specified mail box */
 					EM_DEBUG_LOG_SEC("mail[%d] moved to input_mailbox_tbl [%s]", mail_id, input_mailbox_tbl->mailbox_name);
-					if ( (err = emcore_add_mail_to_mailbox (input_mailbox_tbl, new_mail_tbl_data, 
-                                                                          &mail_id, &thread_id)) != EMAIL_ERROR_NONE) {
+					if ( (err = emcore_add_mail_to_mailbox(multi_user_name, 
+                                                        input_mailbox_tbl, 
+                                                        new_mail_tbl_data, 
+                                                        &mail_id, 
+                                                        &thread_id)) != EMAIL_ERROR_NONE) {
 						EM_DEBUG_EXCEPTION("emcore_add_mail_to_mailbox falied [%d]", err);
 						goto CONTINUE_NEXT;
 					}
 
-					/*h.gahlaut :  Start partial body dowload using partial body thread only for IMAP accounts*/
 #ifndef __FEATURE_PARTIAL_BODY_FOR_POP3__
 					if (account_ref->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
 #endif /*  __FEATURE_PARTIAL_BODY_FOR_POP3__ */
 						if (account_ref->auto_download_size != 0) {
-							if (false == emcore_initiate_pbd (*stream, account_id, mail_id, uid_elem->uid, 
-                                                                                  input_mailbox_tbl->mailbox_id, &err))
+							if (false == emcore_initiate_pbd (multi_user_name, 
+                                                            *stream, 
+                                                            account_id, 
+                                                            mail_id, 
+                                                            uid_elem->uid,
+                                                            input_mailbox_tbl->mailbox_id, 
+                                                            &err))
 								EM_DEBUG_LOG("Partial body download initiation failed [%d]", err);
 						}
 #ifndef __FEATURE_PARTIAL_BODY_FOR_POP3__
 					}
 #endif /*  __FEATURE_PARTIAL_BODY_FOR_POP3__ */
+
+#ifdef __FEATURE_WIFI_AUTO_DOWNLOAD__
+					if (input_mailbox_tbl->mailbox_type == EMAIL_MAILBOX_TYPE_INBOX) {
+						if (!emcore_insert_auto_download_job(multi_user_name, 
+                                                            account_id, 
+                                                            input_mailbox_tbl->mailbox_id, 
+                                                            mail_id, 
+                                                            /*account_ref->wifi_auto_download*/ 1, 
+                                                            uid_elem->uid, 
+                                                            &err))
+							EM_DEBUG_LOG("emcore_insert_auto_download_job failed [%d]", err);
+					}
+#endif
 /*
 					if (!uid_elem->flag.seen && input_mailbox_tbl->mailbox_type != EMAIL_MAILBOX_TYPE_SPAMBOX)
 						emcore_add_notification_for_unread_mail(new_mail_tbl_data);
 */
-					FINISH_OFF_IF_CANCELED;
+					if (cancellable)
+						FINISH_OFF_IF_EVENT_CANCELED(err, event_handle);
 
-					if (!uid_elem->flag.seen)
+					if (!uid_elem->flag.seen) {
 						unread++;
+						if (priority_sender) {
+							vip_unread++;
+						}
+					}
 
 					percentage = ((i+1) * 100) / total ;
-					EM_DEBUG_LOG("Header Percentage Completed [%d] : [%d/%d]  mail_id [%d]", percentage, i+1, 
+					EM_DEBUG_LOG("Header Percentage Completed [%d] : [%d/%d]  mail_id [%d]", percentage, i+1,
                                                                                                         total, mail_id);
 					SNPRINTF(mailbox_id_param_string, 10, "%d", input_mailbox_tbl->mailbox_id);
-
-					if (!emcore_notify_storage_event (NOTI_MAIL_ADD, account_id, mail_id, 
-                                                                                    mailbox_id_param_string, thread_id))
-						EM_DEBUG_EXCEPTION ("emcore_notify_storage_event [NOTI_MAIL_ADD] failed");
 				}
+
+				if (!emcore_notify_storage_event (NOTI_MAIL_ADD, account_id, mail_id, mailbox_id_param_string, thread_id))
+					EM_DEBUG_EXCEPTION ("emcore_notify_storage_event [NOTI_MAIL_ADD] failed");
 
 #ifdef __FEATURE_BLOCKING_MODE__
 				/* Check the blocking mode */
@@ -1933,26 +2312,26 @@ INTERNAL_FUNC int emcore_sync_header (emstorage_mailbox_tbl_t *input_mailbox_tbl
 
 				blocking_mode = emcore_get_blocking_mode_status();
 				if (!blocking_mode) {
-					if ((err = emcore_check_blocking_mode (new_mail_tbl_data->email_address_sender, 
+					if ((err = emcore_check_blocking_mode (multi_user_name, new_mail_tbl_data->email_address_sender, 
                                                                                 &blocking_mode)) != EMAIL_ERROR_NONE) {
 						EM_DEBUG_EXCEPTION ("emcore_check_blocking_mode failed : [%d]", err);
 					}
 
 					if (blocking_mode)
-						emcore_set_blocking_mode_status (blocking_mode);	
+						emcore_set_blocking_mode_status (blocking_mode);
 				}
 #endif /* __FEATURE_BLOCKING_MODE__ */
 
 				/* Set contact log */
 				switch (input_mailbox_tbl->mailbox_type) {
 				case EMAIL_MAILBOX_TYPE_INBOX :
-					if ((err = emcore_set_received_contacts_log(new_mail_tbl_data)) != EMAIL_ERROR_NONE) {
+					if ((err = emcore_set_received_contacts_log(multi_user_name, new_mail_tbl_data)) != EMAIL_ERROR_NONE) {
 						EM_DEBUG_EXCEPTION("emcore_set_received_contacts_log failed : [%d]", err);
 					}
 					break;
 				case EMAIL_MAILBOX_TYPE_SENTBOX:
 				case EMAIL_MAILBOX_TYPE_OUTBOX:
-					if ((err = emcore_set_sent_contacts_log(new_mail_tbl_data)) != EMAIL_ERROR_NONE) {
+					if ((err = emcore_set_sent_contacts_log(multi_user_name, new_mail_tbl_data)) != EMAIL_ERROR_NONE) {
 						EM_DEBUG_EXCEPTION("emcore_set_sent_contacts_log failed : [%d]", err);
 					}
 					break;
@@ -1964,7 +2343,8 @@ INTERNAL_FUNC int emcore_sync_header (emstorage_mailbox_tbl_t *input_mailbox_tbl
 				/*  Release for envelope is not required and it may cause crash. Don't free the memory for envelope here. */
 				/*  Envelope data will be freed by garbage collector in mail_close_full */
 
-				FINISH_OFF_IF_CANCELED;
+				if (cancellable)
+					FINISH_OFF_IF_EVENT_CANCELED(err, event_handle);
 			}
 
 CONTINUE_NEXT:
@@ -1988,20 +2368,26 @@ FINISH_OFF:
 	if (unread_mail != NULL)
 		*unread_mail = unread;
 
+	if (vip_mail_count != NULL)
+		*vip_mail_count = vip_total;
+
+	if (vip_unread_mail != NULL)
+		*vip_unread_mail = vip_unread;
+
 	if (account_ref) {
 		emcore_free_account(account_ref);
 		EM_SAFE_FREE(account_ref);
 	}
 
-	if (!emcore_remove_overflowed_mails(input_mailbox_tbl, &err_2))
+	if (!emcore_remove_overflowed_mails(multi_user_name, input_mailbox_tbl, &err_2))
 		EM_DEBUG_EXCEPTION("emcore_remove_overflowed_mails failed - %d", err_2);
 
 	if (ret && input_mailbox_tbl)
-		emstorage_stamp_last_sync_time_of_mailbox(input_mailbox_tbl->mailbox_id, 1);
+		emstorage_stamp_last_sync_time_of_mailbox(multi_user_name, input_mailbox_tbl->mailbox_id, 1);
 
 #ifdef __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__
 	if ((err_from_vconf = vconf_set_int(VCONFKEY_EMAIL_SYNC_STATE, 0)) != 0 ) {
-		EM_DEBUG_LOG("vconf_set_int failed [%d]", err_from_vconf);
+		EM_DEBUG_EXCEPTION("vconf_set_int failed (sync state) [%d]", err_from_vconf);
 	}
 #endif /* __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__ */
 
@@ -2053,7 +2439,7 @@ emcore_uid_list *__ReverseList(emcore_uid_list *uid_list)
 
 
 
-int emcore_download_uid_all(MAILSTREAM *mail_stream, email_internal_mailbox_t *mailbox, emcore_uid_list** uid_list, int *total, emstorage_read_mail_uid_tbl_t *downloaded_uids, int count, emcore_get_uids_for_delete_t for_delete, int *err_code)
+int emcore_download_uid_all(char *multi_user_name, MAILSTREAM *mail_stream, email_internal_mailbox_t *mailbox, emcore_uid_list** uid_list, int *total, emstorage_read_mail_uid_tbl_t *downloaded_uids, int count, emcore_get_uids_for_delete_t for_delete, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("mailbox[%p], uid_list[%p], total[%p], downloaded_uids[%p], count[%d], for_delete[%d], err_code[%p]", mailbox, uid_list, total, downloaded_uids, count, for_delete, err_code);
 
@@ -2075,7 +2461,7 @@ int emcore_download_uid_all(MAILSTREAM *mail_stream, email_internal_mailbox_t *m
 		goto FINISH_OFF;
 	}
 
-	if (!(ref_account = emcore_get_account_reference(mailbox->account_id))) {
+	if (!(ref_account = emcore_get_account_reference(multi_user_name, mailbox->account_id))) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed - %d", mailbox->account_id);
 
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -2083,7 +2469,7 @@ int emcore_download_uid_all(MAILSTREAM *mail_stream, email_internal_mailbox_t *m
 	}
 
 	if (!mail_stream) {
-		if (!emcore_connect_to_remote_mailbox(mailbox->account_id, mailbox->mailbox_id, (void **)&tmp_stream, &err)){
+		if (!emcore_connect_to_remote_mailbox(multi_user_name, mailbox->account_id, mailbox->mailbox_id, (void **)&tmp_stream, &err)){
 			EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed...");
 
 			goto FINISH_OFF;
@@ -2145,7 +2531,7 @@ int emcore_download_uid_all(MAILSTREAM *mail_stream, email_internal_mailbox_t *m
 			if (*p == '.')
 				break;
 
-			/* EM_DEBUG_LOG("UID list [%s]", p); */
+			/*EM_DEBUG_LOG("UID list [%s]", p);*/
 
 			uid_elem = (emcore_uid_list *)malloc(sizeof(emcore_uid_list));
 			if (!uid_elem) {
@@ -2171,7 +2557,7 @@ int emcore_download_uid_all(MAILSTREAM *mail_stream, email_internal_mailbox_t *m
 			if (downloaded_uids) {
 				int i;
 				for (i = 0; i < count; ++i) {
-					if (!strcmp(uid_elem->uid, downloaded_uids[i].server_uid)) {
+					if (uid_elem->uid && !strcmp(uid_elem->uid, downloaded_uids[i].server_uid)) {
 						break;
 					}
 				}
@@ -2240,7 +2626,7 @@ int emcore_download_uid_all(MAILSTREAM *mail_stream, email_internal_mailbox_t *m
 			}
 
 			if (for_delete == EM_CORE_GET_UIDS_FOR_NO_DELETE) {
-				if ((ref_account->retrieval_mode == EMAIL_IMAP4_RETRIEVAL_MODE_NEW) && (strstr(p, "\\Seen"))) {
+				if ((ref_account->retrieval_mode & EMAIL_IMAP4_RETRIEVAL_MODE_NEW) && (strstr(p, "\\Seen"))) {
 					EM_SAFE_FREE (p);
 					continue;
 				}
@@ -2352,7 +2738,7 @@ FINISH_OFF:
 	return ret;
 }
 
-int emcore_download_imap_msgno(email_internal_mailbox_t *mailbox, char *uid, int *msgno, int *err_code)
+int emcore_download_imap_msgno(char *multi_user_name, email_internal_mailbox_t *mailbox, char *uid, int *msgno, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("mailbox[%p], uid[%p], msgno[%p], err_code[%p]", mailbox, uid, msgno, err_code);
 
@@ -2372,7 +2758,7 @@ int emcore_download_imap_msgno(email_internal_mailbox_t *mailbox, char *uid, int
 		goto FINISH_OFF;
 	}
 
-	if (!(ref_account = emcore_get_account_reference(mailbox->account_id))) {
+	if (!(ref_account = emcore_get_account_reference(multi_user_name, mailbox->account_id))) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", mailbox->account_id);
 
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -2385,7 +2771,7 @@ int emcore_download_imap_msgno(email_internal_mailbox_t *mailbox, char *uid, int
 	}
 
 	if (!mailbox->mail_stream) {
-		if (!emcore_connect_to_remote_mailbox(mailbox->account_id, mailbox->mailbox_id, (void **)&tmp_stream, &err)) {
+		if (!emcore_connect_to_remote_mailbox(multi_user_name, mailbox->account_id, mailbox->mailbox_id, (void **)&tmp_stream, &err)) {
 			EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed - %d", err);
 
 			goto FINISH_OFF;
@@ -2557,6 +2943,7 @@ int emcore_free_uids(emcore_uid_list *uid_list, int *err_code)
 		p = uid_list;
 		uid_list = uid_list->next;
 		EM_SAFE_FREE (p->uid);
+		EM_SAFE_FREE (p->internaldate);
 		EM_SAFE_FREE (p);
 	}
 
@@ -2570,7 +2957,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC char *emcore_guess_charset(char *source_string)
+INTERNAL_FUNC char *emcore_guess_charset(char *multi_user_name, char *source_string)
 {
 	EM_DEBUG_FUNC_BEGIN("source - %s", source_string);
 
@@ -2581,8 +2968,10 @@ INTERNAL_FUNC char *emcore_guess_charset(char *source_string)
 	int i = 0;
 	int confidence = 0;
 	int most_confidence = 0;
-	const char *detected_charset = NULL;
+	char *temp_charset = NULL;
 	char *uscdet_result_charset = NULL;
+	const char *charset = NULL;
+	const char *detected_charset = NULL;
 
 	char *ret = NULL;
 	email_account_t *account_ref = NULL;
@@ -2593,8 +2982,21 @@ INTERNAL_FUNC char *emcore_guess_charset(char *source_string)
 	result_charset   = (CHARSET*)utf8_infercharset(&source_text);
 
 	if(result_charset) {
-		EM_DEBUG_LOG_SEC("return_charset->name [%s]", result_charset->name);
 		return EM_SAFE_STRDUP(result_charset->name);
+	}
+
+	time_t t = time(0);
+	struct tm *data = localtime(&t);
+	if (data == NULL) {
+		EM_DEBUG_EXCEPTION("localtime failed");
+		return NULL;
+	}
+
+	for (i = 0 ; i < G_N_ELEMENTS(known_zone_charset); i++) {
+		if (!g_ascii_strcasecmp(known_zone_charset[i].tm_zone, data->tm_zone)) {
+			temp_charset = strdup(known_zone_charset[i].charset);
+			break;
+		}
 	}
 
 	detector = ucsdet_open(&err);
@@ -2614,13 +3016,18 @@ INTERNAL_FUNC char *emcore_guess_charset(char *source_string)
 		if(U_FAILURE(err))
 			EM_DEBUG_LOG("ucsdet_getConfidence failed");
 
+		charset = ucsdet_getName(match[i], &err);
 		if(U_FAILURE(err))
 			EM_DEBUG_LOG("ucsdet_getName failed");
 
 		if (most_confidence < confidence) {
 			most_confidence = confidence;
-			detected_charset = ucsdet_getName(match[i], &err);
+			detected_charset = charset;
+		} else if (most_confidence == confidence) {
+			if ((temp_charset && charset) && !strcasecmp(charset, temp_charset))
+				detected_charset = charset;
 		}
+
 		EM_DEBUG_LOG_DEV("UCSDET DETECTED CHARSET:%s, %d", ucsdet_getName(match[i], &err), confidence);
 	}
 
@@ -2629,10 +3036,12 @@ INTERNAL_FUNC char *emcore_guess_charset(char *source_string)
 
 	ucsdet_close(detector);
 
+	EM_SAFE_FREE(temp_charset);
+
 	if (uscdet_result_charset)
 		return uscdet_result_charset;
 
-	account_ref = emcore_get_account_reference(g_current_sync_account_id);
+	account_ref = emcore_get_account_reference(multi_user_name, g_current_sync_account_id);
 	if (!account_ref) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed - %d",
 				g_current_sync_account_id);
@@ -2664,7 +3073,7 @@ void mail_appenduid(char *mailbox, unsigned long uidvalidity, SEARCHSET *set)
     EM_DEBUG_LOG("append uid - %s", g_append_uid_rsp);
 }
 
-INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id)
+INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(char *multi_user_name, int mail_id)
 {
 	EM_DEBUG_FUNC_BEGIN("mail_id [%d]", mail_id);
 
@@ -2676,22 +3085,26 @@ INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id)
 	char                       *long_enc_path        = NULL;
 	char                       *data                 = NULL;
 	char                        set_flags[100]       = {0,};
+	char                        message_size[100]    = {0,};
 	ENVELOPE                   *envelope             = NULL;
 	FILE                       *fp                   = NULL;
  	STRING                     str;
+ 	STRING                     str_data;
 	MAILSTREAM                 *stream               = NULL;
 	email_account_t            *account_ref          = NULL;
 	emstorage_mail_tbl_t       *mail_table_data      = NULL;
 	emstorage_attachment_tbl_t *attachment_tbl_data  = NULL;
 	emstorage_mailbox_tbl_t    *mailbox_tbl          = NULL;
+	int max_alloc_size = 40960; /*40K*/
+	int alloc_size = 0;
 
 	/*  get a mail from mail table */
-	if (!emstorage_get_mail_by_id(mail_id, &mail_table_data, true, &err)) {
+	if (!emstorage_get_mail_by_id(multi_user_name, mail_id, &mail_table_data, true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mail_by_id failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	account_ref = emcore_get_account_reference(mail_table_data->account_id);
+	account_ref = emcore_get_account_reference(multi_user_name, mail_table_data->account_id);
 
 	if(account_ref == NULL || account_ref->incoming_server_type != EMAIL_SERVER_TYPE_IMAP4) {
 		EM_DEBUG_EXCEPTION("This account doesn't support sync");
@@ -2699,13 +3112,14 @@ INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id)
 		goto FINISH_OFF;
 	}
 
-	if ((err = emstorage_get_attachment_list(mail_id, false, &attachment_tbl_data, &attachment_tbl_count)) != EMAIL_ERROR_NONE) {
+	if ((err = emstorage_get_attachment_list(multi_user_name, mail_id, false, &attachment_tbl_data, &attachment_tbl_count)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_get_attachment_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	EM_DEBUG_LOG("mailbox_id [%d]", mail_table_data->mailbox_id);
-	if ((err = emstorage_get_mailbox_by_id(mail_table_data->mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE || !mailbox_tbl){
+
+	if ((err = emstorage_get_mailbox_by_id(multi_user_name, mail_table_data->mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE || !mailbox_tbl){
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_name failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -2716,7 +3130,7 @@ INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id)
 		goto FINISH_OFF;
 	}
 
-	if (!emcore_get_long_encoded_path(mailbox_tbl->account_id, mailbox_tbl->mailbox_name, '/', &long_enc_path, &err)) {
+	if (!emcore_get_long_encoded_path(multi_user_name, mailbox_tbl->account_id, mailbox_tbl->mailbox_name, '/', &long_enc_path, &err)) {
 		EM_DEBUG_EXCEPTION(">>emcore_get_long_encoded_path  :  Failed [%d] ", err);
 		goto FINISH_OFF;
 	}
@@ -2726,15 +3140,15 @@ INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id)
 	    goto FINISH_OFF;
 	}
 
-	if (!emcore_make_rfc822_file_from_mail(mail_table_data, attachment_tbl_data, attachment_tbl_count, &envelope, &fname, NULL, &err)){
+	if (!emcore_make_rfc822_file_from_mail(multi_user_name, mail_table_data, attachment_tbl_data, attachment_tbl_count, &envelope, &fname, NULL, &err)){
 	    EM_DEBUG_EXCEPTION(" emcore_make_rfc822_file_from_mail failed [%d]", err);
 	    goto FINISH_OFF;
 	}
 
-	if (fname){
-	    if (!(fp = fopen(fname, "a+"))) {
-	        EM_DEBUG_EXCEPTION("fopen failed - %s", fname);
-			err = EMAIL_ERROR_SYSTEM_FAILURE;
+	if (fname) {
+	    err = em_fopen(fname, "a+", &fp);
+	    if (err != EMAIL_ERROR_NONE) {
+	        EM_DEBUG_EXCEPTION("em_fopen failed - %s", fname);
 	        goto FINISH_OFF;
 	    }
 	}
@@ -2759,7 +3173,7 @@ INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id)
 
 	rewind(fp);
 
-	if (!emcore_connect_to_remote_mailbox(mail_table_data->account_id, 0, (void **)&stream, &err)){
+	if (!emcore_connect_to_remote_mailbox(multi_user_name, mail_table_data->account_id, 0, (void **)&stream, &err)){
 	    EM_DEBUG_EXCEPTION("emcore_move_mail_on_server failed :  Mailbox open[%d]", err);
 	    goto FINISH_OFF;
 	}
@@ -2767,27 +3181,100 @@ INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id)
 	/* added for copying server UID to DB */
 	mail_parameters(stream, SET_APPENDUID, mail_appenduid);
 
-	data = (char *)malloc(len + 1);
-	/* copy data from file to data */
-	read_size = fread(data, sizeof (char), len, fp);
-	if (read_size  != len){
-	    /* read faiil. */
-	    EM_DEBUG_EXCEPTION("Read from file failed");
-	}
+	if (len < max_alloc_size)
+		alloc_size = len;
+	else
+		alloc_size = max_alloc_size;
 
-	INIT(&str, mail_string, data, len);
+	data = (char *)malloc(alloc_size + 1);
+
+
+	snprintf(message_size, sizeof(message_size), "%d", len);
+	INIT(&str, mail_string, message_size, EM_SAFE_STRLEN(message_size));
 
 	sprintf(set_flags, "\\Seen");
 
+	int total_size = len;
+	int data_size = 0;
+	int sent_size = 0;
+
 	if (mail_table_data->flags_seen_field){
-		if (!mail_append_full(stream, long_enc_path, set_flags, NULL, &str)) {
-		    EM_DEBUG_EXCEPTION("mail_append  failed -");
-		    err = EMAIL_ERROR_IMAP4_APPEND_FAILURE;
-		    goto FINISH_OFF;
+		if (!mail_append_command(stream, long_enc_path, set_flags, NULL, &str)) {
+			EM_DEBUG_EXCEPTION("mail_append  failed -");
+			err = EMAIL_ERROR_IMAP4_APPEND_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		while (total_size > 0) {
+			if (total_size < max_alloc_size)
+				data_size = total_size;
+			else
+				data_size = max_alloc_size;
+
+			memset(data, 0x0, data_size+1);
+			read_size = fread(data, sizeof(char), data_size, fp);
+
+			if (read_size != data_size) {
+				/* read fail. */
+				EM_SAFE_FREE(data);
+				EM_DEBUG_EXCEPTION("Read from file failed");
+			}
+			sent_size += read_size;
+
+			INIT(&str_data, mail_string, data, read_size);
+			if (!mail_append_message(stream, long_enc_path, &str_data)) {
+				EM_DEBUG_EXCEPTION("mail_append  failed -");
+				err = EMAIL_ERROR_IMAP4_APPEND_FAILURE;
+				goto FINISH_OFF;
+			} else {
+				EM_DEBUG_LOG("Sent data Successfully. sent[%d] total[%d]", sent_size, total_size);
+			}
+			total_size -= data_size;
+		}
+		EM_SAFE_FREE(data);
+
+		if (!mail_append_end(stream, long_enc_path)) {
+			EM_DEBUG_EXCEPTION("mail_append  failed -");
+			err = EMAIL_ERROR_IMAP4_APPEND_FAILURE;
+			goto FINISH_OFF;
 		}
 	}
 	else{
-		if (!mail_append_full(stream, long_enc_path, NULL, NULL, &str)) {
+		if (!mail_append_command(stream, long_enc_path, NULL, NULL, &str)) {
+			EM_DEBUG_EXCEPTION("mail_append  failed -");
+			err = EMAIL_ERROR_IMAP4_APPEND_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		while (total_size > 0) {
+			if (total_size < max_alloc_size)
+				data_size = total_size;
+			else
+				data_size = max_alloc_size;
+
+			memset(data, 0x0, data_size+1);
+			read_size = fread(data, sizeof(char), data_size, fp);
+
+			if (read_size != data_size) {
+				/* read fail. */
+				EM_SAFE_FREE(data);
+				EM_DEBUG_EXCEPTION("Read from file failed");
+			}
+			sent_size += read_size;
+
+			INIT(&str_data, mail_string, data, read_size);
+			if (!mail_append_message(stream, long_enc_path, &str_data)) {
+				EM_DEBUG_EXCEPTION("mail_append  failed -");
+				err = EMAIL_ERROR_IMAP4_APPEND_FAILURE;
+				goto FINISH_OFF;
+			} else {
+				EM_DEBUG_LOG_DEV("Sent data Successfully. sent[%d] total[%d]", sent_size, len);
+			}
+			total_size -= data_size;
+		}
+		EM_SAFE_FREE(data);
+
+		if (!mail_append_end(stream, long_enc_path)) {
 			EM_DEBUG_EXCEPTION("mail_append  failed -");
 			err = EMAIL_ERROR_IMAP4_APPEND_FAILURE;
 			goto FINISH_OFF;
@@ -2795,16 +3282,16 @@ INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id)
 	}
 
 	/* Update read_mail_uid tbl */
-	if (!emcore_add_read_mail_uid(mailbox_tbl, mailbox_tbl->mailbox_name, mail_table_data->mail_id, g_append_uid_rsp, mail_table_data->mail_size, 0, &err)) {
+	if (!emcore_add_read_mail_uid(multi_user_name, mailbox_tbl, mailbox_tbl->mailbox_name, mail_table_data->mail_id, g_append_uid_rsp, mail_table_data->mail_size, 0, &err)) {
 		EM_DEBUG_EXCEPTION(" emcore_add_read_mail_uid failed [%d]", err);
-		emstorage_rollback_transaction(NULL, NULL, NULL);
+		emstorage_rollback_transaction(multi_user_name, NULL, NULL, NULL);
 		goto FINISH_OFF;
 	}
 
 	/* Update mail_data tbl */
-	if (!emstorage_update_server_uid(mail_table_data->server_mail_id, g_append_uid_rsp, &err)) {
+	if (!emstorage_update_server_uid(multi_user_name, mail_table_data->server_mail_id, g_append_uid_rsp, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_update_server_uid failed : [%d]", err);
-		emstorage_rollback_transaction(NULL, NULL, NULL);
+		emstorage_rollback_transaction(multi_user_name, NULL, NULL, NULL);
 		goto FINISH_OFF;
 	}
 
@@ -2866,7 +3353,7 @@ FINISH_OFF:
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
 
-static int emcore_initiate_pbd(MAILSTREAM *stream, int account_id, int mail_id, char *uid, int input_maibox_id, int *err_code)
+static int emcore_initiate_pbd(char *multi_user_name, MAILSTREAM *stream, int account_id, int mail_id, char *uid, int input_maibox_id, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id [%d], mail_id[%d], uid[%p], input_maibox_id[%d]", account_id, mail_id, uid, input_maibox_id);
 
@@ -2881,7 +3368,7 @@ static int emcore_initiate_pbd(MAILSTREAM *stream, int account_id, int mail_id, 
 		goto FINISH_OFF;
 	}
 
-	account_ref = emcore_get_account_reference(account_id);
+	account_ref = emcore_get_account_reference(multi_user_name, account_id);
 
 	email_event_partial_body_thd pbd_event;
 
@@ -2893,15 +3380,16 @@ static int emcore_initiate_pbd(MAILSTREAM *stream, int account_id, int mail_id, 
 	else
 		pbd_event.activity_type = ACTIVITY_PARTIAL_BODY_DOWNLOAD_IMAP4;
 
-	if ( (err = emstorage_get_mailbox_by_id(input_maibox_id, &mailbox)) != EMAIL_ERROR_NONE || !mailbox) {
+	if ( (err = emstorage_get_mailbox_by_id(multi_user_name, input_maibox_id, &mailbox)) != EMAIL_ERROR_NONE || !mailbox) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	pbd_event.mailbox_id     = input_maibox_id;
-	pbd_event.mail_id        = mail_id;
-	pbd_event.server_mail_id = strtoul(uid, NULL, 0);
-	pbd_event.mailbox_name   = EM_SAFE_STRDUP(mailbox->mailbox_name);
+	pbd_event.mailbox_id      = input_maibox_id;
+	pbd_event.mail_id         = mail_id;
+	pbd_event.server_mail_id  = strtoul(uid, NULL, 0);
+	pbd_event.mailbox_name    = EM_SAFE_STRDUP(mailbox->mailbox_name);
+	pbd_event.multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
 	EM_DEBUG_LOG("input_mailbox_name name [%d]", pbd_event.mailbox_id);
 	EM_DEBUG_LOG("uid [%s]", uid);
@@ -2947,6 +3435,8 @@ FINISH_OFF:
 		EM_SAFE_FREE(account_ref);
 	}
 
+	emcore_free_partial_body_thd_event(&pbd_event, NULL);
+
 	if (NULL  != err_code)
 		*err_code = err;
 
@@ -2954,14 +3444,16 @@ FINISH_OFF:
 	return ret;
 }
 
+#ifndef __FEATURE_USE_GMIME__
 static int emcore_parse_bodystructure(void *stream, IMAPPARSEDREPLY *reply_from_server, char *bodystructure, BODY **body, struct _m_content_info **cnt_info, int *total_mail_size)
 {
 	EM_DEBUG_FUNC_BEGIN("stream:[%p], reply_from_server:[%p], bodystructure:[%p]", stream, reply_from_server, bodystructure);
 
 	int err = EMAIL_ERROR_NONE;
+	char* ptr = NULL;
 
 	if (!stream || !reply_from_server || !bodystructure || !cnt_info || !body || !total_mail_size) {
-		EM_DEBUG_EXCEPTION("Invalid paramter stream[%p] reply_from_server[%p] bodystructure[%p] cnt_info[%p] body[%p] total_mail_size[%p]", 
+		EM_DEBUG_EXCEPTION("Invalid paramter stream[%p] reply_from_server[%p] bodystructure[%p] cnt_info[%p] body[%p] total_mail_size[%p]",
 					stream, reply_from_server, bodystructure, cnt_info, body, total_mail_size);
 		err = EMAIL_ERROR_INVALID_PARAM;
 		return err;
@@ -2982,8 +3474,7 @@ static int emcore_parse_bodystructure(void *stream, IMAPPARSEDREPLY *reply_from_
 	}
 
 	bodystructure_start = bodystructure_start + strlen("BODYSTRUCTURE");
-	bodystructure_string = strdup(bodystructure_start);
-	char* ptr = bodystructure_string;
+	ptr = bodystructure_string = strdup(bodystructure_start);
 
 	EM_DEBUG_LOG_DEV("BODYSTRUCTURE:%s", bodystructure_string);
 
@@ -3014,7 +3505,7 @@ static int emcore_parse_bodystructure(void *stream, IMAPPARSEDREPLY *reply_from_
 		goto FINISH_OFF;
 	}
 
-	if (emcore_get_body(stream, 0, 0, 0, p_body, p_cnt_info, &err) < 0 || !p_cnt_info) {
+	if (emcore_get_body(stream, 0, 0, 0, p_body, NULL, p_cnt_info, &err) < 0 || !p_cnt_info) {
 		EM_DEBUG_EXCEPTION("emcore_get_body failed[%d]", err);
 		err = EMAIL_ERROR_IMAP4_FETCH_UID_FAILURE;
 		goto FINISH_OFF;
@@ -3040,8 +3531,16 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END("Err:[%d]", err);
 	return err;
 }
+#endif
 
-static int emcore_update_attachment_except_inline(struct _m_content_info *cnt_info, int account_id, int mail_id, int mailbox_id, int *output_total_attachment_size, int *output_attachment_count, int *output_inline_attachment_count)
+INTERNAL_FUNC int emcore_update_attachment_except_inline(char *multi_user_name, 
+																	struct _m_content_info *cnt_info, 
+																	int account_id, 
+																	int mail_id, 
+																	int mailbox_id, 
+																	int *output_total_attachment_size, 
+																	int *output_attachment_count, 
+																	int *output_inline_attachment_count)
 {
 	EM_DEBUG_FUNC_BEGIN("cnt_info : [%p], account_id : [%d], mail_id : [%d], mailbox_id : [%d]", cnt_info, account_id, mail_id, mailbox_id);
 	int err = EMAIL_ERROR_NONE;
@@ -3051,11 +3550,6 @@ static int emcore_update_attachment_except_inline(struct _m_content_info *cnt_in
 		err = EMAIL_ERROR_INVALID_PARAM;
 		return err;
 
-	}
-
-	if (!cnt_info->file || !cnt_info->file->name) {
-		EM_DEBUG_LOG("Not include attachment");
-		return err;
 	}
 
 	int attachment_count = 0;
@@ -3069,25 +3563,35 @@ static int emcore_update_attachment_except_inline(struct _m_content_info *cnt_in
 	attachment_tbl.mailbox_id = mailbox_id;
 	attachment_tbl.attachment_save_status = 0;
 
+#ifdef __FEATURE_USE_GMIME__
+	for (inline_attachment_count = 0, attach_info = cnt_info->inline_file; attach_info; attach_info = attach_info->next) {
+		if (attach_info->type == INLINE_ATTACHMENT) {
+			inline_attachment_count++;
+		}
+	}
+#endif
+
 	for (attachment_count = 0, attach_info = cnt_info->file; attach_info; attach_info = attach_info->next, attachment_count++) {
+
+#ifndef __FEATURE_USE_GMIME__
 		if (attach_info->type == INLINE_ATTACHMENT) {
 			EM_DEBUG_LOG("INLINE ATTACHMENT");
 			inline_attachment_count++;
 			continue;
 		}
-
+#endif
 		total_attach_size                              += attach_info->size;
 		attachment_tbl.attachment_size                  = attach_info->size;
 		attachment_tbl.attachment_path                  = attach_info->save;
 		attachment_tbl.attachment_name                  = attach_info->name;
+		attachment_tbl.content_id                       = attach_info->content_id;
 		attachment_tbl.attachment_drm_type              = attach_info->drm;
 		attachment_tbl.attachment_mime_type             = attach_info->attachment_mime_type;
 #ifdef __ATTACHMENT_OPTI__
 		attachment_tbl.encoding                         = attach_info->encoding;
 		attachment_tbl.section                          = attach_info->section;
 #endif
-
-		if (!emstorage_add_attachment(&attachment_tbl, 0, false, &err)) {
+		if (!emstorage_add_attachment(multi_user_name, &attachment_tbl, 0, false, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_add_attachment failed : [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -3099,7 +3603,11 @@ static int emcore_update_attachment_except_inline(struct _m_content_info *cnt_in
 FINISH_OFF:
 
 	if (output_attachment_count)
+#ifdef __FEATURE_USE_GMIME__
+		*output_attachment_count = attachment_count;
+#else
 		*output_attachment_count = attachment_count - inline_attachment_count;
+#endif
 
 	if (output_inline_attachment_count)
 		*output_inline_attachment_count = inline_attachment_count;
@@ -3110,17 +3618,20 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END("err : [%d]", err);
 	return err;
 }
-#define UID_RANGE_STRING_LENGTH 3000
-#define TEMP_STRING_LENGTH		50
 
+#define UID_RANGE_STRING_LENGTH          3000
+#define MULTIPART_BOUNDARY_LENGTH        1024
+#define TEMP_STRING_LENGTH		         50
+#define CONTENT_TRANSFER_ENCODING_STRING "Content-Transfer-Encoding"
+
+#ifndef __FEATURE_USE_GMIME__
 static int emcore_parse_html_part_for_partial_body(char *start_header, char *boundary_string, char *bufsendforparse, char *text_html, int body_size)
 {
 	EM_DEBUG_FUNC_BEGIN("start_header [%p], boundary_string [%s], bufsendforparse [%s], text_html [%s], body_size [%d]", start_header, boundary_string, bufsendforparse, text_html, body_size);
 
 	int   err = EMAIL_ERROR_NONE;
-	int   html_uidno = 0;
 	int   iEncodingHeader = 0;
-	int   enc_type = ENCOTHER, dec_len = 0, html_length = 0;
+	int   enc_type = ENCOTHER, dec_len = 0;
 	char  EncodingHeader[40] = {0};
 	char  Encoding[30] = {0};
 	char *pEncodingHeaderEnd = NULL;
@@ -3131,6 +3642,11 @@ static int emcore_parse_html_part_for_partial_body(char *start_header, char *bou
 
 	EM_DEBUG_LOG("Content-Type : text/html or message/rfc822 or text/rfc822-headers");
 
+	if(start_header == NULL) { /*prevent 27448*/
+		EM_DEBUG_EXCEPTION("start_header NULL");
+		return false;
+	}
+
 	pHeaderStart = start_header;
 	pHeaderStart = pHeaderStart-2;
 	do{
@@ -3139,29 +3655,36 @@ static int emcore_parse_html_part_for_partial_body(char *start_header, char *bou
 
 	pHeaderStart++;
 
-	memcpy(EncodingHeader, pHeaderStart, 25);
+	/* Check string size */
+	if (EM_SAFE_STRLEN(pHeaderStart) < strlen(CONTENT_TRANSFER_ENCODING_STRING)) {
+		EM_DEBUG_EXCEPTION("pHeaderStart is truncated.");
+		return false;
+	}
 
-	if (strcasecmp(EncodingHeader, "Content-Transfer-Encoding") == 0){
+	memcpy(EncodingHeader, pHeaderStart, strlen(CONTENT_TRANSFER_ENCODING_STRING));
+
+	if (strcasecmp(EncodingHeader, CONTENT_TRANSFER_ENCODING_STRING) == 0){
 		pEncodingHeaderEnd = strstr(pHeaderStart, CRLF_STRING);
+
+		if ((pEncodingHeaderEnd - (pHeaderStart+27)) > 30) {
+			EM_DEBUG_EXCEPTION("Encoding is too long");
+			return false;
+		}
 		memcpy(Encoding, pHeaderStart + 27, pEncodingHeaderEnd - (pHeaderStart+27));
 		iEncodingHeader = 1;
 	}
 
 	/* HTML Content found */
-
-	if(!start_header) { /*prevent 27448*/
-		EM_DEBUG_EXCEPTION("start_header NULL");
-		return false;
-	}
 	txt_html = start_header;
 	txt_html = strstr(txt_html, CRLF_STRING CRLF_STRING);
 
 	if (txt_html != NULL){
 		txt_html += 4; /*  txt_html points at html content */
 		start = txt_html;
-		char multipart_boundary[1600] = {0};
+		char multipart_boundary[MULTIPART_BOUNDARY_LENGTH] = {0};
 		char *multipart_related_boundry = NULL;
 		char *multipart_related_boundry_end = NULL;
+
 		if (iEncodingHeader == 1)
 			multipart_related_boundry = pHeaderStart;
 		else
@@ -3173,8 +3696,10 @@ static int emcore_parse_html_part_for_partial_body(char *start_header, char *bou
 		while (bufsendforparse < multipart_related_boundry && *multipart_related_boundry != LF && *multipart_related_boundry != NULL_CHAR)
 			multipart_related_boundry -= 1;
 
-		if ((multipart_related_boundry_end - multipart_related_boundry) > 1600)
+		if ((multipart_related_boundry_end - multipart_related_boundry) > MULTIPART_BOUNDARY_LENGTH)	{
+			EM_DEBUG_EXCEPTION("Encoding is too long");
 			return false;
+		}
 
 		memcpy(multipart_boundary, multipart_related_boundry, multipart_related_boundry_end - multipart_related_boundry);
 
@@ -3187,9 +3712,7 @@ static int emcore_parse_html_part_for_partial_body(char *start_header, char *bou
 
 		if (end == NULL) {
 			EM_DEBUG_LOG("HTML body contents exceeds limited Bytes");
-
 			end = txt_html + body_size - (txt_html - bufsendforparse);
-			html_uidno = 1;
 		}
 		else if(end == txt_html) { /* empty multipart */
 			EM_DEBUG_LOG("Emtpy HTML multipart");
@@ -3204,7 +3727,6 @@ static int emcore_parse_html_part_for_partial_body(char *start_header, char *bou
 			else
 				EM_DEBUG_EXCEPTION(" Content not per as grammar.");
 		}
-
 		EM_DEBUG_LOG("iEncodingHeader [%d]", iEncodingHeader);
 
 		if (iEncodingHeader == 1){
@@ -3225,7 +3747,7 @@ static int emcore_parse_html_part_for_partial_body(char *start_header, char *bou
 			if (temp_enc1)
 				start_header = temp_enc1;
 
-			start_header += strlen("Content-Transfer-Encoding:");
+			start_header += strlen(CONTENT_TRANSFER_ENCODING_STRING);
 			start_header = em_skip_whitespace_without_strdup(start_header);
 
 			if (!start_header)
@@ -3243,14 +3765,12 @@ static int emcore_parse_html_part_for_partial_body(char *start_header, char *bou
 
 				if (emcore_decode_body_text(text_html, end - txt_html, enc_type , &dec_len, &err) < 0)
 					EM_DEBUG_EXCEPTION("emcore_decode_body_text failed [%d]", err);
-				html_length = dec_len;
 			}
 
 			EM_DEBUG_LOG("Decoded length = %d", dec_len);
 		}
 		else{
 			memcpy(text_html, start, end-txt_html);
-			html_length = (end-txt_html);
 		}
 
 		/* EM_DEBUG_LOG(" Content-Type:  text/html [%s]\n", text_html);								 */
@@ -3282,17 +3802,15 @@ static int emcore_parse_plain_part_for_partial_body(char *header_start_string, c
 	char *pHeaderStart = NULL, *pEncodingHeaderEnd = NULL;
 	char  EncodingHeader[40] = {0, };
 	char  Encoding[30] = {0, };
-	char *temp_text_boundary = NULL;
 	char *start = NULL, *end = NULL, *txt_plain = NULL, *temp_enc1 = NULL;
 
 	EM_DEBUG_LOG("Content-Type : text/plain");
 
 	pHeaderStart = header_start_string;
-	temp_text_boundary = start_header;
 
 	memcpy(EncodingHeader, pHeaderStart, 25);
 
-	if (strcasecmp(EncodingHeader, "Content-Transfer-Encoding") == 0){
+	if (strcasecmp(EncodingHeader, CONTENT_TRANSFER_ENCODING_STRING) == 0){
 		pEncodingHeaderEnd = strstr(pHeaderStart, CRLF_STRING);
 		memcpy(Encoding, pHeaderStart + 27, pEncodingHeaderEnd - (pHeaderStart + 27));
 		iEncodingHeader = 1;
@@ -3352,7 +3870,7 @@ static int emcore_parse_plain_part_for_partial_body(char *header_start_string, c
 				if (temp_enc1)
 					start_header = temp_enc1;
 
-				start_header += strlen("Content-Transfer-Encoding:");
+				start_header += strlen(CONTENT_TRANSFER_ENCODING_STRING);
 				start_header = em_skip_whitespace_without_strdup(start_header);
 
 				if (!start_header)
@@ -3390,7 +3908,7 @@ static int emcore_parse_plain_part_for_partial_body(char *header_start_string, c
 
 /*  Content-Type:  IMAGE/octet-stream; name = Default.png */
 /*  Content-Transfer-Encoding:  BASE64 */
-/*  Content-ID:  <4b0d6810b17291f9438783a8eb9d5228@com.samsung.slp.email> */
+/*  Content-ID:  <4b0d6810b17291f9438783a8eb9d5228@org.tizen.email> */
 /*  Content-Disposition:  inline; filename = Default.png */
 
 static void emcore_free_email_image_data(email_image_data **image_data, int count)
@@ -3428,8 +3946,8 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 	char *image_boundary = NULL;
 	char *image_boundary_end = NULL;
 	char *temp_image_boundary = NULL;
-	int   i = 0, ch_image = 0, cidno = 0;
-	int   enc_type = ENCOTHER, dec_len = 0, image_length = 0;
+	int   i = 0, ch_image = 0;
+	int   enc_type = ENCOTHER;
 	char *p = header_start_string;
 	char *start = NULL, *end = NULL, *txt_image = NULL;
 	char *temp_image = NULL;
@@ -3465,7 +3983,8 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 	if (image_boundary  != NULL && image_boundary_end != NULL)
 		memcpy(temp_image_boundary, image_boundary, image_boundary_end-image_boundary);
 
-	if ((char *)strcasestr((const char *)temp_image_boundary, "Content-type:") == NULL)
+
+	if (((char *)strcasestr((const char *)temp_image_boundary, "Content-type:") == NULL) && (temp_image_boundary[0] == '-'))
 		p_boundary_string = strdup(temp_image_boundary);
 	else
 		p_boundary_string = EM_SAFE_STRDUP(boundary_string);
@@ -3481,19 +4000,17 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 		emcore_get_content_type_from_mime_string(start_header, &(image_data[i].mime_type));
 		EM_DEBUG_LOG("image_data[i].mime_type : [%s]", image_data[i].mime_type);
 
-		if ((strcasestr(p, "Content-Disposition: attachment")) || (!strcasestr(p, "Content-ID: <"))){
+		if ((strcasestr(p, "Content-Disposition: attachment")) || (!strcasestr(p, "Content-ID: <"))) {
 			EM_DEBUG_LOG("Body has attachment no need to parse ");
 			end = NULL;
 			multiple_image = NULL;
 		}
 		else {  /*  HTML Content found */
 			ch_image = 0;
-			cidno = 0;
-			int   boundarylen = -1;
 			char *cid = NULL;
 			char *temp_name = NULL;
 			char *decoded_filename = NULL;
-			
+
 			image_data[i].image_file_name = NULL;
 
 			if(!start_header) { /*prevent 27449*/
@@ -3509,30 +4026,31 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 			if (temp_name  != NULL){
 				temp_image = temp_name;
 				if (*(temp_image + 5) == '"') {
-					temp_image = temp_image + 5;
+					temp_image = temp_image + 6;
 					temp_name = temp_name + 6 ;
 				} else {
 					temp_image = temp_image + 5;
 					temp_name = temp_name + 5;
 				}
 
-				while (*temp_image  != CR){
+				while (*temp_image != CR){
 					temp_image++;
 					ch_image++;
 				}
-				
+
 				if (ch_image > 0) {
-					image_data[i].image_file_name = em_malloc(ch_image);
+					image_data[i].image_file_name = em_malloc(ch_image+3);
 					if (image_data[i].image_file_name == NULL) {
 						EM_DEBUG_EXCEPTION("em_malloc failed");
+						EM_SAFE_FREE(p_boundary_string);
 						return false;
 					}
 					if (*(temp_image - 1) == '"') {
 						memcpy(image_data[i].image_file_name, temp_name, ch_image - 2);
 					} else {
-						memcpy(image_data[i].image_file_name, temp_name, ch_image - 1);
+						memcpy(image_data[i].image_file_name, temp_name, ch_image);
 					}
-				}				
+				}
 
 				decoded_filename = emcore_decode_rfc2047_text(image_data[i].image_file_name, &err);
 				if(decoded_filename) {
@@ -3563,6 +4081,7 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 					image_data[i].image_file_name = em_malloc((cid_end - cid) + 1);
 					if (image_data[i].image_file_name == NULL) {
 						EM_DEBUG_EXCEPTION("em_malloc failed");
+						EM_SAFE_FREE(p_boundary_string);
 						return false;
 					}
 					memcpy(image_data[i].image_file_name, cid, cid_end - cid);
@@ -3574,8 +4093,9 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 			if (txt_image != NULL){
 				txt_image += 4; /*  txt_image points at image content */
 				start = txt_image;
-				end = strstr(txt_image, p_boundary_string);
 
+				if (p_boundary_string) 
+					end = strstr(txt_image, p_boundary_string);
 
 				if (end == NULL){
 					EM_DEBUG_LOG("HTML body contents exceeds limited Bytes");
@@ -3584,7 +4104,6 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 				}
 				else{
 					EM_DEBUG_LOG("This image is fully downloaded");
-					boundarylen = EM_SAFE_STRLEN(p_boundary_string);
 					end -= 2;
 					image_data[i].fully_downloaded = 1;
 				}
@@ -3593,7 +4112,7 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 					if (temp_enc1)
 						start_header = temp_enc1;
 
-					start_header  += strlen("Content-Transfer-Encoding:");
+					start_header  += strlen(CONTENT_TRANSFER_ENCODING_STRING);
 					start_header = em_skip_whitespace_without_strdup(start_header);
 
 					if (!start_header)
@@ -3612,14 +4131,12 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 							memcpy(image_data[i].text_image, start, end-txt_image);
 							if (emcore_decode_body_text(image_data[i].text_image, end-txt_image, enc_type , &(image_data[i].dec_len), &err) < 0)
 								EM_DEBUG_EXCEPTION("emcore_decode_body_text failed [%d]", err);
-							else
-								image_length = image_data[i].dec_len;
 						}
 						else
 							EM_DEBUG_EXCEPTION("em_malloc() failed");
 					}
 
-					EM_DEBUG_LOG("Decoded length [%d]", dec_len);
+					EM_DEBUG_LOG("Decoded length [%d]", image_data[i].dec_len);
 				}
 				else{
 					image_data[i].text_image = (char *)em_malloc(end-txt_image);
@@ -3642,7 +4159,7 @@ static int emcore_parse_image_part_for_partial_body(char *header_start_string, c
 	} while (multiple_image != NULL && donot_parse_next_image != 1 && (i < IMAGE_DISPLAY_PARTIAL_BODY_COUNT));
 
 	EM_SAFE_FREE(p_boundary_string);
-	
+
 	EM_DEBUG_FUNC_END();
 	return 1;
 }
@@ -3670,7 +4187,7 @@ static int emcore_find_boundary_string_of_the_part(const char *whole_string, con
 		boundary_cur++;
 
 		if(boundary_end > boundary_cur && boundary_cur >= whole_string) {
-			EM_DEBUG_LOG("boundary_end - boundary_cur + 15 [%d]", boundary_end - boundary_cur + 15);
+
 			boundary_string = em_malloc(boundary_end - boundary_cur + 15);
 			if(!boundary_string) {
 				EM_DEBUG_EXCEPTION("em_malloc failed");
@@ -3734,7 +4251,11 @@ static int emcore_parse_body_for_imap(char *body_str, int body_size, struct _m_c
 	char *temp_alternative_plain_header = NULL;
 	char *temp_content_type = NULL;
 
-	p_body_str = EM_SAFE_STRDUP(body_str);
+	char *local_encoding_str = NULL;
+	char *local_boundary_str = NULL;
+	char *local_body_str = NULL;
+
+	p_body_str = g_strdup(body_str);
 
 	text_plain = em_malloc(body_size + 1);
 	text_html  = em_malloc(body_size + 1);
@@ -3745,29 +4266,9 @@ static int emcore_parse_body_for_imap(char *body_str, int body_size, struct _m_c
 		goto FINISH_OFF;
 	}
 
-	if (!strcasestr(p_body_str, "Content-Type: ") && (cnt_info->text.plain || cnt_info->text.html)) {
-		/*  Encoded Content-Type: text/html or Content-Type: text/plain  */
-		/*  No Partial body has No headers with Content-Type: text/html or Content-Type: text/plain  */
-
-		EM_DEBUG_LOG("mbody->encoding [%d] ", encoding_type);
-
-		if (emcore_decode_body_text(p_body_str, EM_SAFE_STRLEN(p_body_str), encoding_type, &dec_len, &err) < 0) {
-			EM_DEBUG_EXCEPTION("emcore_decode_body_text failed [%d]", err);
-			goto FINISH_OFF;
-		}
-
-		EM_DEBUG_LOG("Decoded length [%d]", dec_len);
-
-		if (dec_len > 0) {
-			if (cnt_info->text.plain) {
-				memcpy(text_plain, p_body_str, dec_len);
-			}
-
-			if (cnt_info->text.html) {
-				memcpy(text_html, p_body_str, dec_len);
-			}
-		}
-	} else {   /*  Partial body has headers with Content-Type: text/html or Content-Type: text/plain */
+	if ((cnt_info->text.plain && cnt_info->text.html) || cnt_info->file) {
+		/* Start multipart parsing */
+		/*  Partial body has headers with Content-Type: text/html or Content-Type: text/plain */
 		no_alternative_part_flag = 0;
 		if (((temp_alternative_plain_header = (char *)strcasestr(p_body_str, "Content-type: multipart/alternative")) != NULL)) {	/*  Found 'alternative' */
 			if (((temp_content_type = (char *)strcasestr(p_body_str, "Content-type: text/plain")) != NULL)) {
@@ -3779,8 +4280,8 @@ static int emcore_parse_body_for_imap(char *body_str, int body_size, struct _m_c
 					EM_DEBUG_LOG(" Content-type: multipart/alternative ");
 					boundary_start = strstr(temp_alternative_plain_header, "--");
 					if(!boundary_start) { /*prevent 37946 */
-						err = EMAIL_ERROR_INVALID_DATA; 
-						goto FINISH_OFF; 
+						err = EMAIL_ERROR_INVALID_DATA;
+						goto FINISH_OFF;
 					}
 					boundary_end = strcasestr(boundary_start, "Content-type:");
 					if(!boundary_end) { /*prevent 37946 */
@@ -3804,13 +4305,13 @@ static int emcore_parse_body_for_imap(char *body_str, int body_size, struct _m_c
 		if (no_alternative_part_flag) {
 			boundary_start = strstr(p_body_str, "--");
 			if(!boundary_start) { /*prevent 37946 */
-				err = EMAIL_ERROR_INVALID_DATA; 
-				goto FINISH_OFF; 
+				err = EMAIL_ERROR_INVALID_DATA;
+				goto FINISH_OFF;
 			}
-			boundary_end = strcasestr(boundary_start, "Content-type:");
+			boundary_end = strcasestr(boundary_start, "\r\n");
 			if(!boundary_end) { /*prevent 37946 */
-				err = EMAIL_ERROR_INVALID_DATA; 
-				goto FINISH_OFF; 
+				err = EMAIL_ERROR_INVALID_DATA;
+				goto FINISH_OFF;
 			}
 
 			boundary_string = em_malloc(boundary_end - (boundary_start + strlen("--")));
@@ -3825,11 +4326,6 @@ static int emcore_parse_body_for_imap(char *body_str, int body_size, struct _m_c
 
 		if (boundary_string && boundary_end) { /*prevent 37946 */
 			/* EM_DEBUG_LOG("boundary_string : [%s]", boundary_string); */
-			char *next_boundary_start = NULL;
-			next_boundary_start = (char *)strcasestr(boundary_end, boundary_string);
-
-			/*if (next_boundary_start)
-				boundary_end = next_boundary_start;*/
 
 			if (((start_header = (char *)strcasestr(boundary_end, "Content-Type: text/html"))  != NULL) && (no_html  != 1) &&(((char *)strcasestr(boundary_end, "Content-Type: message/rfc822")) == NULL) &&
 				(((char *)strcasestr(boundary_end, "Content-Type: text/rfc822-headers")) == NULL))
@@ -3864,11 +4360,98 @@ static int emcore_parse_body_for_imap(char *body_str, int body_size, struct _m_c
 			}
 		}
 	}
+	else {
+		/*  Encoded Content-Type: text/html or Content-Type: text/plain  */
+		/*  No Partial body has No headers with Content-Type: text/html or Content-Type: text/plain  */
+		char *start_of_body = NULL;
+		char *end_of_body = NULL;
+		char *local_encoding = NULL;
+		char *local_encoding_end = NULL;
+		char *local_boundary_end = NULL;
+		int local_encoding_len = 0;
+		int local_boundary_len = 0;
+		int enc_type = encoding_type;
+		EM_DEBUG_LOG_DEV("mbody->encoding [%d] ", enc_type);
+
+		if (EM_SAFE_STRLEN(p_body_str) > 2 && p_body_str[0] == '-' && p_body_str[1] == '-') {
+
+			local_boundary_end = strstr(p_body_str, "\r\n");
+			if (local_boundary_end) {
+				local_boundary_len = local_boundary_end - p_body_str;
+				local_boundary_str = em_malloc(local_boundary_len + 2);
+				memcpy(local_boundary_str, p_body_str+2, local_boundary_len-2);
+				EM_DEBUG_LOG_DEV("local_boundary_str : %s", local_boundary_str);
+				end_of_body = strstr(local_boundary_end, local_boundary_str);
+				if (end_of_body) end_of_body -= 2;
+			}
+
+			local_encoding = strcasestr(p_body_str, "Content-Transfer-Encoding: ");
+			if (local_encoding) {
+				local_encoding_end = strstr(local_encoding, "\r\n");
+
+				if (local_encoding && (local_encoding_end > local_encoding)) {
+					local_encoding_len = local_encoding_end - local_encoding;
+					local_encoding_str = em_malloc(local_encoding_len + 2);
+					if (local_encoding_str == NULL) {
+						EM_DEBUG_EXCEPTION("em_malloc failed");
+						err = EMAIL_ERROR_OUT_OF_MEMORY;
+						goto FINISH_OFF;
+					}
+
+					if (local_encoding_str) {
+						memcpy(local_encoding_str, local_encoding + EM_SAFE_STRLEN("Content-Transfer-Encoding: "), local_encoding_len);
+
+						enc_type = ENCOTHER;
+						if (strncasecmp(local_encoding_str, "base64", strlen("base64")) == 0)
+							enc_type = ENCBASE64;
+						else if (strncasecmp(local_encoding_str, "quoted-printable", strlen("quoted-printable")) == 0)
+							enc_type = ENCQUOTEDPRINTABLE;
+
+						EM_DEBUG_LOG_DEV("local enc_type [%d]", enc_type);
+					}
+				}
+			}
+
+			start_of_body = strstr(p_body_str, "\r\n\r\n");
+			if (start_of_body) {
+				start_of_body = start_of_body+strlen("\r\n\r\n");
+				if (end_of_body && (end_of_body > start_of_body)) {
+					local_body_str = em_malloc(end_of_body - start_of_body + 2);
+					memcpy(local_body_str, start_of_body, end_of_body - start_of_body);
+				} else {
+					local_body_str = EM_SAFE_STRDUP(start_of_body);
+				}
+			}
+		}
+
+		if (!local_body_str)
+			local_body_str = g_strdup(p_body_str);
+
+		if (emcore_decode_body_text(local_body_str, EM_SAFE_STRLEN(local_body_str), enc_type, &dec_len, &err) < 0) {
+			EM_DEBUG_EXCEPTION("emcore_decode_body_text failed [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		EM_DEBUG_LOG("Decoded length [%d]", dec_len);
+
+		if (dec_len > 0) {
+			if (cnt_info->text.plain) {
+				memcpy(text_plain, local_body_str, dec_len);
+			}
+
+			if (cnt_info->text.html) {
+				memcpy(text_html, local_body_str, dec_len);
+			}
+		}
+	}
 
 FINISH_OFF:
 
 	EM_SAFE_FREE(p_body_str);
 	EM_SAFE_FREE(boundary_string);
+	EM_SAFE_FREE(local_boundary_str);
+	EM_SAFE_FREE(local_encoding_str);
+	EM_SAFE_FREE(local_body_str);
 
 	if (err != EMAIL_ERROR_NONE) {
 		EM_SAFE_FREE(text_plain);
@@ -3885,10 +4468,12 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END("err : [%d]", err);
 	return err;
 }
+#endif
 
 #define TAG_LENGTH 16
 #define COMMAND_LENGTH 2000
-static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, int input_download_size, email_event_partial_body_thd *pbd_event, int item_count, int *error)
+#ifdef __FEATURE_USE_GMIME__
+static int emcore_gmime_download_imap_partial_mail_body(MAILSTREAM *stream, int input_download_size, email_event_partial_body_thd *pbd_event, int item_count, int *error)
 {
 	EM_DEBUG_FUNC_BEGIN("stream [%p], input_download_size[%d], pbd_event [%p], item_count [%d], error [%p]", stream, input_download_size, pbd_event, item_count, error);
 
@@ -3897,14 +4482,16 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 	int i32_index = 0;
 	int total_mail_size = 0, total_attachment_size = 0;
 	int temp_count = 0, attachment_num = 0, inline_attachment_num = 0;
-	char buf[512] = {0, };
-	char *text_plain    = NULL;
-	char *text_html     = NULL;
-	char uid_range_string_to_be_downloaded[UID_RANGE_STRING_LENGTH] = {0, };
+	int inline_download_count = 0;
+	char path_buf[512] = {0,};
+	char move_buf[512] = {0,};
+	char uid_range_string_to_be_downloaded[UID_RANGE_STRING_LENGTH] = {0,};
 	char imap_tag[TAG_LENGTH] = {0, };
 	char command[COMMAND_LENGTH] = {0, };
-	char *temp_data_html = NULL;
 	char uid_string[TEMP_STRING_LENGTH] = {0, };
+	char rfc822_micalg[TEMP_STRING_LENGTH] = {0, };
+	char rfc822_protocol[TEMP_STRING_LENGTH] = {0, };
+	const char *sender = NULL;
 	IMAPLOCAL *imaplocal = NULL;
 	IMAPPARSEDREPLY *reply_from_server = NULL;
 	emstorage_mail_tbl_t *mail = NULL;
@@ -3913,7 +4500,25 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 	struct _m_content_info *cnt_info = NULL;
 	emstorage_attachment_tbl_t attachment_tbl;
 	email_event_partial_body_thd *stSectionNo = NULL;
-	email_image_data  *image_data = NULL;
+	emstorage_mail_text_tbl_t *mail_text = NULL; /* prevent */
+
+	GMimeMessage *message1 = NULL;
+	GMimeParser *parser1 = NULL;
+	GMimeStream *stream1 = NULL;
+	char *bodystructure_start = NULL;
+	char *bodystructure_buf = NULL;
+	char *bodystructure_ptr = NULL;
+
+	GMimeStream *stream2 = NULL;
+	GMimeMessage *message2 = NULL;
+	GMimeParser *parser2 = NULL;
+	char *fulltext = NULL;
+
+	GMimePartIter *iter1 = NULL;
+	GMimePartIter *iter2 = NULL;
+	GMimeObject *part_tmp1 = NULL;
+	GMimeObject *part_tmp2 = NULL;
+	char *part_path = NULL;
 
 	if (!(stream) || !(imaplocal = stream->local) || !imaplocal->netstream || !pbd_event) {
 		EM_DEBUG_EXCEPTION("invalid parameter");
@@ -3927,8 +4532,7 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 	/* For constructing UID list which is having 10 UID or less at a time */
 	for (j = 0, stSectionNo = pbd_event; (stSectionNo  != NULL && j < item_count); j++)
  	{
- 		EM_DEBUG_LOG_SEC("pbd_event[%d].account_id [%d], mail_id [%d], server_mail_id [%d], activity_id [%d]", \
-			j, stSectionNo[j].account_id, stSectionNo[j].mail_id, stSectionNo[j].server_mail_id, stSectionNo[j].activity_id);
+		/* delete log before uploading master branch. it is flooding */
 
 		if (i32_index >= UID_RANGE_STRING_LENGTH){
 			EM_DEBUG_EXCEPTION("String length exceeded its limitation!");
@@ -3936,13 +4540,16 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 		}
 
 		if (j == item_count - 1)
-			i32_index += SNPRINTF(uid_range_string_to_be_downloaded + i32_index, UID_RANGE_STRING_LENGTH, "%lu", stSectionNo[j].server_mail_id);
+			i32_index += SNPRINTF(uid_range_string_to_be_downloaded + i32_index,
+					UID_RANGE_STRING_LENGTH - i32_index, "%lu", stSectionNo[j].server_mail_id);
 		else
-			i32_index += SNPRINTF(uid_range_string_to_be_downloaded + i32_index, UID_RANGE_STRING_LENGTH, "%lu,", stSectionNo[j].server_mail_id);
+			i32_index += SNPRINTF(uid_range_string_to_be_downloaded + i32_index,
+					UID_RANGE_STRING_LENGTH - i32_index, "%lu,", stSectionNo[j].server_mail_id);
 	}
 
 	SNPRINTF(imap_tag, TAG_LENGTH, "%08lx", 0xffffffff & (stream->gensym++));
-	SNPRINTF(command, COMMAND_LENGTH, "%s UID FETCH %s (BODYSTRUCTURE BODY.PEEK[TEXT]<0.%d>)\015\012", imap_tag, uid_range_string_to_be_downloaded, input_download_size);
+	SNPRINTF(command, COMMAND_LENGTH, "%s UID FETCH %s (RFC822.HEADER BODYSTRUCTURE BODY.PEEK[TEXT]<0.%d>)\015\012",
+			imap_tag, uid_range_string_to_be_downloaded, input_download_size);
 
 	EM_DEBUG_LOG("command : %s", command);
 
@@ -3954,39 +4561,21 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 	}
 
 	/*  responce from the server */
-	imap_response = emcore_get_response_from_server(imaplocal->netstream, imap_tag, &reply_from_server, input_download_size, item_count);
+	imap_response = emcore_get_response_from_server(imaplocal->netstream,
+			imap_tag, &reply_from_server, input_download_size, item_count);
 
-	if (!imap_response || !reply_from_server ){
+	if (!imap_response || !reply_from_server ) {
 		EM_DEBUG_EXCEPTION(" Invalid response from emcore_get_response_from_server");
-		for( i = 0 ; i< item_count ; i++ )
-			emcore_delete_pbd_activity(pbd_event[i].account_id, pbd_event[i].mail_id, pbd_event[i].activity_id, &err);
-
 		goto FINISH_OFF;
 	}
 
 	for (i = 0; i < item_count ; i++) {
+
 		total_mail_size = 0;
 		total_attachment_size = 0;
 		attachment_num = 0;
 
-		if( !(imap_response[i].header) ) continue;
-
-		if (body) {
-			mail_free_body(&body);
-			body = NULL;
-		}
-
-		if (cnt_info) {
-			emcore_free_content_info(cnt_info);
-			EM_SAFE_FREE(cnt_info);
-		}
-
-		err = emcore_parse_bodystructure(stream, reply_from_server, imap_response[i].header, &body, &cnt_info, &total_mail_size);
-		if (err != EMAIL_ERROR_NONE || !body) {
-			EM_DEBUG_EXCEPTION("emcore_parse_bodystructure failed : [%d]", err);
-			err = EMAIL_ERROR_ON_PARSING;
-			goto FINISH_OFF;
-		}
+		if(!(imap_response[i].bodystructure) || imap_response[i].bodystructure_len <= 0) continue;
 
 		/* Search the account id of pbd_event */
 		for (temp_count = 0; temp_count <= item_count && pbd_event[temp_count].server_mail_id != imap_response[i].uid_no; temp_count++)
@@ -4002,175 +4591,423 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 
 		/* Check the body download status and body size */
 		SNPRINTF(uid_string, sizeof(uid_string), "%ld", imap_response[i].uid_no);
-		if (!emstorage_get_maildata_by_servermailid(pbd_event[temp_count].mailbox_id, uid_string, &mail, true, &err) || !mail) {
+		if (!emstorage_get_maildata_by_servermailid(pbd_event[temp_count].multi_user_name, pbd_event[temp_count].mailbox_id, uid_string, &mail, true, &err) || !mail) {
 			EM_DEBUG_EXCEPTION("emstorage_get_mail_data_by_servermailid failed : [%d]", err);
 			if (err == EMAIL_ERROR_MAIL_NOT_FOUND || !mail)
 				goto FINISH_OFF;
 		}
 
-		if (mail->body_download_status == EMAIL_BODY_DOWNLOAD_STATUS_FULLY_DOWNLOADED) {
+		if (mail->body_download_status & EMAIL_BODY_DOWNLOAD_STATUS_FULLY_DOWNLOADED) {
 			EM_DEBUG_LOG("Downloaded mail");
 			continue;
 		}
 
+		if (cnt_info) {
+			emcore_free_content_info(cnt_info);
+			EM_SAFE_FREE(cnt_info);
+		}
+
+		if (body) {
+			mail_free_body(&body);
+			body = NULL;
+		}
+
+		EM_SAFE_FREE(fulltext);
+
+		if (!(cnt_info = em_malloc(sizeof(struct _m_content_info)))) {
+			EM_DEBUG_EXCEPTION("em_malloc failed...");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
+		body = mail_newbody();
+		if (body == NULL) {
+			EM_DEBUG_EXCEPTION("New body creationg failed");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
+		/* Get the body strcuture string */
+		bodystructure_start = strstr(imap_response[i].bodystructure, "BODYSTRUCTURE (");
+		if (!bodystructure_start) {
+			EM_DEBUG_EXCEPTION("Invalid bodystructure :[%s]", imap_response[i].bodystructure);
+			err = EMAIL_ERROR_INVALID_PARAM;
+			goto FINISH_OFF;
+		}
+
+		bodystructure_start = bodystructure_start + strlen("BODYSTRUCTURE");
+		bodystructure_ptr = bodystructure_buf = EM_SAFE_STRDUP(bodystructure_start);
+		EM_DEBUG_LOG_DEV("GMIME BODYSTRUCTURE:%s", bodystructure_buf);
+
+		mail_parameters(stream, SET_FREEBODYSPAREP, emcore_free_body_sparep);
+		imap_parse_body_structure(stream, body,
+				(unsigned char **)&bodystructure_buf, reply_from_server);
+
+		EM_SAFE_FREE(bodystructure_ptr);
+
+		/* Construct message1(fake gmime message object) with rfc822 header */
+		stream1 = g_mime_stream_mem_new_with_buffer(imap_response[i].rfc822header, imap_response[i].rfc822header_len);
+		parser1 = g_mime_parser_new_with_stream(stream1);
+		if (stream1) g_object_unref(stream1);
+
+		message1 = g_mime_parser_construct_message(parser1);
+		if (parser1) g_object_unref(parser1);
+
+		/* message1 is multipart? */
+		if (GMIME_IS_MULTIPART (message1->mime_part)) {
+
+			/* Fill up mime part of message1 using bodystructure info */
+			emcore_gmime_construct_multipart((GMimeMultipart *)message1->mime_part, body, "1", &total_mail_size);
+
+			/* Construct message2 with partial body text */
+			EM_DEBUG_LOG_DEV("RFC822H:%s", imap_response[i].rfc822header);
+			EM_DEBUG_LOG_DEV("BODYTEXT:%s", imap_response[i].bodytext);
+			fulltext = g_strconcat(imap_response[i].rfc822header, "\r\n\r\n", imap_response[i].bodytext, NULL);
+
+			stream2 = g_mime_stream_mem_new_with_buffer(fulltext, EM_SAFE_STRLEN(fulltext));
+			parser2 = g_mime_parser_new_with_stream(stream2);
+			if (stream2) g_object_unref(stream2);
+			EM_SAFE_FREE(fulltext);
+
+			message2 = g_mime_parser_construct_message(parser2);
+			if (parser2) g_object_unref(parser2);
+
+			/* Merge message2 with message1 to make complete gmime message object */
+
+			iter1 = g_mime_part_iter_new((GMimeObject *)message1);
+			iter2 = g_mime_part_iter_new((GMimeObject *)message2);
+
+			if (!g_mime_part_iter_is_valid(iter1) || !g_mime_part_iter_is_valid(iter2)) {
+				EM_DEBUG_EXCEPTION("Part iterator is not valid");
+				goto FINISH_OFF;
+			}
+
+			do {
+				part_tmp2 = g_mime_part_iter_get_current(iter2);
+				if (part_tmp2 && GMIME_IS_PART(part_tmp2)) {
+					part_path = g_mime_part_iter_get_path(iter2);
+
+					if (g_mime_part_iter_jump_to(iter1, part_path)) {
+						EM_DEBUG_LOG_DEV("g_mime_part_iter_jump_to: %s", part_path);
+						part_tmp1 = g_mime_part_iter_get_current(iter1);
+						if (part_tmp1 && GMIME_IS_PART(part_tmp1)) {
+							GMimeContentType *ctype_tmp1 = NULL;
+							GMimeContentType *ctype_tmp2 = NULL;
+							char *ctype_str1 = NULL;
+							char *ctype_str2 = NULL;
+							ctype_tmp1 = g_mime_object_get_content_type(part_tmp1);
+							ctype_tmp2 = g_mime_object_get_content_type(part_tmp2);
+							ctype_str1 = g_mime_content_type_to_string(ctype_tmp1);
+							ctype_str2 = g_mime_content_type_to_string(ctype_tmp2);
+							EM_DEBUG_LOG_DEV("%s", ctype_str1);
+							EM_DEBUG_LOG_DEV("%s", ctype_str2);
+
+							if (g_ascii_strcasecmp(ctype_str1, ctype_str2) != 0) {
+								EM_DEBUG_EXCEPTION("PART of fake_message is different from message");
+							} else {
+								char *ctype_size = NULL;
+								GMimeDataWrapper *content_tmp2 = NULL;
+
+								ctype_size = (char *)g_mime_content_type_get_parameter(ctype_tmp1, "part_size");
+								EM_DEBUG_LOG("Part.size.bytes[%s]", ctype_size);
+								if (ctype_size)
+									g_mime_object_set_content_type_parameter(part_tmp2, "part_size", ctype_size);
+
+								content_tmp2 = g_mime_part_get_content_object(GMIME_PART(part_tmp2));
+								if (content_tmp2 && part_tmp1 && GMIME_IS_PART(part_tmp1)) {
+									g_mime_part_set_content_object(GMIME_PART(part_tmp1), content_tmp2);
+								}
+
+								/*part_idx = g_mime_multipart_index_of(GMIME_MULTIPART(message1->mime_part), part_tmp1);
+								replaced = g_mime_multipart_replace(GMIME_MULTIPART(message1->mime_part), part_idx, part_tmp2);
+								if (!replaced) {
+									EM_DEBUG_EXCEPTION("g_mime_multipart_replace failed");
+								}
+								if (replaced) g_object_unref(replaced);*/
+
+								/*content_tmp2 = g_mime_part_get_content_object(GMIME_PART(part_tmp2));
+								part_tmp1 = g_mime_part_iter_get_current(iter1);
+								if (content_tmp2 && part_tmp1 && GMIME_IS_PART(part_tmp1)) {
+									g_mime_part_set_content_object(GMIME_PART(part_tmp1), content_tmp2);
+									g_object_unref(content_tmp2);
+								}*/
+
+							}
+
+							EM_SAFE_FREE(ctype_str1);
+							EM_SAFE_FREE(ctype_str2);
+						}
+					} else {
+						EM_DEBUG_LOG_SEC("g_mime_part_iter_jump_to: failed to jump to %s", part_path);
+						EM_SAFE_FREE(part_path);
+						goto FINISH_OFF;
+					}
+
+					EM_SAFE_FREE(part_path);
+				}
+			} while (g_mime_part_iter_next(iter2));
+
+			if (iter1) {
+				g_mime_part_iter_free(iter1);
+				iter1 = NULL;
+			}
+
+			if (iter2) {
+				g_mime_part_iter_free(iter2);
+				iter2 = NULL;
+			}
+
+			if (message2) {
+				g_object_unref(message2);
+				message2 = NULL;
+			}
+
+			if (g_strrstr(g_mime_message_get_sender(message1), "mmsc.plusnet.pl") != NULL ||
+				g_strrstr(g_mime_message_get_sender(message1), "mms.t-mobile.pl") != NULL) {
+				cnt_info->attachment_only = 1;
+			}
+
+			g_mime_message_foreach(message1, emcore_gmime_imap_parse_foreach_cb, (gpointer)cnt_info);
+
+		} else if (GMIME_IS_PART (message1->mime_part)) {
+			GMimeDataWrapper *content = NULL;
+			GMimePart *single_part = GMIME_PART(message1->mime_part);
+
+			EM_DEBUG_LOG("constructing a %s/%s part", body_types[body->type], body->subtype);
+			emcore_gmime_construct_part(single_part, body, "1", &total_mail_size);
+
+			stream1 = g_mime_stream_mem_new_with_buffer(imap_response[i].bodytext, imap_response[i].bodytext_len);
+			//parser1 = g_mime_parser_new_with_stream(stream1);
+			content = g_mime_data_wrapper_new_with_stream(stream1, single_part->encoding);
+			if (stream1) g_object_unref (stream1);
+
+			g_mime_part_set_content_object(single_part, content);
+			if (content) g_object_unref(content);
+
+			sender = g_mime_message_get_sender(message1);
+
+			if (sender) {
+				if (g_strrstr(sender, "mmsc.plusnet.pl") != NULL ||
+					g_strrstr(sender, "mms.t-mobile.pl") != NULL) {
+					cnt_info->attachment_only = 1;
+				}
+			}
+
+			g_mime_message_foreach(message1, emcore_gmime_imap_parse_foreach_cb, (gpointer)cnt_info);
+		}
+
+		if (!strcasecmp(body->subtype, "pkcs7-mime")) {
+			if (emcore_get_attribute_value_of_body_part(body->parameter, "PROTOCOL", rfc822_protocol, TEMP_STRING_LENGTH, false, &err)) {
+				if (strcasestr(rfc822_protocol, "enveloped-data"))
+					mail->smime_type = EMAIL_SMIME_ENCRYPTED;
+				else
+					mail->smime_type = EMAIL_SMIME_SIGNED_AND_ENCRYPTED;
+			}
+		} else if (!strcasecmp(body->subtype, "encrypted")) {
+			mail->smime_type = EMAIL_PGP_ENCRYPTED;
+		} else if (!strcasecmp(body->subtype, "signed")) {
+			if (emcore_get_attribute_value_of_body_part(body->parameter, "MICALG", rfc822_micalg, TEMP_STRING_LENGTH, false, &err)) {
+				mail->digest_type = emcore_get_digest_type(rfc822_micalg);
+			}
+
+			if (emcore_get_attribute_value_of_body_part(body->parameter, "PROTOCOL", rfc822_protocol, TEMP_STRING_LENGTH, false, &err)) {
+				if (strcasestr(rfc822_protocol, "pkcs7-signature"))
+					mail->smime_type = EMAIL_SMIME_SIGNED;
+				else
+					mail->smime_type = EMAIL_PGP_SIGNED;
+			}
+		} else {
+			mail->smime_type = EMAIL_SMIME_NONE;
+		}
+
+		if (body) {
+			mail_free_body(&body);
+			body = NULL;
+		}
+
+		if (message1) {
+			g_object_unref(message1);
+			message1 = NULL;
+		}
+
 		/* Update the attachment info except inline attachment */
-		if ((err = emcore_update_attachment_except_inline(cnt_info, pbd_event[temp_count].account_id, mail->mail_id, pbd_event[temp_count].mailbox_id, &total_attachment_size, &attachment_num, &inline_attachment_num)) != EMAIL_ERROR_NONE) {
+		if ((err = emcore_update_attachment_except_inline(pbd_event[temp_count].multi_user_name, 
+                                                        cnt_info, 
+                                                        pbd_event[temp_count].account_id, 
+                                                        mail->mail_id, 
+                                                        pbd_event[temp_count].mailbox_id, 
+                                                        &total_attachment_size, 
+                                                        &attachment_num, 
+                                                        &inline_attachment_num)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_update_attachment_except_inline failed : [%d]", err);
 			goto FINISH_OFF;
 		}
 
-		EM_DEBUG_LOG("total_mail_size:[%d], total_attachment_size:[%d], attachment_num:[%d]", total_mail_size, total_attachment_size, attachment_num);
 		mail->mail_size            = total_mail_size;
 		mail->attachment_count     = attachment_num;
 		mail->inline_content_count = inline_attachment_num;
 
-		if (imap_response[i].body_len == 0) {
+		if (imap_response[i].bodytext_len == 0) {
 			EM_DEBUG_LOG("BODY size is zero");
 			continue;
 		}
 
-		/*free the plain, html, and image_data before reusing*/
-		if (image_data) 
-			emcore_free_email_image_data(&image_data, IMAGE_DISPLAY_PARTIAL_BODY_COUNT);
+		/* text/plain */
+		if (cnt_info->text.plain) {
+			char *charset_plain_text = NULL;
+			memset(path_buf, 0x00, sizeof(path_buf));
+			memset(move_buf, 0x00, sizeof(move_buf));
 
-		EM_SAFE_FREE(text_plain);
-		EM_SAFE_FREE(text_html);
+			if (cnt_info->text.plain_charset)
+				charset_plain_text = cnt_info->text.plain_charset;
+			else {
+				if (mail->default_charset) {
+					charset_plain_text = mail->default_charset;
+				} else {
+					charset_plain_text = "UTF-8";
+				}
+			}
 
-		if ((err = emcore_parse_body_for_imap(imap_response[i].body, imap_response[i].body_len, cnt_info, body->encoding, &text_plain, &text_html, &image_data)) != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("emcore_parse_body_for_imap failed");
-			goto FINISH_OFF;
-		}
-
-		int text_plain_len = EM_SAFE_STRLEN(text_plain);
-		if (text_plain_len > 0) {
-			memset(buf, 0x00, sizeof(buf));
-
-			if (!emstorage_create_dir(pbd_event[temp_count].account_id, mail->mail_id, 0, &err))
+			if (!emstorage_create_dir(pbd_event[temp_count].multi_user_name, pbd_event[temp_count].account_id, mail->mail_id, 0, &err))
 				EM_DEBUG_EXCEPTION("emstorage_create_dir failed [%d]", err);
 
-			if (!emstorage_get_save_name(pbd_event[temp_count].account_id, mail->mail_id, 0, cnt_info->text.plain_charset ? cnt_info->text.plain_charset : "UTF-8", buf, &err))
+			if (!emstorage_get_save_name(pbd_event[temp_count].multi_user_name, 
+                                        pbd_event[temp_count].account_id, 
+                                        mail->mail_id, 
+                                        0, 
+                                        charset_plain_text, 
+                                        move_buf, 
+                                        path_buf, 
+                                        sizeof(path_buf),
+                                        &err))
 				EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 
-			if (!emstorage_create_file(text_plain, text_plain_len, buf, &err))
-				EM_DEBUG_EXCEPTION("emstorage_create_file failed [%d]", err);
-
-			mail->file_path_plain = EM_SAFE_STRDUP(buf);
+			if (!emstorage_move_file(cnt_info->text.plain, move_buf, false, &err))  {
+				EM_DEBUG_EXCEPTION("emstorage_move_file failed [%d]", err);
+				mail->file_path_plain = NULL;
+			}
+			else
+				mail->file_path_plain = EM_SAFE_STRDUP(path_buf);
 			EM_DEBUG_LOG_SEC("mail->file_path_plain [%s]", mail->file_path_plain);
 		}
 
-		if (image_data != NULL && image_data[0].text_image != NULL && image_data[0].text_image[0] != NULL_CHAR) {
-			char *result_string_of_replacing = NULL;
-			int store_file = 0;
-			int content_index = 0;
+		/* text/html */
+		if (cnt_info->text.html) {
+			char *charset_html_text = NULL;
+			memset(path_buf, 0x00, sizeof(path_buf));
+			memset(move_buf, 0x00, sizeof(move_buf));
 
-			temp_data_html = em_malloc(imap_response[i].body_len + 1);
-			if(!temp_data_html) {
-				EM_DEBUG_EXCEPTION("em_malloc failed");
-				err = EMAIL_ERROR_OUT_OF_MEMORY;
-				goto FINISH_OFF;
-			}
-
-			memset(buf, 0x00, sizeof(buf));
-			if (text_html != NULL)
-				memcpy(temp_data_html, text_html, EM_SAFE_STRLEN(text_html));
-				/* EM_SAFE_STRNCPY(temp_data_html, text_html, text_html); */
-
-			do {
-				if(image_data[store_file].fully_downloaded == 1) {
-					if (!emstorage_create_dir(pbd_event[temp_count].account_id, mail->mail_id, 0, &err))
-						EM_DEBUG_EXCEPTION("emstorage_create_dir failed [%d]", err);
-
-					if (!emstorage_get_save_name(pbd_event[temp_count].account_id, mail->mail_id, 0, image_data[store_file].image_file_name, buf, &err))
-						EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
-
-					if (image_data[store_file].dec_len>0)
-						if (!emstorage_create_file(image_data[store_file].text_image, image_data[store_file].dec_len, buf, &err))
-							EM_DEBUG_EXCEPTION("emstorage_create_file failed [%d]", err);
-
-					if (mail->body_download_status != EMAIL_BODY_DOWNLOAD_STATUS_PARTIALLY_DOWNLOADED){
-						memset(&attachment_tbl, 0x00, sizeof(emstorage_attachment_tbl_t));
-						attachment_tbl.mail_id                          = mail->mail_id;
-						attachment_tbl.account_id                       = pbd_event[temp_count].account_id;
-						attachment_tbl.mailbox_id                       = pbd_event[temp_count].mailbox_id;
-						attachment_tbl.attachment_name                  = image_data[store_file].image_file_name;
-						attachment_tbl.attachment_size                  = image_data[store_file].dec_len;
-						attachment_tbl.attachment_path                  = buf;
-						attachment_tbl.attachment_save_status           = 1;
-						attachment_tbl.attachment_inline_content_status = 1; /* set to 1 for inline image */
-						attachment_tbl.attachment_mime_type             = image_data[store_file].mime_type;
-						EM_DEBUG_LOG("mime_type : [%s]", image_data[store_file].mime_type);
-						if (!emstorage_add_attachment (&attachment_tbl, false, false, &err))
-							EM_DEBUG_EXCEPTION("emstorage_add_attachment failed - %d", err);
-					}
+			if (cnt_info->text.html_charset)
+				charset_html_text = cnt_info->text.html_charset;
+			else {
+				if (mail->default_charset) {
+					charset_html_text = mail->default_charset;
+				} else {
+					charset_html_text = "UTF-8";
 				}
-
-				store_file++;
-			} while (image_data[store_file].text_image != NULL && image_data[store_file].text_image[0] != NULL_CHAR && (store_file < IMAGE_DISPLAY_PARTIAL_BODY_COUNT));
-
-			while (image_data[content_index].text_image  != NULL && image_data[content_index].text_image[0]  != NULL_CHAR &&
-				  image_data[content_index].content_id && image_data[content_index].content_id[0]  != NULL_CHAR && (content_index < IMAGE_DISPLAY_PARTIAL_BODY_COUNT)){
-				/*  Finding CID in HTML and replacing with image name. */
-				if(image_data[content_index].fully_downloaded == 1) {
-					result_string_of_replacing = em_replace_string((char *)temp_data_html, (char *)image_data[content_index].content_id, (char *)image_data[content_index].image_file_name);
-					if (result_string_of_replacing) {
-						memset(temp_data_html, 0x00, imap_response[i].body_len + 1);
-						strncpy(temp_data_html, result_string_of_replacing, strlen(result_string_of_replacing));
-						EM_SAFE_FREE (result_string_of_replacing);
-					}
-
-					if (strstr(temp_data_html, image_data[content_index].content_id)  != NULL)
-						continue; /*  Replace content id on HTML with same file name one more time. */
-				}
-				content_index++;
 			}
 
-			memset(text_html, 0, imap_response[i].body_len + 1);
+			charset_html_text = g_strconcat(charset_html_text, HTML_EXTENSION_STRING, NULL);
 
-			if (temp_data_html != NULL)
-				memcpy(text_html, temp_data_html, EM_SAFE_STRLEN(temp_data_html));
-
-			EM_SAFE_FREE(temp_data_html);
-		}
-
-		if (EM_SAFE_STRLEN(text_html) > 0) {
-			memset(buf, 0x00, sizeof(buf));
-			char html_body[MAX_CHARSET_VALUE] = {0x00, };
-			if (cnt_info->text.plain_charset != NULL){
-				if (EM_SAFE_STRLEN(cnt_info->text.plain_charset) < MAX_CHARSET_VALUE)
-					memcpy(html_body, cnt_info->text.plain_charset, EM_SAFE_STRLEN(cnt_info->text.plain_charset));
-				else
-					memcpy(html_body, "UTF-8", strlen("UTF-8"));
-			}
-			if (html_body[0]  != NULL_CHAR)
-				strcat(html_body, HTML_EXTENSION_STRING);
-			else
-				memcpy(html_body, "UTF-8.htm", strlen("UTF-8.htm"));
-
-			if (!emstorage_create_dir(pbd_event[temp_count].account_id, mail->mail_id, 0, &err))
+			if (!emstorage_create_dir(pbd_event[temp_count].multi_user_name, pbd_event[temp_count].account_id, mail->mail_id, 0, &err))
 				EM_DEBUG_EXCEPTION("emstorage_create_dir failed [%d]", err);
 
-			if (!emstorage_get_save_name(pbd_event[temp_count].account_id, mail->mail_id, 0, html_body, buf, &err))
+			if (!emstorage_get_save_name(pbd_event[temp_count].multi_user_name, 
+                                        pbd_event[temp_count].account_id, 
+                                        mail->mail_id, 
+                                        0, 
+                                        charset_html_text, 
+                                        move_buf, 
+                                        path_buf, 
+                                        sizeof(path_buf), 
+                                        &err))
 				EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 
-			int text_html_len = EM_SAFE_STRLEN(text_html);
-			if (text_html_len>0)
-				if (!emstorage_create_file(text_html, EM_SAFE_STRLEN(text_html), buf, &err))
-					EM_DEBUG_EXCEPTION("emstorage_create_file failed [%d]", err);
-
-			mail->file_path_html = EM_SAFE_STRDUP(buf);
-
+			if (!emstorage_move_file(cnt_info->text.html, move_buf, false, &err)) {
+				EM_DEBUG_EXCEPTION("emstorage_move_file failed [%d]", err);
+				mail->file_path_html = NULL;
+			}
+			else
+				mail->file_path_html = EM_SAFE_STRDUP(path_buf);
+			g_free(charset_html_text);
 		}
 
-		mail->body_download_status = (total_mail_size - total_attachment_size < input_download_size) ? 1 : 2;
+		/* inline attachment */
+		inline_download_count = 0;
+		if (cnt_info->inline_file) {
+			struct attachment_info *temp_file = NULL;
+
+			if (inline_attachment_num > 0) {
+				temp_file = cnt_info->inline_file;
+				while (temp_file) {
+					if (temp_file->type == INLINE_ATTACHMENT && temp_file->save_status == 1) {
+						inline_download_count++;
+                    memset(path_buf, 0x00, sizeof(path_buf));
+                    memset(move_buf, 0x00, sizeof(move_buf));
+
+						if (!emstorage_create_dir(pbd_event[temp_count].multi_user_name, pbd_event[temp_count].account_id, mail->mail_id, 0, &err))
+							EM_DEBUG_EXCEPTION("emstorage_create_dir failed [%d]", err);
+
+						if (!emstorage_get_save_name(pbd_event[temp_count].multi_user_name, 
+                                                    pbd_event[temp_count].account_id, 
+                                                    mail->mail_id, 
+                                                    0, 
+                                                    temp_file->name, 
+                                                    move_buf, 
+                                                    path_buf, 
+                                                    sizeof(path_buf), 
+                                                    &err))
+							EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
+
+						if (!emstorage_move_file(temp_file->save, move_buf, false, &err)) {
+							EM_DEBUG_EXCEPTION("emstorage_move_file failed [%d]", err);
+							goto FINISH_OFF;
+						}
+
+						if (!(mail->body_download_status & EMAIL_BODY_DOWNLOAD_STATUS_PARTIALLY_DOWNLOADED)) {
+							memset(&attachment_tbl, 0x00, sizeof(emstorage_attachment_tbl_t));
+							attachment_tbl.mail_id                          = mail->mail_id;
+							attachment_tbl.account_id                       = pbd_event[temp_count].account_id;
+							attachment_tbl.mailbox_id                       = pbd_event[temp_count].mailbox_id;
+							attachment_tbl.attachment_name                  = temp_file->name;
+							attachment_tbl.attachment_size                  = temp_file->size;
+							attachment_tbl.attachment_path                  = path_buf;
+							attachment_tbl.attachment_save_status           = 1;
+							attachment_tbl.attachment_inline_content_status = 1; /* set to 1 for inline image */
+							attachment_tbl.attachment_mime_type             = temp_file->attachment_mime_type;
+							attachment_tbl.content_id                       = temp_file->content_id;
+							EM_DEBUG_LOG("mime_type : [%s]", temp_file->attachment_mime_type);
+
+							if (!emstorage_add_attachment(pbd_event[temp_count].multi_user_name, &attachment_tbl, false, false, &err))
+								EM_DEBUG_EXCEPTION("emstorage_add_attachment failed - %d", err);
+						}
+					}
+					else {
+						if (temp_file->save)
+							g_remove(temp_file->save);
+					}
+					temp_file = temp_file->next;
+				}
+			}
+		}
+
+		mail->body_download_status = (mail->body_download_status & ~0x00000003) | (( (total_mail_size - total_attachment_size <= input_download_size) && (inline_download_count == inline_attachment_num))?
+				EMAIL_BODY_DOWNLOAD_STATUS_FULLY_DOWNLOADED: EMAIL_BODY_DOWNLOAD_STATUS_PARTIALLY_DOWNLOADED);
+
+		EM_DEBUG_LOG("inline_download_count[%d] inline_attachment_num[%d]", inline_download_count, inline_attachment_num);
 		EM_DEBUG_LOG("total_mail_size[%d] total_attachment_size[%d] input_download_size[%d]", total_mail_size, total_attachment_size, input_download_size);
 		EM_DEBUG_LOG("mail_id [%d] body_download_status [%d]", mail->mail_id, mail->body_download_status);
 
 		/* Get preview text */
-		if ( (err = emcore_get_preview_text_from_file(mail->file_path_plain, mail->file_path_html, MAX_PREVIEW_TEXT_LENGTH, &(mail->preview_text))) != EMAIL_ERROR_NONE)
+		if ( (err = emcore_get_preview_text_from_file(pbd_event[temp_count].multi_user_name, 
+                                                        mail->file_path_plain, 
+                                                        mail->file_path_html, 
+                                                        MAX_PREVIEW_TEXT_LENGTH, 
+                                                        &(mail->preview_text))) != EMAIL_ERROR_NONE)
 			EM_DEBUG_EXCEPTION("emcore_get_preview_text_from_file() failed[%d]", err);
 
 		/* Update body contents */
-		if (!emstorage_change_mail_field(mail->mail_id, UPDATE_PARTIAL_BODY_DOWNLOAD, mail, true, &err)) {
+		if (!emstorage_change_mail_field(pbd_event[temp_count].multi_user_name, mail->mail_id, UPDATE_PARTIAL_BODY_DOWNLOAD, mail, true, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_change_mail_field failed - %d", err);
 			goto FINISH_OFF;
 		}
@@ -4178,19 +5015,19 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 #ifdef __FEATURE_BODY_SEARCH__
 		/* strip html content and save into mail_text_tbl */
 		char *stripped_text = NULL;
-		if (!emcore_strip_mail_body_from_file(mail, &stripped_text, &err) || stripped_text == NULL) {
+		if (!emcore_strip_mail_body_from_file(pbd_event[temp_count].multi_user_name, mail, &stripped_text, &err) || stripped_text == NULL) {
 			EM_DEBUG_EXCEPTION("emcore_strip_mail_body_from_file failed [%d]", err);
 		}
 
-		emstorage_mail_text_tbl_t *mail_text;
-		if (!emstorage_get_mail_text_by_id(mail->mail_id, &mail_text, true, &err) || !mail_text) {
+		if (!emstorage_get_mail_text_by_id(pbd_event[temp_count].multi_user_name, mail->mail_id, &mail_text, true, &err) || !mail_text) {
 			EM_DEBUG_EXCEPTION("emstorage_get_mail_text_by_id failed [%d]", err);
 			goto FINISH_OFF;
 		}
 
 		EM_SAFE_FREE(mail_text->body_text);
 		mail_text->body_text = stripped_text;
-		if (!emstorage_change_mail_text_field(mail->mail_id, mail_text, false, &err)) {
+
+		if (!emstorage_change_mail_text_field(pbd_event[temp_count].multi_user_name, mail->mail_id, mail_text, false, &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_change_mail_text_field failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -4202,7 +5039,7 @@ static int emcore_download_bulk_partial_mail_body_for_imap(MAILSTREAM *stream, i
 		if (mail)
 			emstorage_free_mail(&mail, 1, NULL);
 
-		if (false == emcore_delete_pbd_activity(pbd_event[temp_count].account_id, pbd_event[temp_count].mail_id, pbd_event[temp_count].activity_id, &err)){
+		if (false == emcore_delete_pbd_activity(pbd_event[temp_count].multi_user_name, pbd_event[temp_count].account_id, pbd_event[temp_count].mail_id, pbd_event[temp_count].activity_id, &err)){
 			EM_DEBUG_EXCEPTION("emcore_delete_pbd_activity failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -4226,16 +5063,32 @@ FINISH_OFF:
 		EM_SAFE_FREE(reply_from_server);
 	}
 
-	EM_SAFE_FREE(text_plain);
-	EM_SAFE_FREE(text_html);
+	if (message1) {
+		g_object_unref(message1);
+		message1 = NULL;
+	}
 
-	if (image_data)
-		emcore_free_email_image_data(&image_data, IMAGE_DISPLAY_PARTIAL_BODY_COUNT);
+	if (message2) {
+		g_object_unref(message2);
+		message2 = NULL;
+	}
+
+	if (iter1) {
+		g_mime_part_iter_free(iter1);
+		iter1 = NULL;
+	}
+
+	if (iter2) {
+		g_mime_part_iter_free(iter2);
+		iter2 = NULL;
+	}
 
 	if (cnt_info) {
 		emcore_free_content_info(cnt_info);
 		EM_SAFE_FREE(cnt_info);
 	}
+
+	EM_SAFE_FREE(fulltext);
 
 	if (body)
 		mail_free_body(&body);
@@ -4243,12 +5096,18 @@ FINISH_OFF:
 	if (mail)
 		emstorage_free_mail(&mail, 1, NULL);
 
+	if (mail_text)
+		emstorage_free_mail_text(&mail_text, 1, NULL);
+
 	if (imap_response)
 		emcore_free_email_partial_buffer(&imap_response, item_count);
+
+	EM_SAFE_FREE(bodystructure_ptr);
 
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
 	return ret;
 }
+#endif
 
 INTERNAL_FUNC int emcore_download_bulk_partial_mail_body_for_pop3(MAILSTREAM *stream, int input_download_size, email_event_partial_body_thd *pbd_event, int item_count, int *error)
 {
@@ -4266,12 +5125,28 @@ INTERNAL_FUNC int emcore_download_bulk_partial_mail_body_for_pop3(MAILSTREAM *st
  		EM_DEBUG_LOG_SEC("pbd_event[%d].account_id [%d], mail_id [%d], server_mail_id [%d], activity_id [%d]", \
 			i, pbd_event[i].account_id, pbd_event[i].mail_id, pbd_event[i].server_mail_id, pbd_event[i].activity_id);
 
-		if (!emcore_download_body_multi_sections_bulk(stream, pbd_event[i].account_id, pbd_event[i].mail_id, false, false, input_download_size, 0 , &err)){
+#ifdef __FEATURE_USE_GMIME__
+		if (!emcore_gmime_download_body_sections(pbd_event[i].multi_user_name, stream, pbd_event[i].account_id,
+				pbd_event[i].mail_id, 0, input_download_size, -1, 0, 0, &err)) {
+			EM_DEBUG_EXCEPTION("emcore_gmime_download_body_sections failed - %d", err);
+			goto FINISH_OFF;
+		}
+#else
+		if (!emcore_download_body_multi_sections_bulk (stream,
+                                                   pbd_event[i].account_id,
+                                                   pbd_event[i].mail_id,
+                                                   false,
+                                                   false,
+                                                   input_download_size,
+                                                   -1,
+                                                   0,
+                                                   &err)) {
 			EM_DEBUG_EXCEPTION("emcore_download_body_multi_sections_bulk failed");
 			goto FINISH_OFF;
 		}
+#endif
 
-		if (false == emcore_delete_pbd_activity(pbd_event[i].account_id, pbd_event[i].mail_id, pbd_event[i].activity_id, &err)){
+		if (false == emcore_delete_pbd_activity(pbd_event[i].multi_user_name, pbd_event[i].account_id, pbd_event[i].mail_id, pbd_event[i].activity_id, &err)){
 			EM_DEBUG_EXCEPTION("emcore_delete_pbd_activity failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -4302,7 +5177,7 @@ INTERNAL_FUNC int emcore_download_bulk_partial_mail_body(MAILSTREAM *stream, ema
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_get_account_by_id(pbd_event[0].account_id, EMAIL_ACC_GET_OPT_DEFAULT, &pbd_account_tbl, true, &err)) {
+	if (!emstorage_get_account_by_id(pbd_event[0].multi_user_name, pbd_event[0].account_id, EMAIL_ACC_GET_OPT_DEFAULT, &pbd_account_tbl, true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -4311,11 +5186,15 @@ INTERNAL_FUNC int emcore_download_bulk_partial_mail_body(MAILSTREAM *stream, ema
 
 	switch (pbd_account_tbl->incoming_server_type){
 		case EMAIL_SERVER_TYPE_IMAP4:
-			ret = emcore_download_bulk_partial_mail_body_for_imap(stream, auto_download_size, pbd_event, item_count, &err);
+#ifdef __FEATURE_USE_GMIME__
+			ret = emcore_gmime_download_imap_partial_mail_body(stream, auto_download_size, pbd_event, item_count, &err);
+#endif
 			break;
+
 		case EMAIL_SERVER_TYPE_POP3:
 			ret = emcore_download_bulk_partial_mail_body_for_pop3(stream, auto_download_size, pbd_event, item_count, &err);
 			break;
+
 		default:
 			err = EMAIL_ERROR_NOT_SUPPORTED;
 			ret = false;
@@ -4345,8 +5224,9 @@ static void emcore_free_email_partial_buffer(email_partial_buffer **partial_buff
 	int i;
 
 	for (i = 0; i < item_count ; i++, p++) {
-		EM_SAFE_FREE(p->header);
-		EM_SAFE_FREE(p->body);
+		EM_SAFE_FREE(p->bodystructure);
+		EM_SAFE_FREE(p->bodytext);
+		EM_SAFE_FREE(p->rfc822header);
 	}
 
 	EM_SAFE_FREE(*partial_buffer);
@@ -4369,6 +5249,7 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 	char *full_line = NULL;
 	char *tmp = NULL;
 
+	int rfc822header_size = 0;
 	int body_size = 0;
 	int count = 0;
 	int ret = false;
@@ -4377,6 +5258,7 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 	char *p_bodystructure = NULL;
 	char *p_bodystructure_end = NULL;
 	char *p_body_text = NULL;
+	char *p_rfc822header = NULL;
 
 	server_response = (email_partial_buffer *)em_malloc(sizeof(email_partial_buffer) * item_count);
 	if (NULL == server_response) {
@@ -4394,12 +5276,33 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 		if (count < item_count) {
 			tmp = full_line;
 			if (tmp)
-				full_line = g_strconcat(tmp, cur_line, NULL);
+				full_line = g_strconcat(tmp, " ", cur_line, NULL);
 			else
 				full_line = g_strdup(cur_line);
 
 			EM_SAFE_FREE(cur_line);
 			EM_SAFE_FREE(tmp);
+
+			p_rfc822header = strcasestr(full_line, "RFC822.HEADER {");
+			if (p_rfc822header && server_response[count].rfc822header == NULL) {
+				p_rfc822header += strlen("RFC822.HEADER {");
+				rfc822header_size = atoi(p_rfc822header);
+
+				server_response[count].rfc822header_len = rfc822header_size;
+				server_response[count].rfc822header = em_malloc(server_response[count].rfc822header_len + 1);
+				if (server_response[count].rfc822header == NULL) {
+					EM_DEBUG_EXCEPTION("em_malloc failed");
+					goto FINISH_OFF;
+				}
+
+				if (net_getbuffer(nstream, server_response[count].rfc822header_len, server_response[count].rfc822header) <= 0) {
+					EM_DEBUG_EXCEPTION("net_getbuffer failed");
+					goto FINISH_OFF;
+				}
+
+				p_rfc822header = NULL;
+				continue;
+			}
 
 			p_bodystructure = strcasestr(full_line, "BODYSTRUCTURE");
 			p_bodystructure_end = strcasestr(full_line, "BODY[TEXT]");
@@ -4414,13 +5317,13 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 				}
 
 				/* get BODYSTRUCTURE */
-				server_response[count].header_len = p_bodystructure_end - p_bodystructure;
-				server_response[count].header = em_malloc(server_response[count].header_len + 1);
-				if (server_response[count].header == NULL) {
+				server_response[count].bodystructure_len = p_bodystructure_end - p_bodystructure;
+				server_response[count].bodystructure = em_malloc(server_response[count].bodystructure_len + 1);
+				if (server_response[count].bodystructure == NULL) {
 					EM_DEBUG_EXCEPTION("em_malloc failed");
 					goto FINISH_OFF;
 				}
-				SNPRINTF(server_response[count].header, server_response[count].header_len, "%s", p_bodystructure);
+				SNPRINTF(server_response[count].bodystructure, server_response[count].bodystructure_len, "%s", p_bodystructure);
 				/*EM_DEBUG_LOG("BODYSTRUCTURE(%d)[%s]", server_response[count].header_len, server_response[count].header);*/
 
 				/* get BODY size & text */
@@ -4432,14 +5335,14 @@ static email_partial_buffer *emcore_get_response_from_server (NETSTREAM *nstream
 
 				p_body_text += strlen("BODY[TEXT]<0> {");
 				body_size = atoi(p_body_text);
-				server_response[count].body_len = (body_size > input_download_size) ? input_download_size : body_size;
-				server_response[count].body = em_malloc(server_response[count].body_len + 1);
-				if (server_response[count].body == NULL) {
+				server_response[count].bodytext_len = (body_size > input_download_size) ? input_download_size : body_size;
+				server_response[count].bodytext = em_malloc(server_response[count].bodytext_len + 1);
+				if (server_response[count].bodytext == NULL) {
 					EM_DEBUG_EXCEPTION("em_malloc failed");
 					goto FINISH_OFF;
 				}
 
-				if (net_getbuffer(nstream, server_response[count].body_len, server_response[count].body) <= 0) {
+				if (net_getbuffer(nstream, server_response[count].bodytext_len, server_response[count].bodytext) <= 0) {
 					EM_DEBUG_EXCEPTION("net_getbuffer failed");
 					goto FINISH_OFF;
 				}

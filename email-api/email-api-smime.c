@@ -30,8 +30,8 @@
  *			Email Engine . 
  */
 
-#include "email-api.h"
 #include "string.h"
+#include "email-api-mail.h"
 #include "email-convert.h"
 #include "email-api-account.h"
 #include "email-storage.h"
@@ -41,6 +41,7 @@
 #include "email-core-account.h"
 #include "email-core-cert.h"
 #include "email-core-smime.h"
+#include "email-core-pgp.h"
 #include "email-core-signal.h"
 #include "email-ipc.h"
 
@@ -149,22 +150,33 @@ EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **
 	EM_DEBUG_API_BEGIN ();
 	int err = EMAIL_ERROR_NONE;
 	char temp_email_address[130] = {0, };
+    char *multi_user_name = NULL;
 	emstorage_certificate_tbl_t *cert = NULL;
 	
 	EM_IF_NULL_RETURN_VALUE(email_address, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(certificate, EMAIL_ERROR_INVALID_PARAM);
 
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
 	SNPRINTF(temp_email_address, sizeof(temp_email_address), "<%s>", email_address);
-	if (!emstorage_get_certificate_by_email_address(temp_email_address, &cert, false, 0, &err)) {
+
+	if (!emstorage_get_certificate_by_email_address(multi_user_name, temp_email_address, &cert, false, 0, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_certificate_by_index failed - %d", err);
-		return err;
+        goto FINISH_OFF;
 	}
 
 	if (!em_convert_certificate_tbl_to_certificate(cert, certificate, &err)) {
 		EM_DEBUG_EXCEPTION("em_convert_certificate_tbl_to_certificate failed");
-		return err;
+        goto FINISH_OFF;
 	}	
-	
+
+FINISH_OFF:
+    
+    EM_SAFE_FREE(multi_user_name);
+
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -174,9 +186,11 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 	EM_DEBUG_API_BEGIN ("mail_id[%d]", mail_id);
 	int err = EMAIL_ERROR_NONE;
 	int p_output_attachment_count = 0;
-        int i = 0;
+    int i = 0;
+	int verify = 0;
 	char *decrypt_filepath = NULL;
-        char *search = NULL;
+    char *search = NULL;
+    char *multi_user_name = NULL;
 	email_mail_data_t *p_output_mail_data = NULL;
 	email_attachment_data_t *p_output_attachment_data = NULL;
 	emstorage_account_tbl_t *p_account_tbl = NULL;
@@ -189,17 +203,22 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 		goto FINISH_OFF;
 	}
 
-	if ((err = emcore_get_mail_data(mail_id, &p_output_mail_data)) != EMAIL_ERROR_NONE) {
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]");
+        goto FINISH_OFF;
+    }
+
+	if ((err = emcore_get_mail_data(multi_user_name, mail_id, &p_output_mail_data)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_get_mail_data failed");
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_get_account_by_id(p_output_mail_data->account_id, EMAIL_ACC_GET_OPT_OPTIONS, &p_account_tbl, false, &err)) {
+	if (!emstorage_get_account_by_id(multi_user_name, p_output_mail_data->account_id, EMAIL_ACC_GET_OPT_OPTIONS, &p_account_tbl, false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed : [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	if ((err = emcore_get_attachment_data_list(mail_id, &p_output_attachment_data, &p_output_attachment_count)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_get_attachment_data_list(multi_user_name, mail_id, &p_output_attachment_data, &p_output_attachment_count)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_get_attachment_data_list failed");
 		goto FINISH_OFF;
 	}
@@ -209,7 +228,10 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
                 if (p_output_attachment_data[i].attachment_mime_type && (search = strcasestr(p_output_attachment_data[i].attachment_mime_type, "PKCS7-MIME"))) {
                         EM_DEBUG_LOG("Found the encrypt file");
                         break;
-                }
+                } else if (p_output_attachment_data[i].attachment_mime_type && (search = strcasestr(p_output_attachment_data[i].attachment_mime_type, "octet-stream"))) {
+			EM_DEBUG_LOG("Found the encrypt file");
+			break;
+		}
         }
 
         if (!search) {
@@ -218,8 +240,27 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
                 goto FINISH_OFF;
         }
 
-	if (!emcore_smime_set_decrypt_message(p_output_attachment_data[i].attachment_path, p_account_tbl->certificate_path, &decrypt_filepath, &err)) {
-		EM_DEBUG_EXCEPTION("emcore_smime_set_decrypt_message failed");
+	if (p_output_mail_data->smime_type == EMAIL_SMIME_ENCRYPTED || p_output_mail_data->smime_type == EMAIL_SMIME_SIGNED_AND_ENCRYPTED) {
+                emcore_init_openssl_library();
+		if (!emcore_smime_get_decrypt_message(p_output_attachment_data[i].attachment_path, p_account_tbl->certificate_path, &decrypt_filepath, &err)) {
+			EM_DEBUG_EXCEPTION("emcore_smime_get_decrypt_message failed");
+                        emcore_clean_openssl_library();
+			goto FINISH_OFF;
+		}
+                emcore_clean_openssl_library();
+	} else if (p_output_mail_data->smime_type == EMAIL_PGP_ENCRYPTED) {
+		if ((err = emcore_pgp_get_decrypted_message(p_output_attachment_data[i].attachment_path, p_output_mail_data->pgp_password, false, &decrypt_filepath, &verify)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_pgp_get_decrypted_message failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+	} else if (p_output_mail_data->smime_type == EMAIL_PGP_SIGNED_AND_ENCRYPTED) {
+		if ((err = emcore_pgp_get_decrypted_message(p_output_attachment_data[i].attachment_path, p_output_mail_data->pgp_password, true, &decrypt_filepath, &verify)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_pgp_get_decrypted_message failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+	} else {
+		EM_DEBUG_LOG("Invalid encrypted mail");
+		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
@@ -239,8 +280,11 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 	(*output_mail_data)->full_address_to         = EM_SAFE_STRDUP(p_output_mail_data->full_address_to);
 	(*output_mail_data)->full_address_cc         = EM_SAFE_STRDUP(p_output_mail_data->full_address_cc);
 	(*output_mail_data)->full_address_bcc        = EM_SAFE_STRDUP(p_output_mail_data->full_address_bcc);
+	(*output_mail_data)->flags_flagged_field     = p_output_mail_data->flags_flagged_field;
 
 FINISH_OFF:
+
+    EM_SAFE_FREE(decrypt_filepath);
 
 	if (p_account_tbl)
 		emstorage_free_account(&p_account_tbl, 1, NULL);
@@ -250,6 +294,109 @@ FINISH_OFF:
 
 	if (p_output_attachment_data)
 		email_free_attachment_data(&p_output_attachment_data, p_output_attachment_count);
+
+    EM_SAFE_FREE(multi_user_name);
+
+	EM_DEBUG_API_END ("err[%d]", err);
+	return err;
+}
+
+EXPORT_API int email_get_decrypt_message_ex(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data, int input_attachment_count,
+                                            email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count)
+{
+	EM_DEBUG_API_BEGIN ();
+	int err = EMAIL_ERROR_NONE;
+    int i = 0;
+	int verify = 0;
+	char *decrypt_filepath = NULL;
+    char *search = NULL;
+    char *multi_user_name = NULL;
+	emstorage_account_tbl_t *p_account_tbl = NULL;
+
+	EM_IF_NULL_RETURN_VALUE(input_mail_data, EMAIL_ERROR_INVALID_PARAM);
+
+	if (!output_mail_data || !output_attachment_data || !output_attachment_count) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
+	if (!emstorage_get_account_by_id(multi_user_name, input_mail_data->account_id, EMAIL_ACC_GET_OPT_OPTIONS, &p_account_tbl, false, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed : [%d]", err);
+		goto FINISH_OFF;
+	}
+
+        for (i = 0; i < input_attachment_count; i++) {
+                EM_DEBUG_LOG("mime_type : [%s]", input_attachment_data[i].attachment_mime_type);
+                if (input_attachment_data[i].attachment_mime_type && (search = strcasestr(input_attachment_data[i].attachment_mime_type, "PKCS7-MIME"))) {
+                        EM_DEBUG_LOG("Found the encrypt file");
+                        break;
+                } else if (input_attachment_data[i].attachment_mime_type && (search = strcasestr(input_attachment_data[i].attachment_mime_type, "octet-stream"))) {
+			EM_DEBUG_LOG("Found the encrypt file");
+			break;
+		}
+        }
+
+        if (!search) {
+                EM_DEBUG_EXCEPTION("No have a decrypt file");
+                err = EMAIL_ERROR_INVALID_PARAM;
+                goto FINISH_OFF;
+        }
+
+	if (input_mail_data->smime_type == EMAIL_SMIME_ENCRYPTED || input_mail_data->smime_type == EMAIL_SMIME_SIGNED_AND_ENCRYPTED) {
+                emcore_init_openssl_library();
+		if (!emcore_smime_get_decrypt_message(input_attachment_data[i].attachment_path, p_account_tbl->certificate_path, &decrypt_filepath, &err)) {
+			EM_DEBUG_EXCEPTION("emcore_smime_get_decrypt_message failed");
+                        emcore_clean_openssl_library();
+			goto FINISH_OFF;
+		}
+                emcore_clean_openssl_library();
+	} else if (input_mail_data->smime_type == EMAIL_PGP_ENCRYPTED) {
+		if ((err = emcore_pgp_get_decrypted_message(input_attachment_data[i].attachment_path, input_mail_data->pgp_password, false, &decrypt_filepath, &verify)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_pgp_get_decrypted_message failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+	} else if (input_mail_data->smime_type == EMAIL_PGP_SIGNED_AND_ENCRYPTED) {
+		if ((err = emcore_pgp_get_decrypted_message(input_attachment_data[i].attachment_path, input_mail_data->pgp_password, true, &decrypt_filepath, &verify)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_pgp_get_decrypted_message failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+	} else {
+		EM_DEBUG_LOG("Invalid encrypted mail");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	/* Change decrpyt_message to mail_data_t */
+	if (!emcore_parse_mime_file_to_mail(decrypt_filepath, output_mail_data, output_attachment_data, output_attachment_count, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_parse_mime_file_to_mail failed : [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	(*output_mail_data)->subject                 = EM_SAFE_STRDUP(input_mail_data->subject);
+	(*output_mail_data)->date_time               = input_mail_data->date_time;
+	(*output_mail_data)->full_address_return     = EM_SAFE_STRDUP(input_mail_data->full_address_return);
+	(*output_mail_data)->email_address_recipient = EM_SAFE_STRDUP(input_mail_data->email_address_recipient);
+	(*output_mail_data)->email_address_sender    = EM_SAFE_STRDUP(input_mail_data->email_address_sender);
+	(*output_mail_data)->full_address_reply      = EM_SAFE_STRDUP(input_mail_data->full_address_reply);
+	(*output_mail_data)->full_address_from       = EM_SAFE_STRDUP(input_mail_data->full_address_from);
+	(*output_mail_data)->full_address_to         = EM_SAFE_STRDUP(input_mail_data->full_address_to);
+	(*output_mail_data)->full_address_cc         = EM_SAFE_STRDUP(input_mail_data->full_address_cc);
+	(*output_mail_data)->full_address_bcc        = EM_SAFE_STRDUP(input_mail_data->full_address_bcc);
+	(*output_mail_data)->flags_flagged_field     = input_mail_data->flags_flagged_field;
+
+FINISH_OFF:
+
+    EM_SAFE_FREE(decrypt_filepath);
+    EM_SAFE_FREE(multi_user_name);
+
+	if (p_account_tbl)
+		emstorage_free_account(&p_account_tbl, 1, NULL);
 
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
@@ -262,7 +409,7 @@ EXPORT_API int email_verify_signature(int mail_id, int *verify)
 	int err = EMAIL_ERROR_NONE;
 	int p_verify = 0;
 
-	EM_IF_NULL_RETURN_VALUE(mail_id, EMAIL_ERROR_INVALID_PARAM);	
+	EM_IF_NULL_RETURN_VALUE(mail_id, EMAIL_ERROR_INVALID_PARAM);
 
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_VERIFY_SIGNATURE);
 	if (hAPI == NULL) {
@@ -319,8 +466,20 @@ EXPORT_API int email_verify_signature_ex(email_mail_data_t *input_mail_data, ema
 			break;
 	}
 
-	if (!emcore_verify_signature(input_attachment_data[count].attachment_path, input_mail_data->file_path_mime_entity, verify, &err)) 
-		EM_DEBUG_EXCEPTION("emcore_verify_signature failed");
+	if (input_mail_data->smime_type == EMAIL_SMIME_SIGNED) {
+                emcore_init_openssl_library();
+		if (!emcore_verify_signature(input_attachment_data[count].attachment_path, input_mail_data->file_path_mime_entity, verify, &err)) 
+			EM_DEBUG_EXCEPTION("emcore_verify_signature failed : [%d]", err);
+
+                emcore_clean_openssl_library();
+	} else if(input_mail_data->smime_type == EMAIL_PGP_SIGNED) {
+		if ((err = emcore_pgp_get_verify_signature(input_attachment_data[count].attachment_path, input_mail_data->file_path_mime_entity, input_mail_data->digest_type, verify)) != EMAIL_ERROR_NONE)
+			EM_DEBUG_EXCEPTION("emcore_pgp_get_verify_siganture failed : [%d]", err);
+	} else {
+		EM_DEBUG_LOG("Invalid signed mail : mime_type[%d]", input_mail_data->smime_type);
+		err = EMAIL_ERROR_INVALID_PARAM;
+	}
+
 
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
@@ -406,10 +565,10 @@ EXPORT_API int email_check_ocsp_status(char *email_address, char *response_url, 
 		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 	}
 
-	emipc_get_paramter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
 	if (err == EMAIL_ERROR_NONE) {
 		if (handle)
-			emipc_get_paramter(hAPI, ePARAMETER_OUT, 1, sizeof(int), handle);
+			emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), handle);
 	}
 }
 */
@@ -423,12 +582,18 @@ EXPORT_API int email_validate_certificate(int account_id, char *email_address, u
 
 	int err = EMAIL_ERROR_NONE;
 	int as_handle = 0;
+    char *multi_user_name = NULL;
 	email_account_server_t account_server_type;
 	ASNotiData as_noti_data;
 
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
 	memset(&as_noti_data, 0x00, sizeof(ASNotiData));
 
-	if (em_get_account_server_type_by_account_id(account_id, &account_server_type, false, &err)	== false) {
+	if (em_get_account_server_type_by_account_id(multi_user_name, account_id, &account_server_type, false, &err) == false) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
@@ -448,7 +613,8 @@ EXPORT_API int email_validate_certificate(int account_id, char *email_address, u
 
 	as_noti_data.validate_certificate.handle = as_handle;
 	as_noti_data.validate_certificate.account_id = account_id;
-	as_noti_data.validate_certificate.email_address = strdup(email_address);
+	as_noti_data.validate_certificate.email_address = email_address;
+    as_noti_data.validate_certificate.multi_user_name = multi_user_name;
 
 	if (em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_VALIDATE_CERTIFICATE, &as_noti_data) == false) {
 		EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed");
@@ -461,6 +627,7 @@ EXPORT_API int email_validate_certificate(int account_id, char *email_address, u
 
 FINISH_OFF:
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -475,12 +642,18 @@ EXPORT_API int email_get_resolve_recipients(int account_id, char *email_address,
 
 	int err = EMAIL_ERROR_NONE;
 	int as_handle = 0;
+    char *multi_user_name = NULL;
 	email_account_server_t account_server_type;
 	ASNotiData as_noti_data;
 
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
 	memset(&as_noti_data, 0x00, sizeof(ASNotiData));
 
-	if (em_get_account_server_type_by_account_id(account_id, &account_server_type, false, &err)	== false) {
+	if (em_get_account_server_type_by_account_id(multi_user_name, account_id, &account_server_type, false, &err) == false) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
@@ -498,9 +671,10 @@ EXPORT_API int email_get_resolve_recipients(int account_id, char *email_address,
 		goto FINISH_OFF;		
 	}
 
-	as_noti_data.get_resolve_recipients.handle = as_handle;
-	as_noti_data.get_resolve_recipients.account_id = account_id;
-	as_noti_data.get_resolve_recipients.email_address = strdup(email_address);
+	as_noti_data.get_resolve_recipients.handle          = as_handle;
+	as_noti_data.get_resolve_recipients.account_id      = account_id;
+	as_noti_data.get_resolve_recipients.email_address   = email_address;
+    as_noti_data.get_resolve_recipients.multi_user_name = multi_user_name;
 
 	if (em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_RESOLVE_RECIPIENT, &as_noti_data) == false) {
 		EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed");
@@ -513,6 +687,7 @@ EXPORT_API int email_get_resolve_recipients(int account_id, char *email_address,
 
 FINISH_OFF:
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }

@@ -30,7 +30,6 @@
 #include "email-stub-task.h"
 #include "email-stub-main.h"
 
-#include "email-api.h"
 #include "email-debug-log.h"
 
 EXPORT_API void emipc_free_email_task(emipc_email_task *task)
@@ -62,7 +61,6 @@ EXPORT_API bool emipc_parse_stream_email_task(emipc_email_task *task, void *stre
 			EM_DEBUG_EXCEPTION("emipc_deserialize_api_info failed");
 			return false;
 		}
-
 		task->api_info->response_id = response_id;
 		return true;
 	}
@@ -85,8 +83,8 @@ EXPORT_API bool emipc_run_task(emipc_email_task *task)
 	int app_id = task->api_info->app_id;
 	int res_id = task->api_info->response_id;
 
-	EM_DEBUG_LOG_SEC("[IPCLib] Processing task: API_ID[%s][0x%x] RES_ID[%d] APP_ID[%d] ", EM_APIID_TO_STR(api_id),\
-												api_id, res_id, app_id);
+	EM_DEBUG_LOG_SEC("[IPCLib] Processing task: API_ID[%s][0x%x] RES_ID[%d] APP_ID[%d] ", 
+                                   EM_APIID_TO_STR (api_id), api_id, res_id, app_id);
 
 	if (!emipc_execute_api_proxy_to_stub(task->api_info)) {
 		EM_DEBUG_EXCEPTION("emipc_execute_api_proxy_to_stub failed");

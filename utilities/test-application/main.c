@@ -44,7 +44,6 @@
 #ifdef __FEATURE_USE_GMIME__
 #include "testapp-gmime.h"
 #endif /* __FEATURE_USE_GMIME__ */
-#include "db-util.h"
 
 /* function prototype */
 static void testapp_system_signal_handler (int signal_number);
@@ -184,19 +183,17 @@ int main (int argc, char *argv[])
 {
 	gboolean go_to_loop = TRUE;
 	int menu_number = 0;
-	int result_from_scanf = 0;
 
 	if ( testapp_initialize_testing() == FALSE ) {
-		testapp_print ("email-serivce is not ready\n");
+		testapp_print ("email-service is not ready\n");
 		exit(0);
 	}
 
 	while (go_to_loop) {
 		testapp_show_menu (EMAIL_MAIN_MENU);
 		testapp_show_prompt (EMAIL_MAIN_MENU);
-
-		result_from_scanf = scanf ("%d", &menu_number);
-
+		if (0 >= scanf ("%d", &menu_number))
+			testapp_print("Invalid input");
 		go_to_loop = testapp_interpret_command (menu_number);
 	}
 

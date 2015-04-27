@@ -33,8 +33,9 @@
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
-#include "email-api.h"
 #include "email-ipc.h"
+#include "email-api-init.h"
+#include "email-api-mailbox.h"
 #include "email-convert.h"
 #include "email-core-tasks.h"
 #include "email-core-utils.h"
@@ -46,7 +47,6 @@
 #include "email-core-signal.h"
 #include "email-utilities.h"
 #include "email-core-smime.h"
-#include "db-util.h"
 
 #define  DIR_SEPERATOR_CH '/'
 
@@ -71,14 +71,20 @@ EXPORT_API int email_add_mail(email_mail_data_t *input_mail_data, email_attachme
 	int      *ret_nth_value = NULL;
 	int       size = 0;
 	char	 *rfc822_file = NULL;
+    char     *multi_user_name = NULL;
 	char     *mail_data_stream = NULL;
 	char     *attachment_data_list_stream  = NULL;
 	char     *meeting_request_stream = NULL;
 	HIPC_API  hAPI = NULL;
-	
+
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
 	if(input_from_eas == 0) { /* native emails */
 		if ((input_mail_data->smime_type != EMAIL_SMIME_NONE) && (input_mail_data->mailbox_type != EMAIL_MAILBOX_TYPE_DRAFT)) {
-			if (!emcore_make_rfc822_file(input_mail_data, input_attachment_data_list, input_attachment_count, &rfc822_file, &err)) {
+			if (!emcore_make_rfc822_file(multi_user_name, input_mail_data, input_attachment_data_list, input_attachment_count, true, &rfc822_file, &err)) {
 				EM_DEBUG_EXCEPTION("emcore_make_rfc822_file failed [%d]", err);
 				goto FINISH_OFF;
 			}
@@ -166,7 +172,7 @@ EXPORT_API int email_add_mail(email_mail_data_t *input_mail_data, email_attachme
 			goto FINISH_OFF;
 		}
 	} else { /* take care of mails from eas */
-		err = emcore_add_mail(input_mail_data, input_attachment_data_list, input_attachment_count, input_meeting_request, input_from_eas, false);
+		err = emcore_add_mail(multi_user_name, input_mail_data, input_attachment_data_list, input_attachment_count, input_meeting_request, input_from_eas, false);
 		if(err != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_add_mail failed [%d]", err);
 			goto FINISH_OFF;
@@ -174,9 +180,11 @@ EXPORT_API int email_add_mail(email_mail_data_t *input_mail_data, email_attachme
 	}
 
 FINISH_OFF:
+
 	if(hAPI) 
 		emipc_destroy_email_api(hAPI);
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 
@@ -224,7 +232,7 @@ EXPORT_API int email_add_read_receipt(int input_read_mail_id, int *output_receip
 
 
 #define TMP_BODY_PATH "/tmp/UTF-8"
-int email_create_db_full()
+EXPORT_API int email_create_db_full()
 {
 	int mailbox_index, mail_index, mailbox_count, mail_slot_size;
 	int account_id = 0;
@@ -239,15 +247,14 @@ int email_create_db_full()
 		return err;
 	}
 
-	if ((err = emcore_load_default_account_id(&account_id)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_load_default_account_id(NULL, &account_id)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_load_default_account_id failed : [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	body_file = fopen(TMP_BODY_PATH, "w");
-	if (body_file == NULL) {
-		EM_DEBUG_EXCEPTION("fopen failed");
-		err = EMAIL_ERROR_SYSTEM_FAILURE;
+	err = em_fopen(TMP_BODY_PATH, "w", &body_file);
+	if (err != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("em_fopen failed : [%s][%d]", TMP_BODY_PATH, err);
 		goto FINISH_OFF;
 	}
 
@@ -275,7 +282,8 @@ int email_create_db_full()
 			sprintf(mail_table_data.subject, "Subject #%d",mail_index);
 			mail_table_data.mailbox_id   = mailbox_list[mailbox_index].mailbox_id;
 			mail_table_data.mailbox_type = mailbox_list[mailbox_index].mailbox_type;
-			if( !emstorage_add_mail(&mail_table_data, 1, true, &err))  {
+
+			if( !emstorage_add_mail(NULL, &mail_table_data, 1, true, &err))  {
 				EM_DEBUG_EXCEPTION("emstorage_add_mail failed [%d]",err);
 		
 				goto FINISH_OFF;
@@ -296,6 +304,7 @@ FINISH_OFF:
 	EM_SAFE_FREE(mail_table_data.subject);
 	EM_SAFE_FREE(mail_table_data.full_address_from);
 	EM_SAFE_FREE(mail_table_data.full_address_to);
+	EM_SAFE_FREE(mail_table_data.file_path_plain);
 
 	return err;
 }
@@ -391,7 +400,7 @@ EXPORT_API int email_update_mail(email_mail_data_t *input_mail_data, email_attac
 		}
 	} 
 	else {
-		if( (err = emcore_update_mail(input_mail_data, input_attachment_data_list, input_attachment_count, input_meeting_request, input_from_eas)) != EMAIL_ERROR_NONE) {
+		if( (err = emcore_update_mail(NULL, input_mail_data, input_attachment_data_list, input_attachment_count, input_meeting_request, input_from_eas)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_update_mail failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -478,6 +487,7 @@ EXPORT_API int email_count_mail(email_list_filter_t *input_filter_list, int inpu
 	int total_count = 0;
 	int unread = 0;
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 	char *conditional_clause_string = NULL;
 
 	EM_IF_NULL_RETURN_VALUE(input_filter_list, EMAIL_ERROR_INVALID_PARAM);
@@ -485,12 +495,17 @@ EXPORT_API int email_count_mail(email_list_filter_t *input_filter_list, int inpu
 	EM_IF_NULL_RETURN_VALUE(output_total_mail_count, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(output_unseen_mail_count, EMAIL_ERROR_INVALID_PARAM);
 
-	if( (err = emstorage_write_conditional_clause_for_getting_mail_list(input_filter_list, input_filter_count, NULL, 0, -1, -1, &conditional_clause_string)) != EMAIL_ERROR_NONE) {
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
+	if ((err = emstorage_write_conditional_clause_for_getting_mail_list(multi_user_name, input_filter_list, input_filter_count, NULL, 0, -1, -1, &conditional_clause_string)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_write_conditional_clause_for_getting_mail_list failed[%d]", err);
 		goto FINISH_OFF;
 	}
 
-   	if ((err = emstorage_query_mail_count(conditional_clause_string, true, &total_count, &unread)) != EMAIL_ERROR_NONE) {
+	if ((err = emstorage_query_mail_count(multi_user_name, conditional_clause_string, true, &total_count, &unread)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_query_mail_count failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -500,6 +515,8 @@ EXPORT_API int email_count_mail(email_list_filter_t *input_filter_list, int inpu
 
 FINISH_OFF:
 
+    EM_SAFE_FREE(multi_user_name);
+	EM_SAFE_FREE (conditional_clause_string); /* detected by valgrind */
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -743,14 +760,19 @@ EXPORT_API int email_query_mails(char *conditional_clause_string, email_mail_dat
 	EM_DEBUG_API_BEGIN ("conditional_clause_string[%s] mail_list[%p] result_count[%p]", conditional_clause_string, mail_list, result_count);
 
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 	emstorage_mail_tbl_t *result_mail_tbl = NULL;
 	
 	EM_IF_NULL_RETURN_VALUE(result_count, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(conditional_clause_string, EMAIL_ERROR_INVALID_PARAM);
 
-	if (!emstorage_query_mail_tbl(conditional_clause_string, true, &result_mail_tbl, result_count, &err)) {
-		EM_DEBUG_EXCEPTION("emstorage_query_mail_list failed [%d]", err);
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed :[%d]", err);
+        goto FINISH_OFF;
+    }
 
+	if (!emstorage_query_mail_tbl(multi_user_name, conditional_clause_string, true, &result_mail_tbl, result_count, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_query_mail_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
@@ -760,8 +782,11 @@ EXPORT_API int email_query_mails(char *conditional_clause_string, email_mail_dat
 	}
 
 FINISH_OFF:	
+
 	if(result_mail_tbl && !emstorage_free_mail(&result_mail_tbl, *result_count, NULL))
 		EM_DEBUG_EXCEPTION("emstorage_free_mail failed");
+
+    EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
@@ -772,16 +797,24 @@ EXPORT_API int email_query_mail_list(char *input_conditional_clause_string, emai
 	EM_DEBUG_API_BEGIN ("input_conditional_clause_string[%s] output_mail_list[%p] output_result_count[%p]", input_conditional_clause_string, output_mail_list, output_result_count);
 
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 	
 	EM_IF_NULL_RETURN_VALUE(input_conditional_clause_string, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(output_result_count, EMAIL_ERROR_INVALID_PARAM);
 
-	if (!emstorage_query_mail_list(input_conditional_clause_string, true, output_mail_list, output_result_count, &err)) {
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed :[%d]", err);
+        goto FINISH_OFF;
+    }
+
+	if (!emstorage_query_mail_list(multi_user_name, input_conditional_clause_string, true, output_mail_list, output_result_count, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_query_mail_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 FINISH_OFF:	
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_API_END ("err [%d]", err);
 	return err;
 }
@@ -862,12 +895,19 @@ FINISH_OFF:
 EXPORT_API int email_get_attachment_data_list(int input_mail_id, email_attachment_data_t **output_attachment_data, int *output_attachment_count)
 {
 	EM_DEBUG_API_BEGIN ("input_mail_id[%d] output_attachment_data[%p] output_attachment_count[%p]", input_mail_id, output_attachment_data, output_attachment_count);
-	int err = EMAIL_ERROR_NONE;
-	
-	if((err = emcore_get_attachment_data_list(input_mail_id, output_attachment_data, output_attachment_count)) != EMAIL_ERROR_NONE) {
+	int   err             = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
+
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        return err;
+    }
+
+	if((err = emcore_get_attachment_data_list(multi_user_name, input_mail_id, output_attachment_data, output_attachment_count)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_get_attachment_data_list failed [%d]", err);
 	}
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -889,26 +929,34 @@ EXPORT_API int email_get_mail_list_ex(email_list_filter_t *input_filter_list, in
 	EM_DEBUG_FUNC_BEGIN ("input_filter_list[%p] input_filter_count[%d] input_sorting_rule_list[%p] input_sorting_rule_count[%d] input_start_index[%d] input_limit_count[%d] output_mail_list[%p] output_result_count[%p]", input_filter_list, input_filter_count, input_sorting_rule_list, input_sorting_rule_count, input_start_index, input_limit_count, output_mail_list, output_result_count);
 
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 	char *conditional_clause_string = NULL;
 
 	EM_IF_NULL_RETURN_VALUE(output_mail_list, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(output_result_count, EMAIL_ERROR_INVALID_PARAM);
 
-	if( (err = emstorage_write_conditional_clause_for_getting_mail_list(input_filter_list, input_filter_count, input_sorting_rule_list, input_sorting_rule_count, input_start_index, input_limit_count, &conditional_clause_string)) != EMAIL_ERROR_NONE) {
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
+	if( (err = emstorage_write_conditional_clause_for_getting_mail_list(multi_user_name, input_filter_list, input_filter_count, input_sorting_rule_list, input_sorting_rule_count, input_start_index, input_limit_count, &conditional_clause_string)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_write_conditional_clause_for_getting_mail_list failed[%d]", err);
 		goto FINISH_OFF;
 	}
 
 	EM_DEBUG_LOG_DEV ("conditional_clause_string[%s].", conditional_clause_string);
 
-	if(!emstorage_query_mail_list(conditional_clause_string, true, output_mail_list, output_result_count, &err)) {
+	if(!emstorage_query_mail_list(multi_user_name, conditional_clause_string, true, output_mail_list, output_result_count, &err)) {
 		if (err != EMAIL_ERROR_MAIL_NOT_FOUND) /* there is no mail and it is definitely common */
 			EM_DEBUG_EXCEPTION("emstorage_query_mail_list [%d]", err);
 		goto FINISH_OFF;
 	}
 
 FINISH_OFF:
+
 	EM_SAFE_FREE(conditional_clause_string);
+    EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_FUNC_END ("err[%d]", err);
 	return err;
@@ -932,6 +980,7 @@ EXPORT_API int email_get_mails(int account_id , int mailbox_id, int thread_id, i
 	EM_DEBUG_API_BEGIN ("account_id[%d] mailbox_id[%d] thread_id[%d]", account_id, mailbox_id, thread_id);
 
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 	emstorage_mail_tbl_t *mail_tbl_list = NULL;
 	EM_IF_NULL_RETURN_VALUE(result_count, EMAIL_ERROR_INVALID_PARAM);
 
@@ -941,9 +990,13 @@ EXPORT_API int email_get_mails(int account_id , int mailbox_id, int thread_id, i
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_get_mails(account_id, mailbox_id, NULL, thread_id, start_index, limit_count, sorting, true, &mail_tbl_list, result_count, &err))  {
-		EM_DEBUG_EXCEPTION("emstorage_get_mails failed [%d]", err);
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
 
+	if (!emstorage_get_mails(multi_user_name, account_id, mailbox_id, NULL, thread_id, start_index, limit_count, sorting, true, &mail_tbl_list, result_count, &err))  {
+		EM_DEBUG_EXCEPTION("emstorage_get_mails failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
@@ -953,8 +1006,11 @@ EXPORT_API int email_get_mails(int account_id , int mailbox_id, int thread_id, i
 	}
 
 FINISH_OFF:	
+
 	if(mail_tbl_list && !emstorage_free_mail(&mail_tbl_list, *result_count, NULL))
 		EM_DEBUG_EXCEPTION("emstorage_free_mail failed");
+
+    EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
@@ -965,6 +1021,7 @@ EXPORT_API int email_get_mail_list(int account_id , int mailbox_id, int thread_i
 	EM_DEBUG_API_BEGIN ("account_id[%d] mailbox_id[%d] thread_id[%d]", account_id, mailbox_id, thread_id);
 
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 	
 	EM_IF_NULL_RETURN_VALUE(result_count, EMAIL_ERROR_INVALID_PARAM);
 
@@ -973,13 +1030,20 @@ EXPORT_API int email_get_mail_list(int account_id , int mailbox_id, int thread_i
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
-	if (!emstorage_get_mail_list(account_id, mailbox_id, NULL, thread_id, start_index, limit_count, 0, NULL, sorting, true, mail_list, result_count, &err))  {
-		EM_DEBUG_EXCEPTION("emstorage_get_mail_list failed [%d]", err);
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
 
+	if (!emstorage_get_mail_list(multi_user_name, account_id, mailbox_id, NULL, thread_id, start_index, limit_count, 0, NULL, sorting, true, mail_list, result_count, &err))  {
+		EM_DEBUG_EXCEPTION("emstorage_get_mail_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 FINISH_OFF:	
+
+    EM_SAFE_FREE(multi_user_name);
+
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -989,7 +1053,7 @@ EXPORT_API int email_get_mail_by_address(int account_id , int mailbox_id, email_
 {
 	EM_DEBUG_API_BEGIN ("account_id[%d] mailbox_id[%d]", account_id, mailbox_id);
 	int err = EMAIL_ERROR_NONE;
-
+    char *multi_user_name = NULL;
 	email_mail_list_item_t* mail_list_item = NULL;
 	
 	EM_IF_NULL_RETURN_VALUE(mail_list, EMAIL_ERROR_INVALID_PARAM);
@@ -1001,15 +1065,22 @@ EXPORT_API int email_get_mail_by_address(int account_id , int mailbox_id, email_
 		return err;
 	}
 
-	if (!emstorage_get_mail_list(account_id, mailbox_id, addr_list, EMAIL_LIST_TYPE_NORMAL, start_index, limit_count, search_type, search_value, sorting, true, &mail_list_item, result_count, &err)) {
-		EM_DEBUG_EXCEPTION("emstorage_get_mail_list failed [%d]", err);
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
 
+	if (!emstorage_get_mail_list(multi_user_name, account_id, mailbox_id, addr_list, EMAIL_LIST_TYPE_NORMAL, start_index, limit_count, search_type, search_value, sorting, true, &mail_list_item, result_count, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_get_mail_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	*mail_list = mail_list_item;
 
 FINISH_OFF:
+
+    EM_SAFE_FREE(multi_user_name);
+
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -1018,11 +1089,17 @@ EXPORT_API int email_get_thread_information_by_thread_id(int thread_id, email_ma
 {
 	EM_DEBUG_API_BEGIN ("thread_id[%d]", thread_id);
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 	emstorage_mail_tbl_t *mail_table_data = NULL;
 	
 	EM_IF_NULL_RETURN_VALUE(thread_info, EMAIL_ERROR_INVALID_PARAM);
 
-	if (!emstorage_get_thread_information(thread_id, &mail_table_data , true, &err)) {
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
+	if (!emstorage_get_thread_information(multi_user_name, thread_id, &mail_table_data , true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_thread_information  failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1037,6 +1114,8 @@ FINISH_OFF:
 	if(mail_table_data && !emstorage_free_mail(&mail_table_data, 1, NULL))
 		EM_DEBUG_EXCEPTION("emstorage_free_mail failed");
 
+    EM_SAFE_FREE(multi_user_name);
+
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -1045,12 +1124,18 @@ EXPORT_API int email_get_thread_information_ex(int thread_id, email_mail_list_it
 {
 	EM_DEBUG_API_BEGIN ("thread_id[%d]", thread_id);
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 	emstorage_mail_tbl_t *mail_table_data = NULL;
 	email_mail_list_item_t *temp_thread_info = NULL;
 	
 	EM_IF_NULL_RETURN_VALUE(thread_info, EMAIL_ERROR_INVALID_PARAM);
 
-	if (!emstorage_get_thread_information(thread_id, &mail_table_data , true, &err)) {
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
+	if (!emstorage_get_thread_information(multi_user_name, thread_id, &mail_table_data , true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_thread_information -- failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1092,6 +1177,8 @@ FINISH_OFF:
 	if(mail_table_data)
 		emstorage_free_mail(&mail_table_data, 1, NULL);
 
+    EM_SAFE_FREE(multi_user_name);
+
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -1100,10 +1187,18 @@ EXPORT_API int email_get_mail_data(int input_mail_id, email_mail_data_t **output
 {
 	EM_DEBUG_API_BEGIN ("input_mail_id[%d]", input_mail_id);
 	int err = EMAIL_ERROR_NONE;
-	
-	if ( ((err = emcore_get_mail_data(input_mail_id, output_mail_data)) != EMAIL_ERROR_NONE) || !output_mail_data) 
+    char *multi_user_name = NULL;
+
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        return err;
+    }
+
+	if ( ((err = emcore_get_mail_data(multi_user_name, input_mail_id, output_mail_data)) != EMAIL_ERROR_NONE) || !output_mail_data) 
 		EM_DEBUG_EXCEPTION("emcore_get_mail_data failed [%d]", err);	
-		
+	
+    EM_SAFE_FREE(multi_user_name);
+
 	EM_DEBUG_API_END ("err[%d]", err);	
 	return err;
 }
@@ -1356,6 +1451,9 @@ EXPORT_API int email_free_mail_data(email_mail_data_t** mail_list, int count)
 {
 	EM_DEBUG_FUNC_BEGIN ("mail_list[%p] count[%d]", mail_list, count);
 	int err = EMAIL_ERROR_NONE;
+
+	EM_IF_NULL_RETURN_VALUE(mail_list, EMAIL_ERROR_INVALID_PARAM);
+
 	emcore_free_mail_data_list(mail_list, count);
 	EM_DEBUG_FUNC_END ("err[%d]", err);	
 	return err;
@@ -1371,12 +1469,17 @@ EXPORT_API int email_cancel_sending_mail(int mail_id)
 	
 	int err = EMAIL_ERROR_NONE;
 	int account_id = 0;
+    char *multi_user_name = NULL;
 	email_mail_data_t* mail_data = NULL;
 	email_account_server_t account_server_type;
 	HIPC_API hAPI = NULL;
 	
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_container_name error : [%d]", err);
+        goto FINISH_OFF;
+    }
 	
-	if (((err = emcore_get_mail_data(mail_id, &mail_data)) != EMAIL_ERROR_NONE) || mail_data == NULL)  {
+	if (((err = emcore_get_mail_data(multi_user_name, mail_id, &mail_data)) != EMAIL_ERROR_NONE) || mail_data == NULL)  {
 		EM_DEBUG_EXCEPTION("emcore_get_mail_data failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1384,7 +1487,7 @@ EXPORT_API int email_cancel_sending_mail(int mail_id)
 	account_id = mail_data->account_id;
 
 	/*  check account bind type and branch off  */
-	if ( em_get_account_server_type_by_account_id(account_id, &account_server_type, false, &err) == false ) {
+	if ( em_get_account_server_type_by_account_id(multi_user_name, account_id, &account_server_type, false, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
@@ -1401,9 +1504,10 @@ EXPORT_API int email_cancel_sending_mail(int mail_id)
 		}
 
 		/*  noti to active sync */
-		as_noti_data.cancel_sending_mail.handle     = as_handle;
-		as_noti_data.cancel_sending_mail.mail_id    = mail_id;
-		as_noti_data.cancel_sending_mail.account_id = account_id;
+		as_noti_data.cancel_sending_mail.handle          = as_handle;
+		as_noti_data.cancel_sending_mail.mail_id         = mail_id;
+		as_noti_data.cancel_sending_mail.account_id      = account_id;
+		as_noti_data.cancel_sending_mail.multi_user_name = multi_user_name;
 
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_CANCEL_SENDING_MAIL, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -1546,6 +1650,7 @@ EXPORT_API int email_get_address_info_list(int mail_id, email_address_info_list_
 	EM_DEBUG_FUNC_BEGIN ("mail_id[%d] address_info_list[%p]", mail_id, address_info_list);
 
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 
 	email_address_info_list_t *temp_address_info_list = NULL;
 
@@ -1555,21 +1660,28 @@ EXPORT_API int email_get_address_info_list(int mail_id, email_address_info_list_
 		err = EMAIL_ERROR_INVALID_PARAM ;
 		return err;
 	}
-	
-	if ( !emcore_get_mail_address_info_list(mail_id, &temp_address_info_list, &err) ) {
-		EM_DEBUG_EXCEPTION("emcore_get_mail_address_info_list failed [%d]", err);
 
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
+	if (!emcore_get_mail_address_info_list(multi_user_name, mail_id, &temp_address_info_list, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_get_mail_address_info_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	if ( address_info_list ) {
+	if (address_info_list) {
 		*address_info_list = temp_address_info_list;
 		temp_address_info_list = NULL;
 	}
 
 FINISH_OFF:
-	if ( temp_address_info_list )
+
+	if (temp_address_info_list)
 		emstorage_free_address_info_list(&temp_address_info_list);
+
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END ("err[%d]", err);
 	return err;
 }
@@ -1587,24 +1699,25 @@ EXPORT_API int email_free_address_info_list(email_address_info_list_t **address_
 	return err;
 }
 
-EXPORT_API int email_get_structure(const char*encoded_string, void **struct_var, email_convert_struct_type_e type)
-{
-	EM_DEBUG_API_BEGIN ("encoded_string[%s] struct_var[%p] type[%d]", encoded_string, struct_var, type);
-	EM_DEBUG_API_END ("err[%d]", EMAIL_ERROR_NOT_IMPLEMENTED);
-	return EMAIL_ERROR_NOT_IMPLEMENTED;
-}
-
 EXPORT_API int email_query_meeting_request(char *input_conditional_clause_string, email_meeting_request_t **output_meeting_req, int *output_count)
 {
 	EM_DEBUG_API_BEGIN ("input_conditional_clause_string[%s] output_meeting_req[%p] output_count[%p]", input_conditional_clause_string, output_meeting_req, output_count);
 	int err = EMAIL_ERROR_NONE;
+    char *multi_user_name = NULL;
 
 	EM_IF_NULL_RETURN_VALUE(input_conditional_clause_string, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(output_count, EMAIL_ERROR_INVALID_PARAM);
 
-	if ((err = emstorage_query_meeting_request(input_conditional_clause_string, output_meeting_req, output_count, true)) != EMAIL_ERROR_NONE) {
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        return err;
+    }
+
+	if ((err = emstorage_query_meeting_request(multi_user_name, input_conditional_clause_string, output_meeting_req, output_count, true)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_query_meeting_request failed [%d]", err);
 	}
+
+    EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
@@ -1615,26 +1728,33 @@ EXPORT_API int email_get_meeting_request(int mail_id, email_meeting_request_t **
 	EM_DEBUG_API_BEGIN ("mail_id[%d] meeting_req[%p]", mail_id, meeting_req);
 
 	int err = EMAIL_ERROR_NONE;
-
+    char *multi_user_name = NULL;
 	email_meeting_request_t *temp_meeting_req = NULL;
 
 	EM_IF_NULL_RETURN_VALUE(meeting_req, EMAIL_ERROR_INVALID_PARAM);
-	if( mail_id <= 0 ) {
+	if (mail_id <= 0) {
 		EM_DEBUG_EXCEPTION(" Invalid Mail Id Param ");
 		err = EMAIL_ERROR_INVALID_PARAM ;
 		return err;
 	}
-	
-	if ( !emstorage_get_meeting_request(mail_id, &temp_meeting_req, 1, &err) ) {
-		EM_DEBUG_EXCEPTION("emstorage_get_meeting_request failed[%d]", err);
 
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        return err;
+    }
+
+	if (!emstorage_get_meeting_request(multi_user_name, mail_id, &temp_meeting_req, 1, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_get_meeting_request failed[%d]", err);
 		goto FINISH_OFF;
 	}
 
-	if ( meeting_req )
+	if (meeting_req)
 		*meeting_req = temp_meeting_req;
 
 FINISH_OFF:
+
+    EM_SAFE_FREE(multi_user_name);
+
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -1716,6 +1836,12 @@ EXPORT_API int email_delete_thread(int thread_id, int delete_always_flag)
 	EM_DEBUG_API_BEGIN ("thread_id[%d] delete_always_flag[%d]", thread_id, delete_always_flag);
 	int err = EMAIL_ERROR_NONE;
 
+	if (thread_id <= 0) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+                return err;
+	}
+
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_DELETE_THREAD);
 
 	if(!hAPI) {
@@ -1748,6 +1874,7 @@ EXPORT_API int email_delete_thread(int thread_id, int delete_always_flag)
 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
 
 FINISH_OFF:
+
 	if(hAPI)
 		emipc_destroy_email_api(hAPI);
 
@@ -1759,6 +1886,13 @@ EXPORT_API int email_modify_seen_flag_of_thread(int thread_id, int seen_flag, in
 {
 	EM_DEBUG_API_BEGIN ("thread_id[%d] seen_flag[%d] on_server[%d]", thread_id, seen_flag, on_server);
 	int err = EMAIL_ERROR_NONE;
+
+	if (thread_id <= 0) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+                return err;
+	}
+
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_MODIFY_SEEN_FLAG_OF_THREAD);
 
 	if(!hAPI) {
@@ -1809,10 +1943,16 @@ EXPORT_API int email_expunge_mails_deleted_flagged(int input_mailbox_id, int inp
 	EM_DEBUG_API_BEGIN ("input_mailbox_id[%d] input_on_server[%d] output_handle[%p]", input_mailbox_id, input_on_server, output_handle);
 	int err = EMAIL_ERROR_NONE;
 	int return_value = 0;
+    char *multi_user_name = NULL;
 	HIPC_API hAPI = NULL;
 	emstorage_mailbox_tbl_t *mailbox_tbl_data = NULL;
 
-	if( (err = emstorage_get_mailbox_by_id(input_mailbox_id, &mailbox_tbl_data)) != EMAIL_ERROR_NONE) {
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
+	if( (err = emstorage_get_mailbox_by_id(multi_user_name, input_mailbox_id, &mailbox_tbl_data)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed[%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1822,7 +1962,7 @@ EXPORT_API int email_expunge_mails_deleted_flagged(int input_mailbox_id, int inp
 
 	memset(&as_noti_data, 0, sizeof(ASNotiData)); /* initialization of union members */
 
-	if ( em_get_account_server_type_by_account_id(mailbox_tbl_data->account_id, &account_server_type, true, &err) == false ) {
+	if ( em_get_account_server_type_by_account_id(multi_user_name, mailbox_tbl_data->account_id, &account_server_type, true, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1836,10 +1976,11 @@ EXPORT_API int email_expunge_mails_deleted_flagged(int input_mailbox_id, int inp
 		}
 
 		/*  noti to active sync */
-		as_noti_data.expunge_mails_deleted_flagged.handle        = as_handle;
-		as_noti_data.expunge_mails_deleted_flagged.account_id    = mailbox_tbl_data->account_id;
-		as_noti_data.expunge_mails_deleted_flagged.mailbox_id    = input_mailbox_id;
-		as_noti_data.expunge_mails_deleted_flagged.on_server     = input_on_server;
+		as_noti_data.expunge_mails_deleted_flagged.handle          = as_handle;
+		as_noti_data.expunge_mails_deleted_flagged.account_id      = mailbox_tbl_data->account_id;
+		as_noti_data.expunge_mails_deleted_flagged.mailbox_id      = input_mailbox_id;
+		as_noti_data.expunge_mails_deleted_flagged.on_server       = input_on_server;
+		as_noti_data.expunge_mails_deleted_flagged.multi_user_name = multi_user_name;
 
 		return_value = em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_EXPUNGE_MAILS_DELETED_FLAGGED, &as_noti_data);
 
@@ -1898,6 +2039,7 @@ FINISH_OFF:
 		emstorage_free_mailbox(&mailbox_tbl_data, 1, NULL);
 	}
 
+    EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
