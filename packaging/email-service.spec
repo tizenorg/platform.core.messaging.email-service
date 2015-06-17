@@ -2,7 +2,7 @@
 
 Name:       email-service
 Summary:    E-mail Framework Middleware package
-Version:    0.10.101
+Version:    0.10.102
 Release:    1
 Group:      Messaging/Service
 License:    Apache-2.0

@@ -68,8 +68,6 @@
 			<filesystem path="/usr/lib/libemail-common-use.so.1" label="_"/>
 			<filesystem path="/usr/lib/libemail-core.so.1.1.0" label="_"/>
 			<filesystem path="/usr/lib/libemail-core.so.1" label="_"/>
-			<filesystem path="/usr/lib/libemail-core-sound.so.1.1.0" label="_"/>
-			<filesystem path="/usr/lib/libemail-core-sound.so.1" label="_"/>
 			<filesystem path="/usr/lib/libemail-device.so.1.1.0" label="_"/>
 			<filesystem path="/usr/lib/libemail-device.so.1" label="_"/>
 			<filesystem path="/usr/lib/libemail-network.so.1.1.0" label="_"/>

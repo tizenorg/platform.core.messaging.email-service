@@ -165,11 +165,6 @@ SET_TARGET_PROPERTIES(${CONTAINER-LIB} PROPERTIES VERSION ${VERSION})
 
 INSTALL(TARGETS ${CONTAINER-LIB} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
 
-SET_TARGET_PROPERTIES(${CORE-SOUND-LIB} PROPERTIES SOVERSION ${VERSION_MAJOR})
-SET_TARGET_PROPERTIES(${CORE-SOUND-LIB} PROPERTIES VERSION ${VERSION})
-
-INSTALL(TARGETS ${CORE-SOUND-LIB} DESTINATION ${LIB_INSTALL_DIR} COMPONENT RuntimeLibraries)
-
 ##########################################################
 # Define cynara lib                                                  
 ##########################################################
