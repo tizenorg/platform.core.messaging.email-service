@@ -46,7 +46,7 @@ typedef struct {
 GList *socket_head = NULL;
 pthread_mutex_t proxy_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-EXPORT_API bool emipc_start_proxy_socket()
+EXPORT_API int emipc_start_proxy_socket()
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int ret = true;
@@ -59,9 +59,9 @@ EXPORT_API bool emipc_start_proxy_socket()
 	}
 
 	ret = emipc_connect_email_socket(socket_fd);
-	if (!ret) {
+	if (ret != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emipc_connect_email_socket failed");
-		return false;
+		return ret;
 	}
 
 	thread_socket_t* cur = (thread_socket_t*) em_malloc(sizeof(thread_socket_t));
@@ -149,7 +149,7 @@ EXPORT_API int emipc_send_proxy_socket(unsigned char *data, int len)
 	/* if thread socket is not created */
 	if (!socket_fd) {
 		int ret = emipc_start_proxy_socket();
-		if(!ret ) {
+		if (!ret) {
 			EM_DEBUG_EXCEPTION("[IPCLib] emipc_send_proxy_socket not connected");
 			return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 		}
@@ -192,12 +192,11 @@ EXPORT_API int emipc_get_proxy_socket_id()
  */
 static bool wait_for_reply (int fd)
 {
-	int return_from_select = -1;
+	int err = -1;
 	fd_set fds;
 	struct timeval tv;
-	char errno_buf[ERRNO_BUF_SIZE] = {0};
 
-	if (fd == 0) {
+	if (fd < 0) {
 		EM_DEBUG_EXCEPTION("Invalid file description : [%d]", fd);
 		return false;
 	}
@@ -209,13 +208,13 @@ static bool wait_for_reply (int fd)
 	tv.tv_usec = 0;
 
 	EM_DEBUG_LOG_DEV ("wait for response [%d]", fd);
-
-	if ((return_from_select = select(fd + 1, &fds, NULL, NULL, &tv)) == -1) {
-		EM_DEBUG_EXCEPTION("[IPCLib] select failed: %s", EM_STRERROR(errno_buf));
+	err = select(fd + 1, &fds, NULL, NULL, &tv);
+	if (err == -1) {
+		EM_DEBUG_EXCEPTION("[IPCLib] select error[%d] fd[%d]", errno, fd);
 		return false;
 	}
-	else if (return_from_select == 0) {
-		EM_DEBUG_EXCEPTION("[IPCLib] select: timeout");
+	else if (err == 0) {
+		EM_DEBUG_EXCEPTION("[IPCLib] select timeout fd[%d]", fd);
 		return false;
 	}
 

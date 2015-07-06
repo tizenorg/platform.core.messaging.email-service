@@ -50,9 +50,8 @@ extern "C"
 #define __FEATURE_USING_ACCOUNT_SVC_FOR_SYNC_STATUS__
 #define __FEATURE_BACKUP_ACCOUNT__
 #define __FEATURE_MOVE_TO_OUTBOX_FIRST__
-/*  #define __FEATURE_PARTIAL_BODY_FOR_POP3__*/
+#define __FEATURE_PARTIAL_BODY_FOR_POP3__
 /*  #define __FEATURE_KEEP_CONNECTION__  */
-/*  #define __FEATURE_DRM__ */
 #define __FEATURE_PARTIAL_BODY_DOWNLOAD__
 #define __FEATURE_HEADER_OPTIMIZATION__
 #define __FEATURE_SEND_OPTMIZATION__
@@ -65,24 +64,33 @@ extern "C"
 #define __FEATURE_XLIST_SUPPORT__
 #define __FEATURE_SUPPORT_REPORT_MAIL__
 #define __FEATURE_SUPPORT_IMAP_ID__
-#define __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__
+/* #define __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__ */
 #define __FEATURE_SUPPORT_VALIDATION_SYSTEM__
 #define __FEATURE_PROGRESS_IN_OUTBOX__
-#define __FEATURE_OMA_EMN__
+
 /*  #define __FEATURE_USE_SHARED_MUTEX_FOR_PROTECTED_FUNC_CALL__ */
-/*  #define __FEATURE_IMAP_IDLE__ */
-#define __FEATURE_DRIVING_MODE__
+#define __FEATURE_IMAP_IDLE__
+/* #define __FEATURE_DRIVING_MODE__ */
 #define __FEATURE_DELETE_MAILBOX_RECURSIVELY__
 #define __FEATURE_RENAME_MAILBOX_RECURSIVELY__
 #define __FEATURE_AUTO_RETRY_SEND__
-/*  #define __FEATURE_SMTP_VALIDATION__  */
-/*  #define FEATURE_CORE_DEBUG  */
-/*  #define FEATURE_USE_GMIME  */
+#define __FEATURE_SMTP_VALIDATION__
+#define __FEATURE_WIFI_AUTO_DOWNLOAD__
+
 /* #define __FEATURE_BLOCKING_MODE__ */
 #define __FEATURE_BODY_SEARCH__
-/* #define __FEATURE_USE_APPSYNC__ */
-/* #define __FEATURE_IMAP_QUOTA__ */
+#define __FEATURE_ACCESS_CONTROL__
+#define __FEATURE_UPDATE_DB_TABLE_SCHEMA__ 
+#define __FEATURE_OPEN_SSL_MULTIHREAD_HANDLE__
+/* #define __FEATURE_COMPARE_DOMAIN__ */
+/* #define __FEATURE_FORK_FOR_CURL__ */
+/* #define __FEATURE_USE_DRM_API__ */
+#define __FEATURE_SECURE_PGP__ 
+/* #define __FEATURE_SYNC_STATUS__ */
+#define __FEATURE_NOTIFICATION_ENABLE__
+/* #define __FEATURE_VOICERECORDER_STATUS_FOR_NOTI__ */
 
+/* #define __FEATURE_IMAP_QUOTA__ */
 
 /* ----------------------------------------------------------------------------- */
 /*  Macro */
@@ -90,7 +98,7 @@ extern "C"
 #define NULL (char *)0
 #endif
 
-#define SESSION_MAX	                        10
+#define SESSION_MAX	                        50
 #define	IMAP_2004_LOG                       1
 #define TEXT_SIZE                           161 
 #define MAILBOX_COUNT                       6
@@ -106,6 +114,7 @@ extern "C"
 #define DOWNLOAD_NOTI_INTERVAL_PERCENT      5         /*  notify every 5% */
 #define DOWNLOAD_NOTI_INTERVAL_SIZE         51200     /*  notify every 50k */
 #define MAX_PATH                            4096      /* /usr/src/linux-2.4.20-8/include/linux/limits.h */
+#define MAX_FILENAME                        255
 #define DATETIME_LENGTH                     16
 #define MAIL_ID_STRING_LENGTH               10
 #define MAILBOX_ID_STRING_LENGTH            10
@@ -135,7 +144,7 @@ extern "C"
 
 #define ACCOUNT_PASSWORD_SS_GROUP_ID        "secure-storage::email-service"
 
-#define NATIVE_EMAIL_APPLICATION_PKG        "com.samsung.email"
+#define NATIVE_EMAIL_APPLICATION_PKG        "org.tizen.email"
 #define NATIVE_EMAIL_DOMAIN                 "email"
 
 #define IMAP_ID_OS                          "TIZEN"
@@ -166,8 +175,7 @@ extern "C"
 #define SAVE_TYPE_BUFFER                    2        /*  save content to buffer */
 #define SAVE_TYPE_FILE                      3        /*  save content to temporary file */
 
-#define FINISH_OFF_IF_CANCELED              if (!emcore_check_thread_status()) { err = EMAIL_ERROR_CANCELLED; goto FINISH_OFF; }
-#define CHECK_JOB_CANCELED()                {if (!emcore_check_thread_status()) goto JOB_CANCEL; }
+#define TOKEN_FOR_MULTI_USER                 "_"
 
 #define SNPRINTF(buff, size, format, args...)  snprintf(buff, size, format, ##args)
 #define SNPRINTF_OFFSET(base_buf, offset, base_size, format, args...) \
@@ -216,7 +224,7 @@ typedef pthread_t thread_t;
 #define VCONF_KEY_DEFAULT_ACCOUNT_ID    "db/private/email-service/default_account_id"
 #define VCONF_KEY_NOTI_PRIVATE_ID       "db/private/email-service/noti_private_id"
 
-#define VCONF_KEY_TOPMOST_WINDOW        "db/private/com.samsung.email/is_topmost_window"
+#define VCONF_KEY_TOPMOST_WINDOW        "db/private/org.tizen.email/is_inbox_active"
 
 #define OUTMODE  "wb"
 #define INMODE   "rb"
@@ -225,6 +233,7 @@ typedef pthread_t thread_t;
 
 #define TYPEPKCS7_SIGN 10	
 #define TYPEPKCS7_MIME 11
+#define TYPEPGP        12
 
 #define INLINE_ATTACHMENT    1
 #define ATTACHMENT           2
@@ -294,14 +303,16 @@ enum
 	EXTENSION_TIF    = 7,
 	EXTENSION_WBMP   = 8,
 	EXTENSION_P7S    = 9,
-	EXTENSION_P7M    = 10
+	EXTENSION_P7M    = 10,
+	EXTENSION_ASC    = 11
 };
 
 typedef enum {
 	EMAIL_ALARM_CLASS_SCHEDULED_SENDING   = 1,
 	EMAIL_ALARM_CLASS_NEW_MAIL_ALERT      = 2,
 	EMAIL_ALARM_CLASS_AUTO_POLLING        = 3,
-	EMAIL_ALARM_CLASS_AUTO_RESEND         = 4
+	EMAIL_ALARM_CLASS_AUTO_RESEND         = 4,
+	EMAIL_ALARM_CLASS_IMAP_IDLE           = 5,
 } email_alarm_class_t;
 
 
@@ -312,6 +323,7 @@ typedef struct
 	int                        handle;
 	email_event_type_t         type;
 	email_event_status_type_t  status;
+	char                      *multi_user_name;
 	char                      *event_param_data_1; /*  in general, mailbox name (exception in emcore_send_mail, emcore_send_saved_mail it is email_option_t **/
 	char                      *event_param_data_2;
 	char                      *event_param_data_3;
@@ -338,15 +350,11 @@ struct email_search_key_t
 	email_search_key_t *next;
 };
 
-typedef struct
-{
-	int                  tid;
-	email_protocol_type_t  protocol;
-	void                *stream;
+/* the type is used to get uw-imap-toolkit error with thread local storage */
+typedef struct {
 	int                  auth;
 	int                  network;
 	int                  error;
-	int                  status;
 } email_session_t;
 
 typedef struct
@@ -392,7 +400,7 @@ typedef struct
 } email_mail_contact_info_t;
 
 /*  global account list */
-typedef struct email_account_list {
+typedef struct  email_account_list {
     email_account_t *account;
     struct email_account_list *next;
 } email_account_list_t;
@@ -402,6 +410,14 @@ typedef struct {
 	email_task_type_t  task_type;
 	thread_t           thread_id;
 } email_active_task_t;
+
+typedef struct emcore_uid_elem {
+	int msgno;
+	char *uid;
+	char *internaldate;
+	email_mail_flag_t flag;
+	struct emcore_uid_elem *next;
+} emcore_uid_list;
 
 typedef void (*email_event_callback)(int total, int done, int status, int account_id, int mail_id, int handle, void *user_data, int error);
 
@@ -417,17 +433,122 @@ typedef enum
 
 typedef struct 
 {
-    int account_id;
-    int mail_id;
-    unsigned long server_mail_id;
-    int activity_id;
-    int mailbox_id;
-    char *mailbox_name;
-    email_event_type_t event_type;   /*  Event Type Null means event is created from local activitys    */
-    int activity_type;             /*  Activity Type Null means event is created from event queue */
-
+        int account_id;
+        int mail_id;
+        unsigned long server_mail_id;
+        int activity_id;
+        int mailbox_id;
+        char *mailbox_name;
+        char *multi_user_name;
+        email_event_type_t event_type;   /*  Event Type Null means event is created from local activitys    */
+        int activity_type;             /*  Activity Type Null means event is created from event queue */
 } email_event_partial_body_thd;
 #endif /*  __FEATURE_PARTIAL_BODY_DOWNLOAD__ */
+
+typedef enum
+{
+	EMAIL_ALERT_TYPE_MELODY, 
+	EMAIL_ALERT_TYPE_VIB, 
+	EMAIL_ALERT_TYPE_MELODY_AND_VIB, 
+	EMAIL_ALERT_TYPE_MUTE, 
+	EMAIL_ALERT_TYPE_NONE,
+} EMAIL_ALERT_TYPE;
+
+enum {
+    /* Account */
+    _EMAIL_API_ADD_ACCOUNT                               = 0x01000000,    /**< IPC API ID for email_add_account */
+    _EMAIL_API_DELETE_ACCOUNT                            = 0x01000001,    /**< IPC API ID for email_delete_account */
+    _EMAIL_API_UPDATE_ACCOUNT                            = 0x01000002,    /**< IPC API ID for email_update_account */
+    _EMAIL_API_GET_ACCOUNT                               = 0x01000003,    /**< IPC API ID for email_get_account */
+    _EMAIL_API_GET_ACCOUNT_LIST                          = 0x01000005,    /**< IPC API ID for email_get_account_list */
+    _EMAIL_API_GET_MAILBOX_COUNT                         = 0x01000007,    /**< IPC API ID for email_get_mailbox_count */
+    _EMAIL_API_VALIDATE_ACCOUNT                          = 0x01000008,    /**< IPC API ID for email_validate_account */
+    _EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION               = 0x01000009,    /**< IPC API ID for email_add_account_with_validation */
+    _EMAIL_API_BACKUP_ACCOUNTS                           = 0x0100000A,    /**< IPC API ID for email_backup_accounts */
+    _EMAIL_API_RESTORE_ACCOUNTS                          = 0x0100000B,    /**< IPC API ID for email_restore_accounts */
+    _EMAIL_API_GET_PASSWORD_LENGTH_OF_ACCOUNT            = 0x0100000C,    /**< IPC API ID for email_get_password_legnth_of_account */
+    _EMAIL_API_VALIDATE_ACCOUNT_EX                       = 0x0100000D,    /**< IPC API ID for email_validate_account_ex */
+	_EMAIL_API_SAVE_DEFAULT_ACCOUNT_ID                   = 0x0100000E,    /**< IPC API ID for email_save_default_account_id */
+	_EMAIL_API_LOAD_DEFAULT_ACCOUNT_ID                   = 0x01000010,    /**< IPC API ID for email_load_default_account_id */
+
+    /* Mail */
+    _EMAIL_API_DELETE_MAIL                               = 0x01100002,    /**< IPC API ID for email_delete_mail */
+    _EMAIL_API_DELETE_ALL_MAIL                           = 0x01100004,    /**< IPC API ID for email_delete_mail_all */
+    _EMAIL_API_GET_MAILBOX_LIST                          = 0x01100006,    /**< IPC API ID for email_get_mailbox_list */
+    _EMAIL_API_GET_SUBMAILBOX_LIST                       = 0x01100007,    /**< IPC API ID for email_get_submailbox_list */
+    _EMAIL_API_CLEAR_DATA                                = 0x01100009,    /**< IPC API ID for email_clear_data */
+    _EMAIL_API_MOVE_MAIL                                 = 0x0110000A,    /**< IPC API ID for email_move_mail */
+    _EMAIL_API_MOVE_ALL_MAIL                             = 0x0110000B,    /**< IPC API ID for email_move_all_mail */
+    _EMAIL_API_ADD_ATTACHMENT                            = 0x0110000C,    /**< IPC API ID for email_move_add_attachment */
+    _EMAIL_API_GET_ATTACHMENT                            = 0x0110000D,    /**< IPC API ID for email_get_attachment */
+    _EMAIL_API_DELETE_ATTACHMENT                         = 0x0110000E,    /**< IPC API ID for email_delete_attachment */
+    _EMAIL_API_MODIFY_MAIL_FLAG                          = 0x0110000F,    /**< IPC API ID for email_modify_mail_flag */
+    _EMAIL_API_MODIFY_MAIL_EXTRA_FLAG                    = 0x01100011,    /**< IPC API ID for email_modify_mail_extra_flag */
+    _EMAIL_API_SET_FLAGS_FIELD                           = 0x01100016,    /**< IPC API ID for email_set_flags_field */
+    _EMAIL_API_ADD_MAIL                                  = 0x01100017,    /**< IPC API ID for email_add_mail */
+    _EMAIL_API_UPDATE_MAIL                               = 0x01100018,    /**< IPC API ID for email_update_mail */
+    _EMAIL_API_ADD_READ_RECEIPT                          = 0x01100019,    /**< IPC API ID for email_add_read_receipt */
+    _EMAIL_API_EXPUNGE_MAILS_DELETED_FLAGGED             = 0x0110001A,    /**< IPC API ID for email_expunge_mails_deleted_flagged */
+
+    /* Thread */
+    _EMAIL_API_MOVE_THREAD_TO_MAILBOX                    = 0x01110000,    /**< IPC API ID for email_move_thread_to_mailbox */
+    _EMAIL_API_DELETE_THREAD                             = 0x01110001,    /**< IPC API ID for email_delete_thread */
+    _EMAIL_API_MODIFY_SEEN_FLAG_OF_THREAD                = 0x01110002,    /**< IPC API ID for email_modify_seen_flag_of_thread */
+
+    /* Mailbox */
+    _EMAIL_API_ADD_MAILBOX                               = 0x01200000,    /**< IPC API ID for email_add_mailbox */
+    _EMAIL_API_DELETE_MAILBOX                            = 0x01200001,    /**< IPC API ID for email_delete mailbox */
+	_EMAIL_API_STAMP_SYNC_TIME_OF_MAILBOX                = 0x01200006,    /**< IPC API ID for email_stamp_sync_time_of_mailbox */
+    _EMAIL_API_SET_MAIL_SLOT_SIZE                        = 0x01200007,    /**< IPC API ID for email_set_mail_slot_size */
+    _EMAIL_API_RENAME_MAILBOX                            = 0x01200008,    /**< IPC API ID for email_rename_mailbox */
+    _EMAIL_API_RENAME_MAILBOX_EX                         = 0x0120000B,    /**< IPC API ID for email_rename_mailbox_ex */
+    _EMAIL_API_SET_MAILBOX_TYPE                          = 0x01200009,    /**< IPC API ID for email_set_mailbox_type */
+    _EMAIL_API_SET_LOCAL_MAILBOX                         = 0x0120000A,    /**< IPC API ID for email_set_local_mailbox */
+
+    /* Network */
+    _EMAIL_API_SEND_MAIL                                 = 0x01300000,    /**< IPC API ID for email_send_mail */
+    _EMAIL_API_SYNC_HEADER                               = 0x01300001,    /**< IPC API ID for email_sycn_header */
+    _EMAIL_API_DOWNLOAD_BODY                             = 0x01300002,    /**< IPC API ID for email_download_body */
+    _EMAIL_API_DOWNLOAD_ATTACHMENT                       = 0x01300003,    /**< IPC API ID for email_download_attachment */
+    _EMAIL_API_SEND_SAVED                                = 0x01300005,    /**< IPC API ID for email_send_saved */
+    _EMAIL_API_DELETE_EMAIL                              = 0x01300007,    /**< IPC API ID for email_delete_email */
+    _EMAIL_API_DELETE_EMAIL_ALL                          = 0x01300008,    /**< IPC API ID for email_delete_email_all */
+    _EMAIL_API_GET_IMAP_MAILBOX_LIST                     = 0x01300015,    /**< IPC API ID for email_get_imap_mailbox_list */
+    _EMAIL_API_SEND_MAIL_CANCEL_JOB                      = 0x01300017,    /**< IPC API ID for email_send_mail_cancel_job */
+    _EMAIL_API_SEARCH_MAIL_ON_SERVER                     = 0x01300019,    /**< IPC API ID for email_search_mail_on_server */
+    _EMAIL_API_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER     = 0x0130001A,    /**< IPC API ID for email_clear_result_of_search_mail_on_server */
+    _EMAIL_API_QUERY_SMTP_MAIL_SIZE_LIMIT                = 0x0130001B,    /**< IPC API ID for email_query_smtp_mail_size_limit */
+
+    /* Rule */
+    _EMAIL_API_ADD_RULE                                  = 0x01400000,    /**< IPC API ID for email_add_rule */
+    _EMAIL_API_GET_RULE                                  = 0x01400001,    /**< IPC API ID for email_get_rule */
+    _EMAIL_API_GET_RULE_LIST                             = 0x01400002,    /**< IPC API ID for email_get_rule_list */
+    _EMAIL_API_FIND_RULE                                 = 0x01400003,    /**< IPC API ID for email_find_rule */
+    _EMAIL_API_DELETE_RULE                               = 0x01400004,    /**< IPC API ID for email_delete_rule */
+    _EMAIL_API_UPDATE_RULE                               = 0x01400005,    /**< IPC API ID for email_update_rule */
+    _EMAIL_API_APPLY_RULE                                = 0x01400006,    /**< IPC API ID for email_apply_rule */
+    _EMAIL_API_CANCEL_JOB                                = 0x01400007,    /**< IPC API ID for email_cancel_job */
+    _EMAIL_API_SEND_RETRY                                = 0x01400009,    /**< IPC API ID for email_send_retry */
+    _EMAIL_API_UPDATE_ACTIVITY                           = 0x0140000A,    /**< IPC API ID for email_update_activity */
+    _EMAIL_API_SYNC_LOCAL_ACTIVITY                       = 0x0140000B,    /**< IPC API ID for email_sync_local_activity */
+
+	/* Etc */
+	_EMAIL_API_PING_SERVICE                              = 0x01500000,    /**< IPC API ID for email_ping_service */
+	_EMAIL_API_UPDATE_NOTIFICATION_BAR_FOR_UNREAD_MAIL   = 0x01500001,    /**< IPC API ID for email_update_notification_bar_for_unread_mail */
+	_EMAIL_API_SHOW_USER_MESSAGE                         = 0x01500002,    /**< IPC API ID for email_show_user_message */
+	_EMAIL_API_WRITE_MIME_FILE                           = 0x01500003,    /**< IPC API ID for email_write_mime_file */
+	_EMAIL_API_GET_TASK_INFORMATION                      = 0x01500004,    /**< IPC API ID for email_get_task_information */
+	_EMAIL_API_CLEAR_NOTIFICATION_BAR                    = 0x01500005,
+	_EMAIL_API_GET_USER_NAME                             = 0x01500006,
+
+    /* Smime */
+    _EMAIL_API_ADD_CERTIFICATE                           = 0x01600000,    /**< IPC API ID for email_add_certificate */
+    _EMAIL_API_DELETE_CERTIFICATE                        = 0x01600001,    /**< IPC API ID for email_delete_certificate */
+    _EMAIL_API_VERIFY_SIGNATURE                          = 0x01600002,    /**< IPC API ID for email_verify_signature */
+    _EMAIL_API_VERIFY_CERTIFICATE                        = 0x01600003,    /**< IPC API ID for email_verify_certificate */
+};
+
+
 
 #ifdef __cplusplus
 }

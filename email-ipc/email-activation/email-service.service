@@ -1,4 +1,5 @@
 [D-BUS Service]
 Name=org.tizen.email_service
-Exec=/usr/bin/email-service
+Exec=/bin/false
+SystemdService=email-service.service
 User=root

@@ -1,8 +1,8 @@
-%global test_email_app_enabled 0
+%global test_email_app_enabled 1
 
 Name:       email-service
 Summary:    E-mail Framework Middleware package
-Version:    0.10.101
+Version:    0.10.102
 Release:    1
 Group:      Messaging/Service
 License:    Apache-2.0
@@ -11,33 +11,29 @@ Source1:    email.service
 Source2:    email-service.manifest
 Source3:    email-service_init_db.sh
 Requires: connman
-Suggests: webkit2-efl
+Requires: gmime
 Requires(post):    /sbin/ldconfig
 Requires(post):    systemd
 Requires(post):    /usr/bin/sqlite3
 Requires(post):    /usr/bin/vconftool
-Requires(post):    libss-client
-Requires(post):    ss-server
+Requires(post):    contacts-service2
+Requires(post):    msg-service
 Requires(preun):   systemd
 Requires(postun):  /sbin/ldconfig
 Requires(postun):  systemd
 BuildRequires:  cmake
+BuildRequires:  pkgconfig(gmime-2.6)
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(gthread-2.0)
 BuildRequires:  pkgconfig(aul)
 BuildRequires:  pkgconfig(vconf-internal-keys)
 BuildRequires:  pkgconfig(vconf)
 BuildRequires:  pkgconfig(dlog)
-BuildRequires:  pkgconfig(db-util)
 BuildRequires:  pkgconfig(dbus-1)
-BuildRequires:  pkgconfig(dbus-glib-1)
 BuildRequires:  pkgconfig(contacts-service2)
 BuildRequires:  pkgconfig(uw-imap-toolkit)
-BuildRequires:  pkgconfig(drm-client)
 BuildRequires:  pkgconfig(openssl)
 BuildRequires:  pkgconfig(alarm-service)
-BuildRequires:  pkgconfig(mm-player)
-BuildRequires:  pkgconfig(mm-session)
 BuildRequires:  pkgconfig(secure-storage)
 BuildRequires:  pkgconfig(notification)
 BuildRequires:  pkgconfig(accounts-svc)
@@ -45,21 +41,23 @@ BuildRequires:  pkgconfig(libsystemd-daemon)
 BuildRequires:  pkgconfig(capi-base-common)
 BuildRequires:  pkgconfig(libcurl)
 BuildRequires:  pkgconfig(libxml-2.0)
-BuildRequires:  pkgconfig(gconf-2.0)
 BuildRequires:  pkgconfig(cert-svc)
+BuildRequires:  pkgconfig(cert-svc-vcore)
 BuildRequires:  pkgconfig(badge)
 BuildRequires:  pkgconfig(feedback)
 BuildRequires:  pkgconfig(capi-appfw-application)
 BuildRequires:  pkgconfig(libwbxml2)
 BuildRequires:  pkgconfig(msg-service)
-BuildRequires:  pkgconfig(pmapi)
-BuildRequires:  pkgconfig(libsmack)
-BuildRequires:  pkgconfig(deviced)
-BuildRequires:  pkgconfig(icu-i18n)
 BuildRequires:  pkgconfig(cynara-client)
 BuildRequires:  pkgconfig(cynara-creds-socket)
 BuildRequires:  pkgconfig(cynara-session)
 BuildRequires:  pkgconfig(cynara-creds-commons)
+BuildRequires:  pkgconfig(libtzplatform-config)
+BuildRequires:  pkgconfig(icu-i18n)
+BuildRequires:  pkgconfig(storage)
+BuildRequires:  pkgconfig(capi-network-connection)
+BuildRequires:  pkgconfig(capi-system-device)
+#BuildRequires:  pkgconfig(vasum)
 BuildRequires:  pkgconfig(libtzplatform-config)
 Requires: libtzplatform-config
 
@@ -82,7 +80,7 @@ cp %{SOURCE2} .
 
 %build
 
-export CFLAGS="${CFLAGS} -fPIC -Wall -g -fvisibility=hidden"
+export CFLAGS="${CFLAGS} -fPIC -Wall -g -fvisibility=hidden -fdata-sections -ffunction-sections"
 export CXXFLAGS="${CXXFLAGS} -fPIC -Wall -g -fvisibility=hidden"
 export LDFLAGS="${LDFLAGS} -Wl,--hash-style=both -Wl,--rpath=%{_libdir} -Wl,--as-needed"
 
@@ -107,6 +105,7 @@ fi
 mkdir -p %{buildroot}/usr/lib/systemd/user/tizen-middleware.target.wants
 install -m 0644 %SOURCE1 %{buildroot}/usr/lib/systemd/user/
 ln -sf ../email.service %{buildroot}/usr/lib/systemd/user/tizen-middleware.target.wants/
+
 install -m 0775 %{SOURCE3} %{buildroot}%{_bindir}/
 
 %post
@@ -154,11 +153,9 @@ systemctl daemon-reload
 %{TZ_SYS_DATA}/email/res/*
 %{_bindir}/email-service
 %{_libdir}/lib*.so.*
-%{_libdir}/libemail-core-sound.so
-%{_libdir}/libemail-core-sound.so.*
 %{_unitdir_user}/email.service
 %{_unitdir_user}/tizen-middleware.target.wants/email.service
-%{_datarootdir}/dbus-1/services/email-service.service
+%{_datarootdir}/dbus-1/system-services/email-service.service
 %{_datarootdir}/license/email-service
 %attr(0755,root,root) /etc/rc.d/init.d/email-service
 %{_bindir}/email-service_init_db.sh
@@ -166,6 +163,4 @@ systemctl daemon-reload
 %files devel
 %{_includedir}/email-service/*.h
 %{_libdir}/lib*.so
-%{_libdir}/libemail-core-sound.so
-%{_libdir}/libemail-core-sound.so.*
 %{_libdir}/pkgconfig/*.pc

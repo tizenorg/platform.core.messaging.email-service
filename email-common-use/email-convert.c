@@ -45,71 +45,79 @@ INTERNAL_FUNC int em_convert_account_to_account_tbl(email_account_t *account, em
 	EM_DEBUG_FUNC_BEGIN("account[%p], account_tbl[%p]", account, account_tbl);
 	int ret = 1;
 
-	account_tbl->account_name                             = EM_SAFE_STRDUP(account->account_name);
-	account_tbl->incoming_server_type                     = account->incoming_server_type;
-	account_tbl->incoming_server_address                  = EM_SAFE_STRDUP(account->incoming_server_address);
-	account_tbl->user_email_address                       = EM_SAFE_STRDUP(account->user_email_address);
-	account_tbl->incoming_server_user_name                = EM_SAFE_STRDUP(account->incoming_server_user_name);
-	account_tbl->incoming_server_password                 = EM_SAFE_STRDUP(account->incoming_server_password);
-	account_tbl->retrieval_mode                           = account->retrieval_mode;
-	account_tbl->incoming_server_port_number              = account->incoming_server_port_number;
-	account_tbl->incoming_server_secure_connection        = account->incoming_server_secure_connection;
-	account_tbl->outgoing_server_type                     = account->outgoing_server_type;
-	account_tbl->outgoing_server_address                  = EM_SAFE_STRDUP(account->outgoing_server_address);
-	account_tbl->outgoing_server_port_number              = account->outgoing_server_port_number;
-	account_tbl->outgoing_server_need_authentication      = account->outgoing_server_need_authentication;
-	account_tbl->outgoing_server_secure_connection        = account->outgoing_server_secure_connection;
-	account_tbl->outgoing_server_user_name                = EM_SAFE_STRDUP(account->outgoing_server_user_name);
-	account_tbl->outgoing_server_password                 = EM_SAFE_STRDUP(account->outgoing_server_password);
-	account_tbl->user_display_name                        = EM_SAFE_STRDUP(account->user_display_name);
-	account_tbl->reply_to_address                         = EM_SAFE_STRDUP(account->reply_to_address);
-	account_tbl->return_address                           = EM_SAFE_STRDUP(account->return_address);
-	account_tbl->account_id                               = account->account_id;
-	account_tbl->keep_mails_on_pop_server_after_download  = account->keep_mails_on_pop_server_after_download;
-	account_tbl->auto_download_size                       = account->auto_download_size;
-	account_tbl->peak_interval                            = account->peak_interval;
-	account_tbl->peak_days                                = account->peak_days;
-	account_tbl->peak_start_time                          = account->peak_start_time;
-	account_tbl->peak_end_time                            = account->peak_end_time;
+	account_tbl->account_name                                  = EM_SAFE_STRDUP(account->account_name);
+	account_tbl->incoming_server_type                          = account->incoming_server_type;
+	account_tbl->incoming_server_address                       = EM_SAFE_STRDUP(account->incoming_server_address);
+	account_tbl->user_email_address                            = EM_SAFE_STRDUP(account->user_email_address);
+	account_tbl->incoming_server_user_name                     = EM_SAFE_STRDUP(account->incoming_server_user_name);
+	account_tbl->incoming_server_password                      = EM_SAFE_STRDUP(account->incoming_server_password);
+	account_tbl->retrieval_mode                                = account->retrieval_mode;
+	account_tbl->incoming_server_port_number                   = account->incoming_server_port_number;
+	account_tbl->incoming_server_secure_connection             = account->incoming_server_secure_connection;
+	account_tbl->outgoing_server_type                          = account->outgoing_server_type;
+	account_tbl->outgoing_server_address                       = EM_SAFE_STRDUP(account->outgoing_server_address);
+	account_tbl->outgoing_server_port_number                   = account->outgoing_server_port_number;
+	account_tbl->outgoing_server_need_authentication           = account->outgoing_server_need_authentication;
+	account_tbl->outgoing_server_secure_connection             = account->outgoing_server_secure_connection;
+	account_tbl->outgoing_server_user_name                     = EM_SAFE_STRDUP(account->outgoing_server_user_name);
+	account_tbl->outgoing_server_password                      = EM_SAFE_STRDUP(account->outgoing_server_password);
+	account_tbl->user_display_name                             = EM_SAFE_STRDUP(account->user_display_name);
+	account_tbl->reply_to_address                              = EM_SAFE_STRDUP(account->reply_to_address);
+	account_tbl->return_address                                = EM_SAFE_STRDUP(account->return_address);
+	account_tbl->account_id                                    = account->account_id;
+	account_tbl->keep_mails_on_pop_server_after_download       = account->keep_mails_on_pop_server_after_download;
+	account_tbl->auto_download_size                            = account->auto_download_size;
+	account_tbl->peak_interval                                 = account->peak_interval;
+	account_tbl->peak_days                                     = account->peak_days;
+	account_tbl->peak_start_time                               = account->peak_start_time;
+	account_tbl->peak_end_time                                 = account->peak_end_time;
 
 
-	account_tbl->outgoing_server_use_same_authenticator   = account->outgoing_server_use_same_authenticator;
-	account_tbl->auto_resend_times                        = account->auto_resend_times;
-	account_tbl->pop_before_smtp                          = account->pop_before_smtp;
-	account_tbl->incoming_server_requires_apop            = account->incoming_server_requires_apop;
-	account_tbl->incoming_server_authentication_method    = account->incoming_server_authentication_method;
-	account_tbl->logo_icon_path                           = EM_SAFE_STRDUP(account->logo_icon_path);
+	account_tbl->outgoing_server_use_same_authenticator        = account->outgoing_server_use_same_authenticator;
+	account_tbl->auto_resend_times                             = account->auto_resend_times;
+	account_tbl->pop_before_smtp                               = account->pop_before_smtp;
+	account_tbl->incoming_server_requires_apop                 = account->incoming_server_requires_apop;
+	account_tbl->incoming_server_authentication_method         = account->incoming_server_authentication_method;
+	account_tbl->logo_icon_path                                = EM_SAFE_STRDUP(account->logo_icon_path);
 
-	account_tbl->user_data                                = em_memdup(account->user_data, account->user_data_length);
-	account_tbl->user_data_length                         = account->user_data_length;
-	account_tbl->roaming_option                           = account->roaming_option;
+	account_tbl->roaming_option                                = account->roaming_option;
+	account_tbl->color_label                                   = account->color_label;
+	account_tbl->user_data                                     = em_memdup(account->user_data, account->user_data_length);
+	account_tbl->user_data_length                              = account->user_data_length;
 
-	account_tbl->options.priority                         = account->options.priority;
-	account_tbl->options.keep_local_copy                  = account->options.keep_local_copy;
-	account_tbl->options.req_delivery_receipt             = account->options.req_delivery_receipt;
-	account_tbl->options.req_read_receipt                 = account->options.req_read_receipt;
-	account_tbl->options.download_limit                   = account->options.download_limit;
-	account_tbl->options.block_address                    = account->options.block_address;
-	account_tbl->options.block_subject                    = account->options.block_subject;
-	account_tbl->options.display_name_from                = EM_SAFE_STRDUP(account->options.display_name_from);
-	account_tbl->options.reply_with_body                  = account->options.reply_with_body;
-	account_tbl->options.forward_with_files               = account->options.forward_with_files;
-	account_tbl->options.add_myname_card                  = account->options.add_myname_card;
-	account_tbl->options.add_signature                    = account->options.add_signature;
-	account_tbl->options.signature                        = EM_SAFE_STRDUP(account->options.signature);
-	account_tbl->options.add_my_address_to_bcc            = account->options.add_my_address_to_bcc;
-	account_tbl->check_interval                           = account->check_interval;
-	account_tbl->account_svc_id                           = account->account_svc_id;
-	account_tbl->sync_status                              = account->sync_status;
-	account_tbl->sync_disabled                            = account->sync_disabled;
-	account_tbl->default_mail_slot_size                   = account->default_mail_slot_size;
-	account_tbl->smime_type                               = account->smime_type;
-	account_tbl->certificate_path                         = EM_SAFE_STRDUP(account->certificate_path);
-	account_tbl->cipher_type                              = account->cipher_type;
-	account_tbl->digest_type                              = account->digest_type;
-	account_tbl->outgoing_server_size_limit               = account->outgoing_server_size_limit;
+	account_tbl->options.priority                              = account->options.priority;
+	account_tbl->options.keep_local_copy                       = account->options.keep_local_copy;
+	account_tbl->options.req_delivery_receipt                  = account->options.req_delivery_receipt;
+	account_tbl->options.req_read_receipt                      = account->options.req_read_receipt;
+	account_tbl->options.download_limit                        = account->options.download_limit;
+	account_tbl->options.block_address                         = account->options.block_address;
+	account_tbl->options.block_subject                         = account->options.block_subject;
+	account_tbl->options.display_name_from                     = EM_SAFE_STRDUP(account->options.display_name_from);
+	account_tbl->options.reply_with_body                       = account->options.reply_with_body;
+	account_tbl->options.forward_with_files                    = account->options.forward_with_files;
+	account_tbl->options.add_myname_card                       = account->options.add_myname_card;
+	account_tbl->options.add_signature                         = account->options.add_signature;
+	account_tbl->options.signature                             = EM_SAFE_STRDUP(account->options.signature);
+	account_tbl->options.add_my_address_to_bcc                 = account->options.add_my_address_to_bcc;
+	account_tbl->options.notification_status                   = account->options.notification_status;
+	account_tbl->options.vibrate_status                        = account->options.vibrate_status;
+	account_tbl->options.display_content_status                = account->options.display_content_status;
+	account_tbl->options.default_ringtone_status               = account->options.default_ringtone_status;
+	account_tbl->options.alert_ringtone_path                   = EM_SAFE_STRDUP(account->options.alert_ringtone_path);
 
+	account_tbl->check_interval                                = account->check_interval;
+	account_tbl->account_svc_id                                = account->account_svc_id;
+	account_tbl->sync_status                                   = account->sync_status;
+	account_tbl->sync_disabled                                 = account->sync_disabled;
+	account_tbl->default_mail_slot_size                        = account->default_mail_slot_size;
+	account_tbl->smime_type                                    = account->smime_type;
+	account_tbl->certificate_path                              = EM_SAFE_STRDUP(account->certificate_path);
+	account_tbl->cipher_type                                   = account->cipher_type;
+	account_tbl->digest_type                                   = account->digest_type;
+	account_tbl->outgoing_server_size_limit                    = account->outgoing_server_size_limit;
+	account_tbl->wifi_auto_download                            = account->wifi_auto_download;
 
+    account_tbl->user_name                                     = EM_SAFE_STRDUP(account->user_name);
 	EM_DEBUG_FUNC_END();
 	return ret;
 }
@@ -119,65 +127,73 @@ INTERNAL_FUNC int em_convert_account_tbl_to_account(emstorage_account_tbl_t *acc
 	EM_DEBUG_FUNC_BEGIN("account_tbl[%p], account[%p]", account_tbl, account);
 	int ret = 1;
 
-	account->account_name                             = EM_SAFE_STRDUP(account_tbl->account_name);
-	account->incoming_server_type                     = account_tbl->incoming_server_type;
-	account->incoming_server_address                  = EM_SAFE_STRDUP(account_tbl->incoming_server_address);
-	account->user_email_address                       = EM_SAFE_STRDUP(account_tbl->user_email_address);
-	account->incoming_server_user_name                = EM_SAFE_STRDUP(account_tbl->incoming_server_user_name);
-	account->incoming_server_password                 = EM_SAFE_STRDUP(account_tbl->incoming_server_password);
-	account->retrieval_mode                           = account_tbl->retrieval_mode;
-	account->incoming_server_port_number              = account_tbl->incoming_server_port_number;
-	account->incoming_server_secure_connection        = account_tbl->incoming_server_secure_connection;
-	account->outgoing_server_type                     = account_tbl->outgoing_server_type;
-	account->outgoing_server_address                  = EM_SAFE_STRDUP(account_tbl->outgoing_server_address);
-	account->outgoing_server_port_number              = account_tbl->outgoing_server_port_number;
-	account->outgoing_server_need_authentication      = account_tbl->outgoing_server_need_authentication;
-	account->outgoing_server_secure_connection        = account_tbl->outgoing_server_secure_connection;
-	account->outgoing_server_user_name                = EM_SAFE_STRDUP(account_tbl->outgoing_server_user_name);
-	account->outgoing_server_password                 = EM_SAFE_STRDUP(account_tbl->outgoing_server_password);
-	account->user_display_name                        = EM_SAFE_STRDUP(account_tbl->user_display_name);
-	account->reply_to_address                         = EM_SAFE_STRDUP(account_tbl->reply_to_address);
-	account->return_address                           = EM_SAFE_STRDUP(account_tbl->return_address);
-	account->account_id                               = account_tbl->account_id;
-	account->keep_mails_on_pop_server_after_download  = account_tbl->keep_mails_on_pop_server_after_download;
-	account->auto_download_size                       = account_tbl->auto_download_size;
-	account->peak_interval                            = account_tbl->peak_interval;
-	account->peak_days                                = account_tbl->peak_days;
-	account->peak_start_time                          = account_tbl->peak_start_time;
-	account->peak_end_time                            = account_tbl->peak_end_time;
-	account->outgoing_server_use_same_authenticator   = account_tbl->outgoing_server_use_same_authenticator;
-	account->pop_before_smtp                          = account_tbl->pop_before_smtp;
-	account->auto_resend_times                        = account_tbl->auto_resend_times;
-	account->incoming_server_requires_apop            = account_tbl->incoming_server_requires_apop;
-	account->incoming_server_authentication_method    = account_tbl->incoming_server_authentication_method;
-	account->logo_icon_path                           = EM_SAFE_STRDUP(account_tbl->logo_icon_path);
-	account->user_data                                = em_memdup(account_tbl->user_data, account_tbl->user_data_length);
-	account->user_data_length                         = account_tbl->user_data_length;
-	account->roaming_option                           = account_tbl->roaming_option;
-	account->options.priority                         = account_tbl->options.priority;
-	account->options.keep_local_copy                  = account_tbl->options.keep_local_copy;
-	account->options.req_delivery_receipt             = account_tbl->options.req_delivery_receipt;
-	account->options.req_read_receipt                 = account_tbl->options.req_read_receipt;
-	account->options.download_limit                   = account_tbl->options.download_limit;
-	account->options.block_address                    = account_tbl->options.block_address;
-	account->options.block_subject                    = account_tbl->options.block_subject;
-	account->options.display_name_from                = EM_SAFE_STRDUP(account_tbl->options.display_name_from);
-	account->options.reply_with_body                  = account_tbl->options.reply_with_body;
-	account->options.forward_with_files               = account_tbl->options.forward_with_files;
-	account->options.add_myname_card                  = account_tbl->options.add_myname_card;
-	account->options.add_signature                    = account_tbl->options.add_signature;
-	account->options.signature                        = EM_SAFE_STRDUP(account_tbl->options.signature);
-	account->options.add_my_address_to_bcc            = account_tbl->options.add_my_address_to_bcc;
-	account->check_interval                           = account_tbl->check_interval;
-	account->account_svc_id                           = account_tbl->account_svc_id;
-	account->sync_status                              = account_tbl->sync_status;
-	account->sync_disabled                            = account_tbl->sync_disabled;
-	account->default_mail_slot_size                   = account_tbl->default_mail_slot_size;
-	account->smime_type                               = account_tbl->smime_type;
-	account->certificate_path                         = EM_SAFE_STRDUP(account_tbl->certificate_path);
-	account->cipher_type                              = account_tbl->cipher_type;
-	account->digest_type                              = account_tbl->digest_type;
-	account->outgoing_server_size_limit               = account_tbl->outgoing_server_size_limit;
+	account->account_name                                      = EM_SAFE_STRDUP(account_tbl->account_name);
+	account->incoming_server_type                              = account_tbl->incoming_server_type;
+	account->incoming_server_address                           = EM_SAFE_STRDUP(account_tbl->incoming_server_address);
+	account->user_email_address                                = EM_SAFE_STRDUP(account_tbl->user_email_address);
+	account->incoming_server_user_name                         = EM_SAFE_STRDUP(account_tbl->incoming_server_user_name);
+	account->incoming_server_password                          = EM_SAFE_STRDUP(account_tbl->incoming_server_password);
+	account->retrieval_mode                                    = account_tbl->retrieval_mode;
+	account->incoming_server_port_number                       = account_tbl->incoming_server_port_number;
+	account->incoming_server_secure_connection                 = account_tbl->incoming_server_secure_connection;
+	account->outgoing_server_type                              = account_tbl->outgoing_server_type;
+	account->outgoing_server_address                           = EM_SAFE_STRDUP(account_tbl->outgoing_server_address);
+	account->outgoing_server_port_number                       = account_tbl->outgoing_server_port_number;
+	account->outgoing_server_need_authentication               = account_tbl->outgoing_server_need_authentication;
+	account->outgoing_server_secure_connection                 = account_tbl->outgoing_server_secure_connection;
+	account->outgoing_server_user_name                         = EM_SAFE_STRDUP(account_tbl->outgoing_server_user_name);
+	account->outgoing_server_password                          = EM_SAFE_STRDUP(account_tbl->outgoing_server_password);
+	account->user_display_name                                 = EM_SAFE_STRDUP(account_tbl->user_display_name);
+	account->reply_to_address                                  = EM_SAFE_STRDUP(account_tbl->reply_to_address);
+	account->return_address                                    = EM_SAFE_STRDUP(account_tbl->return_address);
+	account->account_id                                        = account_tbl->account_id;
+	account->keep_mails_on_pop_server_after_download           = account_tbl->keep_mails_on_pop_server_after_download;
+	account->auto_download_size                                = account_tbl->auto_download_size;
+	account->peak_interval                                     = account_tbl->peak_interval;
+	account->peak_days                                         = account_tbl->peak_days;
+	account->peak_start_time                                   = account_tbl->peak_start_time;
+	account->peak_end_time                                     = account_tbl->peak_end_time;
+	account->outgoing_server_use_same_authenticator            = account_tbl->outgoing_server_use_same_authenticator;
+	account->pop_before_smtp                                   = account_tbl->pop_before_smtp;
+	account->auto_resend_times                                 = account_tbl->auto_resend_times;
+	account->incoming_server_requires_apop                     = account_tbl->incoming_server_requires_apop;
+	account->incoming_server_authentication_method             = account_tbl->incoming_server_authentication_method;
+	account->logo_icon_path                                    = EM_SAFE_STRDUP(account_tbl->logo_icon_path);
+	account->user_data                                         = em_memdup(account_tbl->user_data, account_tbl->user_data_length);
+	account->user_data_length                                  = account_tbl->user_data_length;
+	account->roaming_option                                    = account_tbl->roaming_option;
+	account->color_label                                       = account_tbl->color_label;
+	account->options.priority                                  = account_tbl->options.priority;
+	account->options.keep_local_copy                           = account_tbl->options.keep_local_copy;
+	account->options.req_delivery_receipt                      = account_tbl->options.req_delivery_receipt;
+	account->options.req_read_receipt                          = account_tbl->options.req_read_receipt;
+	account->options.download_limit                            = account_tbl->options.download_limit;
+	account->options.block_address                             = account_tbl->options.block_address;
+	account->options.block_subject                             = account_tbl->options.block_subject;
+	account->options.display_name_from                         = EM_SAFE_STRDUP(account_tbl->options.display_name_from);
+	account->options.reply_with_body                           = account_tbl->options.reply_with_body;
+	account->options.forward_with_files                        = account_tbl->options.forward_with_files;
+	account->options.add_myname_card                           = account_tbl->options.add_myname_card;
+	account->options.add_signature                             = account_tbl->options.add_signature;
+	account->options.signature                                 = EM_SAFE_STRDUP(account_tbl->options.signature);
+	account->options.add_my_address_to_bcc                     = account_tbl->options.add_my_address_to_bcc;
+	account->options.notification_status                       = account_tbl->options.notification_status;
+	account->options.vibrate_status                            = account_tbl->options.vibrate_status;
+	account->options.display_content_status                    = account_tbl->options.display_content_status;
+	account->options.default_ringtone_status                   = account_tbl->options.default_ringtone_status;
+	account->options.alert_ringtone_path                       = EM_SAFE_STRDUP(account_tbl->options.alert_ringtone_path);
+	account->check_interval                                    = account_tbl->check_interval;
+	account->account_svc_id                                    = account_tbl->account_svc_id;
+	account->sync_status                                       = account_tbl->sync_status;
+	account->sync_disabled                                     = account_tbl->sync_disabled;
+	account->default_mail_slot_size                            = account_tbl->default_mail_slot_size;
+	account->smime_type                                        = account_tbl->smime_type;
+	account->certificate_path                                  = EM_SAFE_STRDUP(account_tbl->certificate_path);
+	account->cipher_type                                       = account_tbl->cipher_type;
+	account->digest_type                                       = account_tbl->digest_type;
+	account->outgoing_server_size_limit                        = account_tbl->outgoing_server_size_limit;
+	account->wifi_auto_download                                = account_tbl->wifi_auto_download;
+	account->user_name                                         = EM_SAFE_STRDUP(account_tbl->user_name);
 
 	EM_DEBUG_FUNC_END();
 	return ret;
@@ -331,6 +347,8 @@ INTERNAL_FUNC int em_convert_mail_tbl_to_mail_data(emstorage_mail_tbl_t *mail_ta
 			}
 		}
 		memcpy(temp_mail_data[i].eas_data, mail_table_data[i].eas_data, mail_table_data[i].eas_data_length);
+		temp_mail_data[i].pgp_password            = EM_SAFE_STRDUP(mail_table_data[i].pgp_password);
+		temp_mail_data[i].user_name               = EM_SAFE_STRDUP(mail_table_data[i].user_name);
 	}
 
 	*mail_data = temp_mail_data;
@@ -437,6 +455,8 @@ INTERNAL_FUNC int   em_convert_mail_data_to_mail_tbl(email_mail_data_t *mail_dat
 			}
 		}
 		memcpy(temp_mail_tbl[i].eas_data, mail_data[i].eas_data, mail_data[i].eas_data_length);
+		temp_mail_tbl[i].pgp_password             = EM_SAFE_STRDUP(mail_data[i].pgp_password);
+		temp_mail_tbl[i].user_name                = EM_SAFE_STRDUP(mail_data[i].user_name);
 	}
 
 	*mail_table_data = temp_mail_tbl;
@@ -660,8 +680,8 @@ static int fetch_string_from_stream(char *input_stream, int *input_output_stream
 	return EMAIL_ERROR_NONE;
 }
                                     /* divide struct at binary field (void* user_data)*/
-#define EMAIL_ACCOUNT_FMT   "S(" "isiii" "isi" ")" "B" "S(" "issss"  "isiss" "iiiii" "iiiii" "isiss" "iii"\
-                                 "$(" "iiiii" "iisii" "iisi" ")" "iiiiisii" ")"
+#define EMAIL_ACCOUNT_FMT   "S(" "isiii" "isii" ")" "B" "S(" "issss"  "isiss" "iiiii" "iiiii" "isiss" "iii"\
+                                 "$(" "iiiii" "iisii" "iisi" "iiiis" ")" "iiiiiisiis" ")"
 
 
 INTERNAL_FUNC char* em_convert_account_to_byte_stream(email_account_t* account, int *stream_len)
@@ -718,7 +738,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_account(char *stream, int stream_le
 }
 
 #define EMAIL_MAIL_DATA_FMT  "S(" "iiiis" "iisss" "issss" "sssss" "sisss"\
-                            "icccc" "cccii" "iiiii" "iisii" "iiiii" "iii)B"
+                            "icccc" "cccii" "iiiii" "iisii" "iiiii" "iisss" "si" ")B"
 
 INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_data, int *stream_len)
 {
@@ -784,17 +804,12 @@ INTERNAL_FUNC void em_convert_byte_stream_to_mail_data(char *stream, int stream_
 }
 
 
-#define EMAIL_ATTACHMENT_DATA_FMT "A(S(" "issii" "iciii" "s" "))"
+#define EMAIL_ATTACHMENT_DATA_FMT "A(S(" "isssi" "iicii" "is" "))"
 
 INTERNAL_FUNC char* em_convert_attachment_data_to_byte_stream(email_attachment_data_t *attachment, int attachment_count, int* stream_len)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	EM_IF_NULL_RETURN_VALUE(stream_len, NULL);
-	if(!attachment) {
-		EM_DEBUG_LOG("no attachment to be included");
-		*stream_len = 0;
-		return NULL;
-	}
 
 	email_attachment_data_t cur = {0};
 	tpl_node *tn = NULL;
@@ -806,8 +821,10 @@ INTERNAL_FUNC char* em_convert_attachment_data_to_byte_stream(email_attachment_d
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return NULL;
 	}
+	
+	/* if attachment_count is zero, for loop is skipped */
 	int i=0;
-	for( ; i < attachment_count ; i++ ) {
+	for( ; (i < attachment_count) && (attachment+i) ; i++ ) {
 		memcpy(&cur, attachment + i, sizeof(email_attachment_data_t));
 		tpl_pack(tn, 1);                       
 	}
@@ -846,36 +863,31 @@ INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int s
 	/* tpl does not return the size of variable-length array, but we need variable-length array */
 	/* so, make list and get list count in the first phase, */
 	/* and then copy list to var array after allocating memory */
-	GList *head = NULL;
-	int count = 0;
+
+	int num_element = tpl_Alen (tn, 1);
+	email_attachment_data_t *attached = NULL;
+	if (num_element > 0)
+		attached = (email_attachment_data_t*) em_malloc(sizeof(email_attachment_data_t)*num_element);
+
+	int i = 0;
 	while( tpl_unpack(tn, 1) > 0) {
-		email_attachment_data_t* pdata = (email_attachment_data_t*) em_malloc(sizeof(email_attachment_data_t));
+		if (!(attached+i)) {
+			EM_DEBUG_EXCEPTION ("num element mismatched [%d] vs [%d]", num_element, i);
+			num_element = i;
+			break;
+		}
+		email_attachment_data_t* pdata = attached+i;
 		memcpy(pdata, &cur, sizeof(email_attachment_data_t)); /* copy unpacked data to list item */
 		pdata->attachment_name 		= EM_SAFE_STRDUP(cur.attachment_name);
 		pdata->attachment_path 		= EM_SAFE_STRDUP(cur.attachment_path);
+		pdata->content_id               = EM_SAFE_STRDUP(cur.content_id);
 		pdata->attachment_mime_type 	= EM_SAFE_STRDUP(cur.attachment_mime_type);
-		head = g_list_prepend(head, pdata);                   /* add it to list */
 		memset(&cur, 0, sizeof(email_attachment_data_t));    /* initialize variable, used for unpacking */
-		count++;
+		i++;
 	}
 	tpl_free(tn);
 
-	/*finally we get the list count and allocate var length array */
-	email_attachment_data_t *attached = (email_attachment_data_t*) em_malloc(sizeof(email_attachment_data_t)*count);
-
-	/*write glist item into variable array*/
-	head = g_list_reverse(head);
-	GList *p = g_list_first(head);
-	int i=0;
-	for( ; p ; p = g_list_next(p), i++ ) {
-		email_attachment_data_t* pdata = (email_attachment_data_t*) g_list_nth_data(p, 0);
-		memcpy( attached+i, pdata, sizeof(email_attachment_data_t));
-		EM_SAFE_FREE(pdata);    /*now, list item is useless */
-	}
-
-	g_list_free(head);
-
-	*attachment_count = count;
+	*attachment_count = num_element;
 	*attachment_data = attached;
 	EM_DEBUG_FUNC_END();
 }
@@ -1155,38 +1167,45 @@ INTERNAL_FUNC char* em_convert_search_filter_to_byte_stream(email_search_filter_
 	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_search_filter_count), sizeof(int));
 
 	for( i = 0; i < input_search_filter_count; i++) {
-		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_search_filter_list->search_filter_type), sizeof(int));
-		switch(input_search_filter_list->search_filter_type) {
+		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_search_filter_list[i].search_filter_type), sizeof(int));
+		switch(input_search_filter_list[i].search_filter_type) {
 			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO       :
 			case EMAIL_SEARCH_FILTER_TYPE_UID              :
+			case EMAIL_SEARCH_FILTER_TYPE_ALL              :
 			case EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER      :
 			case EMAIL_SEARCH_FILTER_TYPE_SIZE_SMALLER     :
 			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED   :
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_NEW        :
 			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED    :
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_OLD        :
 			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT      :
 			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED     :
 			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT     :
 			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN       :
-				result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_search_filter_list->search_filter_key_value.integer_type_key_value), sizeof(int));
+			case EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY  :
+				result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_search_filter_list[i].search_filter_key_value.integer_type_key_value), sizeof(int));
 				break;
 
 			case EMAIL_SEARCH_FILTER_TYPE_BCC              :
+			case EMAIL_SEARCH_FILTER_TYPE_BODY             :
 			case EMAIL_SEARCH_FILTER_TYPE_CC               :
 			case EMAIL_SEARCH_FILTER_TYPE_FROM             :
 			case EMAIL_SEARCH_FILTER_TYPE_KEYWORD          :
+			case EMAIL_SEARCH_FILTER_TYPE_TEXT             :
 			case EMAIL_SEARCH_FILTER_TYPE_SUBJECT          :
 			case EMAIL_SEARCH_FILTER_TYPE_TO               :
 			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
-				result_stream = append_string_to_stream(result_stream, &stream_size, input_search_filter_list->search_filter_key_value.string_type_key_value);
+			case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  :
+				result_stream = append_string_to_stream(result_stream, &stream_size, input_search_filter_list[i].search_filter_key_value.string_type_key_value);
 				break;
 
 			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :
 			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON     :
 			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE  :
-				result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_search_filter_list->search_filter_key_value.time_type_key_value), sizeof(struct tm));
+				result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_search_filter_list[i].search_filter_key_value.time_type_key_value), sizeof(time_t));
 				break;
 			default :
-				EM_DEBUG_EXCEPTION("Invalid filter type [%d]", input_search_filter_list->search_filter_type);
+				EM_DEBUG_EXCEPTION("Invalid filter type [%d]", input_search_filter_list[i].search_filter_type);
 				break;
 		}
 	}
@@ -1232,24 +1251,31 @@ INTERNAL_FUNC void em_convert_byte_stream_to_search_filter(char *input_stream,
 		switch(local_search_filter[i].search_filter_type) {
 			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO       :
 			case EMAIL_SEARCH_FILTER_TYPE_UID              :
+			case EMAIL_SEARCH_FILTER_TYPE_ALL              :
 			case EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER      :
 			case EMAIL_SEARCH_FILTER_TYPE_SIZE_SMALLER     :
 			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED   :
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_NEW        :
 			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED    :
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_OLD        :
 			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT      :
 			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED     :
 			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT     :
 			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN       :
+			case EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY  :
 				fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(local_search_filter[i].search_filter_key_value.integer_type_key_value));
 				break;
 
 			case EMAIL_SEARCH_FILTER_TYPE_BCC              :
+			case EMAIL_SEARCH_FILTER_TYPE_BODY             :
 			case EMAIL_SEARCH_FILTER_TYPE_CC               :
 			case EMAIL_SEARCH_FILTER_TYPE_FROM             :
 			case EMAIL_SEARCH_FILTER_TYPE_KEYWORD          :
+			case EMAIL_SEARCH_FILTER_TYPE_TEXT             :
 			case EMAIL_SEARCH_FILTER_TYPE_SUBJECT          :
 			case EMAIL_SEARCH_FILTER_TYPE_TO               :
 			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
+			case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  :
 				fetch_string_from_stream(input_stream, &stream_offset, &(local_search_filter[i].search_filter_key_value.string_type_key_value));
 				break;
 
@@ -1316,8 +1342,6 @@ INTERNAL_FUNC void em_convert_byte_stream_to_task_information(char *input_stream
 	email_task_information_t cur = {0};
 	tpl_node *tn = NULL;
 	int i = 0;
-	int count = 0;
-	GList *head = NULL;
 
 	tn = tpl_map(EMAIL_JOB_INFORMATION_FMT, &cur);
 	if (!tn) {
@@ -1325,30 +1349,26 @@ INTERNAL_FUNC void em_convert_byte_stream_to_task_information(char *input_stream
 		return;
 	}
 	tpl_load(tn, TPL_MEM, input_stream, input_stream_len);
+	int num_element = tpl_Alen (tn, 1);
+	email_task_information_t* deserialized = NULL;
+	if (num_element > 0)
+		deserialized = (email_task_information_t*) em_malloc(sizeof(email_task_information_t)*num_element);
 
 	while( tpl_unpack(tn, 1) > 0) {
-		email_task_information_t* pdata = (email_task_information_t*) em_malloc(sizeof(email_task_information_t));
+		if (!(deserialized+i)) {
+			EM_DEBUG_EXCEPTION ("num element mismatched [%d] vs [%d]", num_element, i);
+			num_element = i;
+			break;
+		}
+		email_task_information_t* pdata = deserialized+i;
 		memcpy(pdata, &cur, sizeof(email_task_information_t));
-		head = g_list_prepend(head, pdata);
 		memset(&cur, 0, sizeof(email_task_information_t));
-		count++;
+		i++;
 	}
 	tpl_free(tn);
 
-	email_task_information_t *deserialized = (email_task_information_t*) em_malloc(sizeof(email_task_information_t)*count);
 
-	head = g_list_reverse(head);
-	GList *p = g_list_first(head);
-
-	for( ; p ; p = g_list_next(p), i++ ) {
-		email_task_information_t* pdata = (email_task_information_t*) g_list_nth_data(p, 0);
-		memcpy( deserialized+i, pdata, sizeof(email_task_information_t));
-		EM_SAFE_FREE(pdata);
-	}
-
-	g_list_free(head);
-
-	*output_task_information_count = count;
+	*output_task_information_count = num_element;
 	*output_task_information       = deserialized;
 
 	EM_DEBUG_FUNC_END();
@@ -1359,7 +1379,7 @@ INTERNAL_FUNC int em_convert_certificate_tbl_to_certificate(emstorage_certificat
 	EM_DEBUG_FUNC_BEGIN("certficate_tbl[%p], certificate[%p]", certificate_tbl, certificate);
 
 	int err_code = EMAIL_ERROR_NONE;
-	int ret = false;
+
 	email_certificate_t *temp_certificate = NULL;
 
 	if (!certificate_tbl || !certificate)  {
@@ -1389,7 +1409,6 @@ INTERNAL_FUNC int em_convert_certificate_tbl_to_certificate(emstorage_certificat
 
 	*certificate = temp_certificate;
 
-	ret = true;
 FINISH_OFF:
 	if (error)
 		*error = err_code;

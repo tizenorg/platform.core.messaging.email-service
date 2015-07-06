@@ -41,10 +41,9 @@ extern "C"
 #endif /* __cplusplus */
 
 
-INTERNAL_FUNC int emdaemon_add_polling_alarm(int account_id);
+INTERNAL_FUNC int emdaemon_add_polling_alarm(char *multi_user_name, int account_id);
 INTERNAL_FUNC int emdaemon_remove_polling_alarm(int account_id);
 INTERNAL_FUNC int emdaemon_check_auto_polling_started(int account_id);
-INTERNAL_FUNC int emdaemon_alarm_polling_cb(alarm_id_t  alarm_id, void* user_param);
 INTERNAL_FUNC int emdaemon_free_account_alarm_binder_list();
 
 #ifdef __cplusplus

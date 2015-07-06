@@ -12,6 +12,7 @@ MESSAGE(">>> current directory: ${CMAKE_CURRENT_SOURCE_DIR}")
 MESSAGE(">>> Build type: ${CMAKE_BUILD_TYPE}")
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${VISIBILITY} -fvisibility=hidden")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--gc-sections")
 
 SET(COMMON-USE-LIB "email-common-use")
 SET(COMMON-USE-SRCS 
@@ -28,7 +29,7 @@ INCLUDE_DIRECTORIES(
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(common_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf uw-imap-toolkit libtzplatform-config)
+pkg_check_modules(common_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf contacts-service2 uw-imap-toolkit) 
 
 FOREACH(flag ${common_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")

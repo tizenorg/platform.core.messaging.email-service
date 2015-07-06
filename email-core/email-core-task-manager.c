@@ -59,7 +59,7 @@ static int                 _task_manager_loop_availability = 1;
 static int emcore_insert_task_to_active_task_pool(int input_task_slot_index, int input_task_id, email_task_type_t input_task_type, thread_t input_thread_id);
 static int emcore_remove_task_from_active_task_pool(int input_task_id);
 static int emcore_find_available_slot_in_active_task_pool(int *result_index);
-static int emcore_update_task_status_on_task_table(int input_task_id, email_task_status_type_t task_status);
+static int emcore_update_task_status_on_task_table(char *multi_user_name, int input_task_id, email_task_status_type_t task_status);
 static int emcore_get_task_handler_reference(email_task_type_t input_task_type, email_task_handler_t **output_task_handler);
 
 /*- task handlers helpers - begin --------------------------------------------*/
@@ -109,7 +109,7 @@ static int emcore_finalize_async_task_handler(email_task_t *input_task, int inpu
 	}
 
 	/* remove task from task table */
-	if( (err = emcore_remove_task_from_task_table(input_task->task_id)) != EMAIL_ERROR_NONE) {
+	if( (err = emcore_remove_task_from_task_table(NULL, input_task->task_id)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_remove_task_from_active_task_pool failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -223,6 +223,7 @@ static int emcore_register_task_handler(email_task_type_t input_task_type, void*
 
 	if (_task_handler_array == NULL) {
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
+        EM_SAFE_FREE(new_task_handler);
 		goto FINISH_OFF;
 	}
 
@@ -234,13 +235,12 @@ FINISH_OFF:
 	return err;
 }
 
-
 INTERNAL_FUNC int emcore_init_task_handler_array()
 {
 	EM_DEBUG_FUNC_BEGIN();
 
 	if (_task_handler_array == NULL) {
-		_task_handler_array      = NULL;
+		_task_handler_array = NULL;
 		_task_handler_array_size = 0;
 
 		REGISTER_TASK_BINDER(EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT);
@@ -368,7 +368,7 @@ int emcore_fetch_task_from_task_pool(email_task_t **output_task)
 	int err = EMAIL_ERROR_NONE;
 	int output_task_count;
 
-	if((err = emstorage_query_task("WHERE task_status == 1", " ORDER BY date_time ASC, task_priority ASC LIMIT 0, 1", output_task, &output_task_count)) != EMAIL_ERROR_NONE) {
+	if((err = emstorage_query_task(NULL, "WHERE task_status == 1", " ORDER BY date_time ASC, task_priority ASC LIMIT 0, 1", output_task, &output_task_count)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_query_task failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -506,17 +506,18 @@ void* thread_func_task_manager_loop(void *arg)
 			((err = emcore_find_available_slot_in_active_task_pool(&available_slot_index)) == EMAIL_ERROR_NONE)	) {
 
 			/* update task status as STARTED */
-			if((err = emcore_update_task_status_on_task_table(new_task->task_id, EMAIL_TASK_STATUS_STARTED)) != EMAIL_ERROR_NONE) {
+			if((err = emcore_update_task_status_on_task_table(NULL, new_task->task_id, EMAIL_TASK_STATUS_STARTED)) != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("emcore_update_task_status_on_task_table failed [%d]", err);
 			}
 			new_task->active_task_id = available_slot_index;
 
 			/* create a thread to do this task */
 			THREAD_CREATE(new_task->thread_id, emcore_default_async_task_handler, new_task, thread_error);
+			EM_DEBUG_LOG("pthread_create returns [%d]", thread_error);
 
 			/* new_task and task_parameter will be free in task handler. */
-			new_task     = NULL;
-
+                        EM_SAFE_FREE(new_task->task_parameter);
+                        EM_SAFE_FREE(new_task);
 		}
 		else {
 			/* If there is no task or no available slot, sleep until someone wake you up. */
@@ -569,6 +570,12 @@ INTERNAL_FUNC int emcore_stop_task_manager_loop()
 
 	int err = EMAIL_ERROR_NONE;
 
+	if (!_thread_task_manager_loop) {
+		EM_DEBUG_LOG("_thread_task_manager_loop is NULL ");
+		err = EMAIL_ERROR_UNKNOWN;
+		return err;
+	}
+
 	/* TODO : cancel tasks */
 
 	/* stop event_data loop */
@@ -594,12 +601,12 @@ INTERNAL_FUNC int emcore_stop_task_manager_loop()
 	return err;
 }
 
-INTERNAL_FUNC int emcore_add_task_to_task_table(email_task_type_t input_task_type, email_task_priority_t input_task_priority, char *input_task_parameter, int input_task_parameter_length, int *output_task_id)
+INTERNAL_FUNC int emcore_add_task_to_task_table(char *multi_user_name, email_task_type_t input_task_type, email_task_priority_t input_task_priority, char *input_task_parameter, int input_task_parameter_length, int *output_task_id)
 {
 	EM_DEBUG_FUNC_BEGIN("input_task_type [%d] input_task_priority [%d] input_task_parameter [%p] input_task_parameter_length [%d] output_task_id [%p]", input_task_type, input_task_priority, input_task_parameter, input_task_parameter_length, output_task_id);
 	int err = EMAIL_ERROR_NONE;
 
-	if((err = emstorage_add_task(input_task_type, input_task_priority, input_task_parameter, input_task_parameter_length, false, output_task_id)) != EMAIL_ERROR_NONE) {
+	if((err = emstorage_add_task(multi_user_name, input_task_type, input_task_priority, input_task_parameter, input_task_parameter_length, false, output_task_id)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_add_task failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -613,12 +620,12 @@ FINISH_OFF:
 	return err;
 }
 
-INTERNAL_FUNC int emcore_remove_task_from_task_table(int input_task_id)
+INTERNAL_FUNC int emcore_remove_task_from_task_table(char *multi_user_name, int input_task_id)
 {
 	EM_DEBUG_FUNC_BEGIN("input_task_id [%d]", input_task_id);
 	int err = EMAIL_ERROR_NONE;
 
-	if((err = emstorage_delete_task(input_task_id, true)) != EMAIL_ERROR_NONE) {
+	if((err = emstorage_delete_task(multi_user_name, input_task_id, true)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_delete_task failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -628,12 +635,12 @@ FINISH_OFF:
 	return err;
 }
 
-static int emcore_update_task_status_on_task_table(int input_task_id, email_task_status_type_t task_status)
+static int emcore_update_task_status_on_task_table(char *multi_user_name, int input_task_id, email_task_status_type_t task_status)
 {
 	EM_DEBUG_FUNC_BEGIN("input_task_id [%d] task_status [%d]", input_task_id, task_status);
 	int err = EMAIL_ERROR_NONE;
 
-	if((err = emstorage_update_task_status(input_task_id, task_status, true)) != EMAIL_ERROR_NONE) {
+	if((err = emstorage_update_task_status(multi_user_name, input_task_id, task_status, true)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_update_task_status failed [%d]", err);
 		goto FINISH_OFF;
 	}

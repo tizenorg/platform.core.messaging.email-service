@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -24,9 +24,9 @@
  * File :  email-core-mm_callbacks.c
  * Desc :  mm_callbacks for IMAP-2004g
  *
- * Auth :  
+ * Auth :
  *
- * History : 
+ * History :
  * 2006.08.22  :  created
  *****************************************************************************/
 #include <stdio.h>
@@ -60,7 +60,7 @@ INTERNAL_FUNC void mm_lsub(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 
 	/* uw-imap mailbox name format (ex : "{mail.test.com...}inbox" or "{mail.test.com...}anybox/anysubbox") */
 	enc_path = strchr(mailbox, '}');
-	if (enc_path)	
+	if (enc_path)
 		enc_path += 1;
 	else {
 		emcore_free_mailbox_list(&p, count+1);
@@ -113,7 +113,7 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 
 	/* uw-imap mailbox name format (ex : "{mail.test.com...}inbox" or "{mail.test.com...}anybox/anysubbox") */
 	enc_path = strchr(mailbox, '}');
-	if (enc_path)	
+	if (enc_path)
 		enc_path += 1;
 	else {
 		emcore_free_internal_mailbox(&p, count+1, NULL);
@@ -121,8 +121,8 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 	}
 
 	/* convert directory delimiter to '/' */
-	for (s = enc_path;*s;s++) 
-		if (*s == (char)delimiter) 
+	for (s = enc_path;*s;s++)
+		if (*s == (char)delimiter)
 			*s = '/';
 
 	/* copy string */
@@ -140,7 +140,7 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 	else if(attributes & LATT_XLIST_JUNK)
 		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_SPAMBOX;
 	else if(attributes & LATT_XLIST_FLAGGED)
-		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_FLAGGED;
+		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_USER_DEFINED; 		//EMAIL_MAILBOX_TYPE_FLAGGED; P141122-00523 sync starred folder as Inbox sync
 	else if(attributes & LATT_XLIST_TRASH)
 		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_TRASH;
 #endif /* __FEATURE_XLIST_SUPPORT__ */
@@ -190,9 +190,9 @@ INTERNAL_FUNC void mm_status(MAILSTREAM *stream, char *mailbox, MAILSTATUS* stat
 	email_callback_holder_t *p = stream->sparep;
 
 	EM_DEBUG_FUNC_BEGIN();
-	if (status->flags & SA_MESSAGES) 
+	if (status->flags & SA_MESSAGES)
 		p->num = status->messages;
-	if (status->flags & SA_UNSEEN) 
+	if (status->flags & SA_UNSEEN)
 		p->data = (void *)status->unseen;
 	EM_DEBUG_FUNC_END();
 }
@@ -210,16 +210,26 @@ INTERNAL_FUNC void mm_login(NETMBX *mb, char *user, char *pwd, long trial)
 	char *password = NULL;
 	char *token    = NULL;
 	char *save_ptr = NULL;
+	char *user_info = NULL;
+    char *temp = NULL;
+	char *multi_user_name = NULL;
 
 	if (!mb->user[0])  {
 		EM_DEBUG_EXCEPTION("invalid account_id...");
 		goto FINISH_OFF;
 	}
-	
-	account_id = atoi(mb->user);
 
-	ref_account = emcore_get_account_reference(account_id);
+	user_info = EM_SAFE_STRDUP(mb->user);
 
+	token = strtok_r(user_info, TOKEN_FOR_MULTI_USER, &temp);
+	EM_DEBUG_LOG_SEC("Token : [%s], multi_user_name:[%s][%d]", token, temp, EM_SAFE_STRLEN(temp));
+	account_id = atoi(token);
+	token = NULL;
+
+    if (temp != NULL && EM_SAFE_STRLEN(temp) > 0)
+        multi_user_name = EM_SAFE_STRDUP(temp);
+
+	ref_account = emcore_get_account_reference(multi_user_name, account_id, true);
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed");
 		goto FINISH_OFF;
@@ -240,7 +250,6 @@ INTERNAL_FUNC void mm_login(NETMBX *mb, char *user, char *pwd, long trial)
 	EM_DEBUG_LOG("incoming_server_authentication_method [%d]", ref_account->incoming_server_authentication_method);
 
 	if(ref_account->incoming_server_authentication_method == EMAIL_AUTHENTICATION_METHOD_XOAUTH2) {
-
 		token = strtok_r(ref_account->incoming_server_password, "\001", &save_ptr);
 		EM_DEBUG_LOG_SEC("token [%s]", token);
 		password = EM_SAFE_STRDUP(token);
@@ -263,8 +272,10 @@ FINISH_OFF:
 		EM_SAFE_FREE(ref_account);
 	}
 
+	EM_SAFE_FREE(user_info);
 	EM_SAFE_FREE(username);
 	EM_SAFE_FREE(password);
+    EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_FUNC_END();
 }
@@ -279,43 +290,44 @@ INTERNAL_FUNC void mm_dlog(char *string)
 
 INTERNAL_FUNC void mm_log(char *string, long errflg)
 {
-	
+
 	switch ((short)errflg)  {
 		case NIL:
-			EM_DEBUG_LOG("IMAP_TOOLKIT_LOG NIL [%s]", string);
+			EM_DEBUG_LOG("IMAP_TOOLKIT_LOG [%s]", string);
 			break;
-			
+
 		case WARN:
-			EM_DEBUG_LOG("IMAP_TOOLKIT_LOG WARN [%s]", string);
+			EM_DEBUG_EXCEPTION ("IMAP_TOOLKIT_LOG WARN [%s]", string);
 			break;
-			
+
 		case PARSE:
 			EM_DEBUG_LOG("IMAP_TOOLKIT_LOG PARSE [%s]", string);
 			break;
-			
+
 		case BYE:
 			EM_DEBUG_LOG("IMAP_TOOLKIT_LOG BYE [%s]", string);
 			break;
-			
+
 		case TCPDEBUG:
-			EM_DEBUG_LOG("IMAP_TOOLKIT_LOG TCPDEBUG [%s]", string);
+			EM_DEBUG_LOG_SEC("IMAP_TOOLKIT_LOG TCPDEBUG [%s]", string);
 			break;
-			
+
 		case ERROR: {
 			email_session_t *session = NULL;
-			
+
 			EM_DEBUG_EXCEPTION("IMAP_TOOLKIT_LOG ERROR [%s]", string);
 
 			emcore_get_current_session(&session);
-			
+
 			if (session) {
 				mm_get_error(string, &session->error);
 				EM_DEBUG_EXCEPTION("IMAP_TOOLKIT_LOG ERROR [%d]", session->error);
-				if(session->error == EMAIL_ERROR_XOAUTH_BAD_REQUEST || session->error == EMAIL_ERROR_XOAUTH_INVALID_UNAUTHORIZED) {
+				if (session->error == EMAIL_ERROR_XOAUTH_BAD_REQUEST ||
+                            session->error == EMAIL_ERROR_XOAUTH_INVALID_UNAUTHORIZED) {
 					session->network = session->error;
 				}
 			}
-			
+
 			break;
 		}
 	}
@@ -348,7 +360,9 @@ INTERNAL_FUNC void mm_flags(MAILSTREAM *stream, unsigned long number)
 INTERNAL_FUNC void mm_notify(MAILSTREAM *stream, char *string, long errflg)
 {
 	EM_DEBUG_FUNC_BEGIN();
+#ifdef FEATURE_CORE_DEBUG
 	mm_log(string, errflg);
+#endif /* FEATURE_CORE_DEBUG */
 	EM_DEBUG_FUNC_END();
 }
 
@@ -440,6 +454,8 @@ INTERNAL_FUNC void mm_get_error(char *string, int *err_code)
 		*err_code = EMAIL_ERROR_XOAUTH_BAD_REQUEST;
 	else if (strstr(string, "\"status\":\"401"))
 		*err_code = EMAIL_ERROR_XOAUTH_INVALID_UNAUTHORIZED;
+	else if (strstr(string, "ALREADYEXISTS"))
+		*err_code = EMAIL_ERROR_ALREADY_EXISTS;
 	else
 		*err_code = EMAIL_ERROR_UNKNOWN;
 }
@@ -449,7 +465,6 @@ INTERNAL_FUNC void mm_imap_id (char **id_string)
 {
 	EM_DEBUG_FUNC_BEGIN("id_string [%p]", id_string);
 
-	int   err = EMAIL_ERROR_NONE;
 	/*
 	char *result_string = NULL;
 	char *tag_string = "ID (\"os\" \"" IMAP_ID_OS "\" \"os-version\" \"" IMAP_ID_OS_VERSION "\" \"vendor\" \"" IMAP_ID_VENDOR "\" \"device\" \"" IMAP_ID_DEVICE_NAME "\" \"AGUID\" \"" IMAP_ID_AGUID "\" \"ACLID\" \"" IMAP_ID_ACLID "\"";
@@ -458,7 +473,6 @@ INTERNAL_FUNC void mm_imap_id (char **id_string)
 
 	if (id_string == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
-		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
@@ -470,15 +484,13 @@ INTERNAL_FUNC void mm_imap_id (char **id_string)
 
 	if(result_string == NULL) {
 		EM_DEBUG_EXCEPTION("malloc failed");
-		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}
 
 	*id_string = result_string;
 	*/
-
 FINISH_OFF:
-	EM_DEBUG_FUNC_END("err [%d]", err);
+	return ;
 }
 #endif /* __FEATURE_SUPPORT_IMAP_ID__ */
 /* EOF */

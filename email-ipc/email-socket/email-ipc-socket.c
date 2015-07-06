@@ -26,6 +26,8 @@
 #include "email-debug-log.h"
 #include "email-types.h"
 
+#include "email-core-container.h"
+
 #include <glib.h>
 
 #include <sys/socket.h>
@@ -38,6 +40,7 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include <sys/smack.h>
 #include <systemd/sd-daemon.h>
 
 EXPORT_API bool emipc_init_email_socket(int *fd)
@@ -45,7 +48,7 @@ EXPORT_API bool emipc_init_email_socket(int *fd)
 	bool ret = true;
 	char errno_buf[ERRNO_BUF_SIZE] = {0};
 
-	*fd = socket(AF_UNIX, SOCK_STREAM, 0);
+	*fd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
 	if (*fd < 0) {
 		EM_DEBUG_EXCEPTION("socket failed: %s", EM_STRERROR(errno_buf));
 		ret = false;
@@ -60,8 +63,7 @@ EXPORT_API bool emipc_init_email_socket(int *fd)
 EXPORT_API void emipc_close_email_socket(int* fd)
 {
 	EM_DEBUG_LOG("fd %d removal done", *fd);
-	close(*fd);
-	*fd = 0;
+	EM_SAFE_CLOSE (*fd);
 }
 
 /* returns positive write length,
@@ -71,12 +73,11 @@ static int emipc_writen(int fd, const char *buf, int len)
 {
 	int length = len;
 	int passed_len = 0;
-	char errno_buf[ERRNO_BUF_SIZE] = {0};
 
 	while (length > 0) {
 		passed_len = send(fd, (const void *)buf, length, MSG_NOSIGNAL);
 		if (passed_len == -1) {
-			EM_DEBUG_LOG("write : %s", EM_STRERROR(errno_buf));
+			EM_DEBUG_EXCEPTION ("send error [%d]", errno);
 			if (errno == EINTR) continue;
 			else if (errno == EPIPE) return 0; /* connection closed */
 			else return passed_len; /* -1 */
@@ -104,8 +105,9 @@ EXPORT_API int emipc_send_email_socket(int fd, unsigned char *buf, int len)
 	EM_DEBUG_LOG("Sending %dB data to [fd = %d]", len, fd);
 
 	int write_len = emipc_writen(fd, (char*) buf, len);
-	if ( write_len != len) {
-		if ( write_len == 0 ) return 0;
+	if (write_len == 0) /* connection closed */
+		return 0; 
+	if (write_len != len) {
 		EM_DEBUG_LOG("WARNING: buf_size [%d] != write_len[%d]", len, write_len);
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
@@ -117,13 +119,13 @@ static int emipc_readn(int fd, char *buf, int len)
 {
 	int length = len;
 	int read_len = 0;
-	char errno_buf[ERRNO_BUF_SIZE] = {0};
 
 	while (length > 0) {
 		read_len = read(fd, (void *)buf, length);
 		if (read_len < 0) {
-			EM_DEBUG_EXCEPTION("Read : %s", EM_STRERROR(errno_buf));
+			EM_DEBUG_EXCEPTION("read err %d", errno);
 			if (errno == EINTR) continue;
+			else if (errno == EPIPE) return 0; /* connection closed */
 			return read_len;
 		} else if (read_len == 0)
 			break;
@@ -169,6 +171,8 @@ EXPORT_API int emipc_recv_email_socket(int fd, char **buf)
 
 	EM_DEBUG_LOG_DEV("[IPC Socket] Receiving [%d] bytes", read_len);
 	int len = emipc_readn(fd, *buf, read_len);
+	if (len == 0) /* connection closed */
+		return 0; 
 	if (read_len != len) {
 		EM_SAFE_FREE(*buf);
 		EM_DEBUG_LOG("WARNING: buf_size [%d] != read_len[%d]", read_len, len);
@@ -212,8 +216,8 @@ EXPORT_API int emipc_open_email_socket(int fd, const char *path)
 
 	if (strcmp(path, EM_SOCKET_PATH) == 0 &&
 		sd_listen_fds(1) == 1 &&
-		sd_is_socket_unix(SD_LISTEN_FDS_START, SOCK_STREAM, -1, EM_SOCKET_PATH, 0) > 0) {
-		close(fd);
+		sd_is_socket_unix(SD_LISTEN_FDS_START, SOCK_SEQPACKET, -1, EM_SOCKET_PATH, 0) > 0) {
+		EM_SAFE_CLOSE (fd);
 		sock_fd = SD_LISTEN_FDS_START + 0;
 		return sock_fd;
 	}
@@ -239,6 +243,8 @@ EXPORT_API int emipc_open_email_socket(int fd, const char *path)
 		EM_DEBUG_LOG("bind: %s", EM_STRERROR(errno_buf));
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
+
+    emcore_set_declare_link(path);
 
 	/**
 	 * determine permission of socket file
@@ -267,9 +273,11 @@ EXPORT_API int emipc_open_email_socket(int fd, const char *path)
 	return fd;
 }
 
-EXPORT_API bool emipc_connect_email_socket(int fd)
+EXPORT_API int emipc_connect_email_socket(int fd)
 {
 	EM_DEBUG_FUNC_BEGIN();
+	int err = EMAIL_ERROR_NONE;
+	int p_errno = 0;
 	struct sockaddr_un server;
 	memset(&server, 0, sizeof(server));
 	server.sun_family = AF_UNIX;
@@ -278,10 +286,17 @@ EXPORT_API bool emipc_connect_email_socket(int fd)
 
 	if (connect(fd, (struct sockaddr *)&server, sizeof(server)) < 0) {
 		EM_DEBUG_EXCEPTION ("connect failed: [%s][errno=%d][fd=%d]", EM_STRERROR(errno_buf), errno, fd);
-		return false;
+
+		p_errno = errno;
+		if (p_errno == EACCES || p_errno == EPERM) 
+			err = EMAIL_ERROR_PERMISSION_DENIED;
+		else 
+			err = EMAIL_ERROR_SYSTEM_FAILURE;
+		
+		return err;
 	}
 
 	EM_DEBUG_FUNC_END();
-	return true;
+	return err;
 }
 

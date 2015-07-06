@@ -40,13 +40,13 @@ extern "C"
 {
 #endif /* __cplusplus */
 
-INTERNAL_FUNC int emcore_validate_account(int account_id, int *err_code);
+INTERNAL_FUNC int emcore_validate_account(char *multi_user_name, int account_id, int handle, int *err_code);
 
-INTERNAL_FUNC int emcore_validate_account_with_account_info(email_account_t *account, email_event_type_t event_type, int *err_code);
+INTERNAL_FUNC int emcore_validate_account_with_account_info(char *multi_user_name, email_account_t *account, email_event_type_t event_type, char **output_imap_cap_string, int event_handle, int *err_code);
 
-INTERNAL_FUNC int emcore_create_account(email_account_t *account, int *err_code);
+INTERNAL_FUNC int emcore_create_account(char *multi_user_name, email_account_t *account, int add_account_to_account_svc, int *err_code);
 
-INTERNAL_FUNC int emcore_delete_account(int account_id, int *err_code);
+INTERNAL_FUNC int emcore_delete_account(char *multi_user_name, int account_id, int input_delete_from_account_svc, int *err_code);
 
 INTERNAL_FUNC int emcore_free_account_list(email_account_t **account_list, int count, int *err_code);
 
@@ -56,33 +56,31 @@ INTERNAL_FUNC void emcore_free_account(email_account_t *account_list);
 
 INTERNAL_FUNC void emcore_duplicate_account(const email_account_t *account, email_account_t **account_dup, int *err_code);
 
-INTERNAL_FUNC int emcore_init_account_reference();
+INTERNAL_FUNC email_account_t *emcore_get_account_reference(char *multi_user_name, int account_id, int with_password);
 
-INTERNAL_FUNC int emcore_free_account_reference();
-
-INTERNAL_FUNC email_account_t *emcore_get_account_reference(int account_id);
-
-INTERNAL_FUNC int emcore_get_account_reference_list(email_account_t **account_list, int *count, int *err_code);
+INTERNAL_FUNC int emcore_get_account_reference_list(char *multi_user_name, email_account_t **account_list, int *count);
 
 INTERNAL_FUNC int emcore_query_server_info(const char* domain_name, email_server_info_t **result_server_info);
 
+INTERNAL_FUNC void emcore_cleanup_query_server_info(void);
+
 INTERNAL_FUNC int emcore_free_server_info(email_server_info_t **target_server_info);
 
-INTERNAL_FUNC int emcore_save_default_account_id(int input_account_id);
+INTERNAL_FUNC int emcore_save_default_account_id(char *multi_user_name, int input_account_id);
 
-INTERNAL_FUNC int emcore_load_default_account_id(int *output_account_id);
+INTERNAL_FUNC int emcore_load_default_account_id(char *multi_user_name, int *output_account_id);
 
-INTERNAL_FUNC int emcore_recover_from_secured_storage_failure();
+INTERNAL_FUNC int emcore_recover_from_secured_storage_failure(char *multi_user_name);
 
-INTERNAL_FUNC int emcore_update_sync_status_of_account(int input_account_id, email_set_type_t input_set_operator, int input_sync_status);
+INTERNAL_FUNC int emcore_update_sync_status_of_account(char *multi_user_name, int input_account_id, email_set_type_t input_set_operator, int input_sync_status);
 
-INTERNAL_FUNC int emcore_refresh_xoauth2_access_token(int input_account_id);
+INTERNAL_FUNC int emcore_refresh_xoauth2_access_token(char *multi_user_name, int input_account_id);
 
 
 #ifdef __FEATURE_BACKUP_ACCOUNT__
-INTERNAL_FUNC int emcore_backup_accounts(const char *file_path, int *error_code);
+INTERNAL_FUNC int emcore_backup_accounts(char *multi_user_name, const char *file_path, int *error_code);
 
-INTERNAL_FUNC int emcore_restore_accounts(const char *file_path, int *error_code);
+INTERNAL_FUNC int emcore_restore_accounts(char *multi_user_name, const char *file_path);
 #endif /*   __FEATURE_BACKUP_ACCOUNT_ */
 
 #ifdef __cplusplus

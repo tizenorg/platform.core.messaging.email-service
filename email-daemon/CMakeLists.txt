@@ -15,6 +15,8 @@ ADD_DEFINITIONS("-DSSL_CERT_DIRECTORY=\"${TZ_SYS_ETC}/ssl/certs\"")
 ADD_DEFINITIONS("-DSSL_KEY_DIRECTORY=\"${TZ_SYS_ETC}/ssl/certs\"")
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${VISIBILITY} -fvisibility=hidden")
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wl,--gc-sections -fPIE")
+
 
 ##########################################################
 # Define Execute File
@@ -46,24 +48,21 @@ INCLUDE_DIRECTORIES(
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(main_pkgs REQUIRED glib-2.0 dlog dbus-1 gthread-2.0 db-util 
-				openssl uw-imap-toolkit vconf vconf-internal-keys 
-				alarm-service mm-player drm-client feedback msg-service 
-				libwbxml2 libsmack notification)
+SET(PKG_MODULES glib-2.0 dlog dbus-1 gthread-2.0 openssl uw-imap-toolkit 
+				vconf vconf-internal-keys contacts-service2 alarm-service 
+				msg-service libwbxml2 libsmack notification 
+				capi-network-connection gmime-2.6)
 
-#pkg_check_modules(main_pkgs REQUIRED glib-2.0 dlog dbus-1 gthread-2.0 db-util 
-#				openssl uw-imap-toolkit vconf vconf-internal-keys contacts-service2 
-#				alarm-service mm-player drm-client feedback msg-service 
-#				libwbxml2 libsmack notification)
+pkg_check_modules(main_pkgs REQUIRED ${PKG_MODULES})
 
 FOREACH(flag ${main_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
 ENDFOREACH(flag)
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS}")
-SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed")
+SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -pie")
 
 ADD_EXECUTABLE(${PROJECT_NAME} ${MAIN-SRCS})
-TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${main_pkgs_LDFLAGS} dl ssl email-core email-core-sound email-storage email-network email-ipc email-common-use email-device email-smime)
+TARGET_LINK_LIBRARIES(${PROJECT_NAME} ${main_pkgs_LDFLAGS} dl ssl email-core email-storage email-network email-ipc email-common-use email-device email-smime)
 INSTALL(TARGETS ${PROJECT_NAME} DESTINATION bin)
 

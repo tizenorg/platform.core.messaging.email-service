@@ -34,6 +34,7 @@
 
 #include "email-types.h"
 #include "email-storage.h"
+#include "email-core-mail.h"
 #include "c-client.h"
 
 #ifdef __cplusplus
@@ -56,36 +57,32 @@ typedef struct
 
 typedef struct 
 {
-	char *header;
-	int header_len;
-	char *body;
-	int body_len;
+	char *bodystructure;
+	int bodystructure_len;
+	char *rfc822header;
+	int rfc822header_len;
+	char *bodytext;
+	int bodytext_len;
 	unsigned long uid_no;
 } email_partial_buffer;
 
 #endif
 
-typedef struct emcore_uid_elem {
-	int msgno;
-	char *uid;
-	email_mail_flag_t flag;
-	struct emcore_uid_elem *next;
-} emcore_uid_list; 
 
 int pop3_mail_calc_rfc822_size(MAILSTREAM *stream, int msgno, int *size, int *err_code);
 int pop3_mailbox_get_uids(MAILSTREAM *stream, emcore_uid_list** uid_list, int *err_code);
 
 int imap4_mail_calc_rfc822_size(MAILSTREAM *stream, int msgno, int *size, int *err_code);
-int imap4_mailbox_get_uids(MAILSTREAM *stream, emcore_uid_list** uid_list, int *err_code);
+int imap4_mailbox_get_uids(MAILSTREAM *stream, char *input_target_uid_string, emcore_uid_list** uid_list, int *err_code);
 
 int emcore_check_rule(const char *input_full_address_from, const char *input_subject, emstorage_rule_tbl_t *rule, int rule_len, int *priority_sender, int *blocked, int *err_code);
 
-INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(int account_id, MAILSTREAM *mail_stream, ENVELOPE *input_envelope, emcore_uid_list *input_uid_elem, emstorage_mail_tbl_t **output_mail_tbl_data,  int *err_code);
+INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(char *multi_user_name, int account_id, MAILSTREAM *mail_stream, ENVELOPE *input_envelope, emcore_uid_list *input_uid_elem, emstorage_mail_tbl_t **output_mail_tbl_data,  int *err_code);
 
-INTERNAL_FUNC int emcore_add_mail_to_mailbox(emstorage_mailbox_tbl_t *input_maibox_data, emstorage_mail_tbl_t *input_new_mail_tbl_data, int *output_mail_id, int *output_thread_id);
+INTERNAL_FUNC int emcore_add_mail_to_mailbox(char *multi_user_name, emstorage_mailbox_tbl_t *input_maibox_data, emstorage_mail_tbl_t *input_new_mail_tbl_data, int *output_mail_id, int *output_thread_id);
 
 #ifdef __FEATURE_BODY_SEARCH__
-int emcore_add_mail_text(emstorage_mailbox_tbl_t *input_maibox_data, emstorage_mail_tbl_t *input_new_mail_tbl_data, char *stripped_text, int *err_code);
+int emcore_add_mail_text(char *multi_user_name, emstorage_mailbox_tbl_t *input_maibox_data, emstorage_mail_tbl_t *input_new_mail_tbl_data, char *stripped_text, int *err_code);
 #endif
 
 /**
@@ -99,7 +96,17 @@ int emcore_add_mail_text(emstorage_mailbox_tbl_t *input_maibox_data, emstorage_m
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emcore_sync_header(emstorage_mailbox_tbl_t *input_mailbox_tbl, void **stream, emcore_uid_list **input_uid_list, int *mail_count, int *unread_mail, int *err_code);
+INTERNAL_FUNC int emcore_sync_header (char *multi_user_name, 
+                                  emstorage_mailbox_tbl_t *input_mailbox_tbl,
+                                  void **stream,
+                                  emcore_uid_list **input_uid_list,
+                                  int *mail_count,
+                                  int *unread_mail,
+                                  int *vip_mail_count,
+                                  int *vip_unread_mail,
+                                  int cancellable, /*if event thread calls, set it*/
+                                  int event_handle,
+                                  int *err_code);
 
 typedef enum
 {
@@ -120,7 +127,7 @@ typedef enum
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-int emcore_download_uid_all (MAILSTREAM *mail_stream, email_internal_mailbox_t *mailbox, emcore_uid_list **uid_list,
+int emcore_download_uid_all (char *multi_user_name, MAILSTREAM *mail_stream, email_internal_mailbox_t *mailbox, emcore_uid_list **uid_list,
                                 int *total, emstorage_read_mail_uid_tbl_t *read_mail_uids, int count, 
 					  emcore_get_uids_for_delete_t  for_delete, int *err_code);
 
@@ -136,7 +143,7 @@ int emcore_download_uid_all (MAILSTREAM *mail_stream, email_internal_mailbox_t *
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-int emcore_download_imap_msgno(email_internal_mailbox_t *mailbox, char *uid, int *msgno, int *err_code);
+int emcore_download_imap_msgno(char *multi_user_name, email_internal_mailbox_t *mailbox, char *uid, int *msgno, int *err_code);
 
 /**
  * Get a message number to be related to uid.
@@ -171,8 +178,15 @@ int emcore_get_uid(emcore_uid_list *uid_list, int msgno, char **uid, int *err_co
  */
 int emcore_free_uids(emcore_uid_list *uid_list, int *err_code);
 
-INTERNAL_FUNC char *emcore_guess_charset(char *source_string);
-INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(int mail_id);
+INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(char *multi_user_name, int mail_id);
+INTERNAL_FUNC int emcore_update_attachment_except_inline(char *multi_user_name, 
+                                                        struct _m_content_info *cnt_info, 
+                                                        int account_id, 
+                                                        int mail_id, 
+                                                        int mailbox_id, 
+                                                        int *output_total_attachment_size, 
+                                                        int *output_attachment_count, 
+                                                        int *output_inline_attachment_count);
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
 INTERNAL_FUNC int emcore_download_bulk_partial_mail_body(MAILSTREAM *stream, email_event_partial_body_thd *pbd_event, int count, int *error);
