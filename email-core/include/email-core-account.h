@@ -56,7 +56,7 @@ INTERNAL_FUNC void emcore_free_account(email_account_t *account_list);
 
 INTERNAL_FUNC void emcore_duplicate_account(const email_account_t *account, email_account_t **account_dup, int *err_code);
 
-INTERNAL_FUNC email_account_t *emcore_get_account_reference(char *multi_user_name, int account_id);
+INTERNAL_FUNC email_account_t *emcore_get_account_reference(char *multi_user_name, int account_id, int with_password);
 
 INTERNAL_FUNC int emcore_get_account_reference_list(char *multi_user_name, email_account_t **account_list, int *count);
 

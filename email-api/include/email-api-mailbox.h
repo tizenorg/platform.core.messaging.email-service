@@ -105,7 +105,6 @@
  */
 
 /**
- * @internal
  * @ingroup EMAIL_SERVICE_FRAMEWORK
  * @defgroup EMAIL_SERVICE_MAILBOX_MODULE Mailbox API
  * @brief Mailbox API is a set of operations to manage email mailboxes like add, update, delete or get mailbox related details.
@@ -118,7 +117,6 @@
  */
 
 /**
- * @internal
  * @addtogroup EMAIL_SERVICE_MAILBOX_MODULE
  * @{
  */

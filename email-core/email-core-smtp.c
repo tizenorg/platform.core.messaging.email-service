@@ -949,7 +949,9 @@ INTERNAL_FUNC int emcore_add_mail(char *multi_user_name, email_mail_data_t *inpu
 				EM_SAFE_STRNCPY(body_text_file_name, "UTF-8", MAX_PATH);
 			*/
 
-			if (!emstorage_get_save_name(multi_user_name, mail_data->account_id, mail_data->mail_id, 0, body_text_file_name, name_buf, path_buf, sizeof(path_buf), &err))  {
+			if (!emstorage_get_save_name(multi_user_name, mail_data->account_id, mail_data->mail_id, 
+										0, body_text_file_name, name_buf, path_buf, 
+										sizeof(path_buf), &err))  {
 				EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 				goto FINISH_OFF;
 			}
@@ -988,7 +990,9 @@ INTERNAL_FUNC int emcore_add_mail(char *multi_user_name, email_mail_data_t *inpu
 				EM_SAFE_STRNCPY(body_text_file_name, "UTF-8.htm", MAX_PATH);
 			*/
 
-			if (!emstorage_get_save_name(multi_user_name, mail_data->account_id, mail_data->mail_id, 0, body_text_file_name, name_buf, path_buf, sizeof(path_buf), &err))  {
+			if (!emstorage_get_save_name(multi_user_name, mail_data->account_id, mail_data->mail_id, 
+										0, body_text_file_name, name_buf, path_buf, 
+										sizeof(path_buf), &err))  {
 				EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 				goto FINISH_OFF;
 			}
@@ -1014,7 +1018,9 @@ INTERNAL_FUNC int emcore_add_mail(char *multi_user_name, email_mail_data_t *inpu
 
 		EM_DEBUG_LOG_SEC("mail_data->file_path_mime_entity [%s]", mail_data->file_path_mime_entity);
 
-		if (!emstorage_get_save_name(multi_user_name, mail_data->account_id, mail_data->mail_id, 0, "mime_entity", name_buf, path_buf, sizeof(path_buf), &err)) {
+		if (!emstorage_get_save_name(multi_user_name, mail_data->account_id, mail_data->mail_id, 
+									0, "mime_entity", name_buf, path_buf, 
+									sizeof(path_buf), &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -1471,7 +1477,7 @@ INTERNAL_FUNC int emcore_query_mail_size_limit(char *multi_user_name, int accoun
 		goto FINISH_OFF;
 	}
 
-	if (!(ref_account = emcore_get_account_reference(multi_user_name, account_id))) {
+	if (!(ref_account = emcore_get_account_reference(multi_user_name, account_id, false))) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
@@ -1685,7 +1691,7 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 
 	account_id = mail_tbl_data->account_id;
 
-	if (!(ref_account = emcore_get_account_reference(multi_user_name, account_id))) {
+	if (!(ref_account = emcore_get_account_reference(multi_user_name, account_id, false))) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
@@ -1913,7 +1919,7 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 #endif
 		if (ref_account->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
 			emstorage_mailbox_tbl_t* src_mailbox = NULL;
-			emstorage_mail_tbl_t *temp_mail = NULL;
+//			emstorage_mail_tbl_t *temp_mail = NULL;
 
 			if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name, account_id, EMAIL_MAILBOX_TYPE_OUTBOX, &src_mailbox, true, &err))  {
 				EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
@@ -1921,7 +1927,10 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 			}
 
 			EM_DEBUG_LOG("local_yn:[%d]", src_mailbox->local_yn);
-			if (src_mailbox->local_yn) {
+			if (src_mailbox->local_yn) { 
+				/* This is syncing operation in sent box 
+				   but it slowed operation */
+				/*
 				void *local_stream = NULL;
 				if (!emcore_sync_header (multi_user_name, local_mailbox, &local_stream, NULL, NULL, NULL, NULL, NULL, 0, -1, &err)) {
 					EM_DEBUG_EXCEPTION("emcore_sync_header failed");
@@ -1937,6 +1946,13 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 				if (temp_mail) {
 					emcore_sync_mail_from_client_to_server(multi_user_name, mail_id);
 					emstorage_free_mail(&temp_mail, 1, NULL);	
+				}
+				*/
+
+				/* sent box exception list : gmail (After the mail sent, moved the sent box) */
+				if (ref_account->outgoing_server_address) {
+					if (!strcasestr(ref_account->outgoing_server_address, "gmail"))
+						emcore_sync_mail_from_client_to_server(multi_user_name, mail_id);
 				}
 			}
 			else {
@@ -2097,7 +2113,7 @@ INTERNAL_FUNC int emcore_send_saved_mail(char *multi_user_name, int account_id, 
 	}
 
 
-	if (!(ref_account = emcore_get_account_reference(multi_user_name, account_id)))  {
+	if (!(ref_account = emcore_get_account_reference(multi_user_name, account_id, false)))  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
@@ -2383,7 +2399,7 @@ static int emcore_send_mail_smtp(char *multi_user_name, SENDSTREAM *stream, ENVE
 		goto FINISH_OFF;
 	}
 
-	if (!(ref_account = emcore_get_account_reference(multi_user_name, account_id))) {
+	if (!(ref_account = emcore_get_account_reference(multi_user_name, account_id, false))) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
@@ -3211,10 +3227,8 @@ static char *emcore_encode_rfc2047_text(char *utf8_text, int *err_code)
 
 
 	if (len > 0) {
-#ifdef __FEATURE_USE_GMIME__
 		return emcore_gmime_get_encoding_to_utf8(utf8_text);
 //              return g_strdup(utf8_text);    /* emoji handle */
-#endif /* __FEATURE_USE_GMIME__ */
         }
 	else
 		return strdup("");
@@ -3269,7 +3283,7 @@ static int emcore_make_envelope_from_mail(char *multi_user_name, emstorage_mail_
 	is_incomplete = input_mail_tbl_data->flags_draft_field || (input_mail_tbl_data->save_status == EMAIL_MAIL_STATUS_SENDING);
 
 	if (is_incomplete && (input_mail_tbl_data->account_id > 0))  {
-		ref_account = emcore_get_account_reference(multi_user_name, input_mail_tbl_data->account_id);
+		ref_account = emcore_get_account_reference(multi_user_name, input_mail_tbl_data->account_id, false);
 		if (!ref_account)  {
 			EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", input_mail_tbl_data->account_id);
 			error = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -4374,23 +4388,16 @@ INTERNAL_FUNC int emcore_send_mail_with_downloading_attachment_of_original_mail(
 		if(attachment_array[i].save_status != 1) {
 			/* this function is not run by event thread,
 			so cancellable should be set to 0*/
-#ifdef __FEATURE_USE_GMIME__
-			if(!emcore_gmime_download_attachment (multi_user_name, original_mail->mail_id, i + 1, 0, -1, 0, &err)) {
-				EM_DEBUG_EXCEPTION("emcore_download_attachment failed [%d]", err);
+			if(!emcore_gmime_download_attachment(multi_user_name, original_mail->mail_id, i + 1, 0, -1, 0, &err)) {
+				EM_DEBUG_EXCEPTION("emcore_gmime_download_attachment failed [%d]", err);
 				goto FINISH_OFF;
 			}
-#else
-			if(!emcore_download_attachment (original_mail->account_id, original_mail->mail_id, i + 1, 0, -1, &err)) {
-				EM_DEBUG_EXCEPTION("emcore_download_attachment failed [%d]", err);
-				goto FINISH_OFF;
-			}
-#endif
 		}
 	}
 
 	/* Copy attachment to the mail to be sent */
 	if((err = emcore_copy_attachment_from_original_mail(multi_user_name, original_mail->mail_id, mail_to_be_sent->mail_id)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emcore_download_attachment failed [%d]", err);
+		EM_DEBUG_EXCEPTION("emcore_copy_attachment_from_original failed [%d]", err);
 		goto FINISH_OFF;
 	}
 

@@ -49,9 +49,8 @@
 #include <pthread.h>
 #include <notification.h>
 #include <notification_type.h>
-#ifdef __FEATURE_NOTIFICATION_ENABLE__
 #include <notification_internal.h>
-#endif /* __FEATURE_NOTIFICATION_ENABLE__ */
+#include <notification_text_domain.h>
 #include <badge.h>
 #include <badge_internal.h>
 #ifdef __FEATURE_USE_DRM_API__
@@ -87,9 +86,8 @@
 #include "email-dbus-activation.h"
 
 
-#ifdef __FEATURE_DRIVING_MODE__
 #include <app_control.h>
-#endif /* __FEATURE_DRIVING_MODE__ */
+#include <app_control_internal.h>
 
 #define LED_TIMEOUT_SECS          12
 #define G_DISPLAY_LENGTH          256
@@ -376,7 +374,7 @@ int emcore_get_long_encoded_path(char *multi_user_name, int account_id, char *pa
 	int error = EMAIL_ERROR_NONE;
 	email_account_t *ref_account = NULL;
 
-	ref_account = emcore_get_account_reference(multi_user_name, account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, account_id, false);
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		error = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -1040,7 +1038,6 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END();
 }
 
-#ifdef __FEATURE_NOTIFICATION_ENABLE__
 static int emcore_layout_multi_noti(notification_h noti, int unread_mail, char *email_address, char *account_name)
 {
 	EM_DEBUG_FUNC_BEGIN("unread_count %d", unread_mail);
@@ -1191,7 +1188,9 @@ static int emcore_get_alert_type(int vibrate_status)
 	int email_vibe_status = 0;
 	int call_state = 0;
 	int alert_type = EMAIL_ALERT_TYPE_MUTE;
+#ifdef __FEATURE_VOICERECORDER_STATUS_FOR_NOTI__
 	int voicerecoder_state = 0;
+#endif /* __FEATURE_VOICERECORDER_STATUS_FOR_NOTI__ */
 
 	if (vconf_get_bool(VCONFKEY_SETAPPL_SOUND_STATUS_BOOL, &global_sound_status) != 0) {
 		EM_DEBUG_LOG("vconf_get_bool for VCONFKEY_SETAPPL_SOUND_STATUS_BOOL failed");
@@ -1206,11 +1205,12 @@ static int emcore_get_alert_type(int vibrate_status)
 	EM_DEBUG_LOG("global_sound_status [%d] global_vibe_status [%d]", global_sound_status, global_vibe_status);
 
 	if (global_sound_status || global_vibe_status) {
-
+#ifdef __FEATURE_VOICERECORDER_STATUS_FOR_NOTI__
 		if (vconf_get_int(VCONFKEY_VOICERECORDER_STATE, &voicerecoder_state) != 0) {
 			EM_DEBUG_LOG("vconf_get_int for VCONFKEY_VOICERECORDER_STATE failed");
 		}
 		EM_DEBUG_LOG("voicerecoder_state [%d]", voicerecoder_state);
+#endif /* __FEATURE_VOICERECORDER_STATUS_FOR_NOTI__ */
 
 		if (vconf_get_int(VCONFKEY_CALL_STATE, &call_state) != 0) {
 			EM_DEBUG_LOG("vconf_get_int for VCONFKEY_CALL_STATE failed");
@@ -1220,12 +1220,15 @@ static int emcore_get_alert_type(int vibrate_status)
 		email_vibe_status = vibrate_status;
 
 		EM_DEBUG_LOG("email_vibe_status [%d] ", email_vibe_status);
-
+#ifdef __FEATURE_VOICERECORDER_STATUS_FOR_NOTI__
 		if (voicerecoder_state == VCONFKEY_VOICERECORDER_RECORDING) {
 			alert_type = EMAIL_ALERT_TYPE_VIB;
 			EM_DEBUG_LOG("voice recorder is on recording...");
 		}
-		else if (call_state > VCONFKEY_CALL_OFF && call_state < VCONFKEY_CALL_STATE_MAX) {
+/*		else if (call_state > VCONFKEY_CALL_OFF && call_state < VCONFKEY_CALL_STATE_MAX) { */
+#endif /* __FEATURE_VOICERECORDER_STATUS_FOR_NOTI__ */
+
+		if (call_state > VCONFKEY_CALL_OFF && call_state < VCONFKEY_CALL_STATE_MAX) {
 			EM_DEBUG_LOG("Calling");
 			if (global_sound_status)
 				alert_type = EMAIL_ALERT_TYPE_MELODY;
@@ -1272,7 +1275,6 @@ static char *emcore_get_sound_file_path(int default_ringtone_status, char *alert
 	EM_DEBUG_FUNC_END("ret [%s]", ret);
 	return ret;
 }
-#endif /* __FEATURE_NOTIFICATION_ENABLE__ */
 
 #if 0 //using notification_status_message_post instead of calling email-app toast - change date: 30/9/2014
 INTERNAL_FUNC int emcore_show_toast_popup(char *input_popup_string)
@@ -1585,11 +1587,13 @@ INTERNAL_FUNC int emcore_add_notification(char *multi_user_name, int account_id,
 		}
 	}
 
+#ifdef __FEATURE_DRIVING_MODE__
 	if (unseen) {
 		err = emcore_start_driving_mode(multi_user_name, p_mail_id[unseen - 1]);
 		if (err != EMAIL_ERROR_NONE)
 			EM_DEBUG_EXCEPTION("emcore_start_driving_mode failed : [%d]", err);
 	}
+#endif /* __FEATURE_DRIVING_MODE__ */
 
 FINISH_OFF:
 
@@ -1629,7 +1633,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 {
 	EM_DEBUG_FUNC_BEGIN("account_id: %d, mail_id: %d, action:%d", account_id, mail_id, action );
 	int err = EMAIL_ERROR_NONE;
-#ifdef __FEATURE_NOTIFICATION_ENABLE__
+#ifdef __FEATURE_NOTIFICATION_ENABLE__  
 	int private_id = 0;
 	void *join_zone = NULL;
 	char *mailbox_name = NULL;
@@ -2241,7 +2245,7 @@ void emcore_fill_address_information_of_mail_tbl(char *multi_user_name, emstorag
 
 	email_account_t *ref_account = NULL;
 
-	ref_account = emcore_get_account_reference(multi_user_name, mail_data->account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, mail_data->account_id, false);
 	if (!ref_account)  {
 		EM_DEBUG_LOG("emcore_get_account_reference failed [%d]", mail_data->account_id);
 	}
@@ -2556,6 +2560,7 @@ int emcore_strip_mail_body_from_file(char *multi_user_name, emstorage_mail_tbl_t
 
 			if(utf8_encoded_string == NULL) {
 				if (!g_error_matches(glib_error, G_CONVERT_ERROR, G_CONVERT_ERROR_ILLEGAL_SEQUENCE)) {
+		            EM_SAFE_FREE(*stripped_text);
 					*stripped_text = EM_SAFE_STRDUP(buf);
 					goto FINISH_OFF;
 				}
@@ -2563,12 +2568,14 @@ int emcore_strip_mail_body_from_file(char *multi_user_name, emstorage_mail_tbl_t
 
 				utf8_encoded_string = (char *)g_convert(buf, byte_read, "UTF-8", encoding_type, &byte_read, &byte_written, &glib_error);
 				if (utf8_encoded_string == NULL) {
+					EM_SAFE_FREE(*stripped_text);
 					*stripped_text = EM_SAFE_STRDUP(buf);
 					goto FINISH_OFF;
 				}
 			}
 			EM_SAFE_FREE(buf);
 
+            EM_SAFE_FREE(*stripped_text);
 			*stripped_text = EM_SAFE_STRDUP(utf8_encoded_string);
 		} else {
             EM_SAFE_FREE(*stripped_text);
@@ -3162,7 +3169,6 @@ int convert_app_err_to_email_err(int app_error)
 INTERNAL_FUNC int emcore_start_driving_mode(char *multi_user_name, int mail_id)
 {
 	EM_DEBUG_FUNC_BEGIN();
-
 	int err = APP_CONTROL_ERROR_NONE;
 	int tts_enable = 0;
 	char string_mail[10] = { 0 };
@@ -5010,6 +5016,7 @@ INTERNAL_FUNC int emcore_check_blocking_mode_internal (char *multi_user_name, ch
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
+
 	int contact_error = 0;
 	int person_id = 0;
 	int allowed_contact_type = 0; /* 0 : NONE, 1 : All contacts, 2 : Favorites, 3 : Custom */

@@ -29,7 +29,7 @@ SET(TEST-APP-SRCS
 	${CMAKE_SOURCE_DIR}/utilities/test-application/testapp-rule.c
 	${CMAKE_SOURCE_DIR}/utilities/test-application/testapp-thread.c
 	${CMAKE_SOURCE_DIR}/utilities/test-application/testapp-others.c
-#	${CMAKE_SOURCE_DIR}/utilities/test-application/testapp-gmime.c
+	${CMAKE_SOURCE_DIR}/utilities/test-application/testapp-gmime.c
 )
 
 INCLUDE_DIRECTORIES(
@@ -42,7 +42,7 @@ INCLUDE_DIRECTORIES(
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(test_app_pkgs REQUIRED glib-2.0 gthread-2.0 vconf uw-imap-toolkit contacts-service2)
+pkg_check_modules(test_app_pkgs REQUIRED glib-2.0 gthread-2.0 vconf uw-imap-toolkit contacts-service2 gmime-2.6)
 
 FOREACH(flag ${test_app_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")

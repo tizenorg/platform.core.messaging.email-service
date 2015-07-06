@@ -52,15 +52,15 @@ EXPORT_API int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, in
 	HIPC_API hAPI = NULL;
 	ASNotiData as_noti_data;
 
+	EM_IF_NULL_RETURN_VALUE(new_mailbox, EMAIL_ERROR_INVALID_PARAM);
+
     if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
         EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
         goto FINISH_OFF;
     }
 
 	memset(&as_noti_data, 0x00, sizeof(ASNotiData));
-
-	EM_IF_NULL_RETURN_VALUE(new_mailbox, EMAIL_ERROR_INVALID_PARAM);
-
+	
 	/*  check account bind type and branch off  */
 	if ( em_get_account_server_type_by_account_id(multi_user_name, new_mailbox->account_id, &account_server_type, false, &err) == false ) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
@@ -495,7 +495,7 @@ EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_
 		as_noti_data.delete_mailbox_ex.mailbox_id_array  = input_mailbox_id_array;
 		as_noti_data.delete_mailbox_ex.mailbox_id_count  = input_mailbox_id_count;
 		as_noti_data.delete_mailbox_ex.on_server         = input_on_server;
-		as_noti_data.delete_mailbox_ex.multi_user_name   = multi_user_name;
+		as_noti_data.delete_mailbox_ex.multi_user_name   = EM_SAFE_STRDUP(multi_user_name);
 
 		if (em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_DELETE_MAILBOX_EX, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -519,6 +519,8 @@ EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_
 	}
 
 FINISH_OFF:
+
+	EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
@@ -810,8 +812,10 @@ EXPORT_API int email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_t
         goto FINISH_OFF;
     }
 
-	if (mailbox_type < EMAIL_MAILBOX_TYPE_INBOX || mailbox_type > EMAIL_MAILBOX_TYPE_USER_DEFINED)
-		return EMAIL_ERROR_INVALID_PARAM;
+	if (mailbox_type < EMAIL_MAILBOX_TYPE_INBOX || mailbox_type > EMAIL_MAILBOX_TYPE_USER_DEFINED) {
+		err = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
 
 	if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name, account_id, mailbox_type, &local_mailbox, true, &err))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
@@ -893,13 +897,12 @@ EXPORT_API int email_set_mail_slot_size(int account_id, int mailbox_id, int new_
 
 	int err = EMAIL_ERROR_NONE;
 
-	if(new_slot_size < 0) {
+	if (new_slot_size < 0) {
 		EM_DEBUG_EXCEPTION("new_slot_size should be greater than 0 or should be equal to 0");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 	
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_SET_MAIL_SLOT_SIZE);	
-
 	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 
 	if (hAPI) {
@@ -943,18 +946,28 @@ EXPORT_API int email_stamp_sync_time_of_mailbox(int input_mailbox_id)
 	EM_DEBUG_API_BEGIN ("input_mailbox_id[%d]", input_mailbox_id);
 
 	int err = EMAIL_ERROR_NONE;
-    char *multi_user_name = NULL;
 
 	EM_IF_NULL_RETURN_VALUE(input_mailbox_id, EMAIL_ERROR_INVALID_PARAM);
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        return err;
-    }
+	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_STAMP_SYNC_TIME_OF_MAILBOX);
+	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 
-	err = emstorage_stamp_last_sync_time_of_mailbox(multi_user_name, input_mailbox_id, 1);
+	if (hAPI) {
+		if (!emipc_add_parameter(hAPI, ePARAMETER_IN, &input_mailbox_id, sizeof(int))) {
+			EM_DEBUG_EXCEPTION(" emipc_add_parameter for account_id failed");
+			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
+		}
 
-    EM_SAFE_FREE(multi_user_name);
+		if (emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
+			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
+		} 
+	
+	 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+		EM_DEBUG_LOG("email_stamp_sync_time_of_mailbox error VALUE [%d]", err);
+		emipc_destroy_email_api(hAPI);
+		hAPI = NULL;
+	}
 
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;

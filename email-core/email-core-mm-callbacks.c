@@ -229,7 +229,7 @@ INTERNAL_FUNC void mm_login(NETMBX *mb, char *user, char *pwd, long trial)
     if (temp != NULL && EM_SAFE_STRLEN(temp) > 0)
         multi_user_name = EM_SAFE_STRDUP(temp);
 
-	ref_account = emcore_get_account_reference(multi_user_name, account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, account_id, true);
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed");
 		goto FINISH_OFF;
@@ -250,7 +250,6 @@ INTERNAL_FUNC void mm_login(NETMBX *mb, char *user, char *pwd, long trial)
 	EM_DEBUG_LOG("incoming_server_authentication_method [%d]", ref_account->incoming_server_authentication_method);
 
 	if(ref_account->incoming_server_authentication_method == EMAIL_AUTHENTICATION_METHOD_XOAUTH2) {
-
 		token = strtok_r(ref_account->incoming_server_password, "\001", &save_ptr);
 		EM_DEBUG_LOG_SEC("token [%s]", token);
 		password = EM_SAFE_STRDUP(token);

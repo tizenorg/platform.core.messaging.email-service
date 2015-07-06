@@ -227,6 +227,7 @@ struct _m_content_info
 		int   html_save_status;
 		char *html;              /*  body html text */
 		char *html_charset;      /*  charset of html text */
+		char *mime_entity;
 	} text;
 
 	struct attachment_info *file;
@@ -243,34 +244,6 @@ typedef enum {
 } pop3_cmd_t;
 
 /**
- * Download email body from server.
- *
- * @param[in] mail_stream	Specifies the mail_stream.
- * @param[in] mailbox		Specifies the mailbox to contain account ID.
- * @param[in] mail_id		Specifies the mail ID.
- * @param[in] callback		Specifies the callback function for retrieving download status.
- * @param[in] with_attach	Specifies the flag for downloading attachments.
- * @param[in] limited_size	Specifies the size to be downloaded.
- * @param[out] err_code		Specifies the error code returned.
- * @remarks In POP3 case, body and attachment are downloaded in this function.
- *          In IMAP case, body and attachment list are downloaded and 
- *          attachments must be downloaded in emcore_download_attachment.
- * @return This function returns true on success or false on failure.
- */
-
-INTERNAL_FUNC int emcore_download_body_multi_sections_bulk ( char *multi_user_name, 
-                                                      void *mail_stream, 
-                                                      int account_id, 
-                                                      int mail_id, 
-                                                      int verbose, 
-                                                      int with_attach, 
-                                                      int limited_size, 
-                                                      int event_handle, 
-                                                      int cancellable, 
-                                                      int *err_code);
-
-
-/**
  * Download a email nth-attachment from server.
  *
  * @param[in] mailbox		Specifies the mailbox to contain account ID.
@@ -282,7 +255,6 @@ INTERNAL_FUNC int emcore_download_body_multi_sections_bulk ( char *multi_user_na
  * @remarks This function is used for only IMAP mail.
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emcore_download_attachment (char *multi_user_name, int acconut_id, int mail_id, int nth, int cancellable, int event_handle, int *err_code);
 INTERNAL_FUNC int emcore_add_attachment(char *multi_user_name, int mail_id, email_attachment_data_t *attachment, int *err_code);        /* TODO : Remove duplicated function */
 INTERNAL_FUNC int emcore_add_attachment_data(char *multi_user_name, int input_mail_id, email_attachment_data_t *input_attachment_data); /* TODO : Remove duplicated function */
 INTERNAL_FUNC int emcore_delete_mail_attachment(char *multi_user_name, int attachment_id, int *err_code);
@@ -384,6 +356,19 @@ INTERNAL_FUNC int   emcore_add_rule(char *multi_user_name, email_rule_t *filter_
 INTERNAL_FUNC int   emcore_update_rule(char *multi_user_name, int filter_id, email_rule_t *filter_info);
 INTERNAL_FUNC int   emcore_delete_rule(char *multi_user_name, int filter_id);
 
+/**
+ * Search the mails on server
+ *
+ * @param[in] account_id                Specifies the id of account
+ * @param[in] mailbox_id                Specifies the id of mailbox
+ * @param[in] input_search_filter       Specifies the filter list for searching field
+ * @param[in] input_search_filter_count Specifies the filter count
+ * @param[in] handle                    Specifies the handle for searching mails
+ * @remarks N/A
+ * @return EMAIL_ERROR_NONE on success or an error code (refer to EMAIL_ERROR_XXX) on failure 
+ */
+
+INTERNAL_FUNC int   emcore_search_on_server(char *multi_user_name, int account_id, int mailbox_id, email_search_filter_t *input_search_filter, int input_search_filter_count, int handle_to_be_published);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

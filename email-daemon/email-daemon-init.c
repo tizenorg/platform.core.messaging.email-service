@@ -163,6 +163,7 @@ static int _emdaemon_unload_email_core()
 	return err;
 }
 
+#ifdef __FEATURE_SYNC_STATUS__
 static void callback_for_SYNC_ALL_STATUS_from_account_svc(keynode_t *input_node, void *input_user_data)
 {
 	EM_DEBUG_FUNC_BEGIN("input_node [%p], input_user_data [%p]", input_node, input_user_data);
@@ -254,6 +255,7 @@ FINISH_OFF:
 
 	EM_DEBUG_FUNC_END();
 }
+#endif /* __FEATURE_SYNC_STATUS__ */
 
 static void callback_for_NETWORK_STATUS(connection_type_e new_conn_type, void *input_user_data)
 {
@@ -469,33 +471,6 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END();
 }
 
-static void callback_for_VCONFKEY_TELEPHONY_ZONE_TYPE(keynode_t *input_node, void *input_user_data)
-{
-	EM_DEBUG_FUNC_BEGIN();
-	int telephony_zone = 0;
-
-	if (!input_node) {
-		EM_DEBUG_EXCEPTION("Invalid param");
-		return;
-	}
-
-	telephony_zone = vconf_keynode_get_int(input_node);
-
-	EM_DEBUG_LOG("telephony_zone [%d]", telephony_zone);
-
-	/*
-	switch(telephony_zone) {
-	case VCONFKEY_TELEPHONY_ZONE_NONE :
-	case VCONFKEY_TELEPHONY_ZONE_HOME :
-	case VCONFKEY_TELEPHONY_ZONE_CITY :
-	default :
-		break;
-	}
-	*/
-
-	EM_DEBUG_FUNC_END();
-}
-
 #ifdef __FEATURE_WIFI_AUTO_DOWNLOAD__
 static void callback_for_VCONFKEY_WIFI_STATE(keynode_t *input_node, void *input_user_data)
 {
@@ -621,8 +596,6 @@ INTERNAL_FUNC int emdaemon_initialize(char *multi_user_name, int* err_code)
 	vconf_notify_key_changed(VCONF_VIP_NOTI_BADGE_TICKER, callback_for_VCONFKEY_PRIORITY_BADGE_STATUS, multi_user_name);
 	vconf_notify_key_changed(VCONFKEY_SETAPPL_STATE_TICKER_NOTI_EMAIL_BOOL, callback_for_VCONFKEY_GLOBAL_BADGE_STATUS, multi_user_name);
 	vconf_notify_key_changed(VCONF_VIP_NOTI_NOTIFICATION_TICKER, callback_for_VCONFKEY_PRIORITY_BADGE_STATUS, multi_user_name);
-	/* VCONFKEY_TELEPHONY_SVC_ROAM */
-	vconf_notify_key_changed(VCONFKEY_TELEPHONY_ZONE_TYPE, callback_for_VCONFKEY_TELEPHONY_ZONE_TYPE, NULL);
 #ifdef __FEATURE_WIFI_AUTO_DOWNLOAD__
 	vconf_notify_key_changed(VCONFKEY_WIFI_STATE, callback_for_VCONFKEY_WIFI_STATE, NULL);
 #endif

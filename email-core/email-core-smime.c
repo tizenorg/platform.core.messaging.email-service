@@ -126,7 +126,10 @@ static const EVP_CIPHER *emcore_get_cipher_algorithm(email_cipher_type cipher_ty
 	return cipher;
 }
 
-static int get_x509_stack_of_recipient_certs(char *multi_user_name, char *recipients, STACK_OF(X509) **output_recipient_certs, int *err_code)
+static int get_x509_stack_of_recipient_certs(char *multi_user_name, 
+											char *recipients, 
+											STACK_OF(X509) **output_recipient_certs, 
+											int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("recipients : [%s], STACK_OF(X509) : [%p]", recipients, output_recipient_certs);
 
@@ -156,7 +159,7 @@ static int get_x509_stack_of_recipient_certs(char *multi_user_name, char *recipi
 	/* Initialize the variable */
 	temp_recipient_certs = sk_X509_new_null();
 
-	temp_recipients = EM_SAFE_STRDUP(recipients);
+	temp_recipients = g_strdup(recipients);
 
 	for (i = 0, j = EM_SAFE_STRLEN(temp_recipients); i < j; i++)
 		if (temp_recipients[i] == ';') temp_recipients[i] = ',';
@@ -170,7 +173,8 @@ static int get_x509_stack_of_recipient_certs(char *multi_user_name, char *recipi
 			goto FINISH_OFF;			
 		}
 
-		EM_DEBUG_LOG_SEC("email_address_mailbox : [%s], email_address_host : [%s]", token_address->mailbox, token_address->host);
+		EM_DEBUG_LOG_SEC("email_address_mailbox : [%s], email_address_host : [%s]", token_address->mailbox, 
+																					token_address->host);
 
 		email_address = g_strdup_printf("<%s@%s>", token_address->mailbox, token_address->host);
 		if (!emstorage_get_certificate_by_email_address(multi_user_name, email_address, &cert, false, 0, &err)) {
@@ -253,7 +257,13 @@ FINISH_OFF:
 
 /* Opaque signed and encrypted method */
 /*
-static PKCS7 *opaque_signed_and_encrypt(STACK_OF(X509) *recipients_cert, X509 *signer, EVP_PKEY *private_key, BIO *mime_entity, const EVP_CIPHER *cipher, const EVP_MD *md, int flags)
+static PKCS7 *opaque_signed_and_encrypt(STACK_OF(X509) *recipients_cert, 
+										X509 *signer, 
+										EVP_PKEY *private_key, 
+										BIO *mime_entity, 
+										const EVP_CIPHER *cipher, 
+										const EVP_MD *md, 
+										int flags)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int i = 0;
@@ -307,7 +317,11 @@ FINISH_OFF:
 }
 */
 
-INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate, char *mime_entity, email_digest_type digest_type, char **file_path, int *err_code)
+INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate, 
+												char *mime_entity, 
+												email_digest_type digest_type, 
+												char **file_path, 
+												int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("certificate path : [%s], mime_entity : [%s]", certificate, mime_entity);
 	int err, ret = false;
@@ -376,7 +390,7 @@ INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate, char *mime_
 
 FINISH_OFF:
 	if (file_path && ret)
-		*file_path = EM_SAFE_STRDUP(temp_smime_filepath);
+		*file_path = g_strdup(temp_smime_filepath);
 
 	X509_free(cert);
 	sk_X509_pop_free(other_certs, X509_free);
@@ -395,7 +409,12 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emcore_smime_set_encrypt_message(char *multi_user_name, char *recipient_list, char *mime_entity, email_cipher_type cipher_type, char **file_path, int *err_code)
+INTERNAL_FUNC int emcore_smime_set_encrypt_message(char *multi_user_name, 
+													char *recipient_list, 
+													char *mime_entity, 
+													email_cipher_type cipher_type, 
+													char **file_path, 
+													int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("certificate path : [%p], mime_entity : [%p]", recipient_list, mime_entity);
 	char temp_smime_filepath[512];
@@ -455,7 +474,7 @@ INTERNAL_FUNC int emcore_smime_set_encrypt_message(char *multi_user_name, char *
 
 FINISH_OFF:
 	if (file_path && ret)
-		*file_path = EM_SAFE_STRDUP(temp_smime_filepath);
+		*file_path = g_strdup(temp_smime_filepath);
 
 	PKCS7_free(encrypt_message);
 
@@ -474,7 +493,14 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *multi_user_name, char *recipient_list, char *certificate, char *mime_entity, email_cipher_type cipher_type, email_digest_type digest_type, char **file_path, int *err_code)
+INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *multi_user_name, 
+															char *recipient_list, 
+															char *certificate, 
+															char *mime_entity, 
+															email_cipher_type cipher_type, 
+															email_digest_type digest_type, 
+															char **file_path, 
+															int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("certificate path : [%s], mime_entity : [%s]", recipient_list, mime_entity);
 	char temp_smime_filepath[512];
@@ -597,7 +623,7 @@ INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *multi_user_n
 
 FINISH_OFF:
 	if (file_path && ret)
-		*file_path = EM_SAFE_STRDUP(temp_smime_filepath);
+		*file_path = g_strdup(temp_smime_filepath);
 
 	emstorage_delete_file(temp_mime_entity_path, NULL);
 
@@ -621,7 +647,10 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emcore_smime_get_decrypt_message(char *encrypt_message, char *certificate, char **decrypt_message, int *err_code)
+INTERNAL_FUNC int emcore_smime_get_decrypt_message(char *encrypt_message, 
+													char *certificate, 
+													char **decrypt_message, 
+													int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("encrypt_file : [%s], certificate : [%s]", encrypt_message, certificate);
 	int ret = false;
@@ -677,7 +706,7 @@ INTERNAL_FUNC int emcore_smime_get_decrypt_message(char *encrypt_message, char *
 FINISH_OFF:
 
 	if (decrypt_message && ret)
-		*decrypt_message = EM_SAFE_STRDUP(temp_decrypt_filepath);
+		*decrypt_message = g_strdup(temp_decrypt_filepath);
 
 	X509_free(cert);
 	EVP_PKEY_free(private_key);
@@ -772,14 +801,22 @@ FINISH_OFF:
 }
 */
 
-INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(char *multi_user_name, emstorage_account_tbl_t *account_tbl_item, email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data_list, int *output_attachment_count)
+INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(char *multi_user_name, 
+														emstorage_account_tbl_t *account_tbl_item, 
+														email_mail_data_t *input_mail_data, 
+														email_attachment_data_t *input_attachment_data_list, 
+														int input_attachment_count, 
+														email_mail_data_t **output_mail_data, 
+														email_attachment_data_t **output_attachment_data_list, 
+														int *output_attachment_count)
 {
-	EM_DEBUG_FUNC_BEGIN("input_mail_data[%p], input_attachment_data_list [%p], input_attachment_count [%d], output_mail_data [%p], output_attachment_data_list [%p]", input_mail_data, input_attachment_data_list, input_attachment_count, output_mail_data, output_attachment_data_list);
+	EM_DEBUG_FUNC_BEGIN("input_mail_data[%p], input_attachment_data_list [%p], input_attachment_count [%d], output_mail_data [%p], output_attachment_data_list [%p]", 
+						input_mail_data, input_attachment_data_list, input_attachment_count, 
+						output_mail_data, output_attachment_data_list);
 
 	int i = 0;
 	int err = EMAIL_ERROR_NONE;
 	int smime_type = EMAIL_SMIME_NONE;
-	int address_length = 0;
 	int attachment_count = input_attachment_count;
 	int file_size = 0;
 	char *name = NULL;
@@ -803,7 +840,11 @@ INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(char *multi_user_name, 
 	/* Signed and Encrypt the message */
 	switch (smime_type) {
 	case EMAIL_SMIME_SIGNED:			/* Clear signed message */
-		if (!emcore_smime_set_signed_message(account_tbl_item->certificate_path, input_mail_data->file_path_mime_entity, account_tbl_item->digest_type, &smime_file_path, &err)) {
+		if (!emcore_smime_set_signed_message(account_tbl_item->certificate_path, 
+											input_mail_data->file_path_mime_entity, 
+											account_tbl_item->digest_type, 
+											&smime_file_path, 
+											&err)) {
 			EM_DEBUG_EXCEPTION("em_core_smime_set_clear_signed_message is failed : [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -811,21 +852,26 @@ INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(char *multi_user_name, 
 		EM_DEBUG_LOG_SEC("smime_file_path : %s", smime_file_path);
 		name = strrchr(smime_file_path, '/');
 
-		new_attachment_data.attachment_name = EM_SAFE_STRDUP(name + 1);
-		new_attachment_data.attachment_path = EM_SAFE_STRDUP(smime_file_path);
+		new_attachment_data.attachment_name = g_strdup(name + 1);
+		new_attachment_data.attachment_path = g_strdup(smime_file_path);
 		new_attachment_data.attachment_mime_type = strdup("pkcs7-signature");
 
 		attachment_count += 1;
 
 		break;
+
 	case EMAIL_SMIME_ENCRYPTED:			/* Encryption message */
-		address_length = EM_SAFE_STRLEN(input_mail_data->full_address_from) + EM_SAFE_STRLEN(input_mail_data->full_address_to) + EM_SAFE_STRLEN(input_mail_data->full_address_cc) + EM_SAFE_STRLEN(input_mail_data->full_address_bcc);
+		other_certificate_list = g_strconcat(input_mail_data->full_address_from, ";", 
+											 input_mail_data->full_address_to, ";",
+											 input_mail_data->full_address_cc, ";",
+											 input_mail_data->full_address_bcc, NULL);
 
-		other_certificate_list = em_malloc(address_length + 4);
-		
-		SNPRINTF(other_certificate_list, address_length + 2, "%s;%s;%s;%s", input_mail_data->full_address_from, input_mail_data->full_address_to, input_mail_data->full_address_cc, input_mail_data->full_address_bcc);
-
-		if (!emcore_smime_set_encrypt_message(multi_user_name, other_certificate_list, input_mail_data->file_path_mime_entity, account_tbl_item->cipher_type, &smime_file_path, &err)) {
+		if (!emcore_smime_set_encrypt_message(multi_user_name, 
+											other_certificate_list, 
+											input_mail_data->file_path_mime_entity, 
+											account_tbl_item->cipher_type, 
+											&smime_file_path, 
+											&err)) {
 			EM_DEBUG_EXCEPTION("emcore_smime_set_encrypt_message is failed : [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -833,21 +879,28 @@ INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(char *multi_user_name, 
 		EM_DEBUG_LOG_SEC("smime_file_path : %s", smime_file_path);
 		name = strrchr(smime_file_path, '/');
 
-		new_attachment_data.attachment_name = EM_SAFE_STRDUP(name + 1);
-		new_attachment_data.attachment_path = EM_SAFE_STRDUP(smime_file_path);
+		new_attachment_data.attachment_name = g_strdup(name + 1);
+		new_attachment_data.attachment_path = g_strdup(smime_file_path);
 		new_attachment_data.attachment_mime_type = strdup("pkcs7-mime");
 
 		attachment_count = 1;
 
 		break;
+
 	case EMAIL_SMIME_SIGNED_AND_ENCRYPTED:			/* Signed and Encryption message */
-		address_length = EM_SAFE_STRLEN(input_mail_data->full_address_from) + EM_SAFE_STRLEN(input_mail_data->full_address_to) + EM_SAFE_STRLEN(input_mail_data->full_address_cc) + EM_SAFE_STRLEN(input_mail_data->full_address_bcc);
+		other_certificate_list = g_strconcat(input_mail_data->full_address_from, ";", 
+											 input_mail_data->full_address_to, ";",
+											 input_mail_data->full_address_cc, ";",
+											 input_mail_data->full_address_bcc, NULL);
 
-		other_certificate_list = em_malloc(address_length + 4);
-		
-		SNPRINTF(other_certificate_list, address_length + 2, "%s;%s;%s;%s", input_mail_data->full_address_from, input_mail_data->full_address_to, input_mail_data->full_address_cc, input_mail_data->full_address_bcc);
-
-		if (!emcore_smime_set_signed_and_encrypt_message(multi_user_name, other_certificate_list, account_tbl_item->certificate_path, input_mail_data->file_path_mime_entity, account_tbl_item->cipher_type, account_tbl_item->digest_type, &smime_file_path, &err)) {
+		if (!emcore_smime_set_signed_and_encrypt_message(multi_user_name, 
+														other_certificate_list, 
+														account_tbl_item->certificate_path, 
+														input_mail_data->file_path_mime_entity, 
+														account_tbl_item->cipher_type, 
+														account_tbl_item->digest_type, 
+														&smime_file_path, 
+														&err)) {
 			EM_DEBUG_EXCEPTION("em_core_smime_set_signed_and_encrypt_message is failed : [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -855,79 +908,98 @@ INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(char *multi_user_name, 
 		EM_DEBUG_LOG_SEC("smime_file_path : %s", smime_file_path);
 		name = strrchr(smime_file_path, '/');
 
-		new_attachment_data.attachment_name = EM_SAFE_STRDUP(name + 1);
-		new_attachment_data.attachment_path = EM_SAFE_STRDUP(smime_file_path);
+		new_attachment_data.attachment_name = g_strdup(name + 1);
+		new_attachment_data.attachment_path = g_strdup(smime_file_path);
 		new_attachment_data.attachment_mime_type = strdup("pkcs7-mime");
 
 		attachment_count = 1;
 
 		break;
+
 	case EMAIL_PGP_SIGNED:
-		if ((err = emcore_pgp_set_signed_message(NULL, input_mail_data->pgp_password, input_mail_data->file_path_mime_entity, account_tbl_item->user_email_address, account_tbl_item->digest_type, &smime_file_path)) != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("em_core_smime_set_clear_signed_message is failed : [%d]", err);
+		if ((err = emcore_pgp_set_signed_message(NULL, 
+												input_mail_data->pgp_password, 
+												input_mail_data->file_path_mime_entity, 
+												input_mail_data->key_id,
+												account_tbl_item->digest_type, 
+												&smime_file_path)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_pgp_set_signed_message is failed : [%d]", err);
 			goto FINISH_OFF;
 		}
 	
 		EM_DEBUG_LOG_SEC("smime_file_path : %s", smime_file_path);
 		name = strrchr(smime_file_path, '/');
 
-		new_attachment_data.attachment_name = EM_SAFE_STRDUP(name + 1);
-		new_attachment_data.attachment_path = EM_SAFE_STRDUP(smime_file_path);
+		new_attachment_data.attachment_name = g_strdup(name + 1);
+		new_attachment_data.attachment_path = g_strdup(smime_file_path);
 		new_attachment_data.attachment_mime_type = strdup("pgp-signature");
 
 		attachment_count += 1;
 
 		break;
+
 	case EMAIL_PGP_ENCRYPTED:
-		address_length = EM_SAFE_STRLEN(input_mail_data->full_address_from) + EM_SAFE_STRLEN(input_mail_data->full_address_to) + EM_SAFE_STRLEN(input_mail_data->full_address_cc) + EM_SAFE_STRLEN(input_mail_data->full_address_bcc);
-
-		other_certificate_list = em_malloc(address_length + 4);
-		
-		SNPRINTF(other_certificate_list, address_length + 2, "%s;%s;%s;%s", input_mail_data->full_address_from, input_mail_data->full_address_to, input_mail_data->full_address_cc, input_mail_data->full_address_bcc);
-
-		if ((err = emcore_pgp_set_encrypted_message(other_certificate_list, NULL, input_mail_data->pgp_password, input_mail_data->file_path_mime_entity, account_tbl_item->user_email_address, input_mail_data->digest_type, &smime_file_path)) != EMAIL_ERROR_NONE) {
+/*
+		other_certificate_list = g_strconcat(input_mail_data->full_address_from, ";", 
+											 input_mail_data->full_address_to, ";",
+											 input_mail_data->full_address_cc, ";",
+											 input_mail_data->full_address_bcc, NULL);
+*/
+		other_certificate_list = g_strdup(input_mail_data->key_list);
+		if ((err = emcore_pgp_set_encrypted_message(other_certificate_list, 
+													NULL, 
+													input_mail_data->pgp_password, 
+													input_mail_data->file_path_mime_entity, 
+													account_tbl_item->user_email_address, 
+													input_mail_data->digest_type, 
+													&smime_file_path)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_pgp_set_encrypted_message failed : [%d]", err);
 			goto FINISH_OFF;
 		}
 
 		name = strrchr(smime_file_path, '/');
 
-		new_attachment_data.attachment_name = EM_SAFE_STRDUP(name + 1);
-		new_attachment_data.attachment_path = EM_SAFE_STRDUP(smime_file_path);
+		new_attachment_data.attachment_name = g_strdup(name + 1);
+		new_attachment_data.attachment_path = g_strdup(smime_file_path);
 		new_attachment_data.attachment_mime_type = strdup("octet-stream");
 
 		attachment_count = 1;
 
 		break;
+
 	case EMAIL_PGP_SIGNED_AND_ENCRYPTED:
-		address_length = EM_SAFE_STRLEN(input_mail_data->full_address_from) + EM_SAFE_STRLEN(input_mail_data->full_address_to) + EM_SAFE_STRLEN(input_mail_data->full_address_cc) + EM_SAFE_STRLEN(input_mail_data->full_address_bcc);
-
-		other_certificate_list = em_malloc(address_length + 4);
-		if (other_certificate_list == NULL) {
-			EM_DEBUG_EXCEPTION("em_malloc failed");
-			err = EMAIL_ERROR_OUT_OF_MEMORY;
-			goto FINISH_OFF;
-		}
-		
-		SNPRINTF(other_certificate_list, address_length + 2, "%s;%s;%s;%s", input_mail_data->full_address_from, input_mail_data->full_address_to, input_mail_data->full_address_cc, input_mail_data->full_address_bcc);
-
-		if ((err = emcore_pgp_set_signed_and_encrypted_message(other_certificate_list, NULL, input_mail_data->pgp_password, input_mail_data->file_path_mime_entity, account_tbl_item->user_email_address, input_mail_data->digest_type, &smime_file_path)) != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("emcore_pgp_set_encrypted_message failed : [%d]", err);
+/*
+		other_certificate_list = g_strconcat(input_mail_data->full_address_from, ";", 
+											 input_mail_data->full_address_to, ";",
+											 input_mail_data->full_address_cc, ";",
+											 input_mail_data->full_address_bcc, NULL);
+*/
+		other_certificate_list = g_strdup(input_mail_data->key_list);
+		if ((err = emcore_pgp_set_signed_and_encrypted_message(other_certificate_list, 
+															NULL, 
+															input_mail_data->pgp_password, 
+															input_mail_data->file_path_mime_entity, 
+															input_mail_data->key_id,
+															input_mail_data->digest_type, 
+															&smime_file_path)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_pgp_set_signed_and_encrypted_message failed : [%d]", err);
 			goto FINISH_OFF;
 		}
 
 		name = strrchr(smime_file_path, '/');
 
-		new_attachment_data.attachment_name = EM_SAFE_STRDUP(name + 1);
-		new_attachment_data.attachment_path = EM_SAFE_STRDUP(smime_file_path);
+		new_attachment_data.attachment_name = g_strdup(name + 1);
+		new_attachment_data.attachment_path = g_strdup(smime_file_path);
 		new_attachment_data.attachment_mime_type = strdup("octet-stream");
 
 		attachment_count = 1;
 
 		break;
+
 	default:
 		EM_DEBUG_LOG("MIME none");
 		break;
+
 	}
 
 	if (!emcore_get_file_size(smime_file_path, &file_size, NULL)) {
@@ -948,9 +1020,9 @@ INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(char *multi_user_name, 
 	if (smime_type ==  EMAIL_SMIME_SIGNED) {
 		for (i = 0; i < input_attachment_count; i++) {
 			new_attachment_list[i].attachment_id         = input_attachment_data_list[i].attachment_id;
-			new_attachment_list[i].attachment_name       = EM_SAFE_STRDUP(input_attachment_data_list[i].attachment_name);
-			new_attachment_list[i].attachment_path       = EM_SAFE_STRDUP(input_attachment_data_list[i].attachment_path);
-			new_attachment_list[i].content_id            = EM_SAFE_STRDUP(input_attachment_data_list[i].content_id);
+			new_attachment_list[i].attachment_name       = g_strdup(input_attachment_data_list[i].attachment_name);
+			new_attachment_list[i].attachment_path       = g_strdup(input_attachment_data_list[i].attachment_path);
+			new_attachment_list[i].content_id            = g_strdup(input_attachment_data_list[i].content_id);
 			new_attachment_list[i].attachment_size       = input_attachment_data_list[i].attachment_size;
 			new_attachment_list[i].mail_id               = input_attachment_data_list[i].mail_id;
 			new_attachment_list[i].account_id            = input_attachment_data_list[i].account_id;
@@ -958,14 +1030,14 @@ INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(char *multi_user_name, 
 			new_attachment_list[i].save_status           = input_attachment_data_list[i].save_status;
 			new_attachment_list[i].drm_status            = input_attachment_data_list[i].drm_status;
 			new_attachment_list[i].inline_content_status = input_attachment_data_list[i].inline_content_status;
-			new_attachment_list[i].attachment_mime_type  = EM_SAFE_STRDUP(input_attachment_data_list[i].attachment_mime_type);
+			new_attachment_list[i].attachment_mime_type  = g_strdup(input_attachment_data_list[i].attachment_mime_type);
 		}
 	}
 
 	new_attachment_list[attachment_count - 1].attachment_id         = new_attachment_data.attachment_id;
-	new_attachment_list[attachment_count - 1].attachment_name       = EM_SAFE_STRDUP(new_attachment_data.attachment_name);
-	new_attachment_list[attachment_count - 1].attachment_path       = EM_SAFE_STRDUP(new_attachment_data.attachment_path);
-	new_attachment_list[attachment_count - 1].content_id            = EM_SAFE_STRDUP(new_attachment_data.content_id);
+	new_attachment_list[attachment_count - 1].attachment_name       = g_strdup(new_attachment_data.attachment_name);
+	new_attachment_list[attachment_count - 1].attachment_path       = g_strdup(new_attachment_data.attachment_path);
+	new_attachment_list[attachment_count - 1].content_id            = g_strdup(new_attachment_data.content_id);
 	new_attachment_list[attachment_count - 1].attachment_size       = new_attachment_data.attachment_size;
 	new_attachment_list[attachment_count - 1].mail_id               = new_attachment_data.mail_id;
 	new_attachment_list[attachment_count - 1].account_id            = new_attachment_data.account_id;
@@ -973,7 +1045,7 @@ INTERNAL_FUNC int emcore_convert_mail_data_to_smime_data(char *multi_user_name, 
 	new_attachment_list[attachment_count - 1].save_status           = new_attachment_data.save_status;
 	new_attachment_list[attachment_count - 1].drm_status            = new_attachment_data.drm_status;
 	new_attachment_list[attachment_count - 1].inline_content_status = new_attachment_data.inline_content_status;
-	new_attachment_list[attachment_count - 1].attachment_mime_type  = EM_SAFE_STRDUP(new_attachment_data.attachment_mime_type);
+	new_attachment_list[attachment_count - 1].attachment_mime_type  = g_strdup(new_attachment_data.attachment_mime_type);
 
 	input_mail_data->smime_type = smime_type;
 	input_mail_data->digest_type = account_tbl_item->digest_type;

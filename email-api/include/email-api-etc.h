@@ -25,7 +25,6 @@
  */
 
 /**
- * @internal
  * @ingroup EMAIL_SERVICE_FRAMEWORK
  * @defgroup EMAIL_SERVICE_ETC_MODULE Other API
  * @brief Various API set for initializing and MIME operations and verifying email address.
@@ -38,7 +37,6 @@
  */
 
 /**
- * @internal
  * @addtogroup EMAIL_SERVICE_FRAMEWORK
  * @{
  */

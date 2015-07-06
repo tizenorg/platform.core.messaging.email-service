@@ -26,7 +26,6 @@
 #include "email-types.h"
 
 /**
- * @internal
  * @ingroup EMAIL_SERVICE_FRAMEWORK
  * @defgroup EMAIL_SERVICE_ACCOUNT_MODULE Account API
  * @brief Account API is a set of operations to manage email accounts like add, update, delete or get account related details.
@@ -145,7 +144,6 @@
  */
 
 /**
- * @internal
  * @addtogroup EMAIL_SERVICE_ACCOUNT_MODULE
  * @{
  */

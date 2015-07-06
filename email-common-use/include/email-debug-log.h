@@ -299,10 +299,9 @@ extern "C"
 #define ERRNO_BUF_SIZE		64
 
 #define EM_STRERROR(errno_buf) ({\
-					strerror_r(errno, errno_buf, sizeof(errno_buf));\
-					errno_buf;\
-				})
-
+			strerror_r(errno, errno_buf, sizeof(errno_buf));\
+			errno_buf;\
+		})
 
 #ifdef  __cplusplus
 }

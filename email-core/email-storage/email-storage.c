@@ -3591,7 +3591,7 @@ INTERNAL_FUNC int emstorage_get_maildata_by_servermailid(char *multi_user_name, 
 
 	EM_DEBUG_LOG("conditional_clause [%s]", conditional_clause);
 
-	if(!emstorage_query_mail_tbl(multi_user_name, conditional_clause, transaction, &p_data_tbl, &result_count, &error)) {
+	if (!emstorage_query_mail_tbl(multi_user_name, conditional_clause, transaction, &p_data_tbl, &result_count, &error)) {
 		EM_DEBUG_EXCEPTION("emstorage_query_mail_tbl failed [%d]", error);
 		goto FINISH_OFF;
 	}
@@ -7307,20 +7307,25 @@ FINISH_OFF:
 INTERNAL_FUNC int emstorage_get_rule_by_id(char *multi_user_name, int rule_id, emstorage_rule_tbl_t** rule, int transaction, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("rule_id[%d], rule[%p], transaction[%d], err_code[%p]", rule_id, rule, transaction, err_code);
+	int error = EMAIL_ERROR_NONE;
+	int ret = false;
+	DB_STMT hStmt = NULL;
+
+	if (rule_id <= 0) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		error = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
 
 	if (!rule) {
 		EM_DEBUG_EXCEPTION("rule_id[%d], rule[%p]", rule_id, rule);
-
-		if (err_code != NULL)
-			*err_code = EMAIL_ERROR_INVALID_PARAM;
-		return false;
+		error = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
 	}
 
 	emstorage_rule_tbl_t* p_data_tbl = NULL;
-	int rc, ret = false;
-	int error = EMAIL_ERROR_NONE;
+	int rc;
 
-	DB_STMT hStmt = NULL;
 	char sql_query_string[QUERY_SIZE] = {0, };
 	sqlite3 *local_db_handle = emstorage_get_db_connection(multi_user_name);
 	EMSTORAGE_START_READ_TRANSACTION(transaction);
@@ -7363,6 +7368,7 @@ INTERNAL_FUNC int emstorage_get_rule_by_id(char *multi_user_name, int rule_id, e
 	ret = true;
 
 FINISH_OFF:
+
 	if (ret == true)
 		*rule = p_data_tbl;
 
@@ -7852,22 +7858,46 @@ INTERNAL_FUNC int emstorage_get_mail_field_by_id(char *multi_user_name, int mail
 	switch (type)  {
 		case RETRIEVE_SUMMARY:
 			SNPRINTF(sql_query_string, sizeof(sql_query_string),
-				"SELECT account_id, mail_id, mailbox_id, server_mail_status, server_mailbox_name, server_mail_id, file_path_plain, file_path_html, flags_seen_field, save_status, lock_status, thread_id, thread_item_count FROM mail_tbl WHERE mail_id = %d", mail_id);
+				"SELECT	account_id, "
+				"mail_id, "
+				"mailbox_id, "
+				"server_mail_status, "
+				"server_mailbox_name, "
+				"server_mail_id, "
+				"file_path_plain, "
+				"file_path_html,"
+				"file_path_mime_entity, "
+				"flags_seen_field, "
+				"save_status, "
+				"lock_status, "
+				"thread_id, "
+				"thread_item_count "
+				"FROM mail_tbl WHERE mail_id = %d", mail_id);
 			break;
 
 		case RETRIEVE_FIELDS_FOR_DELETE:
 			SNPRINTF(sql_query_string, sizeof(sql_query_string),
-				"SELECT account_id, mail_id, server_mail_status, server_mailbox_name, server_mail_id FROM mail_tbl WHERE mail_id = %d", mail_id);
+				"SELECT account_id, "
+				"mail_id, "
+				"server_mail_status, "
+				"server_mailbox_name, "
+				"server_mail_id "
+				"FROM mail_tbl WHERE mail_id = %d", mail_id);
 			break;
 
 		case RETRIEVE_ACCOUNT:
 			SNPRINTF(sql_query_string, sizeof(sql_query_string),
-				"SELECT account_id FROM mail_tbl WHERE mail_id = %d", mail_id);
+				"SELECT account_id "
+				"FROM mail_tbl WHERE mail_id = %d", mail_id);
 			break;
 
 		case RETRIEVE_FLAG:
 			SNPRINTF(sql_query_string, sizeof(sql_query_string),
-				"SELECT account_id, flags_seen_field, thread_id, mailbox_id FROM mail_tbl WHERE mail_id = %d", mail_id);
+				"SELECT account_id, "
+				"flags_seen_field, "
+				"thread_id, "
+				"mailbox_id "
+				"FROM mail_tbl WHERE mail_id = %d", mail_id);
 			break;
 
 		default :
@@ -7902,6 +7932,7 @@ INTERNAL_FUNC int emstorage_get_mail_field_by_id(char *multi_user_name, int mail
 			_get_stmt_field_data_string(hStmt, &(p_data_tbl->server_mail_id), 0, col_index++);
 			_get_stmt_field_data_string(hStmt, &(p_data_tbl->file_path_plain), 0, col_index++);
 			_get_stmt_field_data_string(hStmt, &(p_data_tbl->file_path_html), 0, col_index++);
+			_get_stmt_field_data_string(hStmt, &(p_data_tbl->file_path_mime_entity), 0, col_index++);
 			_get_stmt_field_data_char(hStmt, &(p_data_tbl->flags_seen_field), col_index++);
 			_get_stmt_field_data_int(hStmt, (int*)&(p_data_tbl->save_status), col_index++);
 			_get_stmt_field_data_int(hStmt, &(p_data_tbl->lock_status), col_index++);
@@ -7998,13 +8029,33 @@ INTERNAL_FUNC int emstorage_get_mail_field_by_multiple_mail_id(char *multi_user_
 	switch (type) {
 		case RETRIEVE_SUMMARY:
 			cur_sql_query_string = SNPRINTF(sql_query_string, query_string_length,
-				"SELECT account_id, mail_id, mailbox_id, server_mail_status, server_mailbox_name, server_mail_id, file_path_plain, file_path_html, subject, flags_seen_field, save_status, lock_status, thread_id, thread_item_count FROM mail_tbl WHERE mail_id in (");
-			field_count = 14;
+				"SELECT account_id, "
+				"mail_id, "
+				"mailbox_id, "
+				"server_mail_status, "
+				"server_mailbox_name, "
+				"server_mail_id, "
+				"file_path_plain, "
+				"file_path_html, "
+				"file_path_mime_entity, "
+				"subject, "
+				"flags_seen_field, "
+				"save_status, "
+				"lock_status, "
+				"thread_id, "
+				"thread_item_count "
+				"FROM mail_tbl WHERE mail_id in (");
+			field_count = 15;
 			break;
 
 		case RETRIEVE_FIELDS_FOR_DELETE:
 			cur_sql_query_string = SNPRINTF(sql_query_string, query_string_length,
-				"SELECT account_id, mail_id, server_mail_status, server_mailbox_name, server_mail_id FROM mail_tbl WHERE mail_id in (");
+				"SELECT account_id, "
+				"mail_id, "
+				"server_mail_status, "
+				"server_mailbox_name, "
+				"server_mail_id "
+				"FROM mail_tbl WHERE mail_id in (");
 			field_count = 5;
 			break;
 
@@ -8016,7 +8067,12 @@ INTERNAL_FUNC int emstorage_get_mail_field_by_multiple_mail_id(char *multi_user_
 
 		case RETRIEVE_FLAG:
 			cur_sql_query_string = SNPRINTF(sql_query_string, query_string_length,
-				"SELECT account_id, mail_id, mailbox_id, flags_seen_field, thread_id FROM mail_tbl WHERE mail_id in (");
+				"SELECT account_id, "
+				"mail_id, "
+				"mailbox_id, "
+				"flags_seen_field, "
+				"thread_id "
+				"FROM mail_tbl WHERE mail_id in (");
 			field_count = 5;
 			break;
 
@@ -8066,6 +8122,7 @@ INTERNAL_FUNC int emstorage_get_mail_field_by_multiple_mail_id(char *multi_user_
 				_get_table_field_data_string(result, &(p_data_tbl[i].server_mail_id), 0, col_index++);
 				_get_table_field_data_string(result, &(p_data_tbl[i].file_path_plain), 0, col_index++);
 				_get_table_field_data_string(result, &(p_data_tbl[i].file_path_html), 0, col_index++);
+				_get_table_field_data_string(result, &(p_data_tbl[i].file_path_mime_entity), 0, col_index++);
 				_get_table_field_data_string(result, &(p_data_tbl[i].subject), 0, col_index++);
 				_get_table_field_data_char(result, &(p_data_tbl[i].flags_seen_field), col_index++);
 				_get_table_field_data_int(result, (int*)&(p_data_tbl[i].save_status), col_index++);
@@ -8531,6 +8588,7 @@ INTERNAL_FUNC int emstorage_change_mail(char *multi_user_name, int mail_id, emst
 		", body_download_status = ?"
 		", file_path_plain = ?"
 		", file_path_html = ?"
+		", file_path_mime_entity = ?"
 		", date_time = ?"
 		", flags_seen_field      = ?"
 		", flags_deleted_field   = ?"
@@ -8581,6 +8639,7 @@ INTERNAL_FUNC int emstorage_change_mail(char *multi_user_name, int mail_id, emst
 	_bind_stmt_field_data_int   (hStmt, i++, mail->body_download_status);
 	_bind_stmt_field_data_string(hStmt, i++, (char *)mail->file_path_plain, 0, TEXT_1_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, i++, (char *)mail->file_path_html, 0, TEXT_2_LEN_IN_MAIL_TBL);
+	_bind_stmt_field_data_string(hStmt, i++, (char *)mail->file_path_mime_entity, 0, MIME_ENTITY_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_int   (hStmt, i++, mail->date_time);
 	_bind_stmt_field_data_char  (hStmt, i++, mail->flags_seen_field);
 	_bind_stmt_field_data_char  (hStmt, i++, mail->flags_deleted_field);
@@ -8899,6 +8958,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(char *multi_user_name, int mail_id
 				"  body_download_status = ?"
 				", file_path_plain = ?"
 				", file_path_html = ?"
+				", file_path_mime_entity = ?"
 				", flags_seen_field      = ?"
 				", flags_deleted_field   = ?"
 				", flags_flagged_field   = ?"
@@ -8925,6 +8985,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(char *multi_user_name, int mail_id
 			_bind_stmt_field_data_int(hStmt, i++, mail->body_download_status);
 			_bind_stmt_field_data_string(hStmt, i++, (char *)mail->file_path_plain, 0, TEXT_1_LEN_IN_MAIL_TBL);
 			_bind_stmt_field_data_string(hStmt, i++, (char *)mail->file_path_html, 0, TEXT_2_LEN_IN_MAIL_TBL);
+			_bind_stmt_field_data_string(hStmt, i++, (char *)mail->file_path_mime_entity, 0, MIME_ENTITY_LEN_IN_MAIL_TBL);
 			_bind_stmt_field_data_int(hStmt, i++, mail->flags_seen_field);
 			_bind_stmt_field_data_int(hStmt, i++, mail->flags_deleted_field);
 			_bind_stmt_field_data_int(hStmt, i++, mail->flags_flagged_field);
@@ -9211,6 +9272,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(char *multi_user_name, int mail_id
 			"  body_download_status = ?"
 			", file_path_plain = ?"
 			", file_path_html = ?"
+			", file_path_mime_entity = ?"
 			", attachment_count = ?"
 			", inline_content_count = ?"
 			", preview_text = ?"
@@ -9228,6 +9290,7 @@ INTERNAL_FUNC int emstorage_change_mail_field(char *multi_user_name, int mail_id
 			_bind_stmt_field_data_int(hStmt, i++, mail->body_download_status);
 			_bind_stmt_field_data_string(hStmt, i++, (char *)mail->file_path_plain, 0, TEXT_1_LEN_IN_MAIL_TBL);
 			_bind_stmt_field_data_string(hStmt, i++, (char *)mail->file_path_html,  0, TEXT_2_LEN_IN_MAIL_TBL);
+			_bind_stmt_field_data_string(hStmt, i++, (char *)mail->file_path_mime_entity, 0, MIME_ENTITY_LEN_IN_MAIL_TBL);
 			_bind_stmt_field_data_int(hStmt, i++, mail->attachment_count);
 			_bind_stmt_field_data_int(hStmt, i++, mail->inline_content_count);
 			_bind_stmt_field_data_nstring(hStmt, i++, (char *)mail->preview_text,    0, PREVIEWBODY_LEN_IN_MAIL_TBL);
@@ -9830,7 +9893,7 @@ INTERNAL_FUNC int emstorage_delete_multiple_mails(char *multi_user_name, int mai
 
 	/* prevent 34414 */
 	char *last_comma = rindex(sql_query_string, ',');
-	*last_comma = ')'; /* replace , with ) */
+	if (last_comma != NULL) *last_comma = ')'; /* replace , with ) */
 
 	EM_DEBUG_LOG_SEC("Query [%s]", sql_query_string);
 	error = emstorage_exec_query_by_prepare_v2(local_db_handle, sql_query_string);
@@ -11333,7 +11396,8 @@ INTERNAL_FUNC char *emstorage_make_directory_path_from_file_path(char *file_name
 	return result;
 }
 
-INTERNAL_FUNC int emstorage_get_save_name(char *multi_user_name, int account_id, int mail_id, int atch_id, char *fname, char *move_buf, char *path_buf, int maxlen, int *err_code)
+INTERNAL_FUNC int emstorage_get_save_name(char *multi_user_name, int account_id, int mail_id, int atch_id, 
+											char *fname, char *move_buf, char *path_buf, int maxlen, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("account_id[%d], mail_id[%d], atch_id[%d], fname[%s], move_buf[%p], path_buf[%p], err_code[%p]", account_id, mail_id, atch_id, fname, move_buf, path_buf, err_code);
 	EM_PROFILE_BEGIN(profile_emstorage_get_save_name);
@@ -11528,13 +11592,21 @@ INTERNAL_FUNC int emstorage_create_dir(char *multi_user_name, int account_id, in
 	}
 
 	if (mail_id > 0)  {
+		int space_left_in_buffer = sizeof(buf) - EM_SAFE_STRLEN(buf);
+
 		if (account_id < FIRST_ACCOUNT_ID)  {
 			EM_DEBUG_EXCEPTION("account_id[%d], mail_id[%d], atch_id[%d]", account_id, mail_id, atch_id);
 			error = EMAIL_ERROR_INVALID_PARAM;
 			goto FINISH_OFF;
 		}
 
-		SNPRINTF(buf+EM_SAFE_STRLEN(buf), sizeof(buf), "%s%d", DIR_SEPERATOR, mail_id);
+		if (space_left_in_buffer + 10 > sizeof(buf)) {
+			EM_DEBUG_EXCEPTION("Buffer overflowed");
+			error = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
+		SNPRINTF(buf+EM_SAFE_STRLEN(buf), space_left_in_buffer, "%s%d", DIR_SEPERATOR, mail_id);
 
 		if (stat(buf, &sbuf) == 0) {
 			if ((sbuf.st_mode & S_IFMT) != S_IFDIR)  {
@@ -14503,8 +14575,8 @@ FINISH_OFF:
 
 	EMSTORAGE_FINISH_READ_TRANSACTION(transaction);
 
-	sqlite3_db_release_memory(local_db_handle);
-
+	if (local_db_handle)
+		sqlite3_db_release_memory(local_db_handle);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;

@@ -72,6 +72,10 @@ INTERNAL_FUNC int emcore_gmime_check_filename_duplication(char *source_filename,
 INTERNAL_FUNC char *emcore_gmime_get_modified_filename_in_duplication(char *source_filename);
 INTERNAL_FUNC char *emcore_gmime_get_encoding_to_utf8(const char *text);
 INTERNAL_FUNC char *emcore_gmime_get_decoding_text(const char *text);
+INTERNAL_FUNC void emcore_gmime_get_mime_entity_cb(GMimeObject *parent, GMimeObject *part, gpointer user_data);
+INTERNAL_FUNC char *emcore_gmime_get_mime_entity_signed_message(GMimeObject *multipart);
+INTERNAL_FUNC char *emcore_gmime_get_mime_entity(int fd);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

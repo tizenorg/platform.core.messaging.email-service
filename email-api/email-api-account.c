@@ -64,26 +64,36 @@ EXPORT_API int email_add_account(email_account_t* account)
 
 	if (!emstorage_check_duplicated_account(multi_user_name, account, true, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_check_duplicated_account failed (%d) ", err);
-		return err;
+		goto FINISH_OFF;
 	}
 
 	/* composing account information to be added */
 	hAPI = emipc_create_email_api(_EMAIL_API_ADD_ACCOUNT);
-	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
+	if (hAPI == NULL) {
+		EM_DEBUG_EXCEPTION("emipc_create_email_api failed");
+		err = EMAIL_ERROR_NULL_VALUE;
+		goto FINISH_OFF;
+	}
 
 	local_account_stream = em_convert_account_to_byte_stream(account, &size);
-	EM_PROXY_IF_NULL_RETURN_VALUE(local_account_stream, hAPI, EMAIL_ERROR_NULL_VALUE);
+	if (local_account_stream == NULL) {
+		EM_DEBUG_EXCEPTION("em_convert_account_to_byte_stream failed");
+		err = EMAIL_ERROR_NULL_VALUE;
+		goto FINISH_OFF;
+	}
 
 	if (!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, local_account_stream, size)) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
+		err = EMAIL_ERROR_NULL_VALUE;
+		goto FINISH_OFF;
 	}
 	EM_DEBUG_LOG("APPID[%d], APIID [%d]", emipc_get_app_id(hAPI), emipc_get_api_id(hAPI));
 
 	/* passing account information to service */
 	if (emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
+		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
+		goto FINISH_OFF;
 	}
 
 	/* get result from service */
@@ -505,6 +515,7 @@ EXPORT_API int email_add_account_with_validation(email_account_t* account, int *
 	int size = 0;
 	int err = EMAIL_ERROR_NONE;
     char *multi_user_name = NULL;
+	HIPC_API hAPI = NULL;
 
 	if (account == NULL || account->user_email_address == NULL || account->incoming_server_user_name == NULL || account->incoming_server_address == NULL||
 		account->outgoing_server_user_name == NULL || account->outgoing_server_address == NULL)  {
@@ -519,23 +530,34 @@ EXPORT_API int email_add_account_with_validation(email_account_t* account, int *
 
 	if(emstorage_check_duplicated_account(multi_user_name, account, true, &err) == false) {
 		EM_DEBUG_EXCEPTION("emstorage_check_duplicated_account failed (%d) ", err);
-		return err;
+		goto FINISH_OFF;
 	}
 
 	/* create account information */
-	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION);
-	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
+	hAPI = emipc_create_email_api(_EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION);
+	if (hAPI == NULL) {
+		EM_DEBUG_EXCEPTION("emipc_create_email_api failed");
+		err = EMAIL_ERROR_NULL_VALUE;
+		goto FINISH_OFF;
+	}
 
 	local_account_stream = em_convert_account_to_byte_stream(account, &size);
-	EM_PROXY_IF_NULL_RETURN_VALUE(local_account_stream, hAPI, EMAIL_ERROR_NULL_VALUE);
+	if (local_account_stream == NULL) {
+		EM_DEBUG_EXCEPTION("em_convert_account_to_byte_stream failed");
+		err = EMAIL_ERROR_NULL_VALUE;
+		goto FINISH_OFF;
+	}
+
 	if(!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, local_account_stream, size)) {
 		EM_DEBUG_EXCEPTION(" emipc_add_parameter  failed ");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
+		err = EMAIL_ERROR_NULL_VALUE;
+		goto FINISH_OFF;
 	}
 
 	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION(" emipc_execute_proxy_api failed ");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
+		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
+		goto FINISH_OFF;
 	}
 
 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &ret);
@@ -547,8 +569,14 @@ EXPORT_API int email_add_account_with_validation(email_account_t* account, int *
 		emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), &err);
 	}
 
-	emipc_destroy_email_api(hAPI);
-	hAPI = NULL;
+FINISH_OFF:
+	
+	if (hAPI) {
+		emipc_destroy_email_api(hAPI);
+		hAPI = NULL;
+	}
+
+	EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
@@ -569,29 +597,46 @@ EXPORT_API int email_backup_accounts_into_secure_storage(const char *file_name)
 	}
 
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_BACKUP_ACCOUNTS);
-
 	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 
-	/* file_name */
-	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)file_name, EM_SAFE_STRLEN(file_name)+1)) {
-		EM_DEBUG_EXCEPTION(" emipc_add_parameter account_id  failed ");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
+	/* Checked the existed account */
+	int account_count = 0;
+
+	if (!emstorage_get_account_count(NULL, &account_count, false, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_get_account_count failed - %d", err);
+		goto FINISH_OFF;
 	}
 
-	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+	if (account_count == 0) {
+		EM_DEBUG_LOG("Account is empty");
+		err = EMAIL_ERROR_ACCOUNT_NOT_FOUND;
+		goto FINISH_OFF;
+	}
+
+	/* file_name */
+	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)file_name, EM_SAFE_STRLEN(file_name)+1)) {
+		EM_DEBUG_EXCEPTION(" emipc_add_parameter account_id  failed ");
+		err = EMAIL_ERROR_NULL_VALUE;
+		goto FINISH_OFF;
+	}
+
+	if (emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION(" emipc_execute_proxy_api failed ");
-		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
+		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
+		goto FINISH_OFF;
 	}
 
 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &ret);
 
-	if(0 == ret) {	/*  get error code */
+	if (ret == false) {	/*  get error code */
 		emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), &err);
 	}
 
-	emipc_destroy_email_api(hAPI);
+FINISH_OFF:
 
+	emipc_destroy_email_api(hAPI);
 	hAPI = NULL;
+
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
@@ -801,16 +846,24 @@ EXPORT_API int email_save_default_account_id(int input_account_id)
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 	
-	char *multi_user_name = NULL;
+	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_SAVE_DEFAULT_ACCOUNT_ID);
+	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 
-	if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        return err;
-    }
+	/* Input account ID */
+	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, (char *)&input_account_id, sizeof(int))) {
+		EM_DEBUG_EXCEPTION("emipc_add_parameter input_account_id failed");
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
+	}
 
-	err = emcore_save_default_account_id(multi_user_name, input_account_id);
+	if (emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
+	}
 
-	EM_SAFE_FREE(multi_user_name);
+	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+	emipc_destroy_email_api(hAPI);
+
+	hAPI = NULL;
 	EM_DEBUG_API_END ("ret[%d]", err);
 	return err;
 }
@@ -818,17 +871,30 @@ EXPORT_API int email_save_default_account_id(int input_account_id)
 EXPORT_API int email_load_default_account_id(int *output_account_id)
 {
 	EM_DEBUG_FUNC_BEGIN ("output_account_id[%p]", output_account_id);
+
 	int err = EMAIL_ERROR_NONE;
-    char *multi_user_name = NULL;
+	int account_id = 0;
 
-    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
-        return err;
-    }
+	EM_IF_NULL_RETURN_VALUE(output_account_id, EMAIL_ERROR_INVALID_PARAM);
 
-	err = emcore_load_default_account_id(multi_user_name, output_account_id);
+	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_LOAD_DEFAULT_ACCOUNT_ID);
+	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 
-    EM_SAFE_FREE(multi_user_name);
+	if (emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
+		EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
+	}
+
+	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+	
+	if (err == EMAIL_ERROR_NONE) {
+		emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), &account_id);
+	}
+	
+	emipc_destroy_email_api(hAPI);
+	hAPI = NULL;
+
+	*output_account_id = account_id;
 
 	EM_DEBUG_FUNC_END ("ret[%d]", err);
 	return err;

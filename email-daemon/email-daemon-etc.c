@@ -174,6 +174,64 @@ FINISH_OFF:
 	return ret;
 }	
 
+INTERNAL_FUNC int emdaemon_search_mail_on_server(char *multi_user_name, 
+												int input_account_id, 
+												int input_mailbox_id, 
+												email_search_filter_t *input_search_filter, 
+												int input_search_filter_count, 
+												unsigned int *output_handle, 
+												int *err_code)
+{
+	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], mailbox_id [%d], input_search_filter [%p], " 
+						"input_search_filter_count [%d], output_handle [%p]", 
+						input_account_id, input_mailbox_id, input_search_filter, 
+						input_search_filter_count, output_handle);
+	int error = EMAIL_ERROR_NONE;
+	int ret = false;
+	email_event_t *event_data = NULL;
+	
+	if (input_mailbox_id == 0 || input_account_id < 0) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		error = EMAIL_ERROR_INVALID_PARAM;
+		return false;
+	}
+
+	event_data = em_malloc(sizeof(email_event_t));
+	if (event_data == NULL) {
+		EM_DEBUG_EXCEPTION("Out of memory");
+		error = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	event_data->type = EMAIL_EVENT_SEARCH_ON_SERVER;
+	event_data->account_id = input_account_id;
+	event_data->event_param_data_1 = (void *)input_search_filter;
+	event_data->event_param_data_5 = input_search_filter_count;
+	event_data->event_param_data_4 = input_mailbox_id;
+	event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
+
+	if (!emcore_insert_event(event_data, (int *)output_handle, &error)) {
+		EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", error);
+		error = EMAIL_ERROR_NONE;
+		goto FINISH_OFF;
+	}
+
+	ret = true;
+
+FINISH_OFF:
+
+	if (ret == false && event_data) {
+		emcore_free_event(event_data);
+		free(event_data);
+	}
+
+	if (err_code != NULL)
+		*err_code = error;
+
+	EM_DEBUG_FUNC_END("error [%d]", error);
+	return ret;
+}
+
 #if 0
 INTERNAL_FUNC int emdaemon_reschedule_sending_mail()
 {
@@ -405,7 +463,8 @@ INTERNAL_FUNC int emdaemon_finalize_sync(char *multi_user_name, int account_id, 
 			EM_DEBUG_LOG("The email app is topmost");
 		} else {
 
-			emcore_set_flash_noti();
+			/* LED feature */
+//			emcore_set_flash_noti();
 
 			if ((err = emcore_add_notification(multi_user_name, account_id, 0, unread_mail_count, vip_unread_mail_count, 1, EMAIL_ERROR_NONE, NOTIFICATION_DISPLAY_APP_ALL)) != EMAIL_ERROR_NONE)
 				EM_DEBUG_EXCEPTION("emcore_add_notification failed : [%d]", err);

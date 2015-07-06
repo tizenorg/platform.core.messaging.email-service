@@ -33,7 +33,6 @@ extern "C" {
  */
 
 /**
- * @internal
  * @ingroup EMAIL_SERVICE_FRAMEWORK
  * @defgroup EMAIL_SERVICE_SMIME_MODULE SMIME API
  * @brief SMIME API is a set of operations to handle SMIME data for secured email.
@@ -46,7 +45,6 @@ extern "C" {
  */
 
 /**
- * @internal
  * @addtogroup EMAIL_SERVICE_SMIME_MODULE
  * @{
  */
@@ -103,11 +101,15 @@ EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **
  * @param[out] output_mail_data         The mail data
  * @param[out] output_attachment_data   The mail attachment data
  * @param[out] output_attachment_count  The count of attachment
+ * @param[out] verify  The verification state \n
+ *                     [false : failed verification, true : verification successful]
  *
  * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  */
-EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count);
+EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output_mail_data, 
+										email_attachment_data_t **output_attachment_data, 
+										int *output_attachment_count, int *verify);
 
 /**
  * @brief Gets a decrypted message.
@@ -120,10 +122,18 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
  * @param[out] output_mail_data		Specifies the mail_data
  * @param[out] output_attachment_data	Specifies the mail_attachment_data
  * @param[out] output_attachment_count	Specifies the count of attachment
+ * @param[out] verify  The verification state \n
+ *                     [false : failed verification, true : verification successful]
+
  * @return EMAIL_ERROR_NONE on success or an error code (refer to EMAIL_ERROR_XXX) on failure
  */
-EXPORT_API int email_get_decrypt_message_ex(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data, int input_attachment_count,
-                                            email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count);
+EXPORT_API int email_get_decrypt_message_ex(email_mail_data_t *input_mail_data, 
+											email_attachment_data_t *input_attachment_data, 
+											int input_attachment_count,
+                                            email_mail_data_t **output_mail_data, 
+											email_attachment_data_t **output_attachment_data, 
+											int *output_attachment_count,
+											int *verify);
 /**
  * @brief Verifies a signed mail.
  *

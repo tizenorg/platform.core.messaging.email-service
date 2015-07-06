@@ -215,7 +215,9 @@ INTERNAL_FUNC int emcore_search_string_from_file(char *file_path, char *search_s
 
 INTERNAL_FUNC int emcore_load_query_from_file(char *file_path, char ***query_array, int *array_len);
 
+#ifdef __FEATURE_DRIVING_MODE__
 INTERNAL_FUNC int emcore_start_driving_mode(char *multi_user_name, int mail_id);
+#endif /* __FEATURE_DRIVING_MODE__ */
 
 #ifdef __FEATURE_BLOCKING_MODE__
 INTERNAL_FUNC bool emcore_init_blocking_mode_status();

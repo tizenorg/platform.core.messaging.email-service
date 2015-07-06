@@ -29,7 +29,6 @@
  */
 
 /**
- * @internal
  * @addtogroup EMAIL_SERVICE_FRAMEWORK
  * @{
  */

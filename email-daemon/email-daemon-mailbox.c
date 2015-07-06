@@ -109,8 +109,7 @@ INTERNAL_FUNC int emdaemon_get_mailbox_list(char *multi_user_name, int account_i
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, account_id);
-
+	ref_account = emcore_get_account_reference(multi_user_name, account_id, false);
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -153,7 +152,7 @@ INTERNAL_FUNC int emdaemon_get_mail_count_of_mailbox(char *multi_user_name, emai
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, mailbox->account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, mailbox->account_id, false);
 	if (ref_account == NULL)  {
 		EM_DEBUG_EXCEPTION(" emcore_get_account_reference failed [%d]", mailbox->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -198,8 +197,7 @@ INTERNAL_FUNC int emdaemon_add_mailbox(char *multi_user_name, email_mailbox_t* n
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, new_mailbox->account_id);
-
+	ref_account = emcore_get_account_reference(multi_user_name, new_mailbox->account_id, false);
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", new_mailbox->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -366,8 +364,7 @@ INTERNAL_FUNC int emdaemon_delete_mailbox(char *multi_user_name, int input_mailb
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, mailbox_tbl->account_id);
-
+	ref_account = emcore_get_account_reference(multi_user_name, mailbox_tbl->account_id, false);
 	if (!ref_account) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", mailbox_tbl->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -446,8 +443,7 @@ INTERNAL_FUNC int emdaemon_delete_mailbox_all(char *multi_user_name, email_mailb
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, mailbox->account_id);
-
+	ref_account = emcore_get_account_reference(multi_user_name, mailbox->account_id, false);
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", mailbox->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;

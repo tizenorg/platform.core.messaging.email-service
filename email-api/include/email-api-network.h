@@ -26,7 +26,6 @@
 #include "email-types.h"
 
 /**
- * @internal
  * @file email-api-network.h
  * @brief This file contains the data structures and interfaces of Network related Functionality provided by
  *        email-service.
@@ -141,7 +140,6 @@
  */
 
 /**
- * @internal
  * @ingroup EMAIL_SERVICE_FRAMEWORK
  * @defgroup EMAIL_SERVICE_NETWORK_MODULE Network API
  * @brief Network API is a set of operations to manage email send, receive and cancel related details.
@@ -154,7 +152,6 @@
  */
 
 /**
- * @internal
 * @addtogroup EMAIL_SERVICE_NETWORK_MODULE
 * @{
 */
@@ -365,6 +362,48 @@ EXPORT_API int email_send_saved(int account_id, int *handle);
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  */
 EXPORT_API int email_sync_imap_mailbox_list(int account_id, int *handle);
+
+/**
+ * @brief Searches the mails on the server.
+ *
+ * @since_tizen 2.4
+ * @privlevel public
+ * @privilege %http://tizen.org/privilege/email
+ *
+ * @param[in] account_id				The Account ID
+ * @param[in] mailbox_id				The Mailbox ID
+ * @param[in] input_search_filter_list	The searching type \n
+ *                          #EMAIL_SEARCH_FILTER_SUBJECT, #EMAIL_SEARCH_FILTER_SENDER, \n
+ *							#EMAIL_SEARCH_FILTER_RECIPIENT, #EMAIL_SEARCH_FILTER_ALL, etc \n
+ *							and The value to use for searching \n
+ *                          Example: Subject, email address, display name
+ * @param[in] input_search_filter_count	Count of input_search_filter_list
+ * @param[out] output_handle			The handle for search on server
+ *
+ * @return  #EMAIL_ERROR_NONE on success,
+ *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
+ *
+ * @see #email_search_filter_t
+ */
+EXPORT_API int email_search_mail_on_server(int input_account_id, int input_mailbox_id, 
+										email_search_filter_t *input_search_filter_list, 
+										int input_search_filter_count, int *output_handle);
+
+/**
+ * @brief Deletes temporarily downloaded mails from the local storage.
+ *
+ * @since_tizen 2.4
+ * @privlevel public
+ * @privilege %http://tizen.org/privilege/email
+ *
+ * @param[in] input_account_id  The Account ID
+ *
+ * @return  #EMAIL_ERROR_NONE on success,
+ *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
+ *
+ * @see #email_search_filter_t
+ */
+EXPORT_API int email_clear_result_of_search_mail_on_server(int input_account_id);
 
 /**
  * @brief Queries the maximum mail size limit from the SMTP server.

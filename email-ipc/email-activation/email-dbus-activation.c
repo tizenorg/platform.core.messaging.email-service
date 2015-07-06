@@ -129,7 +129,7 @@ EXPORT_API int emipc_launch_email_service()
 		goto FINISH_OFF;
 	}
 
-	g_variant_get (result, "(&d)", &ret);
+	g_variant_get (result, "(i)", &ret);
 
 FINISH_OFF:
 	EM_DEBUG_LOG ("ret [%d]\n", ret);

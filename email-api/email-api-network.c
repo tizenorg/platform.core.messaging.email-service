@@ -961,7 +961,7 @@ EXPORT_API int email_get_task_information(email_task_information_t **output_task
 		goto FINISH_OFF;
 	}
 
-	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+	if (emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
 		err = EMAIL_ERROR_IPC_CRASH;
 		goto FINISH_OFF;
@@ -1034,6 +1034,198 @@ EXPORT_API int email_sync_imap_mailbox_list(int account_id, int *handle)
 	hAPI = NULL;
 
 	EM_DEBUG_API_END ("err[%d]", err);  
+	return err;
+}
+
+EXPORT_API int email_search_mail_on_server(int input_account_id, int input_mailbox_id, email_search_filter_t *input_search_filter_list, int input_search_filter_count, int *output_handle)
+{
+	EM_DEBUG_API_BEGIN ("input_account_id[%d] input_mailbox_id[%d] input_search_filter_list[%p] input_search_filter_count[%d] output_handle[%p]", input_account_id, input_mailbox_id, input_search_filter_list, input_search_filter_count, output_handle);
+
+	int       err = EMAIL_ERROR_NONE;
+	int       return_value = 0;
+	int       stream_size_for_search_filter_list = 0;
+	char     *stream_for_search_filter_list = NULL;
+    char     *multi_user_name = NULL;
+	HIPC_API  hAPI = NULL;
+	email_account_server_t account_server_type = EMAIL_SERVER_TYPE_NONE;
+	ASNotiData as_noti_data;
+
+	EM_IF_NULL_RETURN_VALUE(input_account_id,         EMAIL_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(input_mailbox_id,         EMAIL_ERROR_INVALID_PARAM);
+	EM_IF_NULL_RETURN_VALUE(input_search_filter_list, EMAIL_ERROR_INVALID_PARAM);
+
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
+	memset(&as_noti_data, 0, sizeof(ASNotiData)); /* initialization of union members */
+
+	if ( em_get_account_server_type_by_account_id(multi_user_name, input_account_id, &account_server_type, true, &err) == false ) {
+		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
+		goto FINISH_OFF;
+	}
+
+	if ( account_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC ) {
+		int as_handle = 0;
+
+		if ( em_get_handle_for_activesync(&as_handle, &err) == false ) {
+			EM_DEBUG_EXCEPTION("em_get_handle_for_activesync failed[%d].", err);
+			goto FINISH_OFF;
+		}
+
+		/*  noti to active sync */
+		as_noti_data.search_mail_on_server.handle              = as_handle;
+		as_noti_data.search_mail_on_server.account_id          = input_account_id;
+		as_noti_data.search_mail_on_server.mailbox_id          = input_mailbox_id;
+		as_noti_data.search_mail_on_server.search_filter_list  = input_search_filter_list;
+		as_noti_data.search_mail_on_server.search_filter_count = input_search_filter_count;
+		as_noti_data.search_mail_on_server.multi_user_name     = multi_user_name;
+
+		return_value = em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_SEARCH_ON_SERVER, &as_noti_data);
+
+		if ( return_value == false ) {
+			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
+			err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		if(output_handle)
+			*output_handle = as_handle;
+	}
+	else
+	{
+		hAPI = emipc_create_email_api(_EMAIL_API_SEARCH_MAIL_ON_SERVER);
+
+		EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
+
+		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (void*)&input_account_id, sizeof(int))) {
+			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
+			err = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (void*)&input_mailbox_id, sizeof(int))){
+			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
+			err = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		stream_for_search_filter_list = em_convert_search_filter_to_byte_stream(input_search_filter_list, input_search_filter_count, &stream_size_for_search_filter_list);
+
+		EM_PROXY_IF_NULL_RETURN_VALUE(stream_for_search_filter_list, hAPI, EMAIL_ERROR_NULL_VALUE);
+
+		if(!emipc_add_dynamic_parameter(hAPI, ePARAMETER_IN, stream_for_search_filter_list, stream_size_for_search_filter_list)) { /*prevent 18950*/
+			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
+			err = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
+			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
+		}
+
+		emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("_EMAIL_API_SEARCH_MAIL_ON_SERVER failed [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		if(output_handle)
+			emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), output_handle);
+	}
+
+FINISH_OFF:
+	if(hAPI) {
+		emipc_destroy_email_api(hAPI);
+		hAPI = NULL;
+	}
+
+    EM_SAFE_FREE(multi_user_name);
+	EM_DEBUG_API_END ("err[%d]", err);
+	return err;
+}
+
+EXPORT_API int email_clear_result_of_search_mail_on_server(int input_account_id)
+{
+	EM_DEBUG_API_BEGIN ("input_account_id[%d]", input_account_id);
+
+	int       err = EMAIL_ERROR_NONE;
+	int       return_value = 0;
+	HIPC_API  hAPI = NULL;
+    char     *multi_user_name = NULL;
+	email_account_server_t account_server_type = EMAIL_SERVER_TYPE_NONE;
+	ASNotiData as_noti_data;
+
+	EM_IF_NULL_RETURN_VALUE(input_account_id, EMAIL_ERROR_INVALID_PARAM);
+
+    if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
+        EM_DEBUG_EXCEPTION("emipc_get_user_name failed : [%d]", err);
+        goto FINISH_OFF;
+    }
+
+	memset(&as_noti_data, 0, sizeof(ASNotiData)); /* initialization of union members */
+
+	if ( em_get_account_server_type_by_account_id(multi_user_name, input_account_id, &account_server_type, true, &err) == false ) {
+		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
+		goto FINISH_OFF;
+	}
+
+	if ( account_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC ) {
+		int as_handle = 0;
+
+		if ( em_get_handle_for_activesync(&as_handle, &err) == false ) {
+			EM_DEBUG_EXCEPTION("em_get_handle_for_activesync failed[%d].", err);
+			goto FINISH_OFF;
+		}
+
+		/*  noti to active sync */
+		as_noti_data.clear_result_of_search_mail_on_server.handle              = as_handle;
+		as_noti_data.clear_result_of_search_mail_on_server.account_id          = input_account_id;
+		as_noti_data.clear_result_of_search_mail_on_server.multi_user_name     = multi_user_name;
+
+		return_value = em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_CLEAR_RESULT_OF_SEARCH_ON_SERVER, &as_noti_data);
+
+		if ( return_value == false ) {
+			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
+			err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
+			goto FINISH_OFF;
+		}
+	}
+	else {
+		hAPI = emipc_create_email_api(_EMAIL_API_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER);
+
+		EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
+
+		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (void*)&input_account_id, sizeof(int))) {
+			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
+			err = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
+			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
+		}
+
+		emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("_EMAIL_API_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER failed [%d]", err);
+			goto FINISH_OFF;
+		}
+	}
+
+FINISH_OFF:
+	if(hAPI) {
+		emipc_destroy_email_api(hAPI);
+		hAPI = NULL;
+	}
+
+    EM_SAFE_FREE(multi_user_name);
+	EM_DEBUG_API_END ("err[%d]", err);
 	return err;
 }
 

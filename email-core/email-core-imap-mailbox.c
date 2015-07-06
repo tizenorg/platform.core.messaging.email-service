@@ -65,7 +65,7 @@ INTERNAL_FUNC int emcore_get_default_mail_slot_count(char *multi_user_name, int 
 		goto FINISH_OFF;
 	}
 
-	account_ref = emcore_get_account_reference(multi_user_name, input_account_id);
+	account_ref = emcore_get_account_reference(multi_user_name, input_account_id, false);
 	if (account_ref)
 		default_mail_slot_count = account_ref->default_mail_slot_size;
 
@@ -100,7 +100,7 @@ INTERNAL_FUNC int emcore_remove_overflowed_mails(char *multi_user_name, emstorag
 		goto FINISH_OFF;
 	}
 
-	account_ref = emcore_get_account_reference(multi_user_name, intput_mailbox_tbl->account_id);
+	account_ref = emcore_get_account_reference(multi_user_name, intput_mailbox_tbl->account_id, false);
 	if (account_ref) {
 		if (account_ref->incoming_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
 			EM_DEBUG_LOG("ActiveSync Account didn't support mail slot");
@@ -157,7 +157,7 @@ INTERNAL_FUNC int emcore_set_mail_slot_size(char *multi_user_name, int account_i
 	emstorage_mailbox_tbl_t *mailbox_tbl_list = NULL;
 
 	if (account_id > ALL_ACCOUNT) {
-		account_ref = emcore_get_account_reference(multi_user_name, account_id);
+		account_ref = emcore_get_account_reference(multi_user_name, account_id, false);
 		if (account_ref && account_ref->incoming_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
 			EM_DEBUG_LOG("ActiveSync account didn't support mail slot");
 			ret = true;
@@ -259,7 +259,7 @@ static int emcore_get_mailbox_connection_path(char *multi_user_name, int account
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 
-	ref_account = emcore_get_account_reference(multi_user_name, account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, account_id, false);
 	if (!ref_account)	 {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed");
 		goto FINISH_OFF;
@@ -408,7 +408,7 @@ INTERNAL_FUNC int emcore_sync_mailbox_list(char *multi_user_name, int account_id
 		goto FINISH_OFF;
 	}
 	
-	ref_account = emcore_get_account_reference(multi_user_name, account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, account_id, false);
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed - %d", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -845,8 +845,7 @@ INTERNAL_FUNC int emcore_delete_imap_mailbox(char *multi_user_name, int input_ma
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, mailbox_tbl->account_id);
-
+	ref_account = emcore_get_account_reference(multi_user_name, mailbox_tbl->account_id, false);
 	if (!ref_account || ref_account->incoming_server_type != EMAIL_SERVER_TYPE_IMAP4) {
 		EM_DEBUG_EXCEPTION("Invalid account information");
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -923,8 +922,7 @@ INTERNAL_FUNC int emcore_rename_mailbox_on_imap_server(char *multi_user_name, in
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, input_account_id);
-
+	ref_account = emcore_get_account_reference(multi_user_name, input_account_id, false);
 	if (!ref_account || ref_account->incoming_server_type != EMAIL_SERVER_TYPE_IMAP4) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_ACCOUNT");
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -1029,8 +1027,7 @@ INTERNAL_FUNC int emcore_get_quota_root(int input_mailbox_id, email_quota_resour
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, mailbox_tbl->account_id);
-
+	ref_account = emcore_get_account_reference(multi_user_name, mailbox_tbl->account_id, false);
 	if (!ref_account || ref_account->incoming_server_type != EMAIL_SERVER_TYPE_IMAP4) {
 		EM_DEBUG_EXCEPTION("Invalid account information");
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -1064,7 +1061,7 @@ INTERNAL_FUNC int emcore_get_quota(int input_mailbox_id, char *input_quota_root,
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, mailbox_tbl->account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, mailbox_tbl->account_id, false);
 
 	if (!ref_account || ref_account->incoming_server_type != EMAIL_SERVER_TYPE_IMAP4) {
 		EM_DEBUG_EXCEPTION("Invalid account information");

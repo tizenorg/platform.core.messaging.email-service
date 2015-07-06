@@ -1,4 +1,4 @@
-%global test_email_app_enabled 0
+%global test_email_app_enabled 1
 
 Name:       email-service
 Summary:    E-mail Framework Middleware package
@@ -42,6 +42,7 @@ BuildRequires:  pkgconfig(capi-base-common)
 BuildRequires:  pkgconfig(libcurl)
 BuildRequires:  pkgconfig(libxml-2.0)
 BuildRequires:  pkgconfig(cert-svc)
+BuildRequires:  pkgconfig(cert-svc-vcore)
 BuildRequires:  pkgconfig(badge)
 BuildRequires:  pkgconfig(feedback)
 BuildRequires:  pkgconfig(capi-appfw-application)

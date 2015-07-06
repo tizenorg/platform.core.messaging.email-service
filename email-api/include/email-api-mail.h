@@ -34,7 +34,6 @@
  */
 
 /**
- * @internal
  * @ingroup EMAIL_SERVICE_FRAMEWORK
  * @defgroup EMAIL_SERVICE_MAIL_MODULE Mail API
  * @brief Mail API is a set of operations to manage mail like add, update, delete or get mail related details.
@@ -47,7 +46,6 @@
  */
 
 /**
- * @internal
  * @addtogroup EMAIL_SERVICE_MAIL_MODULE
  * @{
  */

@@ -90,7 +90,7 @@ email_mailbox_type_e g_default_mbox_type[MAILBOX_COUNT] =
 	EMAIL_MAILBOX_TYPE_SPAMBOX,
 };
 
-INTERNAL_FUNC email_account_t* emcore_get_account_reference(char *multi_user_name, int account_id)
+INTERNAL_FUNC email_account_t* emcore_get_account_reference(char *multi_user_name, int account_id, int with_password)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d]", account_id);
         int err = EMAIL_ERROR_NONE;
@@ -98,24 +98,30 @@ INTERNAL_FUNC email_account_t* emcore_get_account_reference(char *multi_user_nam
         emstorage_account_tbl_t *p_result_account = NULL;
 
         if (account_id < 0){
-               emcore_get_account_from_unvalidated_account_list(account_id, &result_account);
-               return result_account;
+		   emcore_get_account_from_unvalidated_account_list(account_id, &result_account);
+		   return result_account;
         } else if (account_id > 0) {
-                if (!emstorage_get_account_by_id(multi_user_name, account_id, EMAIL_ACC_GET_OPT_FULL_DATA, &p_result_account, false, &err)) {
-                    EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed : [%d]", err);
-                    return NULL;
-                }
+			if (with_password) {
+				if (!emstorage_get_account_by_id(multi_user_name, account_id, EMAIL_ACC_GET_OPT_FULL_DATA, &p_result_account, false, &err)) {
+					EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed : [%d]", err);
+					return NULL;
+				}
+			} else {
+				if (!emstorage_get_account_by_id(multi_user_name, account_id, GET_FULL_DATA_WITHOUT_PASSWORD, &p_result_account, false, &err)) {
+					EM_DEBUG_EXCEPTION("emstorage_get_account_by_id failed : [%d]", err);
+					return NULL;
+				}
+			}
 
-                result_account = (email_account_t *)em_malloc(sizeof(email_account_t));
-                if (result_account == NULL) {
-                    EM_DEBUG_EXCEPTION("em_malloc failed");
-                    return NULL;
-                }
+			result_account = (email_account_t *)em_malloc(sizeof(email_account_t));
+			if (result_account == NULL) {
+				EM_DEBUG_EXCEPTION("em_malloc failed");
+				return NULL;
+			}
 
-                em_convert_account_tbl_to_account(p_result_account, result_account);
+			em_convert_account_tbl_to_account(p_result_account, result_account);
 
-                if (p_result_account)
-                    emstorage_free_account(&p_result_account, 1, NULL);
+			emstorage_free_account(&p_result_account, 1, NULL);
         }
 
 	EM_DEBUG_FUNC_END("[%p]", result_account);
@@ -341,7 +347,7 @@ INTERNAL_FUNC int emcore_validate_account(char *multi_user_name, int account_id,
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, account_id, false);
 
 	if (ref_account && emcore_validate_account_with_account_info(multi_user_name, ref_account, EMAIL_EVENT_VALIDATE_ACCOUNT, NULL, handle, &err) == false) {
 		EM_DEBUG_EXCEPTION("emcore_validate_account_with_account_info failed (%d)", err);
@@ -438,7 +444,7 @@ INTERNAL_FUNC int emcore_delete_account(char *multi_user_name, int account_id, i
 		email_account_t *account_to_be_deleted;
 		void *join_zone = NULL;
 
-		account_to_be_deleted = emcore_get_account_reference(multi_user_name, account_id);
+		account_to_be_deleted = emcore_get_account_reference(multi_user_name, account_id, false);
 		if (account_to_be_deleted && account_to_be_deleted->incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
 			EM_DEBUG_LOG("Calling account_svc_delete with account_svc_id[%d]", account_to_be_deleted->account_svc_id);
 			if (EM_SAFE_STRLEN(multi_user_name) > 0) {
@@ -1538,7 +1544,7 @@ INTERNAL_FUNC int emcore_refresh_xoauth2_access_token(char *multi_user_name, int
 	email_account_t *ref_account = NULL;
 
 
-	ref_account = emcore_get_account_reference(multi_user_name, input_account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, input_account_id, false);
 
 	if(ref_account == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference() failed");
@@ -1547,7 +1553,6 @@ INTERNAL_FUNC int emcore_refresh_xoauth2_access_token(char *multi_user_name, int
 	}
 
 	access_token = EM_SAFE_STRDUP(strtok_r(ref_account->incoming_server_password, "\001", &saveptr));
-
 	if(access_token == NULL) {
 		EM_DEBUG_EXCEPTION("invalid token string.");
 		err = EMAIL_ERROR_XOAUTH_BAD_REQUEST;

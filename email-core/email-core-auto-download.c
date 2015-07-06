@@ -389,7 +389,7 @@ static void* worker_auto_download_queue(void *arg)
 			for (ai = 0; ai < account_count; ai++) {
 
 				email_account_t *account_ref = NULL;
-				if (!(account_ref = emcore_get_account_reference(NULL, account_list[ai]))) {
+				if (!(account_ref = emcore_get_account_reference(NULL, account_list[ai], false))) {
 					EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_list[ai]);
 					err = EMAIL_ERROR_INVALID_ACCOUNT;
 					continue;
@@ -524,7 +524,7 @@ CHECK_CONTINUE:
 				auto_download_thread_run = 1;
 			}
 
-			if (!(account_ref = emcore_get_account_reference(event_data->multi_user_name, event_data->account_id))) {
+			if (!(account_ref = emcore_get_account_reference(event_data->multi_user_name, event_data->account_id, false))) {
 				EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", event_data->account_id);
 				err = EMAIL_ERROR_INVALID_ACCOUNT;
 				goto POP_HEAD;
@@ -713,8 +713,10 @@ INTERNAL_FUNC int emcore_insert_auto_download_job(char *multi_user_name, int acc
 
 FINISH_OFF:
 
-	if (!event_pushed)
+	if (!event_pushed) {
+		EM_SAFE_FREE(ad_event->multi_user_name);
 		EM_SAFE_FREE(ad_event);
+	}
 
 	EM_DEBUG_FUNC_END();
 	return ret;

@@ -96,8 +96,7 @@ INTERNAL_FUNC int emdaemon_send_mail(char *multi_user_name, int mail_id, int *ha
 
 	account_id = mail_table_data->account_id;
 
-	ref_account = emcore_get_account_reference(multi_user_name, account_id);
-
+	ref_account = emcore_get_account_reference(multi_user_name, account_id, false);
 	if (!ref_account) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -206,8 +205,7 @@ INTERNAL_FUNC int emdaemon_send_mail_saved(char *multi_user_name, int account_id
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, account_id);
-
+	ref_account = emcore_get_account_reference(multi_user_name, account_id, false);
 	if (!ref_account) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -281,7 +279,7 @@ INTERNAL_FUNC int emdaemon_add_mail(char *multi_user_name,
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, input_mail_data->account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, input_mail_data->account_id, false);
 	if (!ref_account)  {
 		EM_DEBUG_LOG(" emcore_get_account_reference failed [%d]", input_mail_data->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -668,8 +666,7 @@ INTERNAL_FUNC int emdaemon_delete_mail(char *multi_user_name, int mailbox_id, in
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, mailbox_tbl_data->account_id);
-
+	ref_account = emcore_get_account_reference(multi_user_name, mailbox_tbl_data->account_id, false);
 	if (!ref_account) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed.");
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -911,8 +908,7 @@ INTERNAL_FUNC int emdaemon_move_mail_all_mails(char *multi_user_name, int src_ma
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, dst_mailbox_tbl->account_id);
-
+	ref_account = emcore_get_account_reference(multi_user_name, dst_mailbox_tbl->account_id, false);
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", dst_mailbox_tbl->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -1056,7 +1052,7 @@ INTERNAL_FUNC int emdaemon_move_mail(char *multi_user_name, int mail_ids[], int 
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, dest_mailbox_tbl->account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, dest_mailbox_tbl->account_id, false);
 
 	if (!ref_account) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", dest_mailbox_tbl->account_id);
@@ -1246,7 +1242,7 @@ INTERNAL_FUNC int emdaemon_update_mail(char *multi_user_name, email_mail_data_t 
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, input_mail_data->account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, input_mail_data->account_id, false);
 	if (!ref_account)  {
 		EM_DEBUG_LOG(" emcore_get_account_reference failed [%d]", input_mail_data->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
@@ -1378,9 +1374,9 @@ INTERNAL_FUNC void _OnMailSendRetryTimerCB(void* data)
 	int err = EMAIL_ERROR_NONE;
 	email_retry_info *retry_info = NULL;
 
-	if (!data ) {
+	if (!data) {
 		EM_DEBUG_LOG("Invalid param");
-		goto FINISH_OFF;
+		return;
 	}
 
 	retry_info = (email_retry_info *)data;
@@ -1397,8 +1393,8 @@ INTERNAL_FUNC void _OnMailSendRetryTimerCB(void* data)
 
 FINISH_OFF:
 
-	EM_SAFE_FREE(retry_info->multi_user_name);
-	EM_SAFE_FREE(retry_info);
+	free(retry_info->multi_user_name);
+	free(retry_info);
 
 	EM_DEBUG_FUNC_END();
 	return;
@@ -1601,7 +1597,7 @@ INTERNAL_FUNC int emdaemon_expunge_mails_deleted_flagged(char *multi_user_name, 
 		goto FINISH_OFF;
 	}
 
-	ref_account = emcore_get_account_reference(multi_user_name, mailbox_tbl->account_id);
+	ref_account = emcore_get_account_reference(multi_user_name, mailbox_tbl->account_id, false);
 	if (!ref_account)  {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", mailbox_tbl->account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;

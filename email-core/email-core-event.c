@@ -218,6 +218,11 @@ static void fail_status_notify(email_event_t *event_data, int error)
 			emcore_execute_event_callback(EMAIL_ACTION_SET_MAIL_SLOT_SIZE, 0, 0, EMAIL_SET_SLOT_SIZE_FAIL, account_id, 0, -1, EMAIL_ERROR_NONE);
 			break;
 
+		case EMAIL_EVENT_SEARCH_ON_SERVER:
+			emcore_execute_event_callback(EMAIL_ACTION_SEARCH_ON_SERVER, 0, 0, EMAIL_SEARCH_ON_SERVER_FAIL, account_id, 0, -1, EMAIL_ERROR_NONE);
+			emcore_show_user_message(event_data->multi_user_name, account_id, EMAIL_ACTION_SEARCH_ON_SERVER, error);
+			break;
+
 		case EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER:
 			emcore_execute_event_callback(EMAIL_ACTION_MOVE_MAILBOX, 0, 0, EMAIL_MOVE_MAILBOX_ON_IMAP_SERVER_FAIL, account_id, 0, -1, EMAIL_ERROR_NONE);
 			emcore_show_user_message(event_data->multi_user_name, account_id, EMAIL_ACTION_SEARCH_ON_SERVER, error);
@@ -430,6 +435,7 @@ INTERNAL_FUNC int emcore_insert_event(email_event_t *event_data, int *handle, in
 		case EMAIL_EVENT_SET_MAIL_SLOT_SIZE:
 		case EMAIL_EVENT_UPDATE_MAIL:
 		case EMAIL_EVENT_EXPUNGE_MAILS_DELETED_FLAGGED:
+		case EMAIL_EVENT_SEARCH_ON_SERVER:
 		case EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER:
 			break;
 
@@ -816,6 +822,7 @@ case EMAIL_EVENT_UPDATE_MAIL:
 case EMAIL_EVENT_SET_MAIL_SLOT_SIZE:
 case EMAIL_EVENT_EXPUNGE_MAILS_DELETED_FLAGGED:
 case EMAIL_EVENT_LOCAL_ACTIVITY:
+case EMAIL_EVENT_SEARCH_ON_SERVER:
 case EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER:
 case EMAIL_EVENT_QUERY_SMTP_MAIL_SIZE_LIMIT:
 */
@@ -929,6 +936,7 @@ INTERNAL_FUNC int emcore_cancel_thread(int handle, void *arg, int *err_code)
 				case EMAIL_EVENT_CREATE_MAILBOX:
 				case EMAIL_EVENT_DELETE_MAILBOX:
 				case EMAIL_EVENT_SET_MAIL_SLOT_SIZE:
+				case EMAIL_EVENT_SEARCH_ON_SERVER:
 				case EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER:
 					EM_DEBUG_LOG("EMAIL_EVENT_DELETE_MAIL, EMAIL_EVENT_SYNC_IMAP_MAILBOX");
 					break;
@@ -1040,6 +1048,7 @@ INTERNAL_FUNC int emcore_cancel_all_thread(int *err_code)
 				case EMAIL_EVENT_CREATE_MAILBOX:
 				case EMAIL_EVENT_DELETE_MAILBOX:
 				case EMAIL_EVENT_SET_MAIL_SLOT_SIZE:
+				case EMAIL_EVENT_SEARCH_ON_SERVER:
 				case EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER:
 					EM_DEBUG_LOG("EMAIL_EVENT_DELETE_MAIL, EMAIL_EVENT_SYNC_IMAP_MAILBOX");
 					break;
@@ -1123,8 +1132,9 @@ INTERNAL_FUNC int emcore_cancel_all_threads_of_an_account(char *multi_user_name,
 
 	for (i = 0; i < q_length; i++) {
 		found_elm = (email_event_t *)g_queue_peek_nth(g_event_que, i);
-		if (found_elm && (found_elm->account_id == account_id || found_elm->account_id == ALL_ACCOUNT) 
-                && (!EM_SAFE_STRCASECMP(found_elm->multi_user_name, multi_user_name) || (!found_elm && !multi_user_name))) {
+		if (found_elm && (found_elm->account_id == account_id || found_elm->account_id == ALL_ACCOUNT) && 
+			((!found_elm->multi_user_name && !multi_user_name) || (
+				(multi_user_name) && !EM_SAFE_STRCASECMP(found_elm->multi_user_name, multi_user_name)))) {
 			EM_DEBUG_LOG("Found Queue element[%d]", i);
 
 			if (found_elm->status == EMAIL_EVENT_STATUS_WAIT) {
@@ -1135,13 +1145,15 @@ INTERNAL_FUNC int emcore_cancel_all_threads_of_an_account(char *multi_user_name,
 					case EMAIL_EVENT_SEND_MAIL:
 					case EMAIL_EVENT_SEND_MAIL_SAVED:
 						EM_DEBUG_LOG("EMAIL_EVENT_SEND_MAIL or EMAIL_EVENT_SEND_MAIL_SAVED");
-						if (!emcore_notify_network_event(NOTI_SEND_CANCEL, found_elm->account_id, NULL , found_elm->event_param_data_4, error_code))
+						if (!emcore_notify_network_event(NOTI_SEND_CANCEL, found_elm->account_id, NULL , 
+														found_elm->event_param_data_4, error_code))
 							EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_SEND_CANCEL] Failed >>>>");
 						break;
 
 					case EMAIL_EVENT_DOWNLOAD_BODY:
 						EM_DEBUG_LOG("EMAIL_EVENT_DOWNLOAD_BODY");
-						if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_CANCEL, found_elm->account_id, NULL , found_elm->event_param_data_4, error_code))
+						if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_CANCEL, found_elm->account_id, NULL, 
+														found_elm->event_param_data_4, error_code))
 							EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_SEND_CANCEL] Failed >>>>");
 						break;
 
@@ -1167,6 +1179,7 @@ INTERNAL_FUNC int emcore_cancel_all_threads_of_an_account(char *multi_user_name,
 					case EMAIL_EVENT_CREATE_MAILBOX:
 					case EMAIL_EVENT_DELETE_MAILBOX:
 					case EMAIL_EVENT_SET_MAIL_SLOT_SIZE:
+					case EMAIL_EVENT_SEARCH_ON_SERVER:
 					case EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER:
 						EM_DEBUG_LOG("EMAIL_EVENT_DELETE_MAIL, EMAIL_EVENT_SYNC_IMAP_MAILBOX");
 						break;
@@ -1469,6 +1482,35 @@ INTERNAL_FUNC int emcore_free_event(email_event_t *event_data)
 		case EMAIL_EVENT_LOCAL_ACTIVITY:
 			break;
 #endif /* __FEATURE_LOCAL_ACTIVITY__*/
+
+		case EMAIL_EVENT_SEARCH_ON_SERVER: {
+				int i = 0;
+				int search_filter_count = event_data->event_param_data_5;
+				email_search_filter_t *search_filter = (email_search_filter_t *)event_data->event_param_data_1;
+
+				if (event_data->event_param_data_1) {
+					for(i = 0; i < search_filter_count; i++) {
+						switch(search_filter[i].search_filter_type) {
+						case EMAIL_SEARCH_FILTER_TYPE_BCC              :
+						case EMAIL_SEARCH_FILTER_TYPE_BODY             :
+						case EMAIL_SEARCH_FILTER_TYPE_CC               :
+						case EMAIL_SEARCH_FILTER_TYPE_FROM             :
+						case EMAIL_SEARCH_FILTER_TYPE_KEYWORD          :
+						case EMAIL_SEARCH_FILTER_TYPE_TEXT             :
+						case EMAIL_SEARCH_FILTER_TYPE_SUBJECT          :
+						case EMAIL_SEARCH_FILTER_TYPE_TO               :
+						case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
+						case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  :
+							EM_SAFE_FREE(search_filter[i].search_filter_key_value.string_type_key_value);
+							break;
+						default:
+							break;
+						}
+					}
+				}
+			}
+			EM_SAFE_FREE(event_data->event_param_data_1);
+			break;
 
 		case EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER:
 			EM_SAFE_FREE(event_data->event_param_data_1);

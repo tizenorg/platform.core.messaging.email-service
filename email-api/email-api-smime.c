@@ -181,13 +181,14 @@ FINISH_OFF:
 	return err;
 }
 
-EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count)
+EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output_mail_data, 
+										email_attachment_data_t **output_attachment_data, 
+										int *output_attachment_count, int *verify)
 {
 	EM_DEBUG_API_BEGIN ("mail_id[%d]", mail_id);
 	int err = EMAIL_ERROR_NONE;
 	int p_output_attachment_count = 0;
     int i = 0;
-	int verify = 0;
 	char *decrypt_filepath = NULL;
     char *search = NULL;
     char *multi_user_name = NULL;
@@ -249,12 +250,12 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 		}
                 emcore_clean_openssl_library();
 	} else if (p_output_mail_data->smime_type == EMAIL_PGP_ENCRYPTED) {
-		if ((err = emcore_pgp_get_decrypted_message(p_output_attachment_data[i].attachment_path, p_output_mail_data->pgp_password, false, &decrypt_filepath, &verify)) != EMAIL_ERROR_NONE) {
+		if ((err = emcore_pgp_get_decrypted_message(p_output_attachment_data[i].attachment_path, p_output_mail_data->pgp_password, false, &decrypt_filepath, verify)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_pgp_get_decrypted_message failed : [%d]", err);
 			goto FINISH_OFF;
 		}
 	} else if (p_output_mail_data->smime_type == EMAIL_PGP_SIGNED_AND_ENCRYPTED) {
-		if ((err = emcore_pgp_get_decrypted_message(p_output_attachment_data[i].attachment_path, p_output_mail_data->pgp_password, true, &decrypt_filepath, &verify)) != EMAIL_ERROR_NONE) {
+		if ((err = emcore_pgp_get_decrypted_message(p_output_attachment_data[i].attachment_path, p_output_mail_data->pgp_password, true, &decrypt_filepath, verify)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_pgp_get_decrypted_message failed : [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -301,13 +302,17 @@ FINISH_OFF:
 	return err;
 }
 
-EXPORT_API int email_get_decrypt_message_ex(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data, int input_attachment_count,
-                                            email_mail_data_t **output_mail_data, email_attachment_data_t **output_attachment_data, int *output_attachment_count)
+EXPORT_API int email_get_decrypt_message_ex(email_mail_data_t *input_mail_data, 
+											email_attachment_data_t *input_attachment_data, 
+											int input_attachment_count,
+                                            email_mail_data_t **output_mail_data, 
+											email_attachment_data_t **output_attachment_data, 
+											int *output_attachment_count,
+											int *verify)
 {
 	EM_DEBUG_API_BEGIN ();
 	int err = EMAIL_ERROR_NONE;
     int i = 0;
-	int verify = 0;
 	char *decrypt_filepath = NULL;
     char *search = NULL;
     char *multi_user_name = NULL;
@@ -349,20 +354,20 @@ EXPORT_API int email_get_decrypt_message_ex(email_mail_data_t *input_mail_data, 
         }
 
 	if (input_mail_data->smime_type == EMAIL_SMIME_ENCRYPTED || input_mail_data->smime_type == EMAIL_SMIME_SIGNED_AND_ENCRYPTED) {
-                emcore_init_openssl_library();
+		emcore_init_openssl_library();
 		if (!emcore_smime_get_decrypt_message(input_attachment_data[i].attachment_path, p_account_tbl->certificate_path, &decrypt_filepath, &err)) {
 			EM_DEBUG_EXCEPTION("emcore_smime_get_decrypt_message failed");
-                        emcore_clean_openssl_library();
+			emcore_clean_openssl_library();
 			goto FINISH_OFF;
 		}
-                emcore_clean_openssl_library();
+		emcore_clean_openssl_library();
 	} else if (input_mail_data->smime_type == EMAIL_PGP_ENCRYPTED) {
-		if ((err = emcore_pgp_get_decrypted_message(input_attachment_data[i].attachment_path, input_mail_data->pgp_password, false, &decrypt_filepath, &verify)) != EMAIL_ERROR_NONE) {
+		if ((err = emcore_pgp_get_decrypted_message(input_attachment_data[i].attachment_path, input_mail_data->pgp_password, false, &decrypt_filepath, verify)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_pgp_get_decrypted_message failed : [%d]", err);
 			goto FINISH_OFF;
 		}
 	} else if (input_mail_data->smime_type == EMAIL_PGP_SIGNED_AND_ENCRYPTED) {
-		if ((err = emcore_pgp_get_decrypted_message(input_attachment_data[i].attachment_path, input_mail_data->pgp_password, true, &decrypt_filepath, &verify)) != EMAIL_ERROR_NONE) {
+		if ((err = emcore_pgp_get_decrypted_message(input_attachment_data[i].attachment_path, input_mail_data->pgp_password, true, &decrypt_filepath, verify)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_pgp_get_decrypted_message failed : [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -405,11 +410,15 @@ FINISH_OFF:
 EXPORT_API int email_verify_signature(int mail_id, int *verify)
 {
 	EM_DEBUG_API_BEGIN ("mail_id[%d]", mail_id);
-	int result_from_ipc = 0;
-	int err = EMAIL_ERROR_NONE;
-	int p_verify = 0;
 
-	EM_IF_NULL_RETURN_VALUE(mail_id, EMAIL_ERROR_INVALID_PARAM);
+	if (mail_id <= 0) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		return EMAIL_ERROR_INVALID_PARAM;
+	}
+
+	int result_from_ipc = 0;
+	int p_verify = 0;
+	int err = EMAIL_ERROR_NONE;
 
 	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_VERIFY_SIGNATURE);
 	if (hAPI == NULL) {

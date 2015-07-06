@@ -171,7 +171,7 @@ INTERNAL_FUNC int emdaemon_validate_account(char *multi_user_name, int account_i
 		goto FINISH_OFF;
 	}
 
-	if (!(ref_account = emcore_get_account_reference(multi_user_name, account_id))) {
+	if (!(ref_account = emcore_get_account_reference(multi_user_name, account_id, false))) {
 		EM_DEBUG_EXCEPTION(" emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
@@ -313,7 +313,7 @@ INTERNAL_FUNC int emdaemon_update_account(char *multi_user_name, int account_id,
 		goto FINISH_OFF;
 	}
 
-	if((old_account_info = emcore_get_account_reference(multi_user_name, account_id)) == NULL) {
+	if((old_account_info = emcore_get_account_reference(multi_user_name, account_id, true)) == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed ");
 		goto FINISH_OFF;
 	}
@@ -573,6 +573,7 @@ INTERNAL_FUNC int emdaemon_get_filter(char *multi_user_name, int filter_id, emai
 FINISH_OFF:
 	if (err_code)
 		*err_code = err;
+
 	EM_DEBUG_FUNC_END();
 	return ret;
 }

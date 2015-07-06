@@ -130,8 +130,7 @@ INTERNAL_FUNC int emdaemon_alarm_polling_cb(email_alarm_data_t *alarm_data, void
 		return false;
 	}
 
-	ref_account = emcore_get_account_reference(alarm_data->multi_user_name, account_id);
-
+	ref_account = emcore_get_account_reference(alarm_data->multi_user_name, account_id, false);
 	if (ref_account == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed");
 		err = EMAIL_ERROR_ACCOUNT_NOT_FOUND;
@@ -194,7 +193,7 @@ static int _emdaemon_get_polling_account_and_timeinterval(email_alarm_data_t *al
 		goto FINISH_OFF;
 	}
 
-	account = emcore_get_account_reference(alarm_data->multi_user_name, alarm_data->reference_id);
+	account = emcore_get_account_reference(alarm_data->multi_user_name, alarm_data->reference_id, false);
 	if (account == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]",err);
 		goto FINISH_OFF;

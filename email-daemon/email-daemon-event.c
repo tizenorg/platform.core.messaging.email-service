@@ -84,6 +84,7 @@ static int event_handler_EMAIL_EVENT_SYNC_MAIL_FLAG_TO_SERVER(char *multi_user_n
 static int event_handler_EMAIL_EVENT_DELETE_MAIL_ALL(char *multi_user_name, int input_account_id, int input_mailbox_id, int input_from_server, int *error);
 static int event_handler_EMAIL_EVENT_DELETE_MAIL(char *multi_user_name, int account_id, int *mail_id_list, int mail_id_count, int from_server, int *error);
 static int event_hanlder_EMAIL_EVENT_SYNC_HEADER_OMA(char *multi_user_name, int account_id, char *maibox_name, int handle_to_be_published, int *error);
+static int event_handler_EMAIL_EVENT_SEARCH_ON_SERVER(char *multi_user_name, int account_id, int mailbox_id, email_search_filter_t *input_search_filter, int input_search_filter_count, int handle_to_be_published);
 static int event_handler_EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER(char *multi_user_name, int input_account_id, int input_mailbox_id, char *input_old_mailbox_path, char *input_new_mailbox_path, char *input_new_mailbox_alias, int handle_to_be_published);
 
 static void* worker_send_event_queue(void *arg);
@@ -470,6 +471,10 @@ static void* worker_event_queue(void *arg)
 						break;
 #endif /* __FEATURE_LOCAL_ACTIVITY__*/
 
+					case EMAIL_EVENT_SEARCH_ON_SERVER:
+						err = event_handler_EMAIL_EVENT_SEARCH_ON_SERVER(event_data->multi_user_name, event_data->account_id, event_data->event_param_data_4, (email_search_filter_t *)event_data->event_param_data_1, event_data->event_param_data_5, handle_to_be_published);
+						break;
+
 					case EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER:
 						err = event_handler_EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER(event_data->multi_user_name, event_data->account_id, event_data->event_param_data_4, (char*)event_data->event_param_data_1, (char*)event_data->event_param_data_2, (char*)event_data->event_param_data_3, handle_to_be_published);
 						break;
@@ -577,7 +582,7 @@ static int event_handler_EMAIL_EVENT_SYNC_HEADER (char *multi_user_name, int inp
 		email_account_t *ref_account = NULL;
 		int sync_disabled = 0;
 
-		ref_account = emcore_get_account_reference(multi_user_name, input_account_id);
+		ref_account = emcore_get_account_reference(multi_user_name, input_account_id, false);
 		if (ref_account) {
 			sync_disabled = ref_account->sync_disabled;
 			emcore_free_account(ref_account);
@@ -614,11 +619,15 @@ static int event_handler_EMAIL_EVENT_SYNC_HEADER (char *multi_user_name, int inp
 
 	if (sync_type != EMAIL_SYNC_ALL_MAILBOX) {	/* Sync only particular mailbox */
 		EM_DEBUG_LOG_SEC ("sync start: account_id [%d] alias [%s]", input_account_id, mailbox_tbl_target->alias);
-		if ((err = emcore_update_sync_status_of_account(multi_user_name, input_account_id, SET_TYPE_SET, SYNC_STATUS_SYNCING)) != EMAIL_ERROR_NONE)
+		if ((err = emcore_update_sync_status_of_account(multi_user_name, 
+														input_account_id, 
+														SET_TYPE_UNION, 
+														SYNC_STATUS_SYNCING)) != EMAIL_ERROR_NONE)
 			EM_DEBUG_EXCEPTION("emcore_update_sync_status_of_account failed [%d]", err);
 
 		if (!emcore_sync_header (multi_user_name, mailbox_tbl_target, (void**) &stream,
-                                       &uid_list, &mail_count, &unread, &vip_mail_count, &vip_unread, 1, handle_to_be_published, &err)) {
+								   &uid_list, &mail_count, &unread, &vip_mail_count, 
+								   &vip_unread, 1, handle_to_be_published, &err)) {
 			EM_DEBUG_EXCEPTION("emcore_sync_header failed [%d]", err);
 			if (!emcore_notify_network_event(NOTI_DOWNLOAD_FAIL, mailbox_tbl_target->account_id, mailbox_id_param_string, handle_to_be_published, err))
 				EM_DEBUG_EXCEPTION(" emcore_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed >>>> ");
@@ -663,7 +672,7 @@ static int event_handler_EMAIL_EVENT_SYNC_HEADER (char *multi_user_name, int inp
 		/*  Sync of all mailbox */
 
 		if (input_account_id == ALL_ACCOUNT) {
-			if ((err = emcore_update_sync_status_of_account(multi_user_name, ALL_ACCOUNT, SET_TYPE_SET, SYNC_STATUS_SYNCING)) != EMAIL_ERROR_NONE)
+			if ((err = emcore_update_sync_status_of_account(multi_user_name, ALL_ACCOUNT, SET_TYPE_UNION, SYNC_STATUS_SYNCING)) != EMAIL_ERROR_NONE)
 				EM_DEBUG_EXCEPTION("emcore_update_sync_status_of_account failed [%d]", err);
 			if (!emstorage_get_account_list(multi_user_name, &account_count, &account_tbl_array , true, false, &err)) {
 				EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [ %d ] ", err);
@@ -673,7 +682,7 @@ static int event_handler_EMAIL_EVENT_SYNC_HEADER (char *multi_user_name, int inp
 			}
 		}
 		else {
-			if ((err = emcore_update_sync_status_of_account(multi_user_name, input_account_id, SET_TYPE_SET, SYNC_STATUS_SYNCING)) != EMAIL_ERROR_NONE)
+			if ((err = emcore_update_sync_status_of_account(multi_user_name, input_account_id, SET_TYPE_UNION, SYNC_STATUS_SYNCING)) != EMAIL_ERROR_NONE)
 				EM_DEBUG_EXCEPTION("emcore_update_sync_status_of_account failed [%d]", err);
 
 			if (!emstorage_get_account_by_id(multi_user_name, input_account_id, EMAIL_ACC_GET_OPT_DEFAULT, &account_tbl_array, true, &err)) {
@@ -1004,7 +1013,7 @@ static int event_handler_EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT(char *multi_use
 		EM_DEBUG_LOG_SEC("incoming_server_address: (%s)", new_account_info->incoming_server_address);
 
 		/* If the password fields are empty, fill the fields with password of old information*/
-		if((old_account_info = emcore_get_account_reference(multi_user_name, account_id)) == NULL) {
+		if((old_account_info = emcore_get_account_reference(multi_user_name, account_id, true)) == NULL) {
 			EM_DEBUG_EXCEPTION("emcore_get_account_reference failed ");
 			goto FINISH_OFF;
 		}
@@ -1297,7 +1306,6 @@ static int event_handler_EMAIL_EVENT_DOWNLOAD_BODY(char *multi_user_name, int ac
 
 		emcore_notify_network_event(NOTI_DOWNLOAD_BODY_FAIL, mail_id, NULL, handle_to_be_published, err);
 	} else {
-#ifdef __FEATURE_USE_GMIME__
 		emstorage_mail_tbl_t *mail = NULL;
 		MAILSTREAM *tmp_stream = NULL;
 
@@ -1331,19 +1339,6 @@ static int event_handler_EMAIL_EVENT_DOWNLOAD_BODY(char *multi_user_name, int ac
 
 		if (mail)
 			emstorage_free_mail(&mail, 1, NULL);
-
-#else
-		if (!emcore_download_body_multi_sections_bulk(NULL,
-                          mailbox.account_id,
-                          mail_id,
-                          option >> 1, 	/*0: silent, 1: verbose */
-                          option & 0x01, 	/*0: without attachments, 1: with attachments */
-                          NO_LIMITATION,
-                          handle_to_be_published,
-                          1,              /* cancel enabled */
-                          &err))
-			EM_DEBUG_EXCEPTION("emcore_download_body_multi_sections_bulk failed - %d", err);
-#endif
 	}
 
 FINISH_OFF:
@@ -1371,17 +1366,11 @@ static int event_handler_EMAIL_EVENT_DOWNLOAD_ATTACHMENT(char *multi_user_name, 
 
 #ifdef __ATTACHMENT_OPTI__
 		if (!emcore_download_attachment_bulk(account_id, mail_id, attachment_no, handle_to_be_published, &err))
-			EM_DEBUG_EXCEPTION("\t emcore_download_attachment failed [%d]", err);
+			EM_DEBUG_EXCEPTION("\t emcore_download_attachment_bulk failed [%d]", err);
 #else
 
-#ifdef __FEATURE_USE_GMIME__
 		if (!emcore_gmime_download_attachment(multi_user_name, mail_id, attachment_no, 1, handle_to_be_published, 0, &err))
 			EM_DEBUG_EXCEPTION("emcore_gmime_download_attachment failed [%d]", err);
-#else
-		if (!emcore_download_attachment (account_id, mail_id, attachment_no, 1, handle_to_be_published, &err))
-			EM_DEBUG_EXCEPTION("\t emcore_download_attachment failed [%d]", err);
-#endif
-
 #endif
 	}
 
@@ -1439,7 +1428,7 @@ static int event_handler_EMAIL_EVENT_VALIDATE_ACCOUNT(char *multi_user_name, int
 		}
 		else {
 			email_account_t *account_ref = NULL;
-			account_ref = emcore_get_account_reference(multi_user_name, account_id);
+			account_ref = emcore_get_account_reference(multi_user_name, account_id, false);
 
 			if (account_ref) {
 				EM_DEBUG_LOG("account_ref->incoming_server_type[%d]", account_ref->incoming_server_type);
@@ -1501,7 +1490,7 @@ static int event_handler_EMAIL_EVENT_MOVE_MAIL(char *multi_user_name, int accoun
 	int err = EMAIL_ERROR_NONE, ret = false;
 	email_account_t *account_ref = NULL;
 
-	if (!(account_ref = emcore_get_account_reference(multi_user_name, account_id))) {
+	if (!(account_ref = emcore_get_account_reference(multi_user_name, account_id, false))) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
@@ -1626,7 +1615,7 @@ static int event_handler_EMAIL_EVENT_DELETE_MAIL(char *multi_user_name, int acco
 	int ret = false;
 	email_account_t *account_ref = NULL;
 
-	if (!(account_ref = emcore_get_account_reference(multi_user_name, account_id))) {
+	if (!(account_ref = emcore_get_account_reference(multi_user_name, account_id, false))) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed [%d]", account_id);
 		err = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
@@ -1673,6 +1662,21 @@ static int event_hanlder_EMAIL_EVENT_SYNC_HEADER_OMA(char *multi_user_name, int 
 
 	EM_DEBUG_FUNC_END();
 	return true;
+}
+
+static int event_handler_EMAIL_EVENT_SEARCH_ON_SERVER(char *multi_user_name, int account_id, int mailbox_id, email_search_filter_t *input_search_filter, int input_search_filter_count, int handle_to_be_published)
+{
+	EM_DEBUG_FUNC_BEGIN("account_id : [%d], mailbox_id : [%d], input_search_filter : [%p], input_search_filter_count : [%d], handle_to_be_published [%d]", account_id, mailbox_id, input_search_filter, input_search_filter_count, handle_to_be_published);
+	int err = EMAIL_ERROR_NONE;
+	
+	if (err == EMAIL_ERROR_NONE) {
+		if ((err = emcore_search_on_server(multi_user_name, account_id, mailbox_id, input_search_filter, input_search_filter_count, handle_to_be_published)) != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_search_on_server failed [%d]", err);
+		}
+	}
+
+	EM_DEBUG_FUNC_END();
+	return err;
 }
 
 static int event_handler_EMAIL_EVENT_RENAME_MAILBOX_ON_IMAP_SERVER(char *multi_user_name, 

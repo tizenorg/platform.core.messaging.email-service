@@ -80,6 +80,9 @@ EXPORT_API void emipc_free_api_info(emipc_email_api_info *api_info);
 			case _EMAIL_API_SET_LOCAL_MAILBOX:\
 					s = "_EMAIL_API_SET_LOCAL_MAILBOX";\
 					break;\
+			case _EMAIL_API_STAMP_SYNC_TIME_OF_MAILBOX:\
+					s = "_EMAIL_API_STAMP_SYNC_TIME_OF_MAILBOX";\
+					break;\
 			case _EMAIL_API_SET_MAIL_SLOT_SIZE:\
 					s = "_EMAIL_API_SET_MAIL_SLOT_SIZE";\
 					break;\
@@ -194,6 +197,9 @@ EXPORT_API void emipc_free_api_info(emipc_email_api_info *api_info);
 			case _EMAIL_API_SEND_MAIL_CANCEL_JOB :\
 					s = "_EMAIL_API_SEND_MAIL_CANCEL_JOB";\
 					break;\
+			case _EMAIL_API_SEARCH_MAIL_ON_SERVER :\
+					s = "_EMAIL_API_SEARCH_MAIL_ON_SERVER";\
+					break;\
 			case _EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION :\
 					s = "_EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION";\
 					break;\
@@ -223,6 +229,12 @@ EXPORT_API void emipc_free_api_info(emipc_email_api_info *api_info);
 					break;\
 			case _EMAIL_API_GET_TASK_INFORMATION:\
 					s = "_EMAIL_API_GET_TASK_INFORMATION";\
+					break;\
+			case _EMAIL_API_SAVE_DEFAULT_ACCOUNT_ID:\
+					s = "_EMAIL_API_SAVE_DEFAULT_ACCOUNT_ID";\
+					break;\
+			case _EMAIL_API_LOAD_DEFAULT_ACCOUNT_ID:\
+					s = "_EMAIL_API_LOAD_DEFAULT_ACCOUNT_ID";\
 					break;\
 			default : \
 					s = "UNKNOWN_APIID";\

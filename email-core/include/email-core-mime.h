@@ -41,13 +41,11 @@ extern "C" {
 #endif /* __cplusplus */
 
 char *emcore_get_line_from_file(void *stream, char *buf, int size, int *err_code);
-int   emcore_parse_mime(void *stream, int is_file, struct _m_content_info *cnt_info, int *err_code);
 char *emcore_mime_get_save_file_name(int *err_code);
 char *emcore_mime_get_line_from_sock(void *stream, char *buf, int size, int *err_code);
 INTERNAL_FUNC int   emcore_get_content_type_from_mime_string(char *input_mime_string, char **output_content_type);
 INTERNAL_FUNC int   emcore_get_content_type_from_mail_bodystruct(BODY *input_body, int input_buffer_length, char *output_content_type);
 INTERNAL_FUNC int   emcore_get_attribute_value_of_body_part(PARAMETER *input_param, char *atribute_name, char *output_value, int output_buffer_length, int with_rfc2047_text, int *err_code);
-INTERNAL_FUNC int   emcore_get_body_part_list_full(MAILSTREAM *stream, int msg_uid, int account_id, int mail_id, BODY *body, struct _m_content_info *cnt_info, int *err_code, PARTLIST * section_list, int event_handle);
 INTERNAL_FUNC int   emcore_get_body(MAILSTREAM *stream, int account_id, int mail_id, int msg_uid, BODY *body, char *part_body_type, struct _m_content_info *cnt_info, int *err_code);
 INTERNAL_FUNC int   emcore_get_body_structure(MAILSTREAM *stream, int msg_uid, BODY **body, int *err_code);
 INTERNAL_FUNC char *emcore_decode_rfc2047_text(char *rfc2047_text, int *err_code);

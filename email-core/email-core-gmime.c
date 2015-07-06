@@ -63,6 +63,10 @@ INTERNAL_FUNC void emcore_gmime_init(void)
 #endif
 	g_mime_init(0);
 
+#ifdef __FEATURE_SECURE_PGP__
+	setenv("GNUPGHOME", "/opt/usr/apps/com.samsung.email/data/.gnupg", 1);
+#endif
+
 	EM_DEBUG_FUNC_END();
 }
 
@@ -172,7 +176,10 @@ INTERNAL_FUNC int emcore_gmime_pop3_parse_mime(char *eml_path, struct _m_content
 }
 
 
-INTERNAL_FUNC int emcore_gmime_eml_parse_mime(char *eml_path, struct _rfc822header *rfc822_header, struct _m_content_info *cnt_info, int *err_code)
+INTERNAL_FUNC int emcore_gmime_eml_parse_mime(char *eml_path, 
+											struct _rfc822header *rfc822_header, 
+											struct _m_content_info *cnt_info, 
+											int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("cnt_info[%p], err_code[%p]", cnt_info, err_code);
 	EM_DEBUG_LOG_SEC("eml_path[%s]", eml_path);
@@ -371,6 +378,9 @@ static void emcore_gmime_pop3_parse_foreach_cb(GMimeObject *parent, GMimeObject 
 		int multi_count = g_mime_multipart_get_count(multi_part);
 		EM_DEBUG_LOG("Multi Part Count:%d", multi_count);
 		EM_DEBUG_LOG("Boundary:%s\n\n", g_mime_multipart_get_boundary(multi_part));
+
+		if (GMIME_IS_MULTIPART_SIGNED(part))
+			cnt_info->text.mime_entity = emcore_gmime_get_mime_entity_signed_message(part);
 
 	} else if (GMIME_IS_PART(part)) {
 		EM_DEBUG_LOG("Part");
@@ -681,7 +691,6 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END();
 }
 
-
 static int emcore_gmime_parse_mime_header(GMimeMessage *message, struct _rfc822header *rfc822_header)
 {
 	EM_DEBUG_FUNC_BEGIN("message[%p], rfc822header[%p]", message, rfc822_header);
@@ -794,8 +803,7 @@ static void emcore_gmime_eml_parse_foreach_cb(GMimeObject *parent, GMimeObject *
 		if (msg_disposition) {
 			msg_disposition_str = (char *)g_mime_content_disposition_get_disposition(msg_disposition);
 			msg_disposition_filename = (char *)g_mime_content_disposition_get_parameter(msg_disposition, "filename");
-			if (EM_SAFE_STRLEN(msg_disposition_filename) == 0)
-				msg_disposition_filename = NULL;
+			if (EM_SAFE_STRLEN(msg_disposition_filename) == 0) msg_disposition_filename = NULL;
 		}
 		EM_DEBUG_LOG("RFC822/Message Disposition[%s]", msg_disposition_str);
 		EM_DEBUG_LOG_SEC("RFC822/Message Disposition-Filename[%s]", msg_disposition_filename);
@@ -923,6 +931,9 @@ static void emcore_gmime_eml_parse_foreach_cb(GMimeObject *parent, GMimeObject *
 		int multi_count = g_mime_multipart_get_count(multi_part);
 		EM_DEBUG_LOG("Multi Part Count:%d", multi_count);
 		EM_DEBUG_LOG("Boundary:%s\n\n", g_mime_multipart_get_boundary(multi_part));
+
+		if (GMIME_IS_MULTIPART_SIGNED(part))
+			cnt_info->text.mime_entity = emcore_gmime_get_mime_entity_signed_message(part);
 
 	} else if (GMIME_IS_PART(part)) {
 		EM_DEBUG_LOG("Part");
@@ -1381,7 +1392,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_foreach_cb(GMimeObject *parent, GMime
 
 		int multi_count = g_mime_multipart_get_count(multi_part);
 		EM_DEBUG_LOG("Multi Part Count:%d", multi_count);
-		EM_DEBUG_LOG("Boundary:%s\n\n", g_mime_multipart_get_boundary(multi_part));
+		EM_DEBUG_LOG("Boundary:%s", g_mime_multipart_get_boundary(multi_part));
 
 	} else if (GMIME_IS_PART(part)) {
 		/* a normal leaf part, could be text/plain or
@@ -1800,7 +1811,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 		char *msg_tmp_content_path = NULL;
 		int real_size = 0;
 
-		if (cnt_info->grab_type != (GRAB_TYPE_TEXT|GRAB_TYPE_ATTACHMENT) &&
+		if (cnt_info->grab_type != (GRAB_TYPE_TEXT | GRAB_TYPE_ATTACHMENT) &&
 				cnt_info->grab_type != GRAB_TYPE_ATTACHMENT) {
 			goto FINISH_OFF;
 		}
@@ -1900,6 +1911,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 		int multi_count = g_mime_multipart_get_count(multi_part);
 		EM_DEBUG_LOG("Multi Part Count:%d", multi_count);
 		EM_DEBUG_LOG("Boundary:%s\n\n", g_mime_multipart_get_boundary(multi_part));
+
 	} else if (GMIME_IS_PART(part)) {
 		EM_DEBUG_LOG("Part");
 		int content_disposition_type = 0;
@@ -2343,6 +2355,8 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_bodystructure_foreach_cb(GMimeObject 
 	} else if (GMIME_IS_MESSAGE_PARTIAL(part)) {
 		EM_DEBUG_LOG("Partial Part");
 		//TODO
+	} else if (GMIME_IS_MULTIPART_SIGNED(part)) {
+		EM_DEBUG_LOG("Multi Part Signed");
 	} else if (GMIME_IS_MULTIPART(part)) {
 		EM_DEBUG_LOG("Multi Part");
 		GMimeMultipart *multi_part = NULL;
@@ -2426,7 +2440,8 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_bodystructure_foreach_cb(GMimeObject 
 		} else {
 			if (content_id || content_location) {
 				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+					(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || 
+					 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
 					cnt_info->total_body_size += content_size;
 					EM_DEBUG_LOG("TEXT");
 				} else {
@@ -2442,7 +2457,8 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_bodystructure_foreach_cb(GMimeObject 
 				}
 			} else {
 				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+					(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || 
+					 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
 					cnt_info->total_body_size += content_size;
 					EM_DEBUG_LOG("TEXT");
 				} else {
@@ -2490,7 +2506,9 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent, GMimeObject *part, gpointer user_data)
+INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent, 
+															GMimeObject *part, 
+															gpointer user_data)
 {
 	EM_DEBUG_FUNC_BEGIN("parent[%p], part[%p], user_data[%p]", parent, part, user_data);
 
@@ -2558,6 +2576,25 @@ INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent
 		EM_DEBUG_LOG("sections <%s>", cnt_info->sections);
 	} else if (GMIME_IS_MESSAGE_PARTIAL(part)) {
 		EM_DEBUG_LOG("Partial Part");
+	} else if (GMIME_IS_MULTIPART_SIGNED(part)) {
+		EM_DEBUG_LOG("Multi Part Signed");
+		snprintf(sections, sizeof(sections), "BODY.PEEK[1.mime] BODY.PEEK[1]");
+
+		if (cnt_info->sections) {
+			char *tmp_str = NULL;
+			tmp_str = g_strconcat(cnt_info->sections, " ", sections, NULL);
+
+			if (tmp_str) {
+				EM_SAFE_FREE(cnt_info->sections);
+				cnt_info->sections = tmp_str;
+			}
+		}
+		else {
+			cnt_info->sections = EM_SAFE_STRDUP(sections);
+		}
+
+		EM_DEBUG_LOG("sections <%s>", cnt_info->sections);
+
 	} else if (GMIME_IS_MULTIPART(part)) {
 		EM_DEBUG_LOG("Multi Part");
 	} else if (GMIME_IS_PART(part)) {
@@ -2593,7 +2630,7 @@ INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent
 			goto FINISH_OFF;
 		}
 		/*Content Type - END*/
-
+		
 		/*Content Disposition*/
 		disposition = g_mime_object_get_content_disposition(mobject);
 		if (disposition) {
@@ -2628,7 +2665,8 @@ INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent
 		} else {
 			if (content_id || content_location) {
 				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+					(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || 
+					 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
 					EM_DEBUG_LOG("TEXT");
 				} else {
 					if (cnt_info->attachment_only) {
@@ -2641,7 +2679,8 @@ INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent
 				}
 			} else {
 				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+					(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || 
+					 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
 					EM_DEBUG_LOG("TEXT");
 				} else {
 					content_disposition_type = ATTACHMENT;
@@ -2658,8 +2697,14 @@ INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent
 		}
 		else {
 			snprintf(sections, sizeof(sections), "BODY.PEEK[%s.MIME] BODY.PEEK[%s]", ctype_section, ctype_section);
-
+			
 			if (cnt_info->sections) {
+
+				if (strcasestr(cnt_info->sections, "BODY.PEEK[1.MIME] BODY.PEEK[1]")) {
+					if (strcasestr(sections, "1."))
+						goto FINISH_OFF;
+				}
+
 				char *tmp_str = NULL;
 				tmp_str = g_strconcat(cnt_info->sections, " ", sections, NULL);
 
@@ -2682,7 +2727,9 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC void emcore_gmime_get_attachment_section_foreach_cb(GMimeObject *parent, GMimeObject *part, gpointer user_data)
+INTERNAL_FUNC void emcore_gmime_get_attachment_section_foreach_cb(GMimeObject *parent, 
+																GMimeObject *part, 
+																gpointer user_data)
 {
 	EM_DEBUG_FUNC_BEGIN("parent[%p], part[%p], user_data[%p]", parent, part, user_data);
 
@@ -2819,7 +2866,8 @@ INTERNAL_FUNC void emcore_gmime_get_attachment_section_foreach_cb(GMimeObject *p
 		} else {
 			if (content_id || content_location) {
 				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || 
+						 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
 					EM_DEBUG_LOG("TEXT");
 				} else {
 					if (cnt_info->attachment_only) {
@@ -2832,7 +2880,8 @@ INTERNAL_FUNC void emcore_gmime_get_attachment_section_foreach_cb(GMimeObject *p
 				}
 			} else {
 				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || 
+						 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
 					EM_DEBUG_LOG("TEXT");
 				} else {
 					content_disposition_type = ATTACHMENT;
@@ -2868,7 +2917,7 @@ INTERNAL_FUNC void emcore_gmime_search_section_foreach_cb(GMimeObject *parent, G
 
 	search_section *search_info = (search_section *)user_data;
 	GMimeContentType *ctype = NULL;
-        char buf[255] = {0};
+	char buf[255] = {0};
 	char *ctype_section = NULL;
 
 	if (!search_info) {
@@ -2900,23 +2949,47 @@ INTERNAL_FUNC void emcore_gmime_search_section_foreach_cb(GMimeObject *parent, G
 		goto FINISH_OFF;
 	}
 
-        SNPRINTF(buf, sizeof(buf), "%s.MIME", ctype_section);
+	SNPRINTF(buf, sizeof(buf), "%s.MIME", ctype_section);
 
 	if (g_ascii_strcasecmp(ctype_section, search_info->section) == 0) {
 		EM_DEBUG_LOG("found section");
 		if (!(search_info->section_object)) search_info->section_object = part;
-        } else if (g_ascii_strcasecmp(search_info->section, buf) == 0) {
-                EM_DEBUG_LOG("Mime header");
-                if (!(search_info->section_object)) search_info->section_object = part;
-        }
+	} else if (g_ascii_strcasecmp(search_info->section, buf) == 0) {
+		EM_DEBUG_LOG("Mime header");
+		if (!(search_info->section_object)) search_info->section_object = part;
+	}
 
 FINISH_OFF:
 
 	EM_DEBUG_FUNC_END();
 }
 
+INTERNAL_FUNC void emcore_gmime_get_mime_entity_cb(GMimeObject *parent, GMimeObject *part, gpointer user_data)
+{
+	EM_DEBUG_FUNC_BEGIN();
+
+	struct _m_content_info *cnt_info = (struct _m_content_info *)user_data;
+
+	if (GMIME_IS_MESSAGE_PART(part)) {
+		EM_DEBUG_LOG("Message Part");
+	} else if (GMIME_IS_MESSAGE_PARTIAL(part)) {
+		EM_DEBUG_LOG("Partial Part");
+	} else if (GMIME_IS_MULTIPART_SIGNED(part)) {
+		EM_DEBUG_LOG("Multi Part Signed");
+		cnt_info->text.mime_entity = emcore_gmime_get_mime_entity_signed_message(part);
+	} else if (GMIME_IS_MULTIPART(part)) {
+		EM_DEBUG_LOG("Multi Part");
+	} else if (GMIME_IS_PART(part)) {
+		EM_DEBUG_LOG("Part");
+	}
+
+	EM_DEBUG_FUNC_END();
+}
+
 INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
-		BODY *body, const char *spec, int *total_mail_size)
+													BODY *body, 
+													const char *spec, 
+													int *total_mail_size)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	PART *part = NULL;
@@ -2959,8 +3032,8 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
 		if (EM_SAFE_STRLEN(subspec) > 2)
 			section = EM_SAFE_STRDUP(subspec+2);
 
-		EM_DEBUG_LOG("constructing a %s/%s part (%s/%s)", body_types[part->body.type],
-			part->body.subtype, subspec, section);
+		EM_DEBUG_LOG("constructing a %s/%s part (%s/%s)", body_types[part->body.type], part->body.subtype, 
+														subspec, section);
 
 		if (part->body.type == TYPEMULTIPART) {
 			/*multipart*/
@@ -3069,7 +3142,7 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
 		if (part->body.parameter) {
 			PARAMETER *param = part->body.parameter;
 			while(param) {
-			    EM_DEBUG_LOG_SEC("Content-Type Parameter: attribute[%s], value[%s]", param->attribute, param->value);
+			    EM_DEBUG_LOG("Content-Type Parameter: attribute[%s], value[%s]", param->attribute, param->value);
 				if (param->attribute || param->value)
 					g_mime_object_set_content_type_parameter(subpart, param->attribute, param->value);
 				param = param->next;
@@ -3130,7 +3203,9 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
 }
 
 INTERNAL_FUNC void emcore_gmime_construct_part (GMimePart *part,
-		BODY *body, const char *spec, int *total_mail_size)
+												BODY *body, 
+												const char *spec, 
+												int *total_mail_size)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	GMimeObject *part_object = NULL;
@@ -3311,7 +3386,6 @@ INTERNAL_FUNC int emcore_gmime_construct_mime_part_with_bodystructure(BODY *mbod
 		if (mbody->parameter) {
 			PARAMETER *param = mbody->parameter;
 			while(param) {
-				EM_DEBUG_LOG("Content-Type Parameter: attribute[%s], value[%s]", param->attribute, param->value);
 				if (g_ascii_strcasecmp(param->attribute, "boundary") == 0 && param->value)
 					boundary_ok = 1;
 				param = param->next;
@@ -3324,13 +3398,28 @@ INTERNAL_FUNC int emcore_gmime_construct_mime_part_with_bodystructure(BODY *mbod
 		}
 
 		char *subtype = g_ascii_strdown(mbody->subtype, -1);
-		multipart = g_mime_multipart_new_with_subtype(subtype);
+		EM_DEBUG_LOG("Constructing a MULTIPART/%s", subtype);
+		if (g_ascii_strcasecmp(subtype, "signed") == 0) {
+			multipart = (GMimeMultipart *)g_mime_multipart_signed_new();
+		} else {
+			multipart = g_mime_multipart_new_with_subtype(subtype);
+		}
 
 		/* Fill up mime part of message1 using bodystructure info */
 		emcore_gmime_construct_multipart(multipart, mbody, spec, &total_size);
 
 		mime_part = GMIME_OBJECT(multipart);
 		EM_SAFE_FREE(subtype);
+
+		if (mbody->parameter) {
+			PARAMETER *param = mbody->parameter;
+			while(param) {
+				EM_DEBUG_LOG("Content-Type Parameter: attribute[%s], value[%s]", param->attribute, param->value);
+				if (param->attribute || param->value)
+					g_mime_object_set_content_type_parameter(mime_part, param->attribute, param->value);
+				param = param->next;
+			}
+		}
 	}
 	else {
 		char *type = g_ascii_strdown(body_types[mbody->type], -1);
@@ -3363,7 +3452,8 @@ FINISH_OFF:
 }
 
 INTERNAL_FUNC int emcore_gmime_get_body_sections_from_message(GMimeMessage *message,
-		struct _m_content_info *cnt_info, char **sections_to_fetch)
+															struct _m_content_info *cnt_info, 
+															char **sections_to_fetch)
 {
 	EM_DEBUG_FUNC_BEGIN();
 
@@ -3461,7 +3551,9 @@ FINISH_OFF:
 }
 
 INTERNAL_FUNC int emcore_gmime_get_attachment_section_from_message(GMimeMessage *message,
-		struct _m_content_info *cnt_info, int nth, char **section_to_fetch)
+																	struct _m_content_info *cnt_info, 
+																	int nth, 
+																	char **section_to_fetch)
 {
 	EM_DEBUG_FUNC_BEGIN();
 
@@ -3597,7 +3689,9 @@ static int emcore_gmime_get_section_n_bodysize(char *response, char *section, in
 }
 
 INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int msg_uid, int mail_id,
-		struct _m_content_info *cnt_info, GMimeMessage *message, int event_handle, int auto_download, int *err_code)
+														struct _m_content_info *cnt_info, 
+														GMimeMessage *message, int event_handle, 
+														int auto_download, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("stream[%p], msg_uid[%d], cnt_info[%p], err_code[%p]",
 			stream, msg_uid, cnt_info, err_code);
@@ -3625,11 +3719,18 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 	char *tag_position = NULL;
 
 	int part_header = 0;
+	int signed_message = 0;
 	int download_interval = 0;
 	int download_total_size = 0;
 	int downloaded_size = 0;
 	int download_progress = 0;
 	int last_notified_download_size = 0;
+
+	char *full_text = NULL;
+	char *body_string = NULL;
+	char *header_string = NULL;
+	GMimeObject *entity_part = NULL;
+	GMimeParser *entity_parser = NULL;
 
 	GMimeDataWrapper *content = NULL;
 	GMimeStream *content_stream = NULL;
@@ -3648,8 +3749,9 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 	}
 
 	if (!cnt_info || !cnt_info->sections) {
-		EM_DEBUG_EXCEPTION("invalid parameter detected...");
-		err = EMAIL_ERROR_INVALID_PARAM;
+		EM_DEBUG_LOG("invalid parameter detected...");
+		/* Encrypted message did not have a text body So did not have a body section */
+		ret = TRUE;
 		goto FINISH_OFF;
 	}
 
@@ -3662,6 +3764,11 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 		EM_DEBUG_EXCEPTION("net_sout failed...");
 		err = EMAIL_ERROR_CONNECTION_BROKEN;
 		goto FINISH_OFF;
+	}
+
+	if (GMIME_IS_MULTIPART_SIGNED(message->mime_part)) {
+		EM_DEBUG_LOG("Multi Part Signed");
+		signed_message = 1;	
 	}
 
 	while (imaplocal->netstream) {
@@ -3692,7 +3799,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 			memset(encoded, 0x00, sizeof(encoded));
 
 			if (!emcore_gmime_get_section_n_bodysize(response, section, &body_size)) {
-				EM_DEBUG_EXCEPTION("emcore_get_section_body_size failed [%d]", err);
+				EM_DEBUG_EXCEPTION("emcore_gmime_get_section_body_size failed [%d]", err);
 				err = EMAIL_ERROR_INVALID_RESPONSE;
 				goto FINISH_OFF;
 			}
@@ -3760,17 +3867,21 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 					part_header = 1;
 
 				mime_part = GMIME_PART(mime_object);
+			} else if (signed_message) {
+				if (strcasestr(section, "MIME"))
+					part_header = 1;
 			} else {
 				EM_DEBUG_EXCEPTION("invalid mime part type");
 				goto FINISH_OFF;
 			}
-
+		
 			if (!part_header) {
 				if (!emcore_get_temp_file_name(&buf, &err) || !buf) {
 					EM_DEBUG_EXCEPTION("emcore_get_temp_file_name failed [%d]", err);
 					goto FINISH_OFF;
 				}
 
+				EM_DEBUG_LOG("TMP name : [%s]", buf);
 				g_mime_object_set_content_type_parameter(mime_object, "tmp_content_path", buf);
 
 				if (event_handle > 0)
@@ -3780,7 +3891,11 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 					if (cnt_info->total_body_size > body_size) {
 						EM_DEBUG_LOG("Multipart body size is [%d]", cnt_info->total_body_size);
 						if (!auto_download) {
-							if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, buf, cnt_info->total_body_size, 0))
+							if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, 
+															mail_id, 
+															buf, 
+															cnt_info->total_body_size, 
+															0))
 								EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 						}
 
@@ -3800,7 +3915,11 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 
 				if (cnt_info->grab_type == (GRAB_TYPE_TEXT | GRAB_TYPE_ATTACHMENT)) {
 					if (!auto_download) {
-						if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, buf, cnt_info->total_mail_size, 0))
+						if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, 
+														mail_id, 
+														buf, 
+														cnt_info->total_mail_size, 
+														0))
 							EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 					}
 
@@ -3819,8 +3938,18 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 						goto FINISH_OFF;
 					}
 
-					if (GMIME_IS_PART(mime_object) && mime_part) {
-						content_stream = g_mime_stream_mem_new_with_buffer((const char *)encoded, EM_SAFE_STRLEN(encoded));
+					if (signed_message) {
+						content_stream = g_mime_stream_mem_new_with_buffer((const char *)encoded, 
+																			EM_SAFE_STRLEN(encoded));
+						entity_parser = g_mime_parser_new_with_stream(content_stream);
+						if (content_stream) g_object_unref(content_stream);
+
+						entity_part = g_mime_parser_construct_part(entity_parser);
+						if (entity_parser) g_object_unref(entity_parser);
+					} 
+					else if (GMIME_IS_PART(mime_object) && mime_part) {
+						content_stream = g_mime_stream_mem_new_with_buffer((const char *)encoded, 
+																			EM_SAFE_STRLEN(encoded));
 						//parser = g_mime_parser_new_with_stream(content_stream);
 						content = g_mime_data_wrapper_new_with_stream(content_stream, mime_part->encoding);
 						if (content_stream) g_object_unref (content_stream);
@@ -3983,7 +4112,22 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 						EM_DEBUG_LOG("%d has been written", EM_SAFE_STRLEN((char *)test_buffer));
 					}
 
-					if (GMIME_IS_PART(mime_object) && mime_part) {
+					if (signed_message) {
+						err = em_open(buf, O_RDONLY, 0, &fd);
+						if (err != EMAIL_ERROR_NONE) {
+							EM_DEBUG_EXCEPTION("holder open failed : holder is a filename that will be saved.");
+							goto FINISH_OFF;
+						}
+
+						content_stream = g_mime_stream_fs_new(fd);
+
+						entity_parser = g_mime_parser_new_with_stream(content_stream);
+						if (content_stream) g_object_unref(content_stream);
+
+						entity_part = g_mime_parser_construct_part(entity_parser);
+						if (entity_parser) g_object_unref(entity_parser);
+					}
+					else if (GMIME_IS_PART(mime_object) && mime_part) {
 						err = em_open(buf, O_RDONLY, 0, &fd);
 						if (err != EMAIL_ERROR_NONE) {
 							EM_DEBUG_EXCEPTION("holder open failed : holder is a filename that will be saved.");
@@ -3996,54 +4140,58 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 						if (content_stream) g_object_unref (content_stream);
 						g_mime_part_set_content_object(mime_part, content);
 						if (content) g_object_unref(content);
-					}
+					} 	
 				}
 			} else {
-                                EM_DEBUG_LOG("MIME header");
+				EM_DEBUG_LOG("MIME header");
 
-                                char *file_name = NULL;
+				char *file_name = NULL;
 
-                                GMimeObject *object_header = NULL;
-                                GMimeParser *parser_header = NULL;
-                                GMimeContentType *ctype_header = NULL;
-                                GMimeContentDisposition *disposition_header = NULL;
+				GMimeObject *object_header = NULL;
+				GMimeParser *parser_header = NULL;
+				GMimeContentType *ctype_header = NULL;
+				GMimeContentDisposition *disposition_header = NULL;
 
-                                if (net_getbuffer(imaplocal->netstream, (long)body_size, (char *)encoded) <= 0) {
-                                        EM_DEBUG_EXCEPTION("net_getbuffer failed...");
-                                        err = EMAIL_ERROR_NO_RESPONSE;
-                                        goto FINISH_OFF;
-                                }
+				if (net_getbuffer(imaplocal->netstream, (long)body_size, (char *)encoded) <= 0) {
+					EM_DEBUG_EXCEPTION("net_getbuffer failed...");
+					err = EMAIL_ERROR_NO_RESPONSE;
+					goto FINISH_OFF;
+				}
 
-                                EM_DEBUG_LOG_DEV("Data : [%s]", encoded);
+				EM_DEBUG_LOG_DEV("Data : [%s]", encoded);
 
-                                content_stream = g_mime_stream_mem_new_with_buffer((const char *)encoded, EM_SAFE_STRLEN(encoded));
+				if (signed_message) {
+					header_string = g_strdup((const gchar *)encoded);
+				} else {
+					content_stream = g_mime_stream_mem_new_with_buffer((const char *)encoded, EM_SAFE_STRLEN(encoded));
+					parser_header = g_mime_parser_new_with_stream(content_stream);
+					if (content_stream) g_object_unref(content_stream);
 
-                                parser_header = g_mime_parser_new_with_stream(content_stream);
-                                if (content_stream) g_object_unref (content_stream);
+					object_header = g_mime_parser_construct_part(parser_header);
+					if (parser_header) g_object_unref(parser_header);
 
-                                object_header = g_mime_parser_construct_part(parser_header);
-                                if (parser_header) g_object_unref(parser_header);
+					/* Content type */
+					ctype_header = g_mime_object_get_content_type(object_header);
+					file_name = (char *)g_mime_content_type_get_parameter(ctype_header, "name");
+					EM_DEBUG_LOG_DEV("Content name : [%s]", file_name);
 
-                                /* Content type */
-                                ctype_header = g_mime_object_get_content_type(object_header);
-                                file_name = (char *)g_mime_content_type_get_parameter(ctype_header, "name");
-                                EM_DEBUG_LOG_DEV("Content name : [%s]", file_name);
+					if (file_name == NULL) {
+						/* Content Disposition */
+						disposition_header = g_mime_object_get_content_disposition(object_header);
+						file_name = (char *)g_mime_content_disposition_get_parameter(disposition_header, "filename");
+						EM_DEBUG_LOG_DEV("Disposition name : [%s]", file_name);
+					}
 
-                                if (file_name == NULL) {
-                                        /* Content Disposition */
-                                        disposition_header = g_mime_object_get_content_disposition(object_header);
-                                        file_name = (char *)g_mime_content_disposition_get_parameter(disposition_header, "filename");
-                                        EM_DEBUG_LOG_DEV("Disposition name : [%s]", file_name);
-                                }
+					/* Replace the file name (Becase the server sometimes send the invalid name in bodystructure) */
+					if (mime_part && file_name) g_mime_part_set_filename(mime_part, file_name);
+				} 
 
-                                /* Replace the file name (Becase the server sometimes send the invalid name in bodystructure) */
-                                if (mime_part && file_name) g_mime_part_set_filename(mime_part, file_name);
+				if (object_header) g_object_unref(object_header);
+				if (ctype_header) g_object_unref(ctype_header);
+				if (disposition_header) g_object_unref(disposition_header);
+			}
 
-                                if (object_header) g_object_unref(object_header);
-                                if (ctype_header) g_object_unref(ctype_header);
-                                if (disposition_header) g_object_unref(disposition_header);
-                        }
-
+			if (buf) g_remove(buf);
 			EM_SAFE_FREE(buf);
 		}
 		else if ((tag_position = g_strrstr(response, tag))) /*  end of response */ {
@@ -4062,6 +4210,43 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 		EM_SAFE_FREE (response);
 	}
 
+	if (signed_message) {
+		int part_index = -1;
+
+		GMimeStream *tmp_stream = NULL;
+		GMimeParser *tmp_parser = NULL;
+		GMimeMessage *tmp_message = NULL;
+
+		body_string = g_mime_object_to_string(entity_part);
+		if (entity_part) g_object_unref(entity_part);
+
+		full_text = g_strconcat(header_string, body_string, NULL);
+		tmp_stream = g_mime_stream_mem_new_with_buffer(full_text, EM_SAFE_STRLEN(full_text));
+
+		tmp_parser = g_mime_parser_new_with_stream(tmp_stream);
+		if (tmp_stream) g_object_unref(tmp_stream);
+
+		tmp_message = g_mime_parser_construct_message(tmp_parser);
+		if (tmp_parser) g_object_unref(tmp_parser);
+
+		/* Search get index of multipart for replacing */
+		part_index = g_mime_multipart_index_of(GMIME_MULTIPART(message->mime_part), mime_object);
+		if (part_index == -1) {
+			EM_DEBUG_EXCEPTION("g_mime_multipart_index_of failed");
+			if (tmp_message) g_object_unref(tmp_message);
+			goto FINISH_OFF;
+		}
+
+		/* replace the entity part */
+		if (g_mime_multipart_replace(GMIME_MULTIPART(message->mime_part), part_index, tmp_message->mime_part) == NULL) {
+			EM_DEBUG_EXCEPTION("g_mime_multipart_replaced failed");
+			if (tmp_message) g_object_unref(tmp_message);
+			goto FINISH_OFF;
+		}
+
+		if (tmp_message) g_object_unref(tmp_message);
+	}
+
 	ret = TRUE;
 
 FINISH_OFF:
@@ -4071,11 +4256,19 @@ FINISH_OFF:
 		mime_iter = NULL;
 	}*/
 
+	EM_SAFE_FREE(header_string);
+	EM_SAFE_FREE(body_string);
+	EM_SAFE_FREE(full_text);
+
+	if (entity_part) g_object_unref(entity_part);
+	if (entity_parser) g_object_unref(entity_parser);
+
 	if (search_info) {
 		EM_SAFE_FREE(search_info->section);
 		EM_SAFE_FREE(search_info);
 	}
 
+	if (buf) g_remove(buf);
 	EM_SAFE_FREE(buf);
 
 	EM_SAFE_FREE(response);
@@ -4768,4 +4961,86 @@ INTERNAL_FUNC char *emcore_gmime_get_decoding_text(const char *text)
     EM_DEBUG_LOG("decoded_text : [%s]", decoded_text);
 
     return decoded_text;
+}
+
+INTERNAL_FUNC char *emcore_gmime_get_mime_entity_signed_message(GMimeObject *multipart)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	
+	int entity_fd = 0;
+	int real_size = 0;
+	int error = EMAIL_ERROR_NONE;
+	char *mime_entity_path = NULL;
+
+	GMimeObject *mime_entity = NULL;
+	GMimeStream *out_stream = NULL;
+
+	if (!GMIME_IS_MULTIPART_SIGNED(multipart)) {
+		EM_DEBUG_EXCEPTION("Invalid param");
+		error = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	if (!emcore_get_temp_file_name(&mime_entity_path, &error)) {
+		EM_DEBUG_EXCEPTION("emcore_get_temp_file_name failed : [%d]", error);
+		goto FINISH_OFF;
+	}
+
+	entity_fd = open(mime_entity_path, O_WRONLY|O_CREAT, 0644);
+	if (entity_fd < 0) {
+		EM_DEBUG_EXCEPTION("open failed");
+		error = EMAIL_ERROR_SYSTEM_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	mime_entity = g_mime_multipart_get_part((GMimeMultipart *)multipart, 0);
+	out_stream = g_mime_stream_fs_new(entity_fd);
+	real_size = g_mime_object_write_to_stream(mime_entity, out_stream);
+	if (out_stream) g_object_unref(out_stream);
+
+	if (real_size <= 0) {
+		EM_DEBUG_EXCEPTION("g_mime_object_write_to_stream failed");
+		error = EMAIL_ERROR_FILE;
+		goto FINISH_OFF;
+	}
+
+FINISH_OFF:
+
+	if (out_stream) g_object_unref(out_stream);
+
+	if (error != EMAIL_ERROR_NONE) {
+		EM_SAFE_FREE(mime_entity_path);
+		return NULL;
+	} else {
+		return mime_entity_path;
+	}
+}
+
+INTERNAL_FUNC char *emcore_gmime_get_mime_entity(int fd)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	char *output_path = NULL;
+	
+	GMimeStream *stream = NULL;
+	GMimeParser *parser = NULL;
+	GMimeObject *part = NULL;
+
+	stream = g_mime_stream_fs_new(fd);
+
+	parser = g_mime_parser_new_with_stream(stream);
+	if (stream) g_object_unref(stream);
+
+	part = g_mime_parser_construct_part(parser);
+	if (parser) g_object_unref(parser);
+	if (part == NULL) {
+		EM_DEBUG_EXCEPTION("Data is invalid");
+		return NULL;
+	}
+
+	output_path = emcore_gmime_get_mime_entity_signed_message(part);
+
+	if (part) g_object_unref(part);
+
+	EM_DEBUG_FUNC_END();
+	return output_path;
 }

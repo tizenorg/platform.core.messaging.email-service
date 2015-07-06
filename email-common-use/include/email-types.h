@@ -24,13 +24,11 @@
 #define __EMAIL_TYPES_H__
 
 /**
- * @internal
  * @file email-types.h
  * @brief This file is the header file of Email Framework library.
  */
 
 /**
- * @internal
  * @addtogroup EMAIL_SERVICE_FRAMEWORK
  * @{
  */
@@ -231,95 +229,6 @@ extern "C"
 /*****************************************************************************/
 /*  Enumerations                                                             */
 /*****************************************************************************/
-
-enum {
-    /* Account */
-    _EMAIL_API_ADD_ACCOUNT                               = 0x01000000,    /**< IPC API ID for email_add_account */
-    _EMAIL_API_DELETE_ACCOUNT                            = 0x01000001,    /**< IPC API ID for email_delete_account */
-    _EMAIL_API_UPDATE_ACCOUNT                            = 0x01000002,    /**< IPC API ID for email_update_account */
-    _EMAIL_API_GET_ACCOUNT                               = 0x01000003,    /**< IPC API ID for email_get_account */
-    _EMAIL_API_GET_ACCOUNT_LIST                          = 0x01000005,    /**< IPC API ID for email_get_account_list */
-    _EMAIL_API_GET_MAILBOX_COUNT                         = 0x01000007,    /**< IPC API ID for email_get_mailbox_count */
-    _EMAIL_API_VALIDATE_ACCOUNT                          = 0x01000008,    /**< IPC API ID for email_validate_account */
-    _EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION               = 0x01000009,    /**< IPC API ID for email_add_account_with_validation */
-    _EMAIL_API_BACKUP_ACCOUNTS                           = 0x0100000A,    /**< IPC API ID for email_backup_accounts */
-    _EMAIL_API_RESTORE_ACCOUNTS                          = 0x0100000B,    /**< IPC API ID for email_restore_accounts */
-    _EMAIL_API_GET_PASSWORD_LENGTH_OF_ACCOUNT            = 0x0100000C,    /**< IPC API ID for email_get_password_legnth_of_account */
-    _EMAIL_API_VALIDATE_ACCOUNT_EX                       = 0x0100000D,    /**< IPC API ID for email_validate_account_ex */
-
-    /* Mail */
-    _EMAIL_API_DELETE_MAIL                               = 0x01100002,    /**< IPC API ID for email_delete_mail */
-    _EMAIL_API_DELETE_ALL_MAIL                           = 0x01100004,    /**< IPC API ID for email_delete_mail_all */
-    _EMAIL_API_GET_MAILBOX_LIST                          = 0x01100006,    /**< IPC API ID for email_get_mailbox_list */
-    _EMAIL_API_GET_SUBMAILBOX_LIST                       = 0x01100007,    /**< IPC API ID for email_get_submailbox_list */
-    _EMAIL_API_CLEAR_DATA                                = 0x01100009,    /**< IPC API ID for email_clear_data */
-    _EMAIL_API_MOVE_MAIL                                 = 0x0110000A,    /**< IPC API ID for email_move_mail */
-    _EMAIL_API_MOVE_ALL_MAIL                             = 0x0110000B,    /**< IPC API ID for email_move_all_mail */
-    _EMAIL_API_ADD_ATTACHMENT                            = 0x0110000C,    /**< IPC API ID for email_move_add_attachment */
-    _EMAIL_API_GET_ATTACHMENT                            = 0x0110000D,    /**< IPC API ID for email_get_attachment */
-    _EMAIL_API_DELETE_ATTACHMENT                         = 0x0110000E,    /**< IPC API ID for email_delete_attachment */
-    _EMAIL_API_MODIFY_MAIL_FLAG                          = 0x0110000F,    /**< IPC API ID for email_modify_mail_flag */
-    _EMAIL_API_MODIFY_MAIL_EXTRA_FLAG                    = 0x01100011,    /**< IPC API ID for email_modify_mail_extra_flag */
-    _EMAIL_API_SET_FLAGS_FIELD                           = 0x01100016,    /**< IPC API ID for email_set_flags_field */
-    _EMAIL_API_ADD_MAIL                                  = 0x01100017,    /**< IPC API ID for email_add_mail */
-    _EMAIL_API_UPDATE_MAIL                               = 0x01100018,    /**< IPC API ID for email_update_mail */
-    _EMAIL_API_ADD_READ_RECEIPT                          = 0x01100019,    /**< IPC API ID for email_add_read_receipt */
-    _EMAIL_API_EXPUNGE_MAILS_DELETED_FLAGGED             = 0x0110001A,    /**< IPC API ID for email_expunge_mails_deleted_flagged */
-
-    /* Thread */
-    _EMAIL_API_MOVE_THREAD_TO_MAILBOX                    = 0x01110000,    /**< IPC API ID for email_move_thread_to_mailbox */
-    _EMAIL_API_DELETE_THREAD                             = 0x01110001,    /**< IPC API ID for email_delete_thread */
-    _EMAIL_API_MODIFY_SEEN_FLAG_OF_THREAD                = 0x01110002,    /**< IPC API ID for email_modify_seen_flag_of_thread */
-
-    /* Mailbox */
-    _EMAIL_API_ADD_MAILBOX                               = 0x01200000,    /**< IPC API ID for email_add_mailbox */
-    _EMAIL_API_DELETE_MAILBOX                            = 0x01200001,    /**< IPC API ID for email_delete mailbox */
-    _EMAIL_API_SET_MAIL_SLOT_SIZE                        = 0x01200007,    /**< IPC API ID for email_set_mail_slot_size */
-    _EMAIL_API_RENAME_MAILBOX                            = 0x01200008,    /**< IPC API ID for email_rename_mailbox */
-    _EMAIL_API_RENAME_MAILBOX_EX                         = 0x0120000B,    /**< IPC API ID for email_rename_mailbox_ex */
-    _EMAIL_API_SET_MAILBOX_TYPE                          = 0x01200009,    /**< IPC API ID for email_set_mailbox_type */
-    _EMAIL_API_SET_LOCAL_MAILBOX                         = 0x0120000A,    /**< IPC API ID for email_set_local_mailbox */
-
-    /* Network */
-    _EMAIL_API_SEND_MAIL                                 = 0x01300000,    /**< IPC API ID for email_send_mail */
-    _EMAIL_API_SYNC_HEADER                               = 0x01300001,    /**< IPC API ID for email_sycn_header */
-    _EMAIL_API_DOWNLOAD_BODY                             = 0x01300002,    /**< IPC API ID for email_download_body */
-    _EMAIL_API_DOWNLOAD_ATTACHMENT                       = 0x01300003,    /**< IPC API ID for email_download_attachment */
-    _EMAIL_API_SEND_SAVED                                = 0x01300005,    /**< IPC API ID for email_send_saved */
-    _EMAIL_API_DELETE_EMAIL                              = 0x01300007,    /**< IPC API ID for email_delete_email */
-    _EMAIL_API_DELETE_EMAIL_ALL                          = 0x01300008,    /**< IPC API ID for email_delete_email_all */
-    _EMAIL_API_GET_IMAP_MAILBOX_LIST                     = 0x01300015,    /**< IPC API ID for email_get_imap_mailbox_list */
-    _EMAIL_API_SEND_MAIL_CANCEL_JOB                      = 0x01300017,    /**< IPC API ID for email_send_mail_cancel_job */
-    _EMAIL_API_QUERY_SMTP_MAIL_SIZE_LIMIT                = 0x0130001B,    /**< IPC API ID for email_query_smtp_mail_size_limit */
-
-    /* Rule */
-    _EMAIL_API_ADD_RULE                                  = 0x01400000,    /**< IPC API ID for email_add_rule */
-    _EMAIL_API_GET_RULE                                  = 0x01400001,    /**< IPC API ID for email_get_rule */
-    _EMAIL_API_GET_RULE_LIST                             = 0x01400002,    /**< IPC API ID for email_get_rule_list */
-    _EMAIL_API_FIND_RULE                                 = 0x01400003,    /**< IPC API ID for email_find_rule */
-    _EMAIL_API_DELETE_RULE                               = 0x01400004,    /**< IPC API ID for email_delete_rule */
-    _EMAIL_API_UPDATE_RULE                               = 0x01400005,    /**< IPC API ID for email_update_rule */
-    _EMAIL_API_APPLY_RULE                                = 0x01400006,    /**< IPC API ID for email_apply_rule */
-    _EMAIL_API_CANCEL_JOB                                = 0x01400007,    /**< IPC API ID for email_cancel_job */
-    _EMAIL_API_SEND_RETRY                                = 0x01400009,    /**< IPC API ID for email_send_retry */
-    _EMAIL_API_UPDATE_ACTIVITY                           = 0x0140000A,    /**< IPC API ID for email_update_activity */
-    _EMAIL_API_SYNC_LOCAL_ACTIVITY                       = 0x0140000B,    /**< IPC API ID for email_sync_local_activity */
-
-	/* Etc */
-	_EMAIL_API_PING_SERVICE                              = 0x01500000,    /**< IPC API ID for email_ping_service */
-	_EMAIL_API_UPDATE_NOTIFICATION_BAR_FOR_UNREAD_MAIL   = 0x01500001,    /**< IPC API ID for email_update_notification_bar_for_unread_mail */
-	_EMAIL_API_SHOW_USER_MESSAGE                         = 0x01500002,    /**< IPC API ID for email_show_user_message */
-	_EMAIL_API_WRITE_MIME_FILE                           = 0x01500003,    /**< IPC API ID for email_write_mime_file */
-	_EMAIL_API_GET_TASK_INFORMATION                      = 0x01500004,    /**< IPC API ID for email_get_task_information */
-	_EMAIL_API_CLEAR_NOTIFICATION_BAR                    = 0x01500005,
-	_EMAIL_API_GET_USER_NAME                             = 0x01500006,
-
-    /* Smime */
-    _EMAIL_API_ADD_CERTIFICATE                           = 0x01600000,    /**< IPC API ID for email_add_certificate */
-    _EMAIL_API_DELETE_CERTIFICATE                        = 0x01600001,    /**< IPC API ID for email_delete_certificate */
-    _EMAIL_API_VERIFY_SIGNATURE                          = 0x01600002,    /**< IPC API ID for email_verify_signature */
-    _EMAIL_API_VERIFY_CERTIFICATE                        = 0x01600003,    /**< IPC API ID for email_verify_certificate */
-};
 
 typedef enum
 {
@@ -808,6 +717,19 @@ typedef enum
     EMAIL_EXPUNGE_MAILS_DELETED_FLAGGED_FINISH,              /**< Task finished */
     EMAIL_EXPUNGE_MAILS_DELETED_FLAGGED_FAIL,                /**< Task failed */
 }email_expunge_mails_deleted_flagged_status_e;
+
+/**
+* @brief Enumeration for the status of searching mails on server.
+* @since_tizen 2.4
+*/
+typedef enum
+{
+    EMAIL_SEARCH_ON_SERVER_NONE         = 0,    /**< Initial status */
+    EMAIL_SEARCH_ON_SERVER_WAITING,             /**< Waiting status*/
+    EMAIL_SEARCH_ON_SERVER_START,               /**< Task started  */
+    EMAIL_SEARCH_ON_SERVER_FINISH,              /**< Task finished */
+    EMAIL_SEARCH_ON_SERVER_FAIL,                /**< Task failed */
+}email_search_on_server_status_e;
 
 /**
 * @brief Enumeration for the status of moving mails.
@@ -1600,9 +1522,11 @@ typedef struct
     time_t                replied_time;            /**< The time of replied */
     time_t                forwarded_time;          /**< The time of forwarded */
     char                 *pgp_password;            /**< The password of PGP. */
+    char                 *user_name;               /**< The user information for multi user (Since 2.4) */
+	char                 *key_list;                /**< The key list encryption of mail (Since 2.4) */
+	char                 *key_id;                  /**< The key ID for signing of pgp mail (Since 2.4) */
     int                   eas_data_length;         /**< The length of eas_data */
     void                 *eas_data;                /**< Extended Application Specific data */
-    char                 *user_name;               /**< The user information for multi user (Since 2.4) */
 } email_mail_data_t;
 
 /**

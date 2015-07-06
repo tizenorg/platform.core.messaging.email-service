@@ -176,6 +176,7 @@ void testapp_gmime_main()
 {
 	gboolean go_to_loop = TRUE;
 	int menu_number = 0;
+	int result_from_scanf = 0;
 
 	while (go_to_loop) {
 		testapp_show_menu (EMAIL_GMIME_MENU);

@@ -1507,7 +1507,7 @@ EXPORT_API int email_cancel_sending_mail(int mail_id)
 		as_noti_data.cancel_sending_mail.handle          = as_handle;
 		as_noti_data.cancel_sending_mail.mail_id         = mail_id;
 		as_noti_data.cancel_sending_mail.account_id      = account_id;
-		as_noti_data.cancel_sending_mail.multi_user_name = multi_user_name;
+		as_noti_data.cancel_sending_mail.multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
 		if ( em_send_notification_to_active_sync_engine(ACTIVE_SYNC_NOTI_CANCEL_SENDING_MAIL, &as_noti_data) == false) {
 			EM_DEBUG_EXCEPTION("em_send_notification_to_active_sync_engine failed.");
@@ -1555,6 +1555,8 @@ FINISH_OFF:
 
 	if(mail_data)
 		emcore_free_mail_data_list(&mail_data, 1);
+
+	EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_API_END ("err[%d]", err);
 	return err;

@@ -26,7 +26,6 @@
 #include "email-types.h"
 
 /**
- * @internal
  * @file email-api-init.h
  * @brief This file contains the data structures and interfaces of Email FW Initialization provided by email-service.
  *
@@ -74,7 +73,6 @@
  */
 
 /**
- * @internal
  * @addtogroup EMAIL_SERVICE_ETC_MODULE
  * @{
  */

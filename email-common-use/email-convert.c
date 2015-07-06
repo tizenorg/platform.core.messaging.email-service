@@ -738,7 +738,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_account(char *stream, int stream_le
 }
 
 #define EMAIL_MAIL_DATA_FMT  "S(" "iiiis" "iisss" "issss" "sssss" "sisss"\
-                            "icccc" "cccii" "iiiii" "iisii" "iiiii" "iissi" ")B"
+                            "icccc" "cccii" "iiiii" "iisii" "iiiii" "iisss" "si" ")B"
 
 INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_data, int *stream_len)
 {

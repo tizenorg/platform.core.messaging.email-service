@@ -145,6 +145,8 @@ EXPORT_API int emipc_create_task(unsigned char *task_stream, int response_channe
 
         if (getsockopt(response_channel, SOL_SOCKET, SO_PEERCRED, &uc, &uc_len) < 0) {
             EM_DEBUG_EXCEPTION("getsockopt error : [%d]", errno);
+    		emipc_free_email_task(task);
+			EM_SAFE_FREE(task);
             err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
             return err;
         }

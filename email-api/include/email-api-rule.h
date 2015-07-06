@@ -92,7 +92,6 @@
  */
 
 /**
- * @internal
  * @ingroup EMAIL_SERVICE_FRAMEWORK
  * @defgroup EMAIL_SERVICE_RULE_MOUDLE Rule API
  * @brief Rule API is a set of operations to manage email rules like add, get, delete or update rule related details.
@@ -105,7 +104,6 @@
  */
 
 /**
- * @internal
  * @addtogroup EMAIL_SERVICE_RULE_MOUDLE
  * @{
  */

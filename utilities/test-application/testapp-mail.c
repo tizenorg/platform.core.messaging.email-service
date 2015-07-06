@@ -1778,12 +1778,12 @@ static gboolean testapp_test_db_test()
 	char *cc = NULL;
 	char *bcc = NULL;
 
-	to  = (char *) malloc(500000);
-	cc  = (char *) malloc(500000);
+	to = (char *) malloc(500000);
+	cc = (char *) malloc(500000);
 	bcc = (char *) malloc(500000);
 	
-	memset(to,  0x00, sizeof(500000));
-	memset(cc,  0x00, sizeof(500000));
+	memset(to, 0x00, sizeof(500000));
+	memset(cc, 0x00, sizeof(500000));
 	memset(bcc, 0x00, sizeof(500000));
 
 	testapp_print("Input Mail id:\n");
@@ -2018,6 +2018,132 @@ static gboolean testapp_test_get_address_info_list()
 	return TRUE;
 }
 
+static gboolean testapp_test_search_mail_on_server()
+{
+	testapp_print(" >>> testapp_test_search_mail_on_server : Entered \n");
+
+	int err_code = EMAIL_ERROR_NONE;
+	int account_id = 0;
+	int mailbox_id = 0;
+	int search_key_value_integer = 0;
+	int search_filter_count = 0;
+	email_search_filter_type search_filter_type = 0;
+	email_search_filter_t search_filter[10];
+	int handle = 0;
+	time_t current_time = 0;
+	char search_key_value_string[MAX_EMAIL_ADDRESS_LENGTH];
+
+	testapp_print("input account id : ");
+	if (0 >= scanf("%d",&account_id))
+		testapp_print("Invalid input. ");
+
+	testapp_print("input mailbox id : ");
+	if (0 >= scanf("%d", &mailbox_id))
+		testapp_print("Invalid input. ");
+
+	memset(&search_filter, 0x00, sizeof(email_search_filter_t) * 10);
+
+	while (1) {
+		testapp_print(
+			"	EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO       =  1,  ( integer type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_UID              =  2,  ( integer type ) \n"
+			"       EMAIL_SEARCH_FILTER_TYPE_ALL              =  3,  ( integer type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_BCC              =  7,  ( string type ) \n"
+			"       EMAIL_SEARCH_FILTER_TYPE_BODY             =  8,  ( string type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_CC               =  9,  ( string type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_FROM             = 10,  ( string type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_KEYWORD          = 11,  ( string type ) \n"
+			"       EMAIL_SEARCH_FILTER_TYPE_TEXT             = 12,  ( string type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_SUBJECT          = 13,  ( string type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_TO               = 15,  ( string type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER      = 16,  ( integet type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_SIZE_SMALLER     = 17,  ( integet type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE = 20,  ( time type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON     = 21,  ( time type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE  = 22,  ( time type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED   = 26,  ( integer type ) \n"
+			"       EMAIL_SEARCH_FILTER_TYPE_FLAGS_NEW        = 27,  ( integer type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED    = 28,  ( integer type ) \n"
+			"       EMAIL_SEARCH_FILTER_TYPE_FLAGS_OLD        = 29,  ( integer type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT      = 30,  ( integer type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED     = 32,  ( integer type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT     = 34,  ( integer type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN       = 36,  ( integer type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       = 43,  ( string type ) \n"
+			"       EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY  = 50,  ( integer type ) \n"
+			"	EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  = 60,  ( string type ) \n"
+			"	END                                       = 0 \n");
+
+		testapp_print("input search filter type : ");
+		if (0 >= scanf("%d", (int*)&search_filter_type))
+			testapp_print("Invalid input. ");
+
+		search_filter[search_filter_count].search_filter_type = search_filter_type;
+
+		switch(search_filter_type) {
+			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO       :
+			case EMAIL_SEARCH_FILTER_TYPE_UID              :
+			case EMAIL_SEARCH_FILTER_TYPE_ALL              :
+			case EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER      :
+			case EMAIL_SEARCH_FILTER_TYPE_SIZE_SMALLER     :
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED   :
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_NEW        :
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED    :
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_OLD        :
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT      :
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED     :
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT     :
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN       :
+			case EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY  :
+				testapp_print("input search filter key value : ");
+				if (0 >= scanf("%d", &search_key_value_integer))
+					testapp_print("Invalid input. ");
+				search_filter[search_filter_count].search_filter_key_value.integer_type_key_value = search_key_value_integer;
+				break;
+
+			case EMAIL_SEARCH_FILTER_TYPE_BCC              :
+			case EMAIL_SEARCH_FILTER_TYPE_BODY             :
+			case EMAIL_SEARCH_FILTER_TYPE_CC               :
+			case EMAIL_SEARCH_FILTER_TYPE_FROM             :
+			case EMAIL_SEARCH_FILTER_TYPE_KEYWORD          :
+			case EMAIL_SEARCH_FILTER_TYPE_TEXT             :
+			case EMAIL_SEARCH_FILTER_TYPE_SUBJECT          :
+			case EMAIL_SEARCH_FILTER_TYPE_TO               :
+			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
+			case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  :
+				testapp_print("input search filter key value : ");
+				if (0 >= scanf("%s", search_key_value_string))
+					testapp_print("Invalid input. ");
+				search_filter[search_filter_count].search_filter_key_value.string_type_key_value = strdup(search_key_value_string);
+				break;
+
+			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :
+			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON     :
+			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE  :
+				time(&current_time);
+				/* TODO : write codes for converting string to time */
+				/* search_filter.search_filter_key_value.time_type_key_value = search_key_value_string; */
+				search_filter[search_filter_count].search_filter_key_value.time_type_key_value = current_time;
+				break;
+			default :
+				testapp_print("END filter type [%d]", search_filter_type);
+				break;
+		}
+
+		if (!search_filter_type)
+			break;
+
+		search_filter_count++;
+	}
+
+	if( (err_code = email_search_mail_on_server(account_id, mailbox_id, search_filter, search_filter_count, &handle)) != EMAIL_ERROR_NONE) {
+		testapp_print("email_search_mail_on_server failed [%d]", err_code);
+	}
+
+	testapp_print(" >>> testapp_test_search_mail_on_server : END \n");
+	return TRUE;
+}
+
 static gboolean testapp_test_add_mail_to_search_result_box()
 {
 	int                    i = 0;
@@ -2212,7 +2338,13 @@ static gboolean testapp_test_email_parse_mime_file()
 			if (!email_verify_signature_ex(mail_data, mail_attachment_data, attachment_count, &verify)) 
 				testapp_print("email_verify_signature_ex failed\n");
 		} else {
-			if ((err = email_get_decrypt_message_ex(mail_data, mail_attachment_data, attachment_count, &output_mail_data, &output_mail_attachment_data, &output_attachment_count)) != EMAIL_ERROR_NONE)
+			if ((err = email_get_decrypt_message_ex(mail_data, 
+													mail_attachment_data, 
+													attachment_count, 
+													&output_mail_data, 
+													&output_mail_attachment_data, 
+													&output_attachment_count,
+													&verify)) != EMAIL_ERROR_NONE)
 				testapp_print("email_get_decrypt_message_ex failed\n");
 		}
 		
@@ -2629,6 +2761,9 @@ static gboolean testapp_test_interpret_command (int menu_number)
 			break;
 		case 57:
 			testapp_test_update_mail();
+			break;
+		case 58:
+			testapp_test_search_mail_on_server();
 			break;
 		case 59:
 			testapp_test_add_mail_to_search_result_box();
