@@ -65,18 +65,10 @@ chmod 664 ${TZ_USER_DB}/.email-service.db-journal
 
 mkdir -m775 -p ${TZ_USER_DATA}/email/.email_data
 chgrp 6006 ${TZ_USER_DATA}/email/.email_data
-chsmack -a 'email-service' ${TZ_USER_DATA}/email/.email_data
 
 mkdir -m775 -p ${TZ_USER_DATA}/email/.email_data/tmp
 chgrp 6006 ${TZ_USER_DATA}/email/.email_data/tmp
-chsmack -a 'email-service' ${TZ_USER_DATA}/email/.email_data/tmp
 
 mkdir -p ${TZ_SYS_SHARE}/cert-svc/certs/trusteduser/email
 chgrp 6006 ${TZ_SYS_SHARE}/cert-svc/certs/trusteduser/email
-
-if [ -f ${TZ_USER_DB}/.email-service.db ]
-then
-	chsmack -a 'email-service::db' ${TZ_USER_DB}/.email-service.db*
-fi
-
 
