@@ -81,7 +81,7 @@ extern "C"
 #define __FEATURE_BODY_SEARCH__
 #define __FEATURE_ACCESS_CONTROL__
 #define __FEATURE_UPDATE_DB_TABLE_SCHEMA__ 
-#define __FEATURE_OPEN_SSL_MULTIHREAD_HANDLE__
+/* #define __FEATURE_OPEN_SSL_MULTIHREAD_HANDLE__ */
 /* #define __FEATURE_COMPARE_DOMAIN__ */
 /* #define __FEATURE_FORK_FOR_CURL__ */
 /* #define __FEATURE_USE_DRM_API__ */
@@ -134,7 +134,7 @@ extern "C"
 #define EMAILPATH 					        tzplatform_mkpath(TZ_USER_DATA, "email")
 #define MAILHOME 					        tzplatform_mkpath(TZ_USER_DATA, "email/.email_data")
 #define MAILTEMP                            tzplatform_mkpath(TZ_USER_DATA, "email/.email_data/tmp")
-#define DIRECTORY_PERMISSION                0755
+#define DIRECTORY_PERMISSION                0775
 
 #define MIME_SUBTYPE_DRM_OBJECT             "vnd.oma.drm.message"
 #define MIME_SUBTYPE_DRM_RIGHTS             "vnd.oma.drm.rights+xml"

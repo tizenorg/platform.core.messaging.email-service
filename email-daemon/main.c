@@ -4382,7 +4382,7 @@ INTERNAL_FUNC int main(int argc, char *argv[])
 		goto FINISH_OFF;
     }
 
-    if (g_list_length(zone_name_list) == 1) {
+    if (g_list_length(zone_name_list) <= 1) {
         emdaemon_initialize(NULL, &err);
         emcore_connect_contacts_service(NULL);
     } else {

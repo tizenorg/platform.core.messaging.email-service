@@ -1,0 +1,12 @@
+[Unit]
+Description=Email service
+
+[Service]
+Type=dbus
+BusName=org.tizen.email_service
+ExecStart=/usr/bin/email-service
+Restart=on-failure
+SuccessExitStatus=0 44
+
+[Install]
+WantedBy=multi-user.target

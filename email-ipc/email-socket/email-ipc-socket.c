@@ -213,14 +213,20 @@ EXPORT_API int emipc_open_email_socket(int fd, const char *path)
 	EM_DEBUG_FUNC_BEGIN("path [%s]", path);
 	int sock_fd = 0;
 	char errno_buf[ERRNO_BUF_SIZE] = {0};
+	char *ipc_socket_path = NULL;
 
-	if (strcmp(path, EM_SOCKET_PATH) == 0 &&
+	ipc_socket_path = g_strconcat(EM_SOCKET_USER_PATH, "/5001/", EM_SOCKET_PATH_NAME, NULL);
+
+	if (strcmp(path, ipc_socket_path) == 0 &&
 		sd_listen_fds(1) == 1 &&
-		sd_is_socket_unix(SD_LISTEN_FDS_START, SOCK_SEQPACKET, -1, EM_SOCKET_PATH, 0) > 0) {
+		sd_is_socket_unix(SD_LISTEN_FDS_START, SOCK_SEQPACKET, -1, ipc_socket_path, 0) > 0) {
 		EM_SAFE_CLOSE (fd);
 		sock_fd = SD_LISTEN_FDS_START + 0;
+		EM_SAFE_FREE(ipc_socket_path);
 		return sock_fd;
 	}
+
+	EM_SAFE_FREE(ipc_socket_path);
 
 	if (!path || EM_SAFE_STRLEN(path) > 108) {
 		EM_DEBUG_EXCEPTION ("Path is null");
@@ -279,10 +285,16 @@ EXPORT_API int emipc_connect_email_socket(int fd)
 	int err = EMAIL_ERROR_NONE;
 	int p_errno = 0;
 	struct sockaddr_un server;
+	char errno_buf[ERRNO_BUF_SIZE] = {0};
+	char *ipc_socket_path = NULL;
+
+	ipc_socket_path = g_strconcat(EM_SOCKET_USER_PATH, "/5001/", EM_SOCKET_PATH_NAME, NULL);
+
 	memset(&server, 0, sizeof(server));
 	server.sun_family = AF_UNIX;
-	strcpy(server.sun_path, EM_SOCKET_PATH);
-	char errno_buf[ERRNO_BUF_SIZE] = {0};
+	strcpy(server.sun_path, ipc_socket_path);
+	
+	EM_SAFE_FREE(ipc_socket_path);
 
 	if (connect(fd, (struct sockaddr *)&server, sizeof(server)) < 0) {
 		EM_DEBUG_EXCEPTION ("connect failed: [%s][errno=%d][fd=%d]", EM_STRERROR(errno_buf), errno, fd);

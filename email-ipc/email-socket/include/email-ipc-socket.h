@@ -31,8 +31,8 @@
 #define BUF_SIZE			204800
 #define OPT_USEC		100000
 
-
-#define EM_SOCKET_PATH "/tmp/.emailfw_socket"
+#define EM_SOCKET_USER_PATH tzplatform_mkpath(TZ_SYS_RUN, "user")
+#define EM_SOCKET_PATH_NAME "email/.emailfw_socket"
 
 EXPORT_API bool emipc_init_email_socket(int *fd);
 

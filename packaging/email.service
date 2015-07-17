@@ -9,5 +9,5 @@ OOMScoreAdjust=100
 MemoryLimit=30M
 
 [Install]
-WantedBy=tizen-middleware.target
+WantedBy=multi-user.target
 EnvironmentFile=/run/tizen-mobile-ui

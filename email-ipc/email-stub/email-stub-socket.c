@@ -111,14 +111,21 @@ EXPORT_API void emipc_wait_for_ipc_request()
 	int epfd = 0;
 	int event_num = 0;
 	struct epoll_event events[MAX_EPOLL_EVENT] = {{0}, };
+	char *ipc_socket_path = NULL;
 
 	if (!stub_socket) {
 		EM_DEBUG_EXCEPTION("Server Socket is not initialized");
 		return;
 	}
 
-	emipc_open_email_socket(stub_socket, EM_SOCKET_PATH);
+	EM_DEBUG_LOG("UID : %d", getuid());
+	ipc_socket_path = g_strconcat(EM_SOCKET_USER_PATH, "/5001/", EM_SOCKET_PATH_NAME, NULL);
+	EM_DEBUG_LOG("ipc_socket_path : [%s]", ipc_socket_path);
+
+	emipc_open_email_socket(stub_socket, ipc_socket_path);
 	
+	EM_SAFE_FREE(ipc_socket_path);
+
 	epfd = epoll_create(MAX_EPOLL_EVENT);
 	if (epfd < 0) {
 		EM_DEBUG_EXCEPTION("epoll_ctl error [%d]", errno);
