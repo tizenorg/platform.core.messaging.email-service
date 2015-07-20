@@ -95,7 +95,7 @@ EXPORT_API int emipc_launch_email_service()
 
 	GCancellable *proxy_cancel = g_cancellable_new();
 	timer_tag = g_timeout_add(5000, on_timer_proxy_new, proxy_cancel);
-	GDBusProxy* bproxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM, 
+	GDBusProxy* bproxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION, 
 	                            G_DBUS_PROXY_FLAGS_NONE, 
 	                            NULL, 
 	                            EMAIL_SERVICE_NAME,

@@ -4750,7 +4750,7 @@ INTERNAL_FUNC int emcore_get_mail_display_name (char *multi_user_name, char *ema
 	g_type_init(); 
 #endif
 
-	GDBusProxy* bproxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+	GDBusProxy* bproxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
 	                            G_DBUS_PROXY_FLAGS_NONE,
 	                            NULL,
 	                            EMAIL_SERVICE_NAME,
@@ -4968,7 +4968,7 @@ INTERNAL_FUNC int emcore_check_blocking_mode (char *multi_user_name, char *sende
 	g_type_init(); 
 #endif
 
-	GDBusProxy* bproxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SYSTEM,
+	GDBusProxy* bproxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
 	                            G_DBUS_PROXY_FLAGS_NONE,
 	                            NULL,
 	                            EMAIL_SERVICE_NAME,

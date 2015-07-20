@@ -1,0 +1,9 @@
+[Unit]
+Description=Email Service socket
+
+[Socket]
+ListenStream=/run/user/%U/.emailfw_socket
+Service=email-service.service
+
+[Install]
+WantedBy=sockets.target

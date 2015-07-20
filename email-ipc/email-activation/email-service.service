@@ -2,4 +2,3 @@
 Name=org.tizen.email_service
 Exec=/bin/false
 SystemdService=email-service.service
-User=root

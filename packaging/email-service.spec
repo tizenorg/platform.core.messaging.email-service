@@ -7,9 +7,10 @@ Release:    1
 Group:      Messaging/Service
 License:    Apache-2.0
 Source0:    %{name}-%{version}.tar.gz
-Source1:    email.service
+Source1:    email-service.socket
 Source2:    email-service.manifest
 Source3:    email-service_init_db.sh
+Source4:    email-service.service
 Requires: connman
 Requires: gmime
 Requires(post):    /sbin/ldconfig
@@ -102,9 +103,12 @@ if [ -d %{_datarootdir}/license/email-service]; then
 fi
 %make_install
 
-mkdir -p %{buildroot}/usr/lib/systemd/user/tizen-middleware.target.wants
-install -m 0644 %SOURCE1 %{buildroot}/usr/lib/systemd/user/
-ln -sf ../email.service %{buildroot}/usr/lib/systemd/user/tizen-middleware.target.wants/
+mkdir -p %{buildroot}%{_unitdir_user}
+install -m 0644 %{SOURCE4} %{buildroot}%{_unitdir_user}/email-service.service
+
+mkdir -p %{buildroot}%{_unitdir_user}/sockets.target.wants
+install -m 0644 %{SOURCE1} %{buildroot}%{_unitdir_user}/email-service.socket
+ln -s ../email-service.socket %{buildroot}%{_unitdir_user}/sockets.target.wants/email-service.socket
 
 install -m 0775 %{SOURCE3} %{buildroot}%{_bindir}/
 
@@ -121,7 +125,7 @@ EMAIL_SERVICE_EXEC_SCRIPT=/etc/rc.d/init.d/email-service
 EMAIL_SERVICE_BOOT_SCRIPT=/etc/rc.d/rc3.d/S70email-service
 EMAIL_SERVICE_FASTBOOT_SCRIPT=/etc/rc.d/rc5.d/S70email-service
 
-chmod 755 ${EMAIL_SERVICE_EXEC_SCRIPT}
+chmod 775 ${EMAIL_SERVICE_EXEC_SCRIPT}
 rm -rf ${EMAIL_SERVICE_BOOT_SCRIPT}
 rm -rf ${EMAIL_SERVICE_FASTBOOT_SCRIPT}
 ln -s ${EMAIL_SERVICE_EXEC_SCRIPT} ${EMAIL_SERVICE_BOOT_SCRIPT}
@@ -153,11 +157,12 @@ systemctl daemon-reload
 %{TZ_SYS_DATA}/email/res/*
 %{_bindir}/email-service
 %{_libdir}/lib*.so.*
-%{_unitdir_user}/email.service
-%{_unitdir_user}/tizen-middleware.target.wants/email.service
-%{_datarootdir}/dbus-1/system-services/email-service.service
+%{_unitdir_user}/email-service.service
+%{_unitdir_user}/email-service.socket
+%{_unitdir_user}/sockets.target.wants/email-service.socket
+%{_datarootdir}/dbus-1/services/email-service.service
 %{_datarootdir}/license/email-service
-%attr(0755,root,root) /etc/rc.d/init.d/email-service
+%attr(0775,root,root) /etc/rc.d/init.d/email-service
 %{_bindir}/email-service_init_db.sh
 
 %files devel

@@ -4382,7 +4382,7 @@ INTERNAL_FUNC int main(int argc, char *argv[])
 		goto FINISH_OFF;
     }
 
-    if (g_list_length(zone_name_list) == 1) {
+    if (g_list_length(zone_name_list) <= 1) {
         emdaemon_initialize(NULL, &err);
         emcore_connect_contacts_service(NULL);
     } else {
@@ -4425,7 +4425,7 @@ INTERNAL_FUNC int main(int argc, char *argv[])
 		g_error_free (error);
 	}
 
-	owner_id = g_bus_own_name (G_BUS_TYPE_SYSTEM,
+	owner_id = g_bus_own_name (G_BUS_TYPE_SESSION,
                                 EMAIL_SERVICE_NAME,
                                 G_BUS_NAME_OWNER_FLAGS_NONE,
                                 on_bus_acquired,
