@@ -3820,8 +3820,10 @@ void stb_get_user_name(HIPC_API a_hAPI)
         if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) 
                 EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
-        if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, user_name, EM_SAFE_STRLEN(user_name) + 1)) 
-            EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+		if (user_name) {
+			if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, user_name, EM_SAFE_STRLEN(user_name) + 1)) 
+				EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+		}
     }
 
     if (!emipc_execute_stub_api(a_hAPI))
