@@ -1701,6 +1701,44 @@ FINISH_OFF:
 	return ret;
 }
 
+int _xsystem(const char *argv[])
+{
+	int status = 0;
+	pid_t pid;
+	pid = fork();
+
+	switch (pid) {
+		case -1 : 
+			perror("fork failed");
+			return -1;
+		case 0 :
+			execvp(argv[0], (char *const *)argv);
+			_exit(-1);
+		default:
+			/* parent */
+			break;
+	}
+
+	if (waitpid(pid, &status, 0) == -1) {
+		perror("waitpid failed");
+		return -1;
+	}
+
+	if (WIFSIGNALED(status)) {
+		perror("signal");
+		return -1;
+	}
+
+	if (!WIFEXITED(status)) {
+		perror("should not happen");
+		return -1;
+	}
+
+	return WEXITSTATUS(status);
+}
+
+#define SCRIPT_INIT_DB "/usr/bin/email-service_init_db.sh"
+
 INTERNAL_FUNC int em_db_open(char *db_file_path, sqlite3 **sqlite_handle, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -1715,6 +1753,14 @@ INTERNAL_FUNC int em_db_open(char *db_file_path, sqlite3 **sqlite_handle, int *e
 		if (err_code != NULL)
 			*err_code = error;
 		return true;
+	}
+
+	/* Generate db file */
+	struct stat sts;
+	ret = stat(db_file_path, &sts);
+	if (ret == -1 && errno == ENOENT) {
+		const char *argv_script[] = {"/bin/sh", SCRIPT_INIT_DB, NULL};
+		ret = _xsystem(argv_script);
 	}
 
     EM_DEBUG_LOG("DB file path : [%s]", db_file_path);

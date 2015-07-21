@@ -488,7 +488,7 @@ void* emcore_imap_idle_worker(void* thread_user_data)
 				continue;
 			}
 
-			if (g_list_length(zone_name_list) == 1) {
+			if (g_list_length(zone_name_list) <= 1) {
 				if ((err = emcore_get_account_reference_list(NULL, &account_ref_list, &account_count)) != EMAIL_ERROR_NONE) 
 					EM_DEBUG_LOG("emcore_get_account_reference_list failed [%d]", err);
 
