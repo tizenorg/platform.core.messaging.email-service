@@ -454,13 +454,8 @@ INTERNAL_FUNC int emcore_delete_account(char *multi_user_name, int account_id, i
 				}
 			}
 			
-			error_code_from_account_svc = account_connect();
-
-			EM_DEBUG_LOG("account_connect returns [%d]", error_code_from_account_svc);
 			error_code_from_account_svc = account_delete_from_db_by_id(account_to_be_deleted->account_svc_id);
 			EM_DEBUG_LOG("account_delete_from_db_by_id returns [%d]", error_code_from_account_svc);
-			error_code_from_account_svc = account_disconnect();
-			EM_DEBUG_LOG("account_disconnect returns [%d]", error_code_from_account_svc);
 
 			emcore_unset_join_zone(join_zone);
 		}
@@ -623,19 +618,10 @@ INTERNAL_FUNC int emcore_create_account(char *multi_user_name, email_account_t *
 				}
 			}
 
-			error_code = account_connect();
-			if(error_code != ACCOUNT_ERROR_NONE) {
-				EM_DEBUG_EXCEPTION("account_connect_to_container failed [%d]", error_code);
-				err = error_code;
-				emcore_unset_join_zone(join_zone);
-				goto FINISH_OFF;
-			}
-
 			error_code = account_create(&account_handle);
 			if(error_code != ACCOUNT_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("account_create failed [%d]", error_code);
 				err = error_code;
-				account_disconnect();
 				emcore_unset_join_zone(join_zone);
 				goto FINISH_OFF;
 			}
@@ -695,7 +681,6 @@ INTERNAL_FUNC int emcore_create_account(char *multi_user_name, email_account_t *
 			if (account_handle)
 				account_destroy(account_handle);
 
-			account_disconnect();
 			emcore_unset_join_zone(join_zone);
 		}
 	}
@@ -1350,9 +1335,6 @@ INTERNAL_FUNC int emcore_update_sync_status_of_account(char *multi_user_name, in
 			}
 		}
 
-		err_from_account_svc = account_connect();
-		EM_DEBUG_LOG_DEV("account_connect returns [%d]", err_from_account_svc);
-
 		if (input_set_operator == SET_TYPE_SET)
 			err_from_account_svc = account_update_sync_status_by_id(account_tbl_data->account_svc_id, ACCOUNT_SYNC_STATUS_RUNNING);
 		else if(input_set_operator == SET_TYPE_MINUS)
@@ -1360,8 +1342,6 @@ INTERNAL_FUNC int emcore_update_sync_status_of_account(char *multi_user_name, in
 
 		EM_DEBUG_LOG("account_update_sync_status_by_id returns [%d] by id[%d]", err_from_account_svc, account_tbl_data->account_svc_id);
 
-		err_from_account_svc = account_disconnect();
-		EM_DEBUG_LOG_DEV("account_disconnect returns [%d]", err_from_account_svc);
 		emcore_unset_join_zone(join_zone);
 	}
 #endif /* __FEATURE_USING_ACCOUNT_SVC_FOR_SYNC_STATUS__ */
