@@ -238,12 +238,18 @@ INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X5
 	CertSvcInstance cert_instance;
 	CertSvcCertificate csc_cert;
 	CertSvcCertificateList certificate_list;
+	CertSvcStoreCertList* certList = NULL;
+	CertSvcStoreCertList* tempList = NULL;
+	char *alias =  NULL;
+	size_t length = 0;
 
 	if (certificate == NULL) {
 		EM_DEBUG_EXCEPTION("Invalid parameter");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
+
+	EM_DEBUG_EXCEPTION("emcore_load_PFX_file - certificate passed : %s", certificate);
 
 	/* Create instance */
 	err = certsvc_instance_new(&cert_instance);
@@ -261,13 +267,61 @@ INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X5
 		goto FINISH_OFF;
 	}
 
-	/* Load the certificate list of pkcs12 type */
-	err = certsvc_pkcs12_load_certificate_list(cert_instance, csstring, &certificate_list);
-	if (err != CERTSVC_SUCCESS) {
-		EM_DEBUG_EXCEPTION("certsvc_pkcs12_load_certificate_list failed : [%d]", err);
+	if (certsvc_pkcs12_get_end_user_certificate_list_from_store(
+			cert_instance,
+			EMAIL_STORE,
+			&certList,
+			&length) != CERTSVC_SUCCESS) {
+		EM_DEBUG_EXCEPTION("certsvc_string_new failed : [%d]", err);
 		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
 		goto FINISH_OFF;
 	}
+
+	tempList = certList;
+	while (tempList) {
+		if (strcmp(tempList->title, certificate) == 0
+				|| strcmp(tempList->gname, certificate) == 0) {
+			alias = strdup(tempList->gname);
+			break;
+		}
+
+		tempList = tempList->next;
+	}
+
+	certsvc_pkcs12_free_certificate_list_loaded_from_store(cert_instance, &certList);
+	if (alias == NULL) {
+		EM_DEBUG_EXCEPTION("Failed to strdup");
+		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	/* Make the pfxID string */
+	err = certsvc_string_new(cert_instance, alias, EM_SAFE_STRLEN(alias), &csstring);
+	if (err != CERTSVC_SUCCESS) {
+		EM_DEBUG_EXCEPTION("certsvc_string_new failed : [%d]", err);
+		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	err = certsvc_pkcs12_load_certificate_list_from_store(cert_instance, EMAIL_STORE, csstring, &certificate_list);
+	if (err != CERTSVC_SUCCESS) {
+		certsvc_string_free(csstring);
+		err = certsvc_string_new(cert_instance, certificate, EM_SAFE_STRLEN(certificate), &csstring);
+		if (err != CERTSVC_SUCCESS) {
+			EM_DEBUG_EXCEPTION("certsvc_string_new failed : [%d]", err);
+			err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
+			goto FINISH_OFF;
+		}
+
+		/* Load the certificate list of pkcs12 type */
+		err = certsvc_pkcs12_load_certificate_list_from_store(cert_instance, EMAIL_STORE, csstring, &certificate_list);
+		if (err != CERTSVC_SUCCESS) {
+			EM_DEBUG_EXCEPTION("certsvc_pkcs12_load_certificate_list_from_store failed : [%d]", err);
+			err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
+			goto FINISH_OFF;
+		}
+	}
+
 
 	/* Get a certificate */
 	err = certsvc_certificate_list_get_one(certificate_list, 0, &csc_cert);
@@ -286,14 +340,14 @@ INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X5
 	}
 
 	/* Get the private key */
-	err = certsvc_pkcs12_private_key_dup(cert_instance, csstring, &private_key, &key_size);
+	err = certsvc_pkcs12_private_key_dup_from_store(cert_instance, EMAIL_STORE, csstring, &private_key, &key_size);
 	if (err != CERTSVC_SUCCESS) {
-		EM_DEBUG_EXCEPTION("certsvc_pkcs12_private_key_dup failed : [%d]", err);
+		EM_DEBUG_EXCEPTION("certsvc_pkcs12_private_key_dup_from_store failed : [%d]", err);
 		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	EM_DEBUG_LOG_DEV("key_size : [%d], private_key : [%s]", key_size, private_key);
+	EM_DEBUG_LOG_DEV("key_size : [%u], private_key : [%s]", key_size, private_key);
 
 	/* Convert char to pkey */
 	bio_mem = BIO_new(BIO_s_mem());
@@ -303,7 +357,7 @@ INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X5
 		goto FINISH_OFF;
 	}
 
-	if (BIO_write(bio_mem, private_key, key_size) <= 0) {
+	if (BIO_write(bio_mem, private_key, (int)key_size) <= 0) {
 		EM_DEBUG_EXCEPTION("BIO_write failed");
 		err = EMAIL_ERROR_LOAD_CERTIFICATE_FAILURE;
 		goto FINISH_OFF;
@@ -339,6 +393,11 @@ FINISH_OFF:
 
 	if (err_code)
 		*err_code = err;
+
+	if (alias)
+		free(alias);
+
+	certsvc_instance_free(cert_instance);
 
 	return ret;
 }
