@@ -60,6 +60,7 @@ BuildRequires:  pkgconfig(capi-network-connection)
 BuildRequires:  pkgconfig(capi-system-device)
 #BuildRequires:  pkgconfig(vasum)
 BuildRequires:  pkgconfig(libtzplatform-config)
+BuildRequires:  pkgconfig(libsmack)
 Requires: libtzplatform-config
 
 %description
