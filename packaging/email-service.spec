@@ -61,6 +61,7 @@ BuildRequires:  pkgconfig(capi-system-device)
 #BuildRequires:  pkgconfig(vasum)
 BuildRequires:  pkgconfig(libtzplatform-config)
 BuildRequires:  pkgconfig(libsmack)
+BuildRequires:  pkgconfig(sqlite3)
 Requires: libtzplatform-config
 
 %description

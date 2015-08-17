@@ -29,7 +29,7 @@ INCLUDE_DIRECTORIES(
 )
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(common_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf contacts-service2 uw-imap-toolkit) 
+pkg_check_modules(common_pkgs REQUIRED glib-2.0 dlog dbus-1 vconf contacts-service2 uw-imap-toolkit sqlite3) 
 
 FOREACH(flag ${common_pkgs_CFLAGS})
 	SET(EXTRA_CFLAGS "${EXTRA_CFLAGS} ${flag}")
