@@ -45,7 +45,6 @@
 #include <dirent.h>
 #include <vconf.h>
 #include <sys/mman.h>
-#include <ss_manager.h>
 #include <fcntl.h>
 #include <tzplatform_config.h>
 
@@ -64,6 +63,7 @@
 #include "email-core-signal.h"
 #include "email-core-event.h"
 #include "email-core-container.h"
+#include "email-core-key-manager.h"
 
 #define DB_STMT sqlite3_stmt *
 
@@ -3974,40 +3974,15 @@ static int _read_password_from_secure_storage(char *file_name, char **password)
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
-	size_t buf_len = 0, read_len = 0;
-	ssm_file_info_t sfi;
-	char *temp_password = NULL;
-	int error_code_from_ssm = 0;
 	int ret = EMAIL_ERROR_NONE;
 
-	if ( (error_code_from_ssm = ssm_getinfo(file_name, &sfi, SSM_FLAG_SECRET_OPERATION, NULL)) < 0) {
-		EM_DEBUG_EXCEPTION("ssm_getinfo() failed. [%d]", error_code_from_ssm);
-		ret = EMAIL_ERROR_SECURED_STORAGE_FAILURE;
-		goto FINISH_OFF;
+	ret = emcore_get_password_in_key_manager(file_name, password);
+	if (ret != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_get_password_in_key_manager failed : [%d]", ret);
+		goto FINISH_OFF;	
 	}
-
-	buf_len = sfi.originSize;
-	EM_DEBUG_LOG_DEV ("password buf_len[%d]", buf_len);
-	if ((temp_password = (char *)malloc(buf_len + 1)) == NULL) {
-		EM_DEBUG_EXCEPTION("malloc failed...");
-		ret = EMAIL_ERROR_OUT_OF_MEMORY;
-		goto FINISH_OFF;
-	}
-	memset(temp_password, 0x00, buf_len + 1);
-
-	if ( (error_code_from_ssm = ssm_read(file_name, temp_password, buf_len, &read_len, SSM_FLAG_SECRET_OPERATION, NULL)) < 0) {
-		EM_DEBUG_EXCEPTION("ssm_read() failed. [%d]", error_code_from_ssm);
-		ret = EMAIL_ERROR_SECURED_STORAGE_FAILURE;
-		goto FINISH_OFF;
-	}
-
-	EM_DEBUG_LOG_DEV("password_file_name[%s], password[%s], originSize[%d], read len[%d]", file_name,  temp_password, sfi.originSize, read_len);
-
-	*password = temp_password;
-	temp_password = NULL;
 
 FINISH_OFF:
-	EM_SAFE_FREE(temp_password);
 
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
 	return ret;
@@ -4338,7 +4313,6 @@ INTERNAL_FUNC int emstorage_update_account_password(char *multi_user_name, int i
 	EM_DEBUG_FUNC_BEGIN("input_account_id[%d], input_incoming_server_password[%p], input_outgoing_server_password[%p]", input_account_id, input_incoming_server_password, input_outgoing_server_password);
 
 	int err = EMAIL_ERROR_NONE;
-	int err_from_ssm = 0;
 	char recv_password_file_name[MAX_PW_FILE_NAME_LENGTH];
 	char send_password_file_name[MAX_PW_FILE_NAME_LENGTH];
 
@@ -4349,36 +4323,42 @@ INTERNAL_FUNC int emstorage_update_account_password(char *multi_user_name, int i
 	}
 
 	/*  get password file name */
-	if ((err = _get_password_file_name(multi_user_name, input_account_id, recv_password_file_name, send_password_file_name)) != EMAIL_ERROR_NONE) {
+	if ((err = _get_password_file_name(multi_user_name, 
+										input_account_id, 
+										recv_password_file_name, 
+										send_password_file_name)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("_get_password_file_name failed.");
 		goto FINISH_OFF;
 	}
 
-	EM_DEBUG_LOG_SEC("recv_password_file_name [%s] input_incoming_server_password [%s]", recv_password_file_name, input_incoming_server_password);
-	EM_DEBUG_LOG_SEC("send_password_file_name [%s] input_outgoing_server_password [%s]", send_password_file_name, input_outgoing_server_password);
+	EM_DEBUG_LOG_SEC("recv_password_file_name [%s] input_incoming_server_password [%s]", 
+						recv_password_file_name, input_incoming_server_password);
+	EM_DEBUG_LOG_SEC("send_password_file_name [%s] input_outgoing_server_password [%s]", 
+						send_password_file_name, input_outgoing_server_password);
 
-	if ((err_from_ssm = ssm_delete_file(recv_password_file_name,  SSM_FLAG_SECRET_OPERATION, NULL)) < 0) {
-		EM_DEBUG_EXCEPTION_SEC(" ssm_delete_file failed -recv password : file[%s]", recv_password_file_name);
-		err = EMAIL_ERROR_SYSTEM_FAILURE;
+	err = emcore_remove_password_in_key_manager(recv_password_file_name);
+	if (err != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION_SEC("emcore_remove_password_in_key_manager: file[%s]", recv_password_file_name);
 		goto FINISH_OFF;
 	}
 
-	/*  save passwords to the secure storage */
-	if ((err_from_ssm = ssm_write_buffer(input_incoming_server_password, EM_SAFE_STRLEN(input_incoming_server_password), recv_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL)) < 0) {
-		EM_DEBUG_EXCEPTION_SEC(" ssm_write_buffer failed [%d] -recv incoming_server_password : file[%s]", err_from_ssm, recv_password_file_name);
-		err = EMAIL_ERROR_SYSTEM_FAILURE;
+	/*  save recv passwords to the secure storage */
+	err = emcore_add_password_in_key_manager(recv_password_file_name, input_incoming_server_password);
+	if (err != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_add_password_in_key_manager failed : [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	if ((err_from_ssm = ssm_delete_file(send_password_file_name,  SSM_FLAG_SECRET_OPERATION, NULL)) < 0) {
-		EM_DEBUG_EXCEPTION_SEC(" ssm_delete_file failed -send password : file[%s]", send_password_file_name);
-		err = EMAIL_ERROR_SYSTEM_FAILURE;
+	err = emcore_remove_password_in_key_manager(send_password_file_name);
+	if (err != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION_SEC("emcore_remove_password_in_key_manager: file[%s]", send_password_file_name);
 		goto FINISH_OFF;
 	}
 
-	if ((err_from_ssm = ssm_write_buffer(input_outgoing_server_password, EM_SAFE_STRLEN(input_outgoing_server_password), send_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL)) < 0) {
-		EM_DEBUG_EXCEPTION_SEC(" ssm_write_buffer failed [%d] -send password : file[%s]", err_from_ssm, send_password_file_name);
-		err = EMAIL_ERROR_SYSTEM_FAILURE;
+	/*  save send passwords to the secure storage */
+	err = emcore_add_password_in_key_manager(send_password_file_name, input_outgoing_server_password);
+	if (err != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_add_password_in_key_manager failed : [%d]", err);
 		goto FINISH_OFF;
 	}
 
@@ -4780,7 +4760,6 @@ INTERNAL_FUNC int emstorage_add_account(char *multi_user_name, emstorage_account
 
 	int rc = -1, ret = false;
 	int error = EMAIL_ERROR_NONE;
-	int error_from_ssm = 0;
 	DB_STMT hStmt = NULL;
 	char sql_query_string[QUERY_SIZE] = {0, };
 	char recv_password_file_name[MAX_PW_FILE_NAME_LENGTH];
@@ -4966,14 +4945,15 @@ INTERNAL_FUNC int emstorage_add_account(char *multi_user_name, emstorage_account
 
 	/*  save passwords to the secure storage */
 	EM_DEBUG_LOG_SEC("save to the secure storage : recv_file[%s], send_file[%s]", recv_password_file_name, send_password_file_name);
-	if ( (error_from_ssm = ssm_write_buffer(account_tbl->incoming_server_password, EM_SAFE_STRLEN(account_tbl->incoming_server_password), recv_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL)) < 0) {
-		EM_DEBUG_EXCEPTION_SEC("ssm_write_buffer failed [%d] - recv password : file[%s]", error_from_ssm, recv_password_file_name);
-		error = EMAIL_ERROR_SYSTEM_FAILURE;
+	error = emcore_add_password_in_key_manager(recv_password_file_name, account_tbl->incoming_server_password);
+	if (error != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_add_password_in_key_manager failed : [%d]", error);
 		goto FINISH_OFF;
 	}
-	if ( (error_from_ssm = ssm_write_buffer(account_tbl->outgoing_server_password, EM_SAFE_STRLEN(account_tbl->outgoing_server_password), send_password_file_name, SSM_FLAG_SECRET_OPERATION, NULL)) < 0) {
-		EM_DEBUG_EXCEPTION_SEC("ssm_write_buffer failed [%d] - send password : file[%s]", error_from_ssm, send_password_file_name);
-		error = EMAIL_ERROR_SYSTEM_FAILURE;
+
+	error = emcore_add_password_in_key_manager(send_password_file_name, account_tbl->outgoing_server_password);
+	if (error != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_add_password_in_key_manager failed : [%d]", error);
 		goto FINISH_OFF;
 	}
 
@@ -5050,14 +5030,15 @@ INTERNAL_FUNC int emstorage_delete_account(char *multi_user_name, int account_id
 	}
 
 		/*  delete from secure storage */
-	if (ssm_delete_file(recv_password_file_name,  SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
-		EM_DEBUG_EXCEPTION_SEC(" ssm_delete_file failed -recv password : file[%s]", recv_password_file_name);
-		error = EMAIL_ERROR_SYSTEM_FAILURE;
+	error = emcore_remove_password_in_key_manager(recv_password_file_name);
+	if (error != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_remove_password_in_key_manager failed : [%d]", error);
 		goto FINISH_OFF;
 	}
-	if (ssm_delete_file(send_password_file_name,  SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
-		EM_DEBUG_EXCEPTION_SEC(" ssm_delete_file failed -send password : file[%s]", send_password_file_name);
-		error = EMAIL_ERROR_SYSTEM_FAILURE;
+
+	error = emcore_remove_password_in_key_manager(send_password_file_name);
+	if (error != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_remove_password_in_key_manager failed : [%d]", error);
 		goto FINISH_OFF;
 	}
 

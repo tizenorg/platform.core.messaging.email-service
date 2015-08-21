@@ -2,7 +2,7 @@
 
 Name:       email-service
 Summary:    E-mail Framework Middleware package
-Version:    0.10.102
+Version:    0.10.103
 Release:    1
 Group:      Messaging/Service
 License:    Apache-2.0
@@ -35,7 +35,7 @@ BuildRequires:  pkgconfig(contacts-service2)
 BuildRequires:  pkgconfig(uw-imap-toolkit)
 BuildRequires:  pkgconfig(openssl)
 BuildRequires:  pkgconfig(alarm-service)
-BuildRequires:  pkgconfig(secure-storage)
+BuildRequires:  pkgconfig(key-manager)
 BuildRequires:  pkgconfig(notification)
 BuildRequires:  pkgconfig(accounts-svc)
 BuildRequires:  pkgconfig(libsystemd-daemon)

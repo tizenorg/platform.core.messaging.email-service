@@ -71,7 +71,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-pkg_check_modules(storage_pkgs REQUIRED glib-2.0 dlog openssl vconf secure-storage dbus-1 contacts-service2 libtzplatform-config)
+pkg_check_modules(storage_pkgs REQUIRED glib-2.0 dlog openssl vconf dbus-1 contacts-service2 libtzplatform-config)
 
 set(EXTRA_CFLAGS "")
 FOREACH(flag ${storage_pkgs_CFLAGS})
@@ -218,6 +218,7 @@ SET(CORE-SRCS
 	${CMAKE_SOURCE_DIR}/email-core/email-core-signal.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-alarm.c
 	${CMAKE_SOURCE_DIR}/email-core/email-core-auto-download.c
+	${CMAKE_SOURCE_DIR}/email-core/email-core-key-manager.c
 )
 
 INCLUDE_DIRECTORIES(
@@ -231,8 +232,8 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-SET(PKG_MODULES glib-2.0 dlog dbus-1 gthread-2.0
-			uw-imap-toolkit vconf vconf-internal-keys contacts-service2 secure-storage
+SET(PKG_MODULES glib-2.0 dlog dbus-1 gthread-2.0 key-manager
+			uw-imap-toolkit vconf vconf-internal-keys contacts-service2 
 			openssl accounts-svc alarm-service notification libcurl libxml-2.0 feedback
 			cert-svc cert-svc-vcore badge capi-appfw-application icu-i18n gmime-2.6 storage)
 

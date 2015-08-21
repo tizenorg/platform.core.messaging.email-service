@@ -866,7 +866,6 @@ INTERNAL_FUNC void emcore_duplicate_account(const email_account_t *account, emai
 }
 
 #ifdef __FEATURE_BACKUP_ACCOUNT__
-#include <ss_manager.h>
 
 static int append_data_into_buffer(char **target_buffer, int *target_buffer_lenth, char *input_data, int input_data_length, int *error_code)
 {
