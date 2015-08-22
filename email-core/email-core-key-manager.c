@@ -64,12 +64,15 @@ INTERNAL_FUNC int emcore_add_password_in_key_manager(char *data_name, char *stor
 		err = EMAIL_ERROR_INVALID_PARAM;
 		return err;
 	}
-
-	alias = add_shared_owner_prefix(data_name);
+	
+//	alias = add_shared_owner_prefix(data_name);
+	alias = g_strdup(data_name);
 	EM_DEBUG_LOG("alias : [%s]", alias);
 
 	email_policy.password = NULL;
 	email_policy.extractable = true;
+
+	EM_DEBUG_LOG("stored_data : [%s]", stored_data);
 
 	email_data.data = (unsigned char *)stored_data;
 	email_data.size = strlen(stored_data);
@@ -104,7 +107,8 @@ INTERNAL_FUNC int emcore_get_password_in_key_manager(char *data_name, char **sto
 		return err;
 	}
 
-	alias = add_shared_owner_prefix(data_name);
+//	alias = add_shared_owner_prefix(data_name); 
+	alias = g_strdup(data_name);
 	EM_DEBUG_LOG("alias : [%s]", alias);
 
 	ckmc_ret = ckmc_get_data(alias, NULL, &email_data);
@@ -113,6 +117,8 @@ INTERNAL_FUNC int emcore_get_password_in_key_manager(char *data_name, char **sto
 		err = EMAIL_ERROR_SECURED_STORAGE_FAILURE;
 		goto FINISH_OFF;
 	}
+
+	EM_DEBUG_LOG("stored_data : [%s]", email_data->data);
 
 FINISH_OFF:
 
@@ -142,7 +148,8 @@ INTERNAL_FUNC int emcore_remove_password_in_key_manager(char *data_name)
 		return err;
 	}
 
-	alias = add_shared_owner_prefix(data_name);
+//	alias = add_shared_owner_prefix(data_name);  
+	alias = g_strdup(data_name);
 	EM_DEBUG_LOG("alias : [%s]", alias);
 
 	ckmc_ret = ckmc_remove_alias(alias);
