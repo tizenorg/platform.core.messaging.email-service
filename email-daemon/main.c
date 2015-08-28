@@ -2641,20 +2641,19 @@ void stb_add_account_with_validation(HIPC_API a_hAPI)
 	/* get account info */
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, 0);
 	EM_DEBUG_LOG("size [%d]", buffer_size);
-	if(buffer_size <= 0) {
+	if (buffer_size <= 0) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
-	stream =(char*)	emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0);
-	if(!stream) {
+	stream = (char *)emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0);
+	if (!stream) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
 	account = em_malloc(sizeof(email_account_t));
-
-	if(account == NULL) {
+	if (account == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
@@ -2663,7 +2662,7 @@ void stb_add_account_with_validation(HIPC_API a_hAPI)
 	em_convert_byte_stream_to_account(stream, buffer_size, account);
     account->user_name = EM_SAFE_STRDUP(multi_user_name);
 
-	if((err = emcore_add_account_to_unvalidated_account_list(account)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_add_account_to_unvalidated_account_list(account)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_add_account_to_unvalidated_account_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -2677,18 +2676,18 @@ void stb_add_account_with_validation(HIPC_API a_hAPI)
 	ref_check_interval = ref_account->check_interval;
 	ref_account_id     = ref_account->account_id;
 
-	if(!emdaemon_validate_account_and_create(multi_user_name, ref_account, &handle, &err)) {
+	if (!emdaemon_validate_account_and_create(multi_user_name, ref_account, &handle, &err)) {
 		EM_DEBUG_EXCEPTION("emdaemon_validate_account_and_create fail [%d]", err);
 		goto FINISH_OFF;
 	}
 #ifdef __FEATURE_AUTO_POLLING__
 	/*  start auto polling, if check_interval not zero */
-	if(ref_check_interval > 0 || (ref_account->peak_days > 0 && ref_account->peak_interval > 0)) {
+	if (ref_check_interval > 0 || (ref_account->peak_days > 0 && ref_account->peak_interval > 0)) {
 		if(!emdaemon_add_polling_alarm(multi_user_name, ref_account_id))
 			EM_DEBUG_EXCEPTION("emdaemon_add_polling_alarm[NOTI_ACCOUNT_ADD] : start auto poll failed >>> ");
 	}
 #ifdef __FEATURE_IMAP_IDLE__
-	else if(ref_check_interval == 0 || (ref_account->peak_days > 0 && ref_account->peak_interval == 0))
+	else if (ref_check_interval == 0 || (ref_account->peak_days > 0 && ref_account->peak_interval == 0))
 		emcore_refresh_imap_idle_thread();
 #endif /* __FEATURE_IMAP_IDLE__ */
 #endif /*  __FEATURE_AUTO_POLLING__ */
@@ -2696,9 +2695,9 @@ void stb_add_account_with_validation(HIPC_API a_hAPI)
 	/*  emdaemon_insert_accountinfo_to_contact(account); */
 
 	local_result = 1;
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
@@ -3818,7 +3817,7 @@ void stb_get_user_name(HIPC_API a_hAPI)
         EM_DEBUG_LOG("Domain name : [%s]", user_name);
 
         if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) 
-                EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 		if (user_name) {
 			if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, user_name, EM_SAFE_STRLEN(user_name) + 1)) 

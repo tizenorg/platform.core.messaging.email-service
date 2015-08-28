@@ -119,11 +119,12 @@ INTERNAL_FUNC int emcore_get_password_in_key_manager(char *data_name, char **sto
 	}
 
 	EM_DEBUG_LOG("stored_data : [%s]", email_data->data);
+	EM_DEBUG_LOG("stored_data length : [%d]", email_data->size);
 
 FINISH_OFF:
 
 	if (stored_data)
-		*stored_data = EM_SAFE_STRDUP(email_data->data);
+		*stored_data = g_strndup(email_data->data, email_data->size);
 
 	if (email_data)
 		ckmc_buffer_free(email_data);

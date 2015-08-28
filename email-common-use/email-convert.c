@@ -727,6 +727,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_account(char *stream, int stream_le
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return;
 	}
+
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
 	tpl_free(tn);

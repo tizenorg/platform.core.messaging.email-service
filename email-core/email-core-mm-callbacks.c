@@ -291,7 +291,7 @@ INTERNAL_FUNC void mm_dlog(char *string)
 INTERNAL_FUNC void mm_log(char *string, long errflg)
 {
 
-	switch ((short)errflg)  {
+	switch (errflg)  {
 		case NIL:
 			EM_DEBUG_LOG("IMAP_TOOLKIT_LOG [%s]", string);
 			break;

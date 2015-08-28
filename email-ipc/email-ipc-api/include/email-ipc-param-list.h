@@ -36,7 +36,7 @@ typedef enum {
 }IPC_STREAM_INFO;
 
 typedef struct {
-	int param_count;
+	long param_count;
 	emipc_param params[10];
 	unsigned char *byte_stream;
 } emipc_param_list;

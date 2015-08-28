@@ -50,8 +50,8 @@ EXPORT_API bool emipc_deserialize_api_info(emipc_email_api_info *api_info, EPARA
 	}
 
 	api_info->api_id = *((long *)stream + eSTREAM_APIID);
-	api_info->app_id = *((long*)stream + eSTREAM_APPID);
-	api_info->response_id = *((long*)stream + eSTREAM_RESID);
+	api_info->app_id = *((long *)stream + eSTREAM_APPID);
+	api_info->response_id = *((long *)stream + eSTREAM_RESID);
 
 	return emipc_parse_stream_of_param_list(api_info->params[direction], stream);
 }

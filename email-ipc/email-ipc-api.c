@@ -271,6 +271,8 @@ EXPORT_API int emipc_get_user_name(char **output_user_name)
         return err;
     }
 
+#ifdef __FEATURE_CONTAINER_ENABLE__
+
     int buffer_size = 0;
     char *user_name = NULL;
 
@@ -300,6 +302,8 @@ FINISH_OFF:
 
     if (hAPI) 
         emipc_destroy_email_api(hAPI);
+
+#endif /* __FEATURE_CONTAINER_ENABLE__ */
 
     EM_DEBUG_FUNC_END();
 
