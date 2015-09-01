@@ -67,6 +67,12 @@ INTERNAL_FUNC int email_encode_task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAI
 			, &task_parameter->target_mailbox_id
 			, &task_parameter->mail_id_count
 			, &tb);
+	if (tn == NULL) {
+		EM_DEBUG_EXCEPTION("tpl_map failed");
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
+		goto FINISH_OFF;
+	}
+
 	tb.sz   = sizeof(int) * task_parameter->mail_id_count;
 	tb.addr = task_parameter->mail_id_array;
 	tpl_pack(tn, 0);
@@ -97,8 +103,7 @@ INTERNAL_FUNC int email_decode_task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAI
 	}
 
 	task_parameter = em_malloc(sizeof(task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT));
-
-	if(task_parameter == NULL) {
+	if (task_parameter == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
@@ -111,6 +116,7 @@ INTERNAL_FUNC int email_decode_task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAI
 				, &tb);
 	if (tn == NULL) {
 		EM_DEBUG_EXCEPTION("tpl_map failed");
+		EM_SAFE_FREE(task_parameter);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
@@ -225,7 +231,6 @@ INTERNAL_FUNC int email_decode_task_parameter_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX
 	}
 
 	task_parameter = em_malloc(sizeof(task_parameter_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX));
-
 	if(task_parameter == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
@@ -239,6 +244,7 @@ INTERNAL_FUNC int email_decode_task_parameter_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX
 				, &task_parameter->on_server);
 	if (tn == NULL) {
 		EM_DEBUG_EXCEPTION("tpl_map failed");
+		EM_SAFE_FREE(task_parameter);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
@@ -322,7 +328,6 @@ INTERNAL_FUNC int email_decode_task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DO
 	}
 
 	task_parameter = em_malloc(sizeof(task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL));
-
 	if (task_parameter == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
@@ -333,6 +338,7 @@ INTERNAL_FUNC int email_decode_task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DO
 				, &task_parameter->mail_id);
 	if (tn == NULL) {
 		EM_DEBUG_EXCEPTION("tpl_map failed");
+		EM_SAFE_FREE(task_parameter);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
@@ -410,7 +416,6 @@ INTERNAL_FUNC int email_decode_task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_M
 	}
 
 	task_parameter = em_malloc(sizeof(task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL));
-
 	if(task_parameter == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
@@ -421,6 +426,7 @@ INTERNAL_FUNC int email_decode_task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_M
 				, &task_parameter->mail_id, &task_parameter->scheduled_time);
 	if (tn == NULL) {
 		EM_DEBUG_EXCEPTION("tpl_map failed");
+		EM_SAFE_FREE(task_parameter);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}

@@ -136,7 +136,9 @@ static int emcore_clear_old_connections(int input_epoll_fd, GList **input_imap_i
 		}
 
 		/* Close connection */
-		connection_info->mail_stream = mail_close(connection_info->mail_stream);
+		if (connection_info->mail_stream)
+			connection_info->mail_stream = mail_close(connection_info->mail_stream);
+
 		EM_SAFE_FREE(connection_info->multi_user_name);
 		EM_SAFE_FREE(connection_info);
 
@@ -411,7 +413,7 @@ static int emcore_refresh_alarm_for_imap_idle(char *multi_user_name)
 		}
 	}
 
-	if(account_ref_list)
+	if (account_ref_list)
 		emcore_free_account_list(&account_ref_list, account_count, NULL);
 
 	if (auto_sync_account_count) {

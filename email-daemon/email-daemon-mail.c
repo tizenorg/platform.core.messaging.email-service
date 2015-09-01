@@ -1347,6 +1347,7 @@ INTERNAL_FUNC int emdaemon_send_mail_retry(char *multi_user_name, int mail_id, i
 		if (retry_info == NULL) {
 			EM_DEBUG_EXCEPTION("em_malloc failed");
 			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
 		}
 
 		retry_info->mail_id = mail_id;
@@ -1567,11 +1568,13 @@ INTERNAL_FUNC int emdaemon_modify_seen_flag_of_thread(char *multi_user_name, int
 	ret = true;
 
 FINISH_OFF:
+
 	EM_SAFE_FREE(mail_list);
 	EM_SAFE_FREE(mail_id_list);
 
 	if (err_code)
 		*err_code = err;
+
 	EM_DEBUG_FUNC_END();
 	return ret;
 }

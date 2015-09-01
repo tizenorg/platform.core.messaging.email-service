@@ -252,7 +252,10 @@ EXPORT_API int emipc_execute_proxy_task(email_task_type_t input_task_type, void 
 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
 
 FINISH_OFF:
-	if(hAPI)
+
+	EM_SAFE_FREE(task_parameter_stream);
+
+	if (hAPI)
 		emipc_destroy_email_api(hAPI);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);

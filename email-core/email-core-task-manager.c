@@ -352,7 +352,9 @@ INTERNAL_FUNC int  emcore_decode_task_parameter(email_task_type_t input_task_typ
 
 	task_parameter_decoder = task_handler->task_parameter_decoder;
 
-	if ((err = task_parameter_decoder(input_byte_stream, input_stream_size, output_task_parameter_struct)) != EMAIL_ERROR_NONE) {
+	if ((err = task_parameter_decoder(input_byte_stream, 
+									input_stream_size, 
+									output_task_parameter_struct)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("task_parameter_decoder failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -368,7 +370,11 @@ int emcore_fetch_task_from_task_pool(email_task_t **output_task)
 	int err = EMAIL_ERROR_NONE;
 	int output_task_count;
 
-	if((err = emstorage_query_task(NULL, "WHERE task_status == 1", " ORDER BY date_time ASC, task_priority ASC LIMIT 0, 1", output_task, &output_task_count)) != EMAIL_ERROR_NONE) {
+	if ((err = emstorage_query_task(NULL, 
+									"WHERE task_status == 1", 
+									"ORDER BY date_time ASC, task_priority ASC LIMIT 0, 1", 
+									output_task, 
+									&output_task_count)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_query_task failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -516,8 +522,8 @@ void* thread_func_task_manager_loop(void *arg)
 			EM_DEBUG_LOG("pthread_create returns [%d]", thread_error);
 
 			/* new_task and task_parameter will be free in task handler. */
-                        EM_SAFE_FREE(new_task->task_parameter);
-                        EM_SAFE_FREE(new_task);
+			EM_SAFE_FREE(new_task->task_parameter);
+			EM_SAFE_FREE(new_task);
 		}
 		else {
 			/* If there is no task or no available slot, sleep until someone wake you up. */

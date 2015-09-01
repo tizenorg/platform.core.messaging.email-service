@@ -703,7 +703,7 @@ typedef enum
     EMAIL_SET_SLOT_SIZE_START,                     /**< Task started  */
     EMAIL_SET_SLOT_SIZE_FINISH,                    /**< Task finished */
     EMAIL_SET_SLOT_SIZE_FAIL,                      /**< Task failed */
-}email_set_slot_size_status_e;
+} email_set_slot_size_status_e;
 
 /**
 * @brief Enumeration for the status of expunging mails.
@@ -716,7 +716,7 @@ typedef enum
     EMAIL_EXPUNGE_MAILS_DELETED_FLAGGED_START,               /**< Task started  */
     EMAIL_EXPUNGE_MAILS_DELETED_FLAGGED_FINISH,              /**< Task finished */
     EMAIL_EXPUNGE_MAILS_DELETED_FLAGGED_FAIL,                /**< Task failed */
-}email_expunge_mails_deleted_flagged_status_e;
+} email_expunge_mails_deleted_flagged_status_e;
 
 /**
 * @brief Enumeration for the status of searching mails on server.
@@ -729,7 +729,7 @@ typedef enum
     EMAIL_SEARCH_ON_SERVER_START,               /**< Task started  */
     EMAIL_SEARCH_ON_SERVER_FINISH,              /**< Task finished */
     EMAIL_SEARCH_ON_SERVER_FAIL,                /**< Task failed */
-}email_search_on_server_status_e;
+} email_search_on_server_status_e;
 
 /**
 * @brief Enumeration for the status of moving mails.
@@ -742,7 +742,7 @@ typedef enum
     EMAIL_MOVE_MAILBOX_ON_IMAP_SERVER_START,             /**< Task started  */
     EMAIL_MOVE_MAILBOX_ON_IMAP_SERVER_FINISH,            /**< Task finished */
     EMAIL_MOVE_MAILBOX_ON_IMAP_SERVER_FAIL,              /**< Task failed */
-}email_move_mailbox_status_e;
+} email_move_mailbox_status_e;
 
 /**
 * @brief Enumeration for the status of updating mails.
@@ -755,7 +755,7 @@ typedef enum
     EMAIL_UPDATE_MAIL_START,               /**< Task started  */
     EMAIL_UPDATE_MAIL_FINISH,              /**< Task finished */
     EMAIL_UPDATE_MAIL_FAIL,                /**< Task failed */
-}email_update_mail_status_e;
+} email_update_mail_status_e;
 
 /**
 * @brief Enumeration for the mailbox type.
@@ -774,7 +774,7 @@ typedef enum
     EMAIL_MAILBOX_TYPE_SEARCH_RESULT = 8,         /**< Specified mailbox type for result of search on server */
     EMAIL_MAILBOX_TYPE_FLAGGED       = 9,         /**< Specified flagged mailbox type on gmail */
     EMAIL_MAILBOX_TYPE_USER_DEFINED  = 0xFF,      /**< Specified mailbox type for all other mailboxes */
-}email_mailbox_type_e;
+} email_mailbox_type_e;
 
 
 /** @brief Enumeration for the sync order.

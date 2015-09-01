@@ -1185,8 +1185,10 @@ FINISH_OFF:
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 	}
 
-	if (rule)
+	if (rule) {
 		emcore_free_rule(rule);
+		free(rule);
+	}
 
 	EM_SAFE_FREE(local_rule_stream);	
     EM_SAFE_FREE(multi_user_name);
@@ -1383,14 +1385,13 @@ void stb_move_all_mails(HIPC_API a_hAPI)
 
 	if(emdaemon_move_mail_all_mails(multi_user_name, src_mailbox_id, dst_mailbox_id, &err))
 		EM_DEBUG_LOG("emdaemon_move_mail_all_mails:Success");
+
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
-		return;
 	}
 
 	if (!emipc_execute_stub_api(a_hAPI)) {
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
-		return;
 	}
 
     EM_SAFE_FREE(multi_user_name);
@@ -1637,8 +1638,6 @@ FINISH_OFF:
 
 	emstorage_free_meeting_request(&result_meeting_request);
 
-	em_flush_memory();
-
     EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
@@ -1811,8 +1810,6 @@ FINISH_OFF:
 
 	emstorage_free_meeting_request(&result_meeting_request);
 
-	em_flush_memory();
-
     EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
 }
@@ -1958,7 +1955,7 @@ void stb_expunge_mails_deleted_flagged(HIPC_API a_hAPI)
 
     if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
         EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
-        multi_user_name = NULL;
+		multi_user_name = NULL;
     }
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), (void*)&mailbox_id);
@@ -1972,17 +1969,14 @@ void stb_expunge_mails_deleted_flagged(HIPC_API a_hAPI)
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter fail");
-		return;
 	}
 
 	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int))) {
 		EM_DEBUG_LOG("ipcAPI_AddParameter local_result failed ");
-		return;
 	}
 
 	if (!emipc_execute_stub_api(a_hAPI)) {
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api fail");
-		return;
 	}
 
     EM_SAFE_FREE(multi_user_name);
@@ -2641,13 +2635,13 @@ void stb_add_account_with_validation(HIPC_API a_hAPI)
 	/* get account info */
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, 0);
 	EM_DEBUG_LOG("size [%d]", buffer_size);
-	if (buffer_size <= 0) {
+	if(buffer_size <= 0) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
-	stream = (char *)emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0);
-	if (!stream) {
+	stream =(char*)	emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0);
+	if(!stream) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
@@ -3407,7 +3401,6 @@ FINISH_OFF:
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
-	em_flush_memory();
 	EM_DEBUG_FUNC_END("err [%d]", err);
 }
 
@@ -3817,7 +3810,7 @@ void stb_get_user_name(HIPC_API a_hAPI)
         EM_DEBUG_LOG("Domain name : [%s]", user_name);
 
         if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) 
-			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+                EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 		if (user_name) {
 			if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, user_name, EM_SAFE_STRLEN(user_name) + 1)) 

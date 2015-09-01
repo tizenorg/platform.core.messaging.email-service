@@ -1069,7 +1069,7 @@ INTERNAL_FUNC int emcore_cancel_all_thread(int *err_code)
 
 		}
 		else {
-			pop_elm->status = EMAIL_EVENT_STATUS_CANCELED;
+			if (pop_elm) pop_elm->status = EMAIL_EVENT_STATUS_CANCELED;
 		}
 	}
 	LEAVE_RECURSIVE_CRITICAL_SECTION(_event_queue_lock);
@@ -1324,7 +1324,7 @@ INTERNAL_FUNC int emcore_cancel_all_send_mail_thread(int *err_code)
 				q_length = g_queue_get_length(g_send_event_que);
 
 		} else {
-			pop_elm->status = EMAIL_EVENT_STATUS_CANCELED;
+			if (pop_elm) pop_elm->status = EMAIL_EVENT_STATUS_CANCELED;
 		}
 	}
 	LEAVE_RECURSIVE_CRITICAL_SECTION(_send_event_queue_lock);

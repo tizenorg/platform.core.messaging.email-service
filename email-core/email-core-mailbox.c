@@ -509,6 +509,9 @@ INTERNAL_FUNC int emcore_create_mailbox(char *multi_user_name, email_mailbox_t *
 		}
 		EM_SAFE_FREE(new_mailbox->mailbox_name);
 		new_mailbox->mailbox_name = enc_mailbox_name;
+
+		EM_SAFE_FREE(new_mailbox->alias);
+		new_mailbox->alias = emcore_get_alias_of_mailbox((const char *)new_mailbox->mailbox_name);
 	}
 
 	if (on_server) {
@@ -771,7 +774,7 @@ INTERNAL_FUNC int emcore_rename_mailbox(char *multi_user_name,
 														target_mailbox->account_id, 
 														target_mailbox->mailbox_id, 
 														target_mailbox->mailbox_name, 
-														input_new_mailbox_name, 
+														new_mailbox_name, 
 														handle_to_be_published)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_rename_mailbox_on_imap_server failed [%d]", err);
 			goto FINISH_OFF;
@@ -820,10 +823,10 @@ INTERNAL_FUNC int emcore_rename_mailbox(char *multi_user_name,
 			}
 		}
 
-		if(input_mailbox_id == target_mailbox_array[i].mailbox_id) {
+		if (input_mailbox_id == target_mailbox_array[i].mailbox_id) {
 			if ((err = emstorage_rename_mailbox(multi_user_name, 
 												target_mailbox_array[i].mailbox_id, 
-												input_new_mailbox_name, 
+												new_mailbox_name, 
 												input_new_mailbox_alias, 
 												input_eas_data, 
 												input_eas_data_length, 
@@ -833,8 +836,15 @@ INTERNAL_FUNC int emcore_rename_mailbox(char *multi_user_name,
 			}
 		}
 		else {
-			EM_DEBUG_LOG_SEC("target_mailbox_array[i].mailbox_name[%s] old_mailbox_name[%s] input_new_mailbox_name [%s]", target_mailbox_array[i].mailbox_name, old_mailbox_name, input_new_mailbox_name);
-			renamed_mailbox_name = em_replace_string(target_mailbox_array[i].mailbox_name, old_mailbox_name, input_new_mailbox_name);
+			EM_DEBUG_LOG_SEC("target_mailbox_array[i].mailbox_name[%s] "
+							 "old_mailbox_name[%s] "
+							 "new_mailbox_name [%s]", 
+							 target_mailbox_array[i].mailbox_name, 
+							 old_mailbox_name, 
+							 new_mailbox_name);
+			renamed_mailbox_name = em_replace_string(target_mailbox_array[i].mailbox_name, 
+													old_mailbox_name, 
+													new_mailbox_name);
 			EM_DEBUG_LOG_SEC("renamed_mailbox_name[%s]", renamed_mailbox_name);
 
 			if ((err = emstorage_rename_mailbox(multi_user_name, 

@@ -35,6 +35,7 @@
 #include <glib.h>
 #include <pthread.h>
 #include <sys/types.h>
+#include <sys/epoll.h>
 #include <unistd.h>
 
 typedef struct {
@@ -90,16 +91,16 @@ EXPORT_API bool emipc_end_proxy_socket()
 
 	ENTER_CRITICAL_SECTION(proxy_mutex);
 	GList *cur = socket_head;
-	while( cur ) {
+	while (cur) {
 		thread_socket_t* cur_socket = g_list_nth_data(cur,0);
 
 		/* close the socket of current thread */
-		if( tid == cur_socket->tid ) {
+		if (tid == cur_socket->tid) {
 			emipc_close_email_socket(&cur_socket->socket_fd);
 			EM_SAFE_FREE(cur_socket);
 			GList *del = cur;
 			cur = g_list_next(cur);
-			socket_head = g_list_remove_link(socket_head, del);
+			socket_head = g_list_delete_link(socket_head, del);
 			break;
 		}
 
@@ -128,12 +129,14 @@ EXPORT_API bool emipc_end_all_proxy_sockets()
 			EM_SAFE_FREE(cur_socket);
 			GList *del = cur;
 			cur = g_list_next(cur);
-			socket_head = g_list_remove_link(socket_head, del);
+			socket_head = g_list_delete_link(socket_head, del);
 			continue;
 		}
 
 		cur = g_list_next(cur);
 	}
+	g_list_free(socket_head);
+	socket_head = NULL;
 	LEAVE_CRITICAL_SECTION(proxy_mutex);
 
 	return true;
@@ -190,16 +193,19 @@ EXPORT_API int emipc_get_proxy_socket_id()
 /* return true, when event occurred
  * false, when select error
  */
+
+#define MAX_PROXY_EPOLL_EVENT 100
+
 static bool wait_for_reply (int fd)
 {
-	int err = -1;
-	fd_set fds;
-	struct timeval tv;
-
 	if (fd < 0) {
 		EM_DEBUG_EXCEPTION("Invalid file description : [%d]", fd);
 		return false;
 	}
+#if 0
+	int err = -1;
+	fd_set fds;
+	struct timeval tv;
 
 	FD_ZERO(&fds);
 	FD_SET(fd, &fds);
@@ -219,8 +225,54 @@ static bool wait_for_reply (int fd)
 	}
 
 	if (FD_ISSET(fd, &fds)) return true;
+#endif
 
-	return false;
+	int i = 0;
+	int ret = false;
+	int proxy_epfd = -1;
+	int event_num = 0;
+	int timeout = 20000; /* 20 seconds */
+	char errno_buf[ERRNO_BUF_SIZE] = {0};
+	struct epoll_event proxy_ev = {0};
+	struct epoll_event proxy_ev_events[MAX_PROXY_EPOLL_EVENT] = {{0}, };
+
+	proxy_epfd = epoll_create(MAX_PROXY_EPOLL_EVENT);
+	if (proxy_epfd < 0) {
+		EM_DEBUG_EXCEPTION("epoll_create failed : [%d][%s]", errno, EM_STRERROR(errno_buf));
+		goto FINISH_OFF;
+	}
+
+	proxy_ev.data.fd = fd;
+	proxy_ev.events = EPOLLIN | EPOLLONESHOT;
+
+	if (epoll_ctl(proxy_epfd, EPOLL_CTL_ADD, fd, &proxy_ev) == -1) {
+		EM_DEBUG_EXCEPTION("epoll_ctl wait : [%d][%s]", errno, EM_STRERROR(errno_buf));
+		goto FINISH_OFF;
+	}
+
+	EM_DEBUG_LOG("Wait for response poll_fd:[%d], proxy_fd:[%d]", proxy_epfd, fd);
+	event_num = epoll_wait(proxy_epfd, proxy_ev_events, MAX_PROXY_EPOLL_EVENT, timeout);
+	if (event_num == -1) {
+		EM_DEBUG_EXCEPTION("epoll_wait failed : [%d][%s]", errno, EM_STRERROR(errno_buf));
+		goto FINISH_OFF;
+	} else if (event_num == 0) {
+		EM_DEBUG_EXCEPTION("Occured timeout proxy_fd[%d]", fd);
+		goto FINISH_OFF;
+	} else {
+		for (i = 0; i < event_num; i++) {
+			if (proxy_ev_events[i].events & EPOLLIN) {
+				EM_DEBUG_LOG("Received event to stub");
+				ret = true;
+			} 
+		}
+	}
+
+FINISH_OFF:
+
+	if (proxy_epfd >= 0)
+		close(proxy_epfd);
+
+	return ret;
 }
 
 
@@ -235,7 +287,7 @@ EXPORT_API int emipc_recv_proxy_socket(char **data)
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
-	if( !wait_for_reply(socket_fd) ) {
+	if (!wait_for_reply(socket_fd)) {
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 

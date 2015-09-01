@@ -332,7 +332,17 @@ static void emcore_mail_copyuid_ex(MAILSTREAM *stream, char *mailbox, unsigned l
 
 	EM_DEBUG_LOG("Count of mails copied [%d]", count);
 	old_server_uid = em_malloc(count * sizeof(unsigned long));
+	if (old_server_uid == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed : EMAIL_ERROR_OUT_OF_MEMORY");
+		return;
+	}
+
 	new_server_uid = em_malloc(count * sizeof(unsigned long));
+	if (new_server_uid == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed : EMAIL_ERROR_OUT_OF_MEMORY");
+		EM_SAFE_FREE(old_server_uid);
+		return;
+	}
 
 	/* While loop below will collect all old server uid from sourceset into old_server_uid array */
 	while (sourceset) {
@@ -2722,7 +2732,7 @@ INTERNAL_FUNC int emcore_gmime_download_body_sections(char *multi_user_name,
 			goto FINISH_OFF;
 		}
 
-		while(emcore_mime_get_line_from_sock((void *)stream, sock_buf, 1024, &err)) {
+		while (emcore_mime_get_line_from_sock((void *)stream, sock_buf, 1024, &err)) {
 			if (write(fd, sock_buf, EM_SAFE_STRLEN(sock_buf)) != EM_SAFE_STRLEN(sock_buf)) {
 				EM_DEBUG_EXCEPTION("write failed");
 			}
@@ -2811,7 +2821,8 @@ INTERNAL_FUNC int emcore_gmime_download_body_sections(char *multi_user_name,
 		g_mime_message_foreach(message1, emcore_gmime_imap_parse_full_foreach_cb, (gpointer)cnt_info);
 
 		/* Get mime entity */
-		g_mime_message_foreach(message1, emcore_gmime_get_mime_entity_cb, (gpointer)cnt_info);
+		if (cnt_info->content_type == 1)
+			g_mime_message_foreach(message1, emcore_gmime_get_mime_entity_cb, (gpointer)cnt_info);
 
 		/* free resources */
 		if (message1) {
@@ -6604,6 +6615,8 @@ INTERNAL_FUNC int emcore_sync_flags_field_with_server(char *multi_user_name, int
 
 FINISH_OFF:
 
+	EM_SAFE_FREE(id_set);
+
 #ifdef __FEATURE_LOCAL_ACTIVITY__
 	if (ret) {
 		emstorage_activity_tbl_t new_activity;
@@ -6640,6 +6653,7 @@ FINISH_OFF:
 
 	if (err_code != NULL)
 		*err_code = err;
+
 	EM_DEBUG_FUNC_END();
 	return ret;
 }
@@ -7921,7 +7935,7 @@ INTERNAL_FUNC int emcore_search_on_server(char *multi_user_name, int account_id,
 	emstorage_mailbox_tbl_t *search_mailbox = NULL;
 	emstorage_mail_tbl_t *new_mail_tbl_data = NULL;
 
-	SEARCHPGM *search_program = NULL;
+//	SEARCHPGM *search_program = NULL;
 	MAILSTREAM *stream = NULL;
 	//MESSAGECACHE *mail_cache_element = NULL;
 	ENVELOPE *env = NULL;
@@ -8058,10 +8072,10 @@ FINISH_OFF:
 
 	if (uid_list)
 		emcore_free_uids(uid_list, NULL);
-
+/*
 	if (search_program)
 		mail_free_searchpgm(&search_program);
-
+*/
 	if (search_mailbox != NULL)
 		emstorage_free_mailbox(&search_mailbox, 1, NULL);
 

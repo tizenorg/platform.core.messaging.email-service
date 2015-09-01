@@ -446,6 +446,7 @@ int imap4_mailbox_get_uids(MAILSTREAM *stream, char *input_target_uid_string, em
 		char *p_date = NULL;
 		char *s = NULL;
 		int seen = 0;
+		int answered = 0;
 		int forwarded = 0;
 		int draft = 0;
 		int flagged = 0;
@@ -478,6 +479,7 @@ int imap4_mailbox_get_uids(MAILSTREAM *stream, char *input_target_uid_string, em
 				seen = strstr(p, "\\Seen") ? 1  :  0;
 				draft = strstr(p, "\\Draft") ? 1  :  0;
 				flagged = strstr(p, "\\Flagged") ? 1  :  0;
+				answered = strstr(p, "\\Answered") ? 1 : 0;
 				forwarded = strstr(p, "$Forwarded") ? 1  :  0;
 
 				if ((p = strstr(p, "UID "))) {
@@ -511,8 +513,9 @@ int imap4_mailbox_get_uids(MAILSTREAM *stream, char *input_target_uid_string, em
 					uid_elem->uid = EM_SAFE_STRDUP(p + strlen("UID "));
 					uid_elem->flag.seen = seen;
 					uid_elem->flag.draft = draft;
-					uid_elem->flag.forwarded = forwarded;
 					uid_elem->flag.flagged = flagged;
+					uid_elem->flag.answered = answered;
+					uid_elem->flag.forwarded = forwarded;
 					uid_elem->internaldate = EM_SAFE_STRDUP(internaldate);
 					if (*uid_list  != NULL)
 						uid_elem->next = *uid_list;		/*  prepend new data to list */
@@ -753,6 +756,11 @@ int imap4_mailbox_get_uids_by_timestamp(MAILSTREAM *stream, emcore_uid_list** ui
 
 	/* Reading the current timeinfo */
 	timeinfo = localtime (&week_before_RawTime);
+	if (timeinfo == NULL) {
+		EM_DEBUG_EXCEPTION("localtime failed");
+		err = EMAIL_ERROR_SYSTEM_FAILURE;
+		goto FINISH_OFF;
+	}
 
 	EM_DEBUG_LOG(">>>>>Mobile Date a Week before %d %d %d %d %d %d", 1900 + timeinfo->tm_year, timeinfo->tm_mon+1, timeinfo->tm_mday);
 
@@ -1211,8 +1219,11 @@ static int emcore_get_uids_to_download(char *multi_user_name, MAILSTREAM *stream
 	}
 
 	if (!emstorage_get_downloaded_list(multi_user_name, input_mailbox_tbl->account_id,
-		(account->incoming_server_type == EMAIL_SERVER_TYPE_POP3) ? 0 : input_mailbox_tbl->mailbox_id,
-		&downloaded_uids, &downloaded_uid_count, true, &err)) {
+									(account->incoming_server_type == EMAIL_SERVER_TYPE_POP3) ? 0 : input_mailbox_tbl->mailbox_id,
+									&downloaded_uids, 
+									&downloaded_uid_count, 
+									true, 
+									&err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_downloaded_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1272,25 +1283,24 @@ static int emcore_get_uids_to_download(char *multi_user_name, MAILSTREAM *stream
 		else {
 			int to_be_downloaded = 1;
 
-			if (limit_count > 0 && uid_count >= limit_count){
+			if (limit_count > 0 && uid_count >= limit_count) {
 				/* EM_DEBUG_LOG("hit the limit[%d] for [%s]", limit_count, uid_elem->uid); */
 				to_be_downloaded = 0;
-			}
-			else{
+			} else {
 				for (i = downloaded_uid_count; i > 0; i--) {
 					if (downloaded_uids[i - 1].sync_status == EMAIL_SYNC_STATUS_NOT_EXIST_ON_SERVER
 							&& !EM_SAFE_STRCMP(uid_elem->uid, downloaded_uids[i - 1].server_uid)) {
 						if (downloaded_uids[i - 1].mailbox_id != input_mailbox_tbl->mailbox_id) {
 							uid_count--;
-						}
-						else {
+						} else {
 							/* The mail exists on server and local storage, so it should not be downloaded, just check seen flag */
-							if(downloaded_uids[i - 1].flags_seen_field != uid_elem->flag.seen ||
+							if (downloaded_uids[i - 1].flags_seen_field != uid_elem->flag.seen ||
 									downloaded_uids[i - 1].flags_flagged_field != uid_elem->flag.flagged) {
 								if(downloaded_uids[i - 1].flags_seen_field != uid_elem->flag.seen) {
 									downloaded_uids[i - 1].sync_status = EMAIL_SYNC_STATUS_FLAG_CHANGED;
 									downloaded_uids[i - 1].flags_seen_field = uid_elem->flag.seen;
 								}
+
 								if (downloaded_uids[i - 1].flags_flagged_field != uid_elem->flag.flagged) {
 									downloaded_uids[i - 1].sync_status = EMAIL_SYNC_STATUS_FLAG_CHANGED;
 									downloaded_uids[i - 1].flags_flagged_field = uid_elem->flag.flagged;
@@ -1298,7 +1308,44 @@ static int emcore_get_uids_to_download(char *multi_user_name, MAILSTREAM *stream
 							} else {
 								downloaded_uids[i - 1].sync_status = EMAIL_SYNC_STATUS_EXIST_ON_SERVER;
 							}
+
+							if (!emstorage_get_mail_by_id(multi_user_name, 
+															downloaded_uids[i-1].local_uid, 
+															&mail,
+															false,
+															&err)) {
+								EM_DEBUG_EXCEPTION("emstorage_get_mail_by_id failed : [%d]", err);
+								continue;
+							}
+
+							if (mail->flags_answered_field != uid_elem->flag.answered) {
+								if (!emcore_set_flags_field(multi_user_name,
+															downloaded_uids[i-1].account_id,
+															&(downloaded_uids[i-1].local_uid),
+															1,
+															EMAIL_FLAGS_ANSWERED_FIELD,
+															uid_elem->flag.answered,
+															&err)) {
+									EM_DEBUG_EXCEPTION("emcore_set_flags_field failed : [%d]", err);
+								}
+							}
+
+							if (mail->flags_forwarded_field != uid_elem->flag.forwarded) {
+								if (!emcore_set_flags_field(multi_user_name,
+															downloaded_uids[i-1].account_id,
+															&(downloaded_uids[i-1].local_uid),
+															1,
+															EMAIL_FLAGS_FORWARDED_FIELD,
+															uid_elem->flag.forwarded,
+															&err)) {
+									EM_DEBUG_EXCEPTION("emcore_set_flags_field failed : [%d]", err);
+								}
+							}
+
+							emstorage_free_mail(&mail, 1, NULL);
+							mail = NULL;
 						}
+
 						to_be_downloaded = 0;
 						break;
 					}
@@ -1362,7 +1409,12 @@ static int emcore_get_uids_to_download(char *multi_user_name, MAILSTREAM *stream
 				}
 			}
 
-			if (!emstorage_remove_downloaded_mail(multi_user_name, input_mailbox_tbl->account_id, input_mailbox_tbl->mailbox_name, downloaded_uids[i].server_uid, true, &err)) {   /*  remove uid from uid list */
+			if (!emstorage_remove_downloaded_mail(multi_user_name, 
+												input_mailbox_tbl->account_id, 
+												input_mailbox_tbl->mailbox_name, 
+												downloaded_uids[i].server_uid, 
+												true, 
+												&err)) {   /*  remove uid from uid list */
 				EM_DEBUG_EXCEPTION("emstorage_remove_downloaded_mail failed - %d", err);
 				/* goto FINISH_OFF; */
 			}
@@ -1371,19 +1423,30 @@ static int emcore_get_uids_to_download(char *multi_user_name, MAILSTREAM *stream
 		else if (account->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
 			/* set seen flag of downloaded mail */
 			if (downloaded_uids[i].sync_status == EMAIL_SYNC_STATUS_FLAG_CHANGED) {
-				if (!emcore_set_flags_field(multi_user_name, downloaded_uids[i].account_id, &(downloaded_uids[i].local_uid), 1, EMAIL_FLAGS_FLAGGED_FIELD, downloaded_uids[i].flags_flagged_field, &err)) {
+				if (!emcore_set_flags_field(multi_user_name, 
+											downloaded_uids[i].account_id, 
+											&(downloaded_uids[i].local_uid), 
+											1, 
+											EMAIL_FLAGS_FLAGGED_FIELD, 
+											downloaded_uids[i].flags_flagged_field, 
+											&err)) {
 					EM_DEBUG_EXCEPTION("emcore_set_flags_field failed [%d]", err);
 				}
 
-				if (!emcore_set_flags_field(multi_user_name, downloaded_uids[i].account_id, &(downloaded_uids[i].local_uid), 1, EMAIL_FLAGS_SEEN_FIELD, downloaded_uids[i].flags_seen_field, &err)) {
+				if (!emcore_set_flags_field(multi_user_name, 
+											downloaded_uids[i].account_id, 
+											&(downloaded_uids[i].local_uid), 
+											1, 
+											EMAIL_FLAGS_SEEN_FIELD, 
+											downloaded_uids[i].flags_seen_field, 
+											&err)) {
 					EM_DEBUG_EXCEPTION("emcore_set_flags_field failed [%d]", err);
 				}
 				else
 					emcore_display_unread_in_badge(multi_user_name);
 			}
-
-
 		}
+
 		if (mail != NULL)
 			emstorage_free_mail(&mail, 1, NULL);
 		mail = NULL;
@@ -1845,8 +1908,6 @@ INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(char *multi_user_name,
 			EM_DEBUG_EXCEPTION("emcore_get_utf8_address failed [%d]", err);
 			goto FINISH_OFF;
 		}
-
-
 	}
 
 	if (input_envelope->to) {
@@ -1854,8 +1915,6 @@ INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(char *multi_user_name,
 			EM_DEBUG_EXCEPTION("emcore_get_utf8_address failed [%d]", err);
 			goto FINISH_OFF;
 		}
-
-
 	}
 
 	if (input_envelope->cc) {
@@ -1921,12 +1980,12 @@ INTERNAL_FUNC int emcore_make_mail_tbl_data_from_envelope(char *multi_user_name,
 	temp_mail_tbl_data->server_mail_id        = EM_SAFE_STRDUP(input_uid_elem->uid);
 	temp_mail_tbl_data->mail_size             = mail_cache_element->rfc822_size;
 	temp_mail_tbl_data->flags_seen_field      = input_uid_elem->flag.seen;
-	temp_mail_tbl_data->flags_deleted_field   = mail_cache_element->deleted;
-	temp_mail_tbl_data->flags_flagged_field   = mail_cache_element->flagged;
-	temp_mail_tbl_data->flags_answered_field  = mail_cache_element->answered;
-	temp_mail_tbl_data->flags_recent_field    = mail_cache_element->recent;
-	temp_mail_tbl_data->flags_draft_field     = mail_cache_element->draft;
+	temp_mail_tbl_data->flags_draft_field     = input_uid_elem->flag.draft;
+	temp_mail_tbl_data->flags_flagged_field   = input_uid_elem->flag.flagged;
+	temp_mail_tbl_data->flags_answered_field  = input_uid_elem->flag.answered;
 	temp_mail_tbl_data->flags_forwarded_field = input_uid_elem->flag.forwarded;
+	temp_mail_tbl_data->flags_deleted_field   = mail_cache_element->deleted;
+	temp_mail_tbl_data->flags_recent_field    = mail_cache_element->recent;
 	temp_mail_tbl_data->priority              = priority;
 	temp_mail_tbl_data->report_status         = (req_read_receipt ? EMAIL_MAIL_REQUEST_MDN :  0);
 	temp_mail_tbl_data->attachment_count      = 0;
@@ -2190,7 +2249,14 @@ INTERNAL_FUNC int emcore_sync_header (char *multi_user_name,
 												input_mailbox_tbl->mailbox_name, searched_mail_id, 
 												new_mail_tbl_data->server_mail_id, new_mail_tbl_data->mail_size, 
 												0, &err)) {
-						EM_DEBUG_EXCEPTION("emcore_add_read_mail_uid failed");
+						EM_DEBUG_EXCEPTION("emcore_add_read_mail_uid failed : [%d]", err);
+						goto CONTINUE_NEXT;
+					}
+				
+					if (!emstorage_change_mail_field(multi_user_name, searched_mail_id, UPDATE_DATETIME, 
+													new_mail_tbl_data, true, &err)) {
+						EM_DEBUG_EXCEPTION("emstorage_change_mail_field failed : [%d]", err);
+						goto CONTINUE_NEXT;
 					}
 
 					goto CONTINUE_NEXT;
@@ -2200,7 +2266,7 @@ INTERNAL_FUNC int emcore_sync_header (char *multi_user_name,
 					EM_DEBUG_EXCEPTION("emcore_check_rule failed [%d]", err);
 				}
 
-				if(destination_mailbox) /* cleanup before reusing */
+				if (destination_mailbox) /* cleanup before reusing */
 					emstorage_free_mailbox(&destination_mailbox, 1, NULL);
 
 				if (priority_sender) {
@@ -3705,6 +3771,11 @@ static int emcore_gmime_download_imap_partial_mail_body(MAILSTREAM *stream, int 
 
 		message1 = g_mime_parser_construct_message(parser1);
 		if (parser1) g_object_unref(parser1);
+
+		if (message1 == NULL) {
+			EM_DEBUG_LOG("message1 is NULL");
+			continue;
+		}
 
 		/* message1 is multipart? */
 		if (GMIME_IS_MULTIPART (message1->mime_part)) {

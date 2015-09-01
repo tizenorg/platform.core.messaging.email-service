@@ -217,6 +217,7 @@ struct _m_content_info
 	int total_body_size;
 	int total_attachment_size;
 	int attachment_only;
+	int content_type; /* 1 : signed */
 	char *sections;
 
 	struct text_data 
@@ -339,7 +340,6 @@ INTERNAL_FUNC int   emcore_sync_flag_with_server(char *multi_user_name, int mail
 INTERNAL_FUNC int   emcore_sync_seen_flag_with_server(char *multi_user_name, int mail_ids[], int num, int event_handle, int *err_code);
 
 INTERNAL_FUNC int   emcore_set_flags_field(char *multi_user_name, int account_id, int mail_ids[], int num, email_flags_field_type field_type, int value, int *err_code);
-INTERNAL_FUNC char* emcore_convert_mutf7_to_utf8(char *mailbox_name); 
 INTERNAL_FUNC int   emcore_convert_string_to_structure(const char *encoded_string, void **struct_var, email_convert_struct_type_e type);
 INTERNAL_FUNC int   emcore_save_mail_file(char *multi_user_name, int account_id, int mail_id, int attachment_id, char *src_file_path, char *file_name, char *full_path, char *virtual_path, int *err_code);
 

@@ -76,7 +76,7 @@ INTERNAL_FUNC int emcore_get_first_address(const char *full_address, char **alia
 
 
 INTERNAL_FUNC int reg_replace (char *input_source_text, char *input_old_pattern_string, char *input_new_string);
-INTERNAL_FUNC int reg_replace_new (char **input_source_text, char *input_old_pattern_string, char *input_new_string);
+INTERNAL_FUNC char *reg_replace_new (char *input_source_text, char *input_old_pattern_string, char *input_new_string);
 int   emcore_strip_HTML_tag(const char *input_html_file_path, char *encoding_type, char *output_result_buffer, int input_result_buffer_legnth);
 int   emcore_send_noti_for_new_mail(int account_id, char *mailbox_name, char *subject, char *from, char *uid, char *datetime);
 int   emcore_make_attachment_file_name_with_extension(char *source_file_name, char *sub_type, char *result_file_name, int result_file_name_buffer_length, int *err_code);

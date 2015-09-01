@@ -72,7 +72,7 @@ INTERNAL_FUNC int emcore_add_password_in_key_manager(char *data_name, char *stor
 	email_policy.password = NULL;
 	email_policy.extractable = true;
 
-	EM_DEBUG_LOG("stored_data : [%s]", stored_data);
+//	EM_DEBUG_LOG("stored_data : [%s]", stored_data);
 
 	email_data.data = (unsigned char *)stored_data;
 	email_data.size = strlen(stored_data);
@@ -118,13 +118,14 @@ INTERNAL_FUNC int emcore_get_password_in_key_manager(char *data_name, char **sto
 		goto FINISH_OFF;
 	}
 
-	EM_DEBUG_LOG("stored_data : [%s]", email_data->data);
-	EM_DEBUG_LOG("stored_data length : [%d]", email_data->size);
+//	EM_DEBUG_LOG("stored_data : [%s]", email_data->data);
+//	EM_DEBUG_LOG("stored_data length : [%d]", email_data->size);
 
 FINISH_OFF:
 
-	if (stored_data)
-		*stored_data = g_strndup(email_data->data, email_data->size);
+	if (stored_data) {
+		if (email_data) *stored_data = g_strndup(email_data->data, email_data->size);
+	}
 
 	if (email_data)
 		ckmc_buffer_free(email_data);

@@ -74,6 +74,7 @@
 #include "email-core-account.h"
 #include "email-core-mailbox-sync.h"
 #include "email-core-mime.h"
+#include "email-core-gmime.h"
 #include "email-core-signal.h"
 #include "email-daemon.h"
 #include "email-utilities.h"
@@ -127,7 +128,6 @@ struct emcore_account_list_t {
 
 #include <gmime/gmime.h>
 
-
 INTERNAL_FUNC char *emcore_convert_mutf7_to_utf8(char *mailbox_name)
 {
 	EM_DEBUG_FUNC_BEGIN("mailbox_name[%p]", mailbox_name);
@@ -151,7 +151,7 @@ INTERNAL_FUNC char *emcore_convert_mutf7_to_utf8(char *mailbox_name)
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		return NULL;
 	}
-
+	
 	for (; *cursor; ++cursor)
 		switch (*cursor) {
 			case '+':
@@ -1050,7 +1050,7 @@ static int emcore_layout_multi_noti(notification_h noti, int unread_mail, char *
 		goto FINISH_OFF;
 	}
 
-	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, "New email", dgettext(NATIVE_EMAIL_DOMAIN,"IDS_EMAIL_TPOP_NEW_EMAIL_RECEIVED_ABB"), NOTIFICATION_VARIABLE_TYPE_NONE);
+	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, "New emails", dgettext(NATIVE_EMAIL_DOMAIN,"IDS_EMAIL_MBODY_NEW_EMAILS_ABB"), NOTIFICATION_VARIABLE_TYPE_NONE);
 	if (noti_err != NOTIFICATION_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_TITLE failed");
 		goto FINISH_OFF;
@@ -1247,6 +1247,7 @@ static int emcore_get_alert_type(int vibrate_status)
 	}
 
 FINISH_OFF:
+
 	EM_DEBUG_FUNC_END("alert_type [%d]", alert_type);
 	return alert_type;
 }
@@ -1291,7 +1292,7 @@ INTERNAL_FUNC int emcore_show_toast_popup(char *input_popup_string)
 		goto FINISH_OFF;
 	}
 
-	ret = app_control_set_app_id(svc_handle, "com.samsung.email-tts-play");
+	ret = app_control_set_app_id(svc_handle, "org.tizen.email-tts-play");
 	if (ret != APP_CONTROL_ERROR_NONE) {
 		EM_DEBUG_LOG("app_control_set_app_id() failed! ret:[%d]", ret);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -1466,7 +1467,7 @@ INTERNAL_FUNC int emcore_add_notification(char *multi_user_name, int account_id,
 		goto FINISH_OFF;
 	}
 
-	if ((noti_err = notification_set_text_domain(noti, NATIVE_EMAIL_DOMAIN, "/usr/apps/com.samsung.email/res/locale")) != NOTIFICATION_ERROR_NONE) {
+	if ((noti_err = notification_set_text_domain(noti, NATIVE_EMAIL_DOMAIN, "/usr/apps/org.tizen.email/res/locale")) != NOTIFICATION_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("notification_set_text_domain failed [%d]", noti_err);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
@@ -1637,6 +1638,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 	int private_id = 0;
 	void *join_zone = NULL;
 	char *mailbox_name = NULL;
+	char *dgettext_string = NULL;
 	char vconf_private_id[MAX_PATH] = {0, };
 	notification_h noti = NULL;
 	notification_error_e noti_err = NOTIFICATION_ERROR_NONE;
@@ -1725,130 +1727,134 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 
 	switch (action) {
 	case EMAIL_ACTION_SEND_MAIL :
-
+/*
 		setlocale(LC_MESSAGES, vconf_get_str(VCONFKEY_LANGSET));
 		bindtextdomain("sys_string", "/usr/share/locale");
 		textdomain("sys_string");
+*/
+		setlocale(LC_MESSAGES, vconf_get_str(VCONFKEY_LANGSET));
+		bindtextdomain(NATIVE_EMAIL_DOMAIN, "/usr/apps/org.tizen.email/res/locale");
+		textdomain(NATIVE_EMAIL_DOMAIN);
 
-		if (sending_error == EMAIL_ERROR_NONE) {
-			/*if ((noti_err = emcore_layout_single_noti(noti, account_tbl->account_name, 1, "IDS_COM_POP_SENT", p_mail_data->date_time, p_mail_data->subject)) != NOTIFICATION_ERROR_NONE) {
-				EM_DEBUG_EXCEPTION("notification_layout_single_noti failed [%d]", err);
-				err = EMAIL_ERROR_SYSTEM_FAILURE;
-				goto FINISH_OFF;
-			}*/
+		switch(sending_error) {
+		case EMAIL_ERROR_NONE:
+			dgettext_string = dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_EMAIL_SENT");
+			break;
+		case EMAIL_ERROR_FLIGHT_MODE_ENABLE:
+			dgettext_string = dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_FAILED_TO_CONNECT_TO_NETWORK");
+			break;
+		case EMAIL_ERROR_NETWORK_NOT_AVAILABLE:
+		case EMAIL_ERROR_NO_SIM_INSERTED:
+			dgettext_string = dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_NETWORK_NOT_AVAILABLE_EMAIL_WILL_BE_SENT_WHEN_CONNECTED_TO_NETWORK");
+			break;
+		case EMAIL_ERROR_SERVER_STORAGE_FULL:
+			dgettext_string = dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_SENDING_FAILED_SERVER_STORAGE_FULL_ABB");
+			break;
+		default:
+			dgettext_string = dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_SENDING_FAILED");
+			break;
+		}
 
-			if ((noti_err = notification_status_message_post(dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_EMAIL_SENT"))) != NOTIFICATION_ERROR_NONE) {
-				EM_DEBUG_EXCEPTION("notification_status_message_post failed [%d]", noti_err);
-				err = EMAIL_ERROR_NOTI;
-				goto FINISH_OFF;
-			}
+		if ((noti_err = notification_set_layout(noti, 
+												NOTIFICATION_LY_NOTI_EVENT_SINGLE)) != NOTIFICATION_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("notification_set_layout failed [%d]", noti_err);
+			err = EMAIL_ERROR_NOTI;
+			goto FINISH_OFF;
+		}
 
-		} else {
-			/*if ((noti_err = emcore_layout_single_noti(noti, account_tbl->account_name, 1, "IDS_COM_POP_SENDING_FAILED", p_mail_data->date_time, p_mail_data->subject)) != NOTIFICATION_ERROR_NONE) {
-				EM_DEBUG_EXCEPTION("notification_layout_single_noti failed [%d]", err);
-				err = EMAIL_ERROR_SYSTEM_FAILURE;
-				goto FINISH_OFF;
-			}*/
+		if ((noti_err = notification_set_image(noti, 
+												NOTIFICATION_IMAGE_TYPE_ICON, 
+												EMAIL_NOTI_ICON_PATH)) != NOTIFICATION_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("notification_set_image failed [%d]", noti_err);
+			err = EMAIL_ERROR_NOTI;
+			goto FINISH_OFF;
+		}
 
-			switch(sending_error) {
-			case EMAIL_ERROR_FLIGHT_MODE_ENABLE:
-				EM_DEBUG_LOG("Flight mode enable");
-				if ((noti_err = notification_status_message_post(dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_FAILED_TO_CONNECT_TO_NETWORK"))) != NOTIFICATION_ERROR_NONE)
-				{
-					EM_DEBUG_EXCEPTION("notification_status_message_post failed [%d]", noti_err);
-					err = EMAIL_ERROR_NOTI;
-					goto FINISH_OFF;
-				}
-				break;
+		if ((noti_err = notification_set_text(noti, 
+											NOTIFICATION_TEXT_TYPE_TITLE,
+											p_mail_data->alias_recipient,		
+											NULL, 
+											NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
+			err = EMAIL_ERROR_NOTI;
+			goto FINISH_OFF;
+		}
 
-			case EMAIL_ERROR_NETWORK_NOT_AVAILABLE:
-			case EMAIL_ERROR_NO_SIM_INSERTED:
-				if ((noti_err = notification_status_message_post(dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_NETWORK_NOT_AVAILABLE_EMAIL_WILL_BE_SENT_WHEN_CONNECTED_TO_NETWORK"))) != NOTIFICATION_ERROR_NONE)
-				{
-					EM_DEBUG_EXCEPTION("notification_status_message_post failed [%d]", noti_err);
-					err = EMAIL_ERROR_NOTI;
-					goto FINISH_OFF;
-				}
-				break;
-			default:
-				if ((noti_err = notification_status_message_post(dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_SENDING_FAILED"))) != NOTIFICATION_ERROR_NONE) {
-					EM_DEBUG_EXCEPTION("notification_status_message_post failed [%d]", noti_err);
-					err = EMAIL_ERROR_NOTI;
-					goto FINISH_OFF;
-				}
-			}
-			if ((noti_err = notification_set_layout(noti, NOTIFICATION_LY_NOTI_EVENT_SINGLE)) != NOTIFICATION_ERROR_NONE) {
-				EM_DEBUG_EXCEPTION("notification_set_layout failed [%d]", noti_err);
-				err = EMAIL_ERROR_NOTI;
-				goto FINISH_OFF;
-			}
-
-			if ((noti_err = notification_set_image(noti, NOTIFICATION_IMAGE_TYPE_ICON, EMAIL_NOTI_ICON_PATH)) != NOTIFICATION_ERROR_NONE) {
-				EM_DEBUG_EXCEPTION("notification_set_image failed [%d]", noti_err);
-				err = EMAIL_ERROR_NOTI;
-				goto FINISH_OFF;
-			}
-
-			if ((noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, "Sending failed", dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_SENDING_FAILED"), NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
+		switch (sending_error) {
+		case EMAIL_ERROR_NONE:
+			if ((noti_err = notification_set_text(noti,
+												NOTIFICATION_TEXT_TYPE_CONTENT,
+												"Email Sent",
+												dgettext_string,
+												NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
 				err = EMAIL_ERROR_NOTI;
 				goto FINISH_OFF;
 			}
-
-			if (p_mail_data->subject) {
-				if ((noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_CONTENT, p_mail_data->subject, NULL, NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
-					EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
-					err = EMAIL_ERROR_NOTI;
-					goto FINISH_OFF;
-				}
-			} else {
-				if ((noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_CONTENT, "No subject", NULL, NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
-					EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
-					err = EMAIL_ERROR_NOTI;
-					goto FINISH_OFF;
-				}
-			}
-
-			if (sending_error == EMAIL_ERROR_SMTP_SEND_FAILURE_BY_OVERSIZE) {
-				setlocale(LC_MESSAGES, vconf_get_str(VCONFKEY_LANGSET));
-				bindtextdomain(NATIVE_EMAIL_DOMAIN, "/usr/apps/com.samsung.email/res/locale");
-				textdomain(NATIVE_EMAIL_DOMAIN);
-				if ((noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_INFO_1, dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_POP_THE_EMAIL_IS_TOO_LARGE"), NULL, NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
-					EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_INFO_1 failed");
-					err = EMAIL_ERROR_NOTI;
-					goto FINISH_OFF;
-				}
-			}
-
-			/*notification_set_execute_option(noti, NOTIFICATION_EXECUTE_TYPE_SINGLE_LAUNCH, NULL, NULL, args);*/
-
-			if ((noti_err = notification_set_display_applist(noti, NOTIFICATION_DISPLAY_APP_NOTIFICATION_TRAY)) != NOTIFICATION_ERROR_NONE) {
-				EM_DEBUG_EXCEPTION("notification_insert failed [%d]", noti_err);
+			break;
+		case EMAIL_ERROR_SERVER_STORAGE_FULL:
+			if ((noti_err = notification_set_text(noti,
+												NOTIFICATION_TEXT_TYPE_CONTENT,
+												"Sending failed. Server storage full.",
+												dgettext_string,
+												NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
 				err = EMAIL_ERROR_NOTI;
 				goto FINISH_OFF;
 			}
-
-			if ((noti_err = notification_insert(noti, &private_id)) != NOTIFICATION_ERROR_NONE) {
-				EM_DEBUG_EXCEPTION("notification_insert failed [%d]", noti_err);
+			break;
+		default:
+			if ((noti_err = notification_set_text(noti, 
+												NOTIFICATION_TEXT_TYPE_CONTENT, 
+												"Sending failed", 
+												dgettext_string,
+												NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
 				err = EMAIL_ERROR_NOTI;
 				goto FINISH_OFF;
 			}
+			break;
+		}
 
-			EM_DEBUG_LOG("Private_id = [%d]", private_id);
-
-			SNPRINTF(vconf_private_id, sizeof(vconf_private_id), "%s/%d", VCONF_KEY_NOTI_PRIVATE_ID, account_id);
-			if (vconf_set_int(vconf_private_id, private_id) != 0) {
-				EM_DEBUG_EXCEPTION("vconf_set_int failed");
-				err = EMAIL_ERROR_GCONF_FAILURE;
+		if (sending_error == EMAIL_ERROR_SMTP_SEND_FAILURE_BY_OVERSIZE) {
+			if ((noti_err = notification_set_text(noti, 
+												NOTIFICATION_TEXT_TYPE_INFO_1, 
+												dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_POP_THE_EMAIL_IS_TOO_LARGE"), 
+												NULL, 
+												NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
+				EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_INFO_1 failed");
+				err = EMAIL_ERROR_NOTI;
 				goto FINISH_OFF;
 			}
+		}
+
+		if ((noti_err = notification_set_display_applist(noti, 
+												NOTIFICATION_DISPLAY_APP_NOTIFICATION_TRAY | NOTIFICATION_DISPLAY_APP_TICKER)) != NOTIFICATION_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("notification_insert failed [%d]", noti_err);
+			err = EMAIL_ERROR_NOTI;
+			goto FINISH_OFF;
+		}
+
+		if ((noti_err = notification_insert(noti, &private_id)) != NOTIFICATION_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("notification_insert failed [%d]", noti_err);
+			err = EMAIL_ERROR_NOTI;
+			goto FINISH_OFF;
+		}
+
+		EM_DEBUG_LOG("Private_id = [%d]", private_id);
+
+		SNPRINTF(vconf_private_id, sizeof(vconf_private_id), "%s/%d", VCONF_KEY_NOTI_PRIVATE_ID, account_id);
+		if (vconf_set_int(vconf_private_id, private_id) != 0) {
+			EM_DEBUG_EXCEPTION("vconf_set_int failed");
+			err = EMAIL_ERROR_GCONF_FAILURE;
+			goto FINISH_OFF;
 		}
 
 		break;
 
 	case EMAIL_ACTION_SENDING_MAIL :
 
-		if ((noti_err = notification_set_text_domain(noti, NATIVE_EMAIL_DOMAIN, "/usr/apps/com.samsung.email/res/locale")) != NOTIFICATION_ERROR_NONE) {
+		if ((noti_err = notification_set_text_domain(noti, NATIVE_EMAIL_DOMAIN, "/usr/apps/org.tizen.email/res/locale")) != NOTIFICATION_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("notification_set_text_domain failed [%d]", noti_err);
 			err = EMAIL_ERROR_NOTI;
 			goto FINISH_OFF;
@@ -1896,8 +1902,8 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 		EM_DEBUG_LOG("Private_id = [%d]", private_id);
 
 		SNPRINTF(vconf_private_id, sizeof(vconf_private_id), "%s/%d", VCONF_KEY_NOTI_PRIVATE_ID, account_id);
-		if ((err = vconf_set_int (vconf_private_id, private_id)) != 0) {
-			EM_DEBUG_EXCEPTION("vconf_set_int failed [%d]", err);
+		if (vconf_set_int (vconf_private_id, private_id) != 0) {
+			EM_DEBUG_EXCEPTION("vconf_set_int failed");
 			err = EMAIL_ERROR_GCONF_FAILURE;
 			goto FINISH_OFF;
 		}
@@ -1909,6 +1915,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 			EM_DEBUG_EXCEPTION ("notification_free error [%d]", noti_err);
 			err = EMAIL_ERROR_NOTI;
 		}
+
 		break;
 	}
 
@@ -1918,9 +1925,17 @@ FINISH_OFF:
 		app_control_destroy(service);
 
     if ((action == EMAIL_ACTION_SEND_MAIL) && noti) {
-        if( (noti_err = notification_free(noti)) != NOTIFICATION_ERROR_NONE)
+        if ((noti_err = notification_free(noti)) != NOTIFICATION_ERROR_NONE) {
             err = EMAIL_ERROR_NOTI;
+		}
     }
+
+	if ((action != EMAIL_ACTION_SEND_MAIL) && (err != EMAIL_ERROR_NONE)) {
+		if (noti) {
+			notification_free(noti);
+			g_sending_noti_handle = NULL;
+		}
+	}
 
 	if (join_zone)
 		emcore_unset_join_zone(join_zone);
@@ -2947,41 +2962,46 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC int reg_replace_new (char **input_source_text, char *input_old_pattern_string, char *input_new_string)
+INTERNAL_FUNC char *reg_replace_new(char *input_source_text, char *input_old_pattern_string, char *input_new_string)
 {
 	char *replaced_str = NULL;
-	int error_code = EMAIL_ERROR_NONE;
 	GRegex *regex = NULL;
 	GError *error = NULL;
 
-	if (input_source_text == NULL || *input_source_text == NULL) {
-		return EMAIL_ERROR_INVALID_PARAM;
+	if (input_source_text == NULL) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		return NULL;
 	}
 
 	regex = g_regex_new(input_old_pattern_string, G_REGEX_RAW | G_REGEX_OPTIMIZE, 0, &error);
-
 	if (!regex) {
 		EM_DEBUG_LOG("g_regex_new failed");
-		error_code = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	replaced_str = g_regex_replace_literal(regex, *input_source_text, EM_SAFE_STRLEN(*input_source_text), 0, input_new_string, 0, &error);
-
-	EM_SAFE_FREE(*input_source_text);
-
-	*input_source_text = replaced_str;
+	replaced_str = g_regex_replace_literal(regex, 
+											input_source_text, 
+											strlen(input_source_text), 
+											0, 
+											input_new_string, 
+											0, 
+											&error);
+	if (replaced_str == NULL) {
+		EM_DEBUG_EXCEPTION("g_regex_replace_literal failed : [%s][%d]", error->message, error->code);
+		goto FINISH_OFF;
+	}
 
 FINISH_OFF:
+	
+	if (regex) g_regex_unref(regex);
 
-	g_regex_unref(regex);
-	return error_code;
+	return replaced_str;
 }
 
 
 #include <libxml/HTMLparser.h>
 
-static void emcore_get_content_string(xmlNode *input_node, char *input_result_buffer, int input_result_buffer_legnth, int *input_exit_flag)
+static void emcore_get_content_string(xmlNode *input_node, char *input_result_buffer, int input_result_buffer_length, int *input_exit_flag)
 {
     xmlNode *cur_node = NULL;
     char    *temp_content_string = NULL;
@@ -2995,41 +3015,60 @@ static void emcore_get_content_string(xmlNode *input_node, char *input_result_bu
 		if (cur_node->name && (strcasecmp((const char *)cur_node->name, "head") == 0 || strcasecmp((const char *)cur_node->name, "title") == 0))
 			continue;
 
+		if (cur_node->name && (strcasecmp((const char *)cur_node->name, "BR") == 0)) {
+			if (EM_SAFE_STRLEN(input_result_buffer) + 1 >= input_result_buffer_length) {
+				*input_exit_flag = 1;
+				break;
+			} else {
+				EM_SAFE_STRCAT(input_result_buffer, " ");
+				continue;
+			}
+		}
+
 		if (cur_node->type == XML_TEXT_NODE && cur_node->content) {
-			if ((EM_SAFE_STRLEN(cur_node->content) + EM_SAFE_STRLEN(input_result_buffer)) >= input_result_buffer_legnth) {
+			if ((EM_SAFE_STRLEN(cur_node->content) + EM_SAFE_STRLEN(input_result_buffer)) >= input_result_buffer_length) {
 				int len1 = EM_SAFE_STRLEN(input_result_buffer);
 
-				if (len1 >= 0 && len1 < input_result_buffer_legnth) {
-					int remain_size = input_result_buffer_legnth - len1 - 2;
-					char *remain_str = em_malloc(remain_size);
-					if (remain_str && cur_node->content) {
-						snprintf(remain_str, remain_size, "%s", (char*)(cur_node->content));
+				if (len1 >= 0 && len1 < input_result_buffer_length) {
+					int remain_size = input_result_buffer_length - len1 - 2;
+					EM_DEBUG_LOG("remain_size : [%d], len1 : [%d]", remain_size, len1);
+					char *remain_str = NULL;
+
+					if (remain_size > 0)
+						remain_str = g_strndup((char *)(cur_node->content), remain_size);
+
+					if (remain_str) {
+						char *replaced_string = NULL;
+						replaced_string = reg_replace_new(remain_str, "[ \t\r\n\v\f]+", " ");
+						EM_SAFE_STRCAT(input_result_buffer, replaced_string);
+						EM_SAFE_FREE(replaced_string);
+						free(remain_str);
 					}
-
-					if (remain_str)
-						EM_SAFE_STRCAT(input_result_buffer, remain_str);
-
-					EM_SAFE_FREE(remain_str);
 				}
 
 				*input_exit_flag = 1;
 				break;
 			}
+
 			temp_content_string = EM_SAFE_STRDUP((const char *)cur_node->content);
 			if (temp_content_string) {
-				reg_replace_new(&temp_content_string, "[ \t\r\n\v\f]+", " ");
-				EM_SAFE_STRCAT(input_result_buffer, temp_content_string);
-				EM_SAFE_FREE(temp_content_string);
+				char *replaced_string = NULL;
+				replaced_string = reg_replace_new(temp_content_string, "[ \t\r\n\v\f]+", " ");
+				EM_SAFE_STRCAT(input_result_buffer, replaced_string);
+				EM_SAFE_FREE(replaced_string);
+				free(temp_content_string);
 			}
 		}
 
 		if (cur_node->children)
-			emcore_get_content_string(cur_node->children, input_result_buffer, input_result_buffer_legnth, input_exit_flag);
+			emcore_get_content_string(cur_node->children, input_result_buffer, input_result_buffer_length, input_exit_flag);
 
 		if (*input_exit_flag == 1)
 			break;
     }
+
 FINISH_OFF:
+
 	return;
 }
 
@@ -3056,7 +3095,6 @@ int emcore_strip_HTML_tag(const char *input_html_file_path, char *input_encoding
 	}
 
 	result_string = em_malloc(sizeof(char) * input_result_buffer_legnth);
-
 	if (result_string == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
@@ -3085,11 +3123,11 @@ int emcore_strip_HTML_tag(const char *input_html_file_path, char *input_encoding
 
 	root_element = xmlDocGetRootElement(result_html_document);
 
-
 	emcore_get_content_string(root_element, result_string, input_result_buffer_legnth, &exit_flag);
-	reg_replace_new(&result_string, "[ \t\r\n\v\f]+", " ");
-	EM_SAFE_STRCPY(output_result_buffer, result_string);
-	// em_trim_left(output_result_buffer);
+	char *replaced_string = reg_replace_new(result_string, "[ \t\r\n\v\f]+", " ");
+	EM_SAFE_STRCPY(output_result_buffer, replaced_string);
+	EM_SAFE_FREE(replaced_string);
+	em_trim_left(output_result_buffer);
 
 FINISH_OFF:
 	if (result_html_document) {
@@ -5016,7 +5054,6 @@ INTERNAL_FUNC int emcore_check_blocking_mode_internal (char *multi_user_name, ch
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
-
 	int contact_error = 0;
 	int person_id = 0;
 	int allowed_contact_type = 0; /* 0 : NONE, 1 : All contacts, 2 : Favorites, 3 : Custom */

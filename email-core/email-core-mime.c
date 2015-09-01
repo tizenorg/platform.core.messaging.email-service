@@ -98,9 +98,6 @@
 #define SAVE_TYPE_BUFFER     2	/*  save content to buffe */
 #define SAVE_TYPE_FILE       3	/*  save content to temporary fil */
 
-#define EML_FOLDER           20 /*  save eml content to temporary folder */
-
-
 /* ---------------------------------------------------------------------- */
 /*  Global variable */
 static int  eml_data_count = 0;
@@ -183,11 +180,17 @@ char *em_split_file_path(char *str)
 	char *temp_cid_data = NULL;
 	char *temp_cid = NULL;
 
-	temp_str = EM_SAFE_STRDUP(str);
+	if (str == NULL) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		return NULL;
+	}
+
+	temp_str = g_strdup(str);
 	buf_length = EM_SAFE_STRLEN(str) + 1024;
 	buf = em_malloc(buf_length);
 	if (buf == NULL) {
 		EM_DEBUG_EXCEPTION("em_malloc failed");
+		EM_SAFE_FREE(temp_str);
 		return NULL;
 	}
 
@@ -202,6 +205,7 @@ char *em_split_file_path(char *str)
 	temp_cid_data = em_malloc((temp_cid-temp_str)+1);
 	if (temp_cid_data == NULL) {
 		EM_DEBUG_EXCEPTION("em_malloc failed");
+		EM_SAFE_FREE(buf);
 		return temp_str;
 	}
 
@@ -930,17 +934,16 @@ int emcore_set_fetch_part_section(BODY *body, char *section_pfx, int section_sub
 	EM_DEBUG_FUNC_END();
 	return SUCCESS;
 }
-
 static int emcore_make_mail_data_from_m_mesg(email_mail_data_t *dst_mail_data, struct _m_mesg *mmsg)
 {
-        EM_DEBUG_FUNC_BEGIN();
-        int err = EMAIL_ERROR_NONE;
+	EM_DEBUG_FUNC_BEGIN();
+	int err = EMAIL_ERROR_NONE;
 
-        if (!mmsg || !dst_mail_data) {
-                EM_DEBUG_EXCEPTION("Invalid parameter");
-                err = EMAIL_ERROR_INVALID_PARAM;
-                return err;
-        }
+	if (!mmsg || !dst_mail_data) {
+			EM_DEBUG_EXCEPTION("Invalid parameter");
+			err = EMAIL_ERROR_INVALID_PARAM;
+			return err;
+	}
 
 	char *encoded_subject = NULL;
 	char *first_address = NULL;
@@ -1030,86 +1033,84 @@ static int emcore_make_mail_data_from_m_mesg(email_mail_data_t *dst_mail_data, s
 	}
 
 	if (!mmsg->rfc822header) {
-                EM_DEBUG_LOG("This mail did not have envelop");
-                return err;
-        }
+		EM_DEBUG_LOG("This mail did not have envelop");
+		return err;
+	}
 
 	/* Set the date */
-        if (mmsg->rfc822header->date) {
-                EM_DEBUG_LOG("date : [%s]", mmsg->rfc822header->date);
-                mail_parse_date(&mail_cache_element, (unsigned char *)mmsg->rfc822header->date);
-        }
+	if (mmsg->rfc822header->date) {
+			EM_DEBUG_LOG("date : [%s]", mmsg->rfc822header->date);
+			mail_parse_date(&mail_cache_element, (unsigned char *)mmsg->rfc822header->date);
+	}
 
-        temp_time_info.tm_sec = mail_cache_element.seconds;
-        temp_time_info.tm_min = mail_cache_element.minutes - mail_cache_element.zminutes;
-        temp_time_info.tm_hour = mail_cache_element.hours - mail_cache_element.zhours;
+	temp_time_info.tm_sec = mail_cache_element.seconds;
+	temp_time_info.tm_min = mail_cache_element.minutes - mail_cache_element.zminutes;
+	temp_time_info.tm_hour = mail_cache_element.hours - mail_cache_element.zhours;
 
-        if (mail_cache_element.hours - mail_cache_element.zhours < 0) {
-                temp_time_info.tm_mday = mail_cache_element.day - 1;
-                temp_time_info.tm_hour += 24;
-        } else
-                temp_time_info.tm_mday = mail_cache_element.day;
+	if (mail_cache_element.hours - mail_cache_element.zhours < 0) {
+		temp_time_info.tm_mday = mail_cache_element.day - 1;
+		temp_time_info.tm_hour += 24;
+	} else
+		temp_time_info.tm_mday = mail_cache_element.day;
 
-        temp_time_info.tm_mon = mail_cache_element.month - 1;
-        temp_time_info.tm_year = mail_cache_element.year + 70;
+	temp_time_info.tm_mon = mail_cache_element.month - 1;
+	temp_time_info.tm_year = mail_cache_element.year + 70;
 
-        dst_mail_data->date_time                   = timegm(&temp_time_info);
+	dst_mail_data->date_time                   = timegm(&temp_time_info);
 
 
 	/* Set the subject */
-        encoded_subject = emcore_gmime_get_decoding_text(mmsg->rfc822header->subject);
-        dst_mail_data->subject                     = EM_SAFE_STRDUP(encoded_subject);
+	dst_mail_data->subject = EM_SAFE_STRDUP(mmsg->rfc822header->subject);
 
 	/* Set the email address(from, to, cc, bcc, received ...) */
-        dst_mail_data->email_address_recipient     = EM_SAFE_STRDUP(mmsg->rfc822header->received);
+	dst_mail_data->email_address_recipient     = EM_SAFE_STRDUP(mmsg->rfc822header->received);
 
-        if (mmsg->rfc822header->from) {
-                rfc822_parse_adrlist(&from, mmsg->rfc822header->from, NULL);
-                if (!emcore_get_utf8_address(&dst_mail_data->full_address_from, from, &err)) {
-                        EM_DEBUG_EXCEPTION_SEC("emcore_get_utf8_address failed : [%d], [%s]", err, mmsg->rfc822header->from);
-                }
-        }
+	if (mmsg->rfc822header->from) {
+		rfc822_parse_adrlist(&from, mmsg->rfc822header->from, NULL);
+		if (!emcore_get_utf8_address(&dst_mail_data->full_address_from, from, &err)) {
+			EM_DEBUG_EXCEPTION_SEC("emcore_get_utf8_address failed : [%d], [%s]", err, mmsg->rfc822header->from);
+		}
+	}
 
-        if (mmsg->rfc822header->to) {
-                rfc822_parse_adrlist(&to, mmsg->rfc822header->to, NULL);
-                if (!emcore_get_utf8_address(&dst_mail_data->full_address_to, to, &err)) {
-                        EM_DEBUG_EXCEPTION_SEC("emcore_get_utf8_address failed : [%d], [%s]", err, mmsg->rfc822header->to);
-                }
-        }
+	if (mmsg->rfc822header->to) {
+		rfc822_parse_adrlist(&to, mmsg->rfc822header->to, NULL);
+		if (!emcore_get_utf8_address(&dst_mail_data->full_address_to, to, &err)) {
+			EM_DEBUG_EXCEPTION_SEC("emcore_get_utf8_address failed : [%d], [%s]", err, mmsg->rfc822header->to);
+		}
+	}
 
-        if (mmsg->rfc822header->cc) {
-                rfc822_parse_adrlist(&cc, mmsg->rfc822header->cc, NULL);
-                if (!emcore_get_utf8_address(&dst_mail_data->full_address_cc, cc, &err)) {
-                        EM_DEBUG_EXCEPTION_SEC("emcore_get_utf8_address failed : [%d], [%s]", err, mmsg->rfc822header->cc);
-                }
-        }
+	if (mmsg->rfc822header->cc) {
+		rfc822_parse_adrlist(&cc, mmsg->rfc822header->cc, NULL);
+		if (!emcore_get_utf8_address(&dst_mail_data->full_address_cc, cc, &err)) {
+			EM_DEBUG_EXCEPTION_SEC("emcore_get_utf8_address failed : [%d], [%s]", err, mmsg->rfc822header->cc);
+		}
+	}
 
-        if (mmsg->rfc822header->bcc) {
-                rfc822_parse_adrlist(&bcc, mmsg->rfc822header->bcc, NULL);
-                if (!emcore_get_utf8_address(&dst_mail_data->full_address_bcc, bcc, &err)) {
-                        EM_DEBUG_EXCEPTION_SEC("emcore_get_utf8_address failed : [%d], [%s]", err, mmsg->rfc822header->bcc);
-                }
-        }
+	if (mmsg->rfc822header->bcc) {
+		rfc822_parse_adrlist(&bcc, mmsg->rfc822header->bcc, NULL);
+		if (!emcore_get_utf8_address(&dst_mail_data->full_address_bcc, bcc, &err)) {
+			EM_DEBUG_EXCEPTION_SEC("emcore_get_utf8_address failed : [%d], [%s]", err, mmsg->rfc822header->bcc);
+		}
+	}
 
-        if (mmsg->rfc822header->return_path) {
-                rfc822_parse_adrlist(&return_path, mmsg->rfc822header->return_path, NULL);
-                if (!emcore_get_utf8_address(&dst_mail_data->full_address_return, return_path, &err)) {
-                        EM_DEBUG_EXCEPTION_SEC("emcore_get_utf8_address failed : [%d], [%s]", err, mmsg->rfc822header->return_path);
-                }
-        }
+	if (mmsg->rfc822header->return_path) {
+		rfc822_parse_adrlist(&return_path, mmsg->rfc822header->return_path, NULL);
+		if (!emcore_get_utf8_address(&dst_mail_data->full_address_return, return_path, &err)) {
+			EM_DEBUG_EXCEPTION_SEC("emcore_get_utf8_address failed : [%d], [%s]", err, mmsg->rfc822header->return_path);
+		}
+	}
 
-        if (mmsg->rfc822header->reply_to) {
-                rfc822_parse_adrlist(&reply_to, mmsg->rfc822header->reply_to, NULL);
-                if (!emcore_get_utf8_address(&dst_mail_data->full_address_reply, reply_to, &err)) {
-                        EM_DEBUG_EXCEPTION_SEC("emcore_get_utf8_address failed : [%d], [%s]", err, mmsg->rfc822header->reply_to);
-                }
-        }
+	if (mmsg->rfc822header->reply_to) {
+		rfc822_parse_adrlist(&reply_to, mmsg->rfc822header->reply_to, NULL);
+		if (!emcore_get_utf8_address(&dst_mail_data->full_address_reply, reply_to, &err)) {
+			EM_DEBUG_EXCEPTION_SEC("emcore_get_utf8_address failed : [%d], [%s]", err, mmsg->rfc822header->reply_to);
+		}
+	}
 
 	if (emcore_get_first_address(dst_mail_data->full_address_from, &first_alias, &first_address) == true) {
 		dst_mail_data->alias_sender = EM_SAFE_STRDUP(first_alias);
 		dst_mail_data->email_address_sender = EM_SAFE_STRDUP(first_address);
 	}
-
 
 	EM_SAFE_FREE(encoded_subject);
 	EM_SAFE_FREE(first_alias);
@@ -1504,12 +1505,11 @@ INTERNAL_FUNC int emcore_parse_mime_file_to_mail(char *eml_file_path,
 
 	emcore_gmime_init();
 	if (!emcore_gmime_eml_parse_mime(eml_file_path, mmsg->rfc822header, cnt_info, &err)) {
+		emcore_gmime_shutdown();
 		EM_DEBUG_EXCEPTION("emcore_gmime_parse_mime failed : [%d]", err);
 		err = EMAIL_ERROR_INVALID_DATA;
-		emcore_gmime_shutdown();
 		goto FINISH_OFF;
 	}
-	emcore_gmime_shutdown();
 
 	if (!emcore_make_mail_data_from_mime_data(mmsg, 
 											cnt_info, 
@@ -1517,10 +1517,12 @@ INTERNAL_FUNC int emcore_parse_mime_file_to_mail(char *eml_file_path,
 											output_attachment_data, 
 											output_attachment_count, 
 											&err)) {
+		emcore_gmime_shutdown();
 		EM_DEBUG_EXCEPTION("emcore_make_mail_tbl_data_from_mime failed : [%d]", err);
 		goto FINISH_OFF;
 
 	}
+	emcore_gmime_shutdown();
 
 	ret = true;
 

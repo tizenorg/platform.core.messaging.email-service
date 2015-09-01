@@ -63,7 +63,7 @@ extern "C" {
  * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  */
-EXPORT_API int email_add_certificate(char *certificate_path, char *email_address);
+EXPORT_API int email_add_certificate(char *certificate_path, char *email_address) DEPRECATED;
 
 /**
  * @brief Deletes a public certificate information from the database.
@@ -73,7 +73,7 @@ EXPORT_API int email_add_certificate(char *certificate_path, char *email_address
  * @return  #EMAIL_ERROR_NONE on success, 
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  */
-EXPORT_API int email_delete_certificate(char *email_address);
+EXPORT_API int email_delete_certificate(char *email_address) DEPRECATED;
 
 /**
  * @brief Gets the the public certificate information from the database.
@@ -88,7 +88,7 @@ EXPORT_API int email_delete_certificate(char *email_address);
  * @return  #EMAIL_ERROR_NONE on success, 
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  */
-EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **certificate);
+EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **certificate) DEPRECATED;
 
 /**
  * @brief Gets a decrypted message.
@@ -179,7 +179,7 @@ EXPORT_API int email_verify_signature_ex(email_mail_data_t *input_mail_data, ema
  * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  */
-EXPORT_API int email_verify_certificate(char *certificate_path, int *verify);
+EXPORT_API int email_verify_certificate(char *certificate_path, int *verify) DEPRECATED;
 
 /**
  * @brief Gets the certificate from the server (using exchange server).

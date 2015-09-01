@@ -81,6 +81,7 @@
 #define EMAIL_ERROR_SECURED_STORAGE_FAILURE             -2100    /**<  Error from secured storage */
 #define EMAIL_ERROR_GCONF_FAILURE                       -1058    /**<  The error occurred on accessing Gconf */
 #define EMAIL_ERROR_FILE                                -1059    /**<  File related error */
+#define EMAIL_ERROR_SERVER_STORAGE_FULL                 -2101    /**<  There is no more storage in server */
 
 /* Error codes for network */
 #define EMAIL_ERROR_SOCKET_FAILURE                      -1031    /**<  Socket operation failed */
@@ -96,7 +97,6 @@
 #define EMAIL_ERROR_TLS_NOT_SUPPORTED                   -1040    /**<  The server doesn't support TLS */
 #define EMAIL_ERROR_TLS_SSL_FAILURE                     -1041    /**<  The agent failed TLS/SSL */
 #define EMAIL_ERROR_CANNOT_NEGOTIATE_TLS                -1400    /**<  "Cannot negotiate TLS" */
-
 #define EMAIL_ERROR_NO_RESPONSE                         -1036    /**<  There is no server response */
 
 /* Error codes for authentication */

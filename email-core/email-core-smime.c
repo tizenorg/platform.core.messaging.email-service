@@ -190,8 +190,8 @@ static int get_x509_stack_of_recipient_certs(char *multi_user_name,
 		
 		SNPRINTF(file_name, sizeof(file_name), "%s", cert->filepath);
 		EM_DEBUG_LOG_SEC("file_name : [%s]", file_name);
-		err = cert_svc_load_file_to_context(context, file_name);
-		if (err != CERT_SVC_ERR_NO_ERROR) {
+		int cert_err = cert_svc_load_file_to_context(context, file_name);
+		if (cert_err != CERT_SVC_ERR_NO_ERROR) {
 			EM_DEBUG_EXCEPTION("cert_svc_load_file_to_context failed : [%d]", err);
 			err = EMAIL_ERROR_SYSTEM_FAILURE;
 			goto FINISH_OFF;
@@ -251,7 +251,7 @@ FINISH_OFF:
 	if (err_code)
 		*err_code = err;
 
-	EM_DEBUG_FUNC_END();
+	EM_DEBUG_FUNC_END("err : [%d]", err);
 	return ret;
 }
 

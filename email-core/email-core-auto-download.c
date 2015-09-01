@@ -643,8 +643,6 @@ POP_HEAD:
 				emcore_free_account(account_ref);
 				EM_SAFE_FREE(account_ref);
 			}
-
-			em_flush_memory();
 		}
 	}
 

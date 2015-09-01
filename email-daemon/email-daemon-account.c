@@ -851,11 +851,17 @@ INTERNAL_FUNC int emdaemon_query_smtp_mail_size_limit(char *multi_user_name, int
 	}
 
 	event_data = em_malloc(sizeof(email_event_t));
+	if (event_data == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
 	event_data->type = EMAIL_EVENT_QUERY_SMTP_MAIL_SIZE_LIMIT;
 	event_data->event_param_data_1 = NULL;
 	event_data->event_param_data_3 = NULL;
 	event_data->account_id = account_id;
-   event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
+	event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
 	if (!emcore_insert_event(event_data, (int*)handle, &err)) {
 		EM_DEBUG_EXCEPTION(" emcore_insert_event falied [%d]", err);

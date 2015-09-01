@@ -425,62 +425,6 @@ FINISH_OFF:
 	return err;
 }
 
-
-/* Memory clean up */
-#include <sys/mman.h>
-
-/* #define GETSP() 				({ unsigned int sp; asm volatile ("mov %0, sp " : "=r"(sp)); sp;}) */
-#define BUF_SIZE				256
-#define PAGE_SIZE			    (1 << 12)
-#define _ALIGN_UP(addr, size)   (((addr)+((size)-1))&(~((size)-1)))
-#define _ALIGN_DOWN(addr, size) ((addr)&(~((size)-1)))
-#define PAGE_ALIGN(addr)        _ALIGN_DOWN(addr, PAGE_SIZE)
-
-int stack_trim(void)
-{
-	/*
-	char buf[BUF_SIZE];
-	FILE *file;
-	unsigned int stacktop;
-	int found = 0;
-	unsigned int sp;
-
-	asm volatile ("mov %0, sp " : "=r"(sp));
-
-	sprintf(buf, "/proc/%d/maps", getpid());
-	file = fopen(buf, "r");
-	while (fgets(buf, BUF_SIZE, file) != NULL) {
-		if (strstr(buf, "[stack]")) {
-			found = 1;
-			break;
-		}
-	}
-
-	fclose(file);
-
-	if (found) {
-		sscanf(buf, "%x-", &stacktop);
-		if (madvise((void *)PAGE_ALIGN(stacktop), PAGE_ALIGN(sp)-stacktop, MADV_DONTNEED) < 0)
-			perror("stack madvise fail");
-	}
-	*/
-	return 1;
-}
-
-INTERNAL_FUNC void em_flush_memory()
-{
-	EM_DEBUG_FUNC_BEGIN();
-	/*  flush memory in heap */
-	malloc_trim(0);
-
-	/*  flush memory in stack */
-	stack_trim();
-
-	/*  flush memory for sqlite */
-	emstorage_flush_db_cache();
-	EM_DEBUG_FUNC_END();
-}
-
 INTERNAL_FUNC int em_get_file_name_from_file_path(char *input_source_file_path, char **output_file_name)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("input_source_file_path[%s], output_file_name [%p]", input_source_file_path, output_file_name);
@@ -1086,17 +1030,17 @@ INTERNAL_FUNC int em_find_pos_stripped_subject_for_thread_view(char *subject, ch
 
 
 
-	while ((result = strstr(curpos, "RE:")) != NULL) {
+	while ((result = g_strrstr(curpos, "RE:")) != NULL) {
 		curpos = result + 3;
 		EM_DEBUG_LOG_SEC("RE result : %s", curpos);
 	}
 
-	while ((result = strstr(curpos, "FWD:")) != NULL) {
+	while ((result = g_strrstr(curpos, "FWD:")) != NULL) {
 		curpos = result + 4;
 		EM_DEBUG_LOG_SEC("FWD result : %s", curpos);
 	}
 
-	while ((result = strstr(curpos, "FW:")) != NULL) {
+	while ((result = g_strrstr(curpos, "FW:")) != NULL) {
 		curpos = result + 3;
 		EM_DEBUG_LOG_SEC("FW result : %s", curpos);
 	}

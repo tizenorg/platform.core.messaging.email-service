@@ -683,6 +683,85 @@ static int fetch_string_from_stream(char *input_stream, int *input_output_stream
 #define EMAIL_ACCOUNT_FMT   "S(" "isiii" "isii" ")" "B" "S(" "issss"  "isiss" "iiiii" "iiiii" "isiss" "iii"\
                                  "$(" "iiiii" "iisii" "iisi" "iiiis" ")" "iiiiiisiis" ")"
 
+/* For converting fmt : to distinguish between 64bit or 32bit */
+static char *convert_format(char *fmt)
+{
+	EM_DEBUG_FUNC_BEGIN();
+
+	if (fmt == NULL) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		return NULL;
+	}
+
+	int size = 0;
+	int string_size = 0;
+	int ret = false;
+	char *c = NULL;
+	char *converted_fmt = NULL;
+
+	string_size = strlen(fmt);
+	converted_fmt = em_malloc(string_size);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		return NULL;
+	}
+
+	c = fmt;
+    while (*c != '\0') {
+        switch (*c) {
+            case 'c':
+            case 'i':
+            case 'u':
+            case 'j':
+            case 'v':
+            case 'I':
+            case 'U':
+            case 'f':
+            case 's':
+            case '#':
+            case 'B':
+            case 'A':
+            case 'S':
+            case '$': /* nested structure */
+            case ')':
+            case '(':
+				strncat(converted_fmt, c, 1);
+				break;
+			case 't': /* special charater for time_t */
+			case 'T':
+				size = sizeof(time_t);
+				if (size == 4) {
+					/* 32bit */
+					strncat(converted_fmt, "i", 1);
+				} else if (size == 8) {
+					/* 64bit */
+					strncat(converted_fmt, "I", 1);
+				} else {
+					EM_DEBUG_LOG("size : [%d]", size);
+				}
+				
+				break;
+            default:
+                EM_DEBUG_EXCEPTION("unsupported option %c\n", *c);
+				goto FINISH_OFF;
+        }
+        c++;
+    }
+
+	EM_DEBUG_LOG("original fmt : [%s]", fmt);
+	EM_DEBUG_LOG("converted_fmt : [%s]", converted_fmt);
+
+	ret = true;
+
+FINISH_OFF:
+
+	if (ret == false) {
+		EM_SAFE_FREE(converted_fmt);
+	}
+
+	EM_DEBUG_FUNC_END();
+	return converted_fmt;
+}
 
 INTERNAL_FUNC char* em_convert_account_to_byte_stream(email_account_t* account, int *stream_len)
 {
@@ -691,12 +770,22 @@ INTERNAL_FUNC char* em_convert_account_to_byte_stream(email_account_t* account, 
 
 	tpl_node *tn = NULL;
 	tpl_bin tb;
+	char *converted_fmt = NULL;
+
+	converted_fmt = convert_format(EMAIL_ACCOUNT_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("converting failed");
+		return NULL;
+	}
 
 	tn = tpl_map(EMAIL_ACCOUNT_FMT, account, &tb, &(account->user_data_length));
 	if (!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return NULL;
 	}
+	EM_SAFE_FREE(converted_fmt);
+
 	tb.sz = account->user_data_length;
 	tb.addr = account->user_data;
 	tpl_pack(tn, 0);
@@ -708,6 +797,7 @@ INTERNAL_FUNC char* em_convert_account_to_byte_stream(email_account_t* account, 
 	tpl_free(tn);
 
 	*stream_len = len;
+
 	EM_DEBUG_FUNC_END();
 	return (char*) buf;
 }
@@ -721,12 +811,21 @@ INTERNAL_FUNC void em_convert_byte_stream_to_account(char *stream, int stream_le
 
 	tpl_node *tn = NULL;
 	tpl_bin tb;
+	char *converted_fmt = NULL;
 
-	tn = tpl_map(EMAIL_ACCOUNT_FMT, account, &tb, &(account->user_data_length));
+	converted_fmt = convert_format(EMAIL_ACCOUNT_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("converting failed");
+		return;
+	}
+
+	tn = tpl_map(converted_fmt, account, &tb, &(account->user_data_length));
 	if (!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return;
 	}
+	EM_SAFE_FREE(converted_fmt);
 
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
@@ -738,8 +837,8 @@ INTERNAL_FUNC void em_convert_byte_stream_to_account(char *stream, int stream_le
 	EM_DEBUG_FUNC_END();
 }
 
-#define EMAIL_MAIL_DATA_FMT  "S(" "iiiis" "iisss" "issss" "sssss" "sisss"\
-                            "icccc" "cccii" "iiiii" "iisii" "iiiii" "iisss" "si" ")B"
+#define EMAIL_MAIL_DATA_FMT  "S(" "iiiis" "tisss" "issss" "sssss" "sisss"\
+                            "icccc" "cccii" "iiiii" "iisii" "iitii" "ttsss" "si" ")B"
 
 INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_data, int *stream_len)
 {
@@ -749,14 +848,23 @@ INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_
 
 	tpl_node *tn = NULL;
 	tpl_bin tb;
+	char *converted_fmt = NULL;
+
+	converted_fmt = convert_format(EMAIL_MAIL_DATA_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("converting failed");
+		return NULL;
+	}
 
 	EM_DEBUG_LOG("eas_data_length[%d]", mail_data->eas_data_length); /*prevent 44369*/
 
-	tn = tpl_map(EMAIL_MAIL_DATA_FMT, mail_data, &tb);
+	tn = tpl_map(converted_fmt, mail_data, &tb);
 	if (!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return NULL;
 	}
+	EM_SAFE_FREE(converted_fmt);
 	tb.sz   = mail_data->eas_data_length;
 	tb.addr = mail_data->eas_data;
 	tpl_pack(tn, 0);
@@ -768,6 +876,7 @@ INTERNAL_FUNC char* em_convert_mail_data_to_byte_stream(email_mail_data_t *mail_
 	tpl_free(tn);
 
 	*stream_len = len;
+
 	EM_DEBUG_FUNC_END();
 	return (char*) buf;
 }
@@ -780,12 +889,21 @@ INTERNAL_FUNC void em_convert_byte_stream_to_mail_data(char *stream, int stream_
 
 	tpl_node *tn = NULL;
 	tpl_bin tb;
+	char *converted_fmt = NULL;
 
-	tn = tpl_map(EMAIL_MAIL_DATA_FMT, mail_data, &tb);
+	converted_fmt = convert_format(EMAIL_MAIL_DATA_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("converting failed");
+		return;
+	}
+
+	tn = tpl_map(converted_fmt, mail_data, &tb);
 	if(!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return;
 	}
+	EM_SAFE_FREE(converted_fmt);
 
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
@@ -814,14 +932,23 @@ INTERNAL_FUNC char* em_convert_attachment_data_to_byte_stream(email_attachment_d
 
 	email_attachment_data_t cur = {0};
 	tpl_node *tn = NULL;
+	char *converted_fmt = NULL;
+
+	converted_fmt = convert_format(EMAIL_ATTACHMENT_DATA_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("convertinf failed");
+		return NULL;
+	}
 
 	/* tpl_map adds value at 2nd param addr to packing buffer iterately */
 	/* 2nd param value (not addr via pointer) should be modified at each iteration */
-	tn = tpl_map(EMAIL_ATTACHMENT_DATA_FMT, &cur);
+	tn = tpl_map(converted_fmt, &cur);
 	if (!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return NULL;
 	}
+	EM_SAFE_FREE(converted_fmt);
 	
 	/* if attachment_count is zero, for loop is skipped */
 	int i=0;
@@ -854,11 +981,21 @@ INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int s
 
 	email_attachment_data_t cur = {0};
 	tpl_node *tn = NULL;
-	tn = tpl_map(EMAIL_ATTACHMENT_DATA_FMT, &cur);
+	char *converted_fmt = NULL;
+	
+	converted_fmt = convert_format(EMAIL_ATTACHMENT_DATA_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("converting failed");
+		return;
+	}
+
+	tn = tpl_map(converted_fmt, &cur);
 	if (!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return;
 	}
+	EM_SAFE_FREE(converted_fmt);
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 
 	/* tpl does not return the size of variable-length array, but we need variable-length array */
@@ -890,11 +1027,12 @@ INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int s
 
 	*attachment_count = num_element;
 	*attachment_data = attached;
+
 	EM_DEBUG_FUNC_END();
 }
 
 
-#define EMAIL_MAILBOX_FMT  "S(" "isisi" "iiiii" "iiii" ")B"
+#define EMAIL_MAILBOX_FMT  "S(" "isisi" "iiiii" "itii" ")B"
 
 INTERNAL_FUNC char* em_convert_mailbox_to_byte_stream(email_mailbox_t *mailbox_data, int *stream_len)
 {
@@ -904,14 +1042,23 @@ INTERNAL_FUNC char* em_convert_mailbox_to_byte_stream(email_mailbox_t *mailbox_d
 
 	tpl_node *tn = NULL;
 	tpl_bin tb;
+	char *converted_fmt = NULL;
+
+	converted_fmt = convert_format(EMAIL_MAILBOX_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("converting failed");
+		return NULL;
+	}
 
 	EM_DEBUG_LOG("eas_data_length[%d]", mailbox_data->eas_data_length);
 
-	tn = tpl_map(EMAIL_MAILBOX_FMT, mailbox_data, &tb);
+	tn = tpl_map(converted_fmt, mailbox_data, &tb);
 	if (!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return NULL;
 	}
+	EM_SAFE_FREE(converted_fmt);
 	tb.sz   = mailbox_data->eas_data_length;
 	tb.addr = mailbox_data->eas_data;
 	tpl_pack(tn, 0);
@@ -925,6 +1072,7 @@ INTERNAL_FUNC char* em_convert_mailbox_to_byte_stream(email_mailbox_t *mailbox_d
 		tpl_free(tn);
 
 	*stream_len = len;
+
 	EM_DEBUG_FUNC_END("serialized len: %d", len);
 	return (char*) buf;
 }
@@ -938,12 +1086,21 @@ INTERNAL_FUNC void em_convert_byte_stream_to_mailbox(char *stream, int stream_le
 
 	tpl_node *tn = NULL;
 	tpl_bin tb;
+	char *converted_fmt = NULL;
 
-	tn = tpl_map(EMAIL_MAILBOX_FMT, mailbox_data, &tb);
+	converted_fmt = convert_format(EMAIL_MAILBOX_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("converting failed");
+		return;
+	}
+
+	tn = tpl_map(converted_fmt, mailbox_data, &tb);
 	if (!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return;
 	}
+	EM_SAFE_FREE(converted_fmt);
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
 
@@ -970,12 +1127,21 @@ INTERNAL_FUNC char* em_convert_option_to_byte_stream(email_option_t* option, int
 	EM_IF_NULL_RETURN_VALUE(stream_len, NULL);
 
 	tpl_node *tn = NULL;
+	char *converted_fmt = NULL;
 
-	tn = tpl_map(EMAIL_OPTION_FMT, option);
+	converted_fmt = convert_format(EMAIL_OPTION_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("converting failed");
+		return NULL;
+	}
+
+	tn = tpl_map(converted_fmt, option);
 	if (!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return NULL;
 	}
+	EM_SAFE_FREE(converted_fmt);
 	tpl_pack(tn, 0);
 
 	/* write account to buffer */
@@ -985,6 +1151,7 @@ INTERNAL_FUNC char* em_convert_option_to_byte_stream(email_option_t* option, int
 	tpl_free(tn);
 
 	*stream_len = len;
+
 	EM_DEBUG_FUNC_END("serialized len: %d", len);
 	return (char*) buf;
 }
@@ -996,12 +1163,21 @@ INTERNAL_FUNC void em_convert_byte_stream_to_option(char *stream, int stream_len
 	EM_NULL_CHECK_FOR_VOID(option);
 
 	tpl_node *tn = NULL;
+	char *converted_fmt = NULL;
 
-	tn = tpl_map(EMAIL_OPTION_FMT, option);
+	converted_fmt = convert_format(EMAIL_OPTION_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("converting failed");
+		return;
+	}
+
+	tn = tpl_map(converted_fmt, option);
 	if (!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return;
 	}
+	EM_SAFE_FREE(converted_fmt);
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
 	tpl_free(tn);
@@ -1019,12 +1195,21 @@ INTERNAL_FUNC char* em_convert_rule_to_byte_stream(email_rule_t *rule, int *stre
 	EM_IF_NULL_RETURN_VALUE(stream_len, NULL);
 
 	tpl_node *tn = NULL;
+	char *converted_fmt = NULL;
 
-	tn = tpl_map(EMAIL_RULE_FMT, rule);
+	converted_fmt = convert_format(EMAIL_RULE_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("converting failed");
+		return NULL;
+	}
+
+	tn = tpl_map(converted_fmt, rule);
 	if (!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return NULL;
 	}
+	EM_SAFE_FREE(converted_fmt);
 	tpl_pack(tn, 0);
 
 	/* write account to buffer */
@@ -1034,6 +1219,7 @@ INTERNAL_FUNC char* em_convert_rule_to_byte_stream(email_rule_t *rule, int *stre
 	tpl_free(tn);
 
 	*stream_len = len;
+
 	EM_DEBUG_FUNC_END("serialized len: %d", len);
 	return (char*) buf;
 }
@@ -1045,12 +1231,21 @@ INTERNAL_FUNC void em_convert_byte_stream_to_rule(char *stream, int stream_len, 
 	EM_NULL_CHECK_FOR_VOID(rule);
 
 	tpl_node *tn = NULL;
+	char *converted_fmt = NULL;
 
-	tn = tpl_map(EMAIL_RULE_FMT, rule);
+	converted_fmt = convert_format(EMAIL_RULE_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("converting failed");
+		return NULL;
+	}
+
+	tn = tpl_map(converted_fmt, rule);
 	if (!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return;
 	}
+	EM_SAFE_FREE(converted_fmt);
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
 	tpl_free(tn);
@@ -1068,8 +1263,15 @@ INTERNAL_FUNC char* em_convert_meeting_req_to_byte_stream(email_meeting_request_
 
 	tpl_node *tn = NULL;
 	tpl_bin tb[4];
+	char *converted_fmt = NULL;
 
-	tn = tpl_map(EMAIL_MEETING_REQUEST_FMT,
+	converted_fmt = convert_format(EMAIL_MEETING_REQUEST_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("converting failed");
+		return NULL;
+	}
+
+	tn = tpl_map(converted_fmt,
 						&meeting_req->mail_id,
 						&meeting_req->meeting_response,
 						&tb[0],
@@ -1085,15 +1287,16 @@ INTERNAL_FUNC char* em_convert_meeting_req_to_byte_stream(email_meeting_request_
 						&meeting_req->time_zone.daylight_bias
 				);
 	if (!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return NULL;
 	}
+	EM_SAFE_FREE(converted_fmt);
 	tb[0].sz = tb[1].sz = tb[2].sz = tb[3].sz = sizeof(struct tm);
 	tb[0].addr = &meeting_req->start_time;
 	tb[1].addr = &meeting_req->end_time;
 	tb[2].addr = &meeting_req->time_zone.standard_time_start_date;
 	tb[3].addr = &meeting_req->time_zone.daylight_time_start_date;
-
 
 	tpl_pack(tn, 0);
 
@@ -1104,6 +1307,7 @@ INTERNAL_FUNC char* em_convert_meeting_req_to_byte_stream(email_meeting_request_
 	tpl_free(tn);
 
 	*stream_len = len;
+
 	EM_DEBUG_FUNC_END();
 	return (char*) buf;
 }
@@ -1117,8 +1321,15 @@ INTERNAL_FUNC void em_convert_byte_stream_to_meeting_req(char *stream, int strea
 
 	tpl_node *tn = NULL;
 	tpl_bin tb[4];
+	char *converted_fmt = NULL;
 
-	tn = tpl_map(EMAIL_MEETING_REQUEST_FMT,
+	converted_fmt = convert_format(EMAIL_MEETING_REQUEST_FMT);
+	if (converted_fmt == NULL) {
+		EM_DEBUG_EXCEPTION("converting failed");
+		return NULL;
+	}
+
+	tn = tpl_map(converted_fmt,
 						&meeting_req->mail_id,
 						&meeting_req->meeting_response,
 						&tb[0],
@@ -1134,12 +1345,14 @@ INTERNAL_FUNC void em_convert_byte_stream_to_meeting_req(char *stream, int strea
 						&meeting_req->time_zone.daylight_bias
 				);
 	if (!tn) {
+		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return;
 	}
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
 	tpl_free(tn);
+	EM_SAFE_FREE(converted_fmt);
 
 	/* tb will be destroyed at end of func, but tb.addr remains */
 	memcpy(&meeting_req->start_time, tb[0].addr, sizeof(struct tm));

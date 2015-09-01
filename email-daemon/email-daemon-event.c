@@ -542,7 +542,6 @@ static void* worker_event_queue(void *arg)
 				emcore_return_handle(started_event->handle);
 				EM_SAFE_FREE(started_event);
 			}
-			em_flush_memory();
 		}
 	}
 

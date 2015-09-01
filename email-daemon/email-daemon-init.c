@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -728,8 +728,8 @@ INTERNAL_FUNC int emdaemon_core_init(int *err_code)
 
 	emdaemon_init_alarm_data_list();
 
-        /* Openssl library init */
-        emcore_init_openssl_library();
+	/* Openssl library init */
+	emcore_init_openssl_library();
 
 	if (err_code)
 		*err_code = EMAIL_ERROR_NONE;
@@ -783,7 +783,7 @@ static int default_alarm_callback(int input_timer_id, void *user_parameter)
 	int err = EMAIL_ERROR_NONE;
 	email_alarm_data_t *alarm_data = NULL;
 
-	EM_DEBUG_ALARM_LOG("default_alarm_callback input_timer_id[%d]", input_timer_id);
+//	EM_DEBUG_ALARM_LOG("default_alarm_callback input_timer_id[%d]", input_timer_id);
 
 	emdevice_set_sleep_on_off(STAY_AWAKE_FLAG_FOR_ALARM_CALLBACK, false, NULL);
 

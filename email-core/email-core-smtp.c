@@ -1661,7 +1661,6 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 	int ret = false;
 	int err = EMAIL_ERROR_NONE, err2 = EMAIL_ERROR_NONE;
 	int attachment_tbl_count = 0;
-	int i = 0;
 	int account_id = 0;
 	SENDSTREAM** send_stream = NULL;
 	ENVELOPE *envelope = NULL;
@@ -1730,6 +1729,7 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 	opt = &(ref_account->options);
 
 #ifdef __FEATURE_SUPPORT_VALIDATION_SYSTEM__
+	int i = 0;
 	EM_VALIDATION_SYSTEM_LOG("INFO", mail_id, "Email Send Start, %s -> %s, success", mail_tbl_data->full_address_from, mail_tbl_data->full_address_to);
 	for (i = 0; i < attachment_tbl_count; i++) {
 		if(attachment_tbl_data)
@@ -3774,7 +3774,8 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(char *multi_user_name, emsto
 
 			if (input_mail_tbl_data->file_path_html && EM_SAFE_STRLEN(input_mail_tbl_data->file_path_html) > 0) {
 				EM_DEBUG_LOG_SEC("file_path_html[%s]", input_mail_tbl_data->file_path_html);
-				if (input_mail_tbl_data->inline_content_count > 0 && (strcasecmp(root_body->subtype, "RELATED") != 0)) {
+				if (input_mail_tbl_data->inline_content_count > 0 && 
+						(root_body->subtype && (strcasecmp(root_body->subtype, "RELATED") != 0))) {
 					part_for_related = attach_multipart_with_sub_type(root_body, "RELATED", &error);
 					if (!part_for_related) {
 						EM_DEBUG_EXCEPTION("attach_multipart_with_sub_type [related] failed [%d]", error);

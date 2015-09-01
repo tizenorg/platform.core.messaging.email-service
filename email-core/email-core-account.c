@@ -1523,8 +1523,7 @@ INTERNAL_FUNC int emcore_refresh_xoauth2_access_token(char *multi_user_name, int
 	email_account_t *ref_account = NULL;
 
 
-	ref_account = emcore_get_account_reference(multi_user_name, input_account_id, false);
-
+	ref_account = emcore_get_account_reference(multi_user_name, input_account_id, true);
 	if(ref_account == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference() failed");
 		err = EMAIL_ERROR_INVALID_ACCOUNT;

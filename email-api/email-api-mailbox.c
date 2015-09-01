@@ -34,6 +34,7 @@
 #include "email-convert.h"
 #include "email-storage.h"
 #include "email-core-utils.h"
+#include "email-core-gmime.h"
 #include "email-core-signal.h"
 #include "email-utilities.h"
 #include "email-ipc.h"
@@ -713,12 +714,16 @@ EXPORT_API int email_get_mailbox_list_ex(int account_id, int mailbox_sync_type, 
         goto FINISH_OFF;
     }
 
-	if (!emstorage_get_mailbox_list_ex(multi_user_name, account_id, mailbox_sync_type, with_count, &mailbox_count, &mailbox_tbl_list, true, &err))  {	
+	emcore_gmime_init();
+	if (!emstorage_get_mailbox_list_ex(multi_user_name, account_id, mailbox_sync_type, with_count, &mailbox_count, &mailbox_tbl_list, true, &err))  {
+		emcore_gmime_shutdown();
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_list_ex failed [%d]", err);
 		goto FINISH_OFF;
 	} else
 		err = EMAIL_ERROR_NONE;
-	
+
+	emcore_gmime_shutdown();
+
 	if (mailbox_count > 0)  {
 		if (!(*mailbox_list = em_malloc(sizeof(email_mailbox_t) * mailbox_count)))  {
 			EM_DEBUG_EXCEPTION("malloc failed for mailbox_list");
@@ -726,7 +731,7 @@ EXPORT_API int email_get_mailbox_list_ex(int account_id, int mailbox_sync_type, 
 			goto FINISH_OFF;
 		}
 
-		for (i = 0; i < mailbox_count; i++)
+		for (i = 0; i < mailbox_count; i++) 
 			em_convert_mailbox_tbl_to_mailbox(mailbox_tbl_list + i, (*mailbox_list) + i);
 	}
 	else

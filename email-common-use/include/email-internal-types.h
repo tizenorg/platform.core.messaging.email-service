@@ -65,7 +65,7 @@ extern "C"
 #define __FEATURE_SUPPORT_REPORT_MAIL__
 #define __FEATURE_SUPPORT_IMAP_ID__
 /* #define __FEATURE_SUPPORT_SYNC_STATE_ON_NOTI_BAR__ */
-#define __FEATURE_SUPPORT_VALIDATION_SYSTEM__
+/* #define __FEATURE_SUPPORT_VALIDATION_SYSTEM__ */
 #define __FEATURE_PROGRESS_IN_OUTBOX__
 
 /*  #define __FEATURE_USE_SHARED_MUTEX_FOR_PROTECTED_FUNC_CALL__ */
@@ -242,6 +242,8 @@ typedef pthread_t thread_t;
 
 #define EMAIL_LAUNCHED_BY_UNKNOWN_METHOD  0
 #define EMAIL_LAUNCHED_BY_DBUS_ACTIVATION 1
+
+#define EML_FOLDER 20 /*  save eml content to temporary folder */
 
 /* __FEATURE_LOCAL_ACTIVITY__ supported
 #define BULK_OPERATION_COUNT              50
@@ -547,8 +549,6 @@ enum {
     _EMAIL_API_VERIFY_SIGNATURE                          = 0x01600002,    /**< IPC API ID for email_verify_signature */
     _EMAIL_API_VERIFY_CERTIFICATE                        = 0x01600003,    /**< IPC API ID for email_verify_certificate */
 };
-
-
 
 #ifdef __cplusplus
 }
