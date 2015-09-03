@@ -463,7 +463,6 @@ INTERNAL_FUNC int emdaemon_finalize_sync(char *multi_user_name, int account_id, 
 			EM_DEBUG_LOG("The email app is topmost");
 		} else {
 
-
 			if ((err = emcore_add_notification(multi_user_name, account_id, 0, unread_mail_count, vip_unread_mail_count, 1, EMAIL_ERROR_NONE, NOTIFICATION_DISPLAY_APP_ALL)) != EMAIL_ERROR_NONE)
 				EM_DEBUG_EXCEPTION("emcore_add_notification failed : [%d]", err);
 

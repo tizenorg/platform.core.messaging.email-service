@@ -700,7 +700,7 @@ static char *convert_format(char *fmt)
 	char *converted_fmt = NULL;
 
 	string_size = strlen(fmt);
-	converted_fmt = em_malloc(string_size);
+	converted_fmt = em_malloc(string_size + 1);
 	if (converted_fmt == NULL) {
 		EM_DEBUG_EXCEPTION("em_malloc failed");
 		return NULL;
@@ -778,7 +778,7 @@ INTERNAL_FUNC char* em_convert_account_to_byte_stream(email_account_t* account, 
 		return NULL;
 	}
 
-	tn = tpl_map(EMAIL_ACCOUNT_FMT, account, &tb, &(account->user_data_length));
+	tn = tpl_map(converted_fmt, account, &tb, &(account->user_data_length));
 	if (!tn) {
 		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
