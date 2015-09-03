@@ -43,7 +43,7 @@ INTERNAL_FUNC int  emcore_remove_task_from_task_table(char *multi_user_name, int
 INTERNAL_FUNC int  emcore_get_active_task_by_thread_id(thread_t input_thread_id, email_active_task_t **output_active_task);
 
 INTERNAL_FUNC void* emcore_default_async_task_handler(void *intput_param);
-INTERNAL_FUNC void* emcore_default_sync_task_handler(void *intput_param);
+INTERNAL_FUNC int emcore_default_sync_task_handler(void *intput_param);
 
 INTERNAL_FUNC int  emcore_start_task_manager_loop();
 INTERNAL_FUNC int  emcore_stop_task_manager_loop();

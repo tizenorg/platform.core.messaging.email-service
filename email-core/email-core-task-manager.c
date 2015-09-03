@@ -149,12 +149,16 @@ INTERNAL_FUNC void* emcore_default_async_task_handler(void *input_param)
 	}
 
 	/* create a thread to do this task */
-	if((err = emcore_get_task_handler_reference(task->task_type, &task_handler)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_get_task_handler_reference(task->task_type, &task_handler)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_LOG("emcore_get_task_handler_reference returns [%d]", err);
 	}
 	else {
 		/* Decode parameter */
-		emcore_decode_task_parameter(task->task_type, task->task_parameter, task->task_parameter_length, &decoded_task_parameter);
+		emcore_decode_task_parameter(task->task_type, 
+									task->task_parameter, 
+									task->task_parameter_length, 
+									&decoded_task_parameter);
+
 		task_handler->task_handler_function(decoded_task_parameter);
 	}
 
@@ -167,35 +171,53 @@ FINISH_OFF:
 	return NULL;
 }
 
-INTERNAL_FUNC void* emcore_default_sync_task_handler(void *intput_param)
+INTERNAL_FUNC int emcore_default_sync_task_handler(void *intput_param)
 {
 	EM_DEBUG_FUNC_BEGIN("intput_param [%p]", intput_param);
 	int err = EMAIL_ERROR_NONE;
+	int *return_err = NULL;
 	email_task_t *task = intput_param;
 	email_task_handler_t *task_handler = NULL;
 	void *decoded_task_parameter = NULL;
 
 	/* create a thread to do this task */
-	if((err = emcore_get_task_handler_reference(task->task_type, &task_handler)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_get_task_handler_reference(task->task_type, &task_handler)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_LOG("emcore_get_task_handler_reference returns [%d]", err);
-	}
-	else {
+	} else {
 		/* Decode parameter */
-		emcore_decode_task_parameter(task->task_type, task->task_parameter, task->task_parameter_length, &decoded_task_parameter);
-		err = (int)task_handler->task_handler_function(decoded_task_parameter);
+		emcore_decode_task_parameter(task->task_type, 
+									task->task_parameter, 
+									task->task_parameter_length, 
+									&decoded_task_parameter);
+
+		return_err = (int *)task_handler->task_handler_function(decoded_task_parameter);
 	}
 
+	if (return_err) {
+		err = *return_err;
+		free(return_err);
+	}
+
+	EM_SAFE_FREE(decoded_task_parameter);
+
 	EM_DEBUG_FUNC_END("err [%d]", err);
-	return (void*)err;
+	return err;
 }
 /*- task handlers helpers - end   --------------------------------------------*/
 
 int                   _task_handler_array_size;
 email_task_handler_t **_task_handler_array;
 
-static int emcore_register_task_handler(email_task_type_t input_task_type, void* (*input_task_handler)(void *), int (*input_task_parameter_encoder)(void*,char**,int*), int (*input_task_parameter_decoder)(char*,int,void**))
+static int emcore_register_task_handler(email_task_type_t input_task_type, 
+										void* (*input_task_handler)(void *), 
+										int (*input_task_parameter_encoder)(void*,char**,int*), 
+										int (*input_task_parameter_decoder)(char*,int,void**))
 {
-	EM_DEBUG_FUNC_BEGIN("input_task_type [%d] input_task_handler [%p] input_task_parameter_encoder [%p] input_task_parameter_decoder [%p]", input_task_type, input_task_handler, input_task_parameter_encoder, input_task_parameter_decoder);
+	EM_DEBUG_FUNC_BEGIN("input_task_type [%d] input_task_handler [%p] "
+						"input_task_parameter_encoder [%p] input_task_parameter_decoder [%p]", 
+						input_task_type, input_task_handler, 
+						input_task_parameter_encoder, input_task_parameter_decoder);
+
 	int err = EMAIL_ERROR_NONE;
 	email_task_handler_t *new_task_handler = NULL;
 

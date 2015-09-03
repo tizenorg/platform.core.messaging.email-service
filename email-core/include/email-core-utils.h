@@ -111,8 +111,6 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 INTERNAL_FUNC void emcore_update_notification_for_send(int account_id, int mail_id, double progress);
 INTERNAL_FUNC int emcore_delete_notification_for_read_mail(int mail_id);
 INTERNAL_FUNC int emcore_delete_notification_by_account(char *multi_user_name, int account_id, int with_noti_tray);
-INTERNAL_FUNC void emcore_set_flash_noti();
-
 
 INTERNAL_FUNC int emcore_show_user_message(char *multi_user_name, int id, email_action_t action, int error);
 

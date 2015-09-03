@@ -2464,8 +2464,8 @@ int emcore_strip_mail_body_from_file(char *multi_user_name, emstorage_mail_tbl_t
     char *prefix_path = NULL;
     char real_html_path[255] = {0};
     char real_plain_path[255] = {0};
-	unsigned int byte_read = 0;
-	unsigned int byte_written = 0;
+	gsize byte_read = 0;
+	gsize byte_written = 0;
 	GError *glib_error = NULL;
 	FILE *fp_plain = NULL;
 	struct stat  st_buf;
@@ -2581,7 +2581,7 @@ int emcore_strip_mail_body_from_file(char *multi_user_name, emstorage_mail_tbl_t
 				}
 				EM_DEBUG_LOG("Extract the preview text, again");
 
-				utf8_encoded_string = (char *)g_convert(buf, byte_read, "UTF-8", encoding_type, &byte_read, &byte_written, &glib_error);
+				utf8_encoded_string = (char *)g_convert(buf, -1, "UTF-8", encoding_type, &byte_read, &byte_written, &glib_error);
 				if (utf8_encoded_string == NULL) {
 					EM_SAFE_FREE(*stripped_text);
 					*stripped_text = EM_SAFE_STRDUP(buf);
@@ -2624,8 +2624,8 @@ int emcore_get_preview_text_from_file(char *multi_user_name, const char *input_p
 	EM_DEBUG_FUNC_BEGIN("input_plain_path[%p], input_html_path[%p], input_preview_buffer_length [%d], output_preview_buffer[%p]", input_plain_path, input_html_path, input_preview_buffer_length, output_preview_buffer);
 
 	int          err = EMAIL_ERROR_NONE;
-	unsigned int byte_read = 0;
-	unsigned int byte_written = 0;
+	gsize        byte_read = 0;
+	gsize        byte_written = 0;
 	int          local_preview_buffer_length = 0;
 	char        *local_preview_text = NULL;
 	char        *encoding_type = NULL;
@@ -2633,8 +2633,8 @@ int emcore_get_preview_text_from_file(char *multi_user_name, const char *input_p
 	FILE        *fp_plain = NULL;
 	GError      *glib_error = NULL;
 	struct stat  st_buf;
-    char *prefix_path = NULL;
-    char real_file_path[255] = {0};
+    char        *prefix_path = NULL;
+    char         real_file_path[255] = {0};
 
 	if (!output_preview_buffer) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
@@ -2735,7 +2735,7 @@ int emcore_get_preview_text_from_file(char *multi_user_name, const char *input_p
 				encoding_type = EM_SAFE_STRDUP("EUC-KR");
 			}
 
-			utf8_encoded_string = (char*)g_convert (local_preview_text, -1, "UTF-8", encoding_type, &byte_read, &byte_written, &glib_error);
+			utf8_encoded_string = (char *)g_convert(local_preview_text, -1, "UTF-8", encoding_type, &byte_read, &byte_written, &glib_error);
 
 			if(utf8_encoded_string == NULL) {
 				if (!g_error_matches (glib_error, G_CONVERT_ERROR, G_CONVERT_ERROR_ILLEGAL_SEQUENCE)) {
@@ -2743,7 +2743,7 @@ int emcore_get_preview_text_from_file(char *multi_user_name, const char *input_p
 				}
 				EM_DEBUG_LOG("Extract the preview text, again");
 
-				utf8_encoded_string = (char *)g_convert(local_preview_text, byte_read, "UTF-8", encoding_type, &byte_read, &byte_written, &glib_error);
+				utf8_encoded_string = (char *)g_convert(local_preview_text, -1, "UTF-8", encoding_type, &byte_read, &byte_written, &glib_error);
 				if (utf8_encoded_string == NULL) {
 					EM_DEBUG_LOG("g_convert fail, again");
 					goto FINISH_OFF;
@@ -5223,33 +5223,6 @@ FINISH_OFF:
 
 	EM_DEBUG_FUNC_END();
 	return mime_entity_path;
-}
-
-/* Feedback LED api */
-INTERNAL_FUNC void emcore_set_flash_noti()
-{
-	EM_DEBUG_FUNC_BEGIN();
-	int flash_error = FEEDBACK_ERROR_NONE;
-
-	flash_error = feedback_initialize();
-	if (flash_error != FEEDBACK_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("feedback_initialize failed : [%d]", flash_error);
-		return;
-	}
-
-#ifdef __FEATURE_FEEDBACK_TYPE_LED_ENABLE__
-	flash_error = feedback_play_type(FEEDBACK_TYPE_LED, FEEDBACK_PATTERN_EMAIL);
-	if (flash_error != FEEDBACK_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("feedback_play_type failed : [%d]", flash_error);
-	}
-#endif /* __FEATURE_FEEDBACK_TYPE_LED_ENABLE__ */
-
-	flash_error = feedback_deinitialize();
-	if (flash_error != FEEDBACK_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("feedback_play_type failed : [%d]", flash_error);
-	}
-
-	EM_DEBUG_FUNC_END();
 }
 
 INTERNAL_FUNC int emcore_get_content_from_file(char *filename, char **contents, int *length)

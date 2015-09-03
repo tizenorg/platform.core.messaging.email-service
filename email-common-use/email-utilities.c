@@ -112,10 +112,10 @@ INTERNAL_FUNC char *em_trim_right(char *str)
 	if (!str) return NULL;
 
 	p = str+EM_SAFE_STRLEN(str)-1;
-	while (((int)p >= (int)str) && (*p == ' ' || *p == '\t' || *p == LF || *p == CR))
+	while ((p >= str) && (*p == ' ' || *p == '\t' || *p == LF || *p == CR))
 		*p --= '\0';
 
-	if ((int) p < (int)str)
+	if (p < str)
 		return NULL;
 
 	return str;

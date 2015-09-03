@@ -3368,7 +3368,12 @@ void stb_handle_task(int task_type, HIPC_API a_hAPI)
 
 	if(is_async_task) {
 		/* add async task */
-		if((err = emcore_add_task_to_task_table(NULL, task_type, EMAIL_TASK_PRIORITY_MID, task_parameter, task_parameter_length, &task_id)) != EMAIL_ERROR_NONE) {
+		if((err = emcore_add_task_to_task_table(NULL, 
+												task_type, 
+												EMAIL_TASK_PRIORITY_MID, 
+												task_parameter, 
+												task_parameter_length, 
+												&task_id)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_add_task_to_task_pool failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -3383,7 +3388,7 @@ void stb_handle_task(int task_type, HIPC_API a_hAPI)
 		sync_task.task_parameter        = task_parameter;
 		sync_task.task_parameter_length = task_parameter_length;
 
-		if((err = (int)emcore_default_sync_task_handler(&sync_task)) != EMAIL_ERROR_NONE) {
+		if((err = emcore_default_sync_task_handler(&sync_task)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_default_sync_task_handler failed [%d]", err);
 			goto FINISH_OFF;
 		}

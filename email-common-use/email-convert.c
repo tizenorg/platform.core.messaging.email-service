@@ -1236,7 +1236,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_rule(char *stream, int stream_len, 
 	converted_fmt = convert_format(EMAIL_RULE_FMT);
 	if (converted_fmt == NULL) {
 		EM_DEBUG_EXCEPTION("converting failed");
-		return NULL;
+		return;
 	}
 
 	tn = tpl_map(converted_fmt, rule);
@@ -1326,7 +1326,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_meeting_req(char *stream, int strea
 	converted_fmt = convert_format(EMAIL_MEETING_REQUEST_FMT);
 	if (converted_fmt == NULL) {
 		EM_DEBUG_EXCEPTION("converting failed");
-		return NULL;
+		return;
 	}
 
 	tn = tpl_map(converted_fmt,

@@ -65,10 +65,7 @@
 #include "email-core-container.h"
 #include "email-core-key-manager.h"
 
-#define DB_STMT sqlite3_stmt *
-
 #define SETTING_MEMORY_TEMP_FILE_PATH "/tmp/email_tmp_file"
-
 #define CONTENT_DATA                  "<head><meta http-equiv=\"Content-Type\" content=\"text/html; charset="
 #define CONTENT_TYPE_DATA             "<meta http-equiv=\"Content-Type\" content=\"text/html; charset="
 
@@ -8325,9 +8322,20 @@ FINISH_OFF:
 }
 #endif
 
-INTERNAL_FUNC int emstorage_mail_search_start(char *multi_user_name, emstorage_search_filter_t *search, int account_id, int mailbox_id, int sorting, int *search_handle, int *searched, int transaction, int *err_code)
+INTERNAL_FUNC int emstorage_mail_search_start(char *multi_user_name, 
+											emstorage_search_filter_t *search, 
+											int account_id, 
+											int mailbox_id, 
+											int sorting, 
+											DB_STMT *search_handle, 
+											int *searched, 
+											int transaction, 
+											int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("search[%p], account_id[%d], mailbox_id[%d], sorting[%d], search_handle[%p], searched[%p], transaction[%d], err_code[%p]", search, account_id, mailbox_id, sorting, search_handle, searched, transaction, err_code);
+	EM_DEBUG_FUNC_BEGIN("search[%p], account_id[%d], mailbox_id[%d], sorting[%d], " 
+						"search_handle[%p], searched[%p], transaction[%d], err_code[%p]", 
+						search, account_id, mailbox_id, sorting, search_handle, 
+						searched, transaction, err_code);
 
 	if (!search_handle || !searched)  {
 		if (err_code != NULL)
@@ -8409,7 +8417,7 @@ INTERNAL_FUNC int emstorage_mail_search_start(char *multi_user_name, emstorage_s
 
 FINISH_OFF:
 	if (ret == true)  {
-		*search_handle = (int)hStmt;
+		*search_handle = hStmt;
 		*searched = mail_count;
 		EM_DEBUG_LOG("mail_count [%d]", mail_count);
 	}
@@ -8432,7 +8440,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emstorage_mail_search_result(int search_handle, emstorage_mail_field_type_t type, void** data, int transaction, int *err_code)
+INTERNAL_FUNC int emstorage_mail_search_result(DB_STMT search_handle, emstorage_mail_field_type_t type, void** data, int transaction, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("search_handle[%d], type[%d], data[%p], transaction[%d], err_code[%p]", search_handle, type, data, transaction, err_code);
 
@@ -8445,7 +8453,7 @@ INTERNAL_FUNC int emstorage_mail_search_result(int search_handle, emstorage_mail
 	}
 
 	emstorage_mail_tbl_t* p_data_tbl = NULL;
-	DB_STMT hStmt = (DB_STMT)search_handle;
+	DB_STMT hStmt = search_handle;
 	int rc, ret = false;
 	int error = EMAIL_ERROR_NONE;
 
@@ -8581,7 +8589,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emstorage_mail_search_end(int search_handle, int transaction, int *err_code)
+INTERNAL_FUNC int emstorage_mail_search_end(DB_STMT search_handle, int transaction, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("search_handle[%d], transaction[%d], err_code[%p]", search_handle, transaction, err_code);
 
@@ -8594,8 +8602,7 @@ INTERNAL_FUNC int emstorage_mail_search_end(int search_handle, int transaction, 
 		goto FINISH_OFF;
 	}
 
-	DB_STMT hStmt = (DB_STMT)search_handle;
-
+	DB_STMT hStmt = search_handle;
 
 	rc = sqlite3_finalize(hStmt);
 	if (rc != SQLITE_OK)  {

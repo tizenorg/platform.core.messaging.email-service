@@ -45,8 +45,8 @@
 #include "email-core-utils.h"
 #include "email-core-mime.h"
 
-#define MAIL_TEMP_BODY "/tmp/utf-8"
-#define HTML_TEMP_BODY "/tmp/utf-8.htm"
+#define MAIL_TEMP_BODY "/tmp/utf8"
+#define HTML_TEMP_BODY "/tmp/utf8.htm"
 
 /*
 static void testapp_test_print_sorting_menu()

@@ -587,7 +587,7 @@ void* thread_func_to_delete_mail(void *thread_argument)
 	int  account_id = 0;
 	int  from_server = 0;
 	int  noti_param_2 = 0;
-	int handle = 0;
+	int  handle = 0;
 	char *multi_user_name = NULL;
 	email_event_t *event_data = (email_event_t*)thread_argument;
 
@@ -597,15 +597,17 @@ void* thread_func_to_delete_mail(void *thread_argument)
 	from_server        = event_data->event_param_data_5;
 	multi_user_name    = event_data->multi_user_name;
 
-	if (!emcore_delete_mail(multi_user_name, account_id, mail_id_list, mail_id_count, EMAIL_DELETE_LOCALLY, EMAIL_DELETED_BY_COMMAND, noti_param_2, &err)) {
-		EM_DEBUG_EXCEPTION(" emcore_delete_mail failed [%d]", err);
+	if (!emcore_delete_mail(multi_user_name, account_id, mail_id_list, 
+							mail_id_count, EMAIL_DELETE_LOCALLY, 
+							EMAIL_DELETED_BY_COMMAND, noti_param_2, &err)) {
+		EM_DEBUG_EXCEPTION("emcore_delete_mail failed [%d]", err);
 		emcore_free_event(event_data); /* prevent 17922 */
 		EM_SAFE_FREE(event_data);
 		goto FINISH_OFF;
 	}
 
 	if (from_server == EMAIL_DELETE_LOCAL_AND_SERVER || from_server == EMAIL_DELETE_FROM_SERVER) {
-		if (!emcore_insert_event(event_data, (int*)handle, &err)) {
+		if (!emcore_insert_event(event_data, &handle, &err)) {
 			EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", err);
 /*			if (from_server != EMAIL_DELETE_LOCAL_AND_SERVER && from_server != EMAIL_DELETE_FROM_SERVER) {
 				EM_SAFE_FREE(event_data->event_param_data_3);
@@ -756,7 +758,8 @@ int emdaemon_delete_mail_all(char *multi_user_name, int input_mailbox_id, int in
 		}
 
 #ifdef __FEATURE_LOCAL_ACTIVITY__
-		int i, total = 0 , search_handle = 0;
+		int i, total = 0;
+		DB_STMT search_handle = 0;
 		int *mail_ids = NULL;
 		emstorage_activity_tbl_t new_activity;
 		int activityid = 0;

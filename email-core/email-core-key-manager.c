@@ -124,7 +124,7 @@ INTERNAL_FUNC int emcore_get_password_in_key_manager(char *data_name, char **sto
 FINISH_OFF:
 
 	if (stored_data) {
-		if (email_data) *stored_data = g_strndup(email_data->data, email_data->size);
+		if (email_data) *stored_data = g_strndup((const gchar *)email_data->data, email_data->size);
 	}
 
 	if (email_data)

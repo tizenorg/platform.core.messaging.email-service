@@ -448,21 +448,35 @@ FINISH_OFF:
 INTERNAL_FUNC void* task_handler_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL(void *input_param)
 {
 	EM_DEBUG_FUNC_BEGIN("input_param [%p]", input_param);
+
 	int err = EMAIL_ERROR_NONE;
+	int *return_err = NULL;
 	task_parameter_EMAIL_SYNC_TASK_SCHEDULE_SENDING_MAIL *task_param = input_param;
 
-	if((err = emcore_schedule_sending_mail(task_param->multi_user_name, task_param->mail_id, task_param->scheduled_time)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_schedule_sending_mail(task_param->multi_user_name, 
+											task_param->mail_id, 
+											task_param->scheduled_time)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_schedule_sending_mail [%d]", err);
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}
 
+	return_err = em_malloc(sizeof(int));
+	if (return_err == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	*return_err = err;
+
 FINISH_OFF:
 
 	EM_SAFE_FREE(task_param);
-	emcore_close_smtp_stream_list ();
+	emcore_close_smtp_stream_list();
 	EM_DEBUG_FUNC_END("err [%d]", err);
-	return (void*)err;
+
+	return (void *)return_err;
 }
 /*-------------------------------------------------------------------------------------------*/
 /* to handle EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE */
@@ -634,33 +648,42 @@ FINISH_OFF:
 	return EMAIL_ERROR_NONE;
 }
 
-INTERNAL_FUNC void* task_handler_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE(void *input_param)
+INTERNAL_FUNC void *task_handler_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE(void *input_param)
 {
 	EM_DEBUG_FUNC_BEGIN("input_param [%p]", input_param);
-	if(!input_param) { /*prevent 43681*/
+	if (!input_param) { /*prevent 43681*/
 		EM_DEBUG_EXCEPTION("NULL parameter");		
 		return NULL;
 	}
 
 	int err = EMAIL_ERROR_NONE;
+	int *return_err = NULL;
 	char *field_name = NULL;
 	task_parameter_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE *task_param = input_param;
 	email_mail_attribute_value_type attribute_value_type = EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_NONE; /*prevent 43700*/
 
-	if((field_name = emcore_get_mail_field_name_by_attribute_type(task_param->attribute_type)) == NULL) {
+	if ((field_name = emcore_get_mail_field_name_by_attribute_type(task_param->attribute_type)) == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
-	if((err = emcore_get_mail_attribute_value_type(task_param->attribute_type, &attribute_value_type)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_get_mail_attribute_value_type(task_param->attribute_type, 
+													&attribute_value_type)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_get_mail_attribute_value_type failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	switch(attribute_value_type) {
 		case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_INTEGER :
-			if(!emstorage_set_field_of_mails_with_integer_value(task_param->multi_user_name, task_param->account_id, task_param->mail_id_array, task_param->mail_id_count, field_name, task_param->value.integer_type_value, true, &err)) {
+			if (!emstorage_set_field_of_mails_with_integer_value(task_param->multi_user_name, 
+																task_param->account_id, 
+																task_param->mail_id_array, 
+																task_param->mail_id_count, 
+																field_name, 
+																task_param->value.integer_type_value, 
+																true, 
+																&err)) {
 				EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]", err);
 				goto FINISH_OFF;
 			}
@@ -670,7 +693,14 @@ INTERNAL_FUNC void* task_handler_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE(void *input_pa
 			EM_DEBUG_LOG("EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_STRING is not supported");
 			break;
 		case EMAIL_MAIL_ATTRIBUTE_VALUE_TYPE_TIME :
-			if(!emstorage_set_field_of_mails_with_integer_value(task_param->multi_user_name, task_param->account_id, task_param->mail_id_array, task_param->mail_id_count, field_name, task_param->value.datetime_type_value, true, &err)) {
+			if (!emstorage_set_field_of_mails_with_integer_value(task_param->multi_user_name, 
+																task_param->account_id, 
+																task_param->mail_id_array, 
+																task_param->mail_id_count, 
+																field_name, 
+																task_param->value.datetime_type_value, 
+																true, 
+																&err)) {
 				EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]", err);
 				goto FINISH_OFF;
 			}
@@ -681,6 +711,15 @@ INTERNAL_FUNC void* task_handler_EMAIL_SYNC_TASK_UPDATE_ATTRIBUTE(void *input_pa
 			err = EMAIL_ERROR_INVALID_PARAM;
 			break;
 	}
+
+	return_err = em_malloc(sizeof(int));
+	if (return_err == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	*return_err = err;
 
 FINISH_OFF:
 
@@ -693,6 +732,7 @@ FINISH_OFF:
 	EM_SAFE_FREE (task_param);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
-	return (void*)err;
+	
+	return (void *)return_err;
 }
 /*-------------------------------------------------------------------------------------------*/

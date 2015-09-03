@@ -56,6 +56,8 @@ extern "C"
 #define MAX_INTEGER_LENGTH  5  /*  32767 -> 5 bytes */
 #define FILE_MAX_BUFFER_SIZE     16 * 1024 /* 16 Kbyte */
 
+#define DB_STMT sqlite3_stmt *
+
 typedef struct
 {
 	int mail_id;
@@ -1023,7 +1025,15 @@ INTERNAL_FUNC int emstorage_update_save_status(char *multi_user_name, int accoun
  * @remarks N/A
  * @return This function returns 0 on success or error code on failure.
  */
-INTERNAL_FUNC int emstorage_mail_search_start(char *multi_user_name, emstorage_search_filter_t *search, int account_id, int mailbox_id, int sorting, int *search_handle, int *searched, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_mail_search_start(char *multi_user_name, 
+											emstorage_search_filter_t *search, 
+											int account_id, 
+											int mailbox_id, 
+											int sorting, 
+											DB_STMT *search_handle, 
+											int *searched, 
+											int transaction, 
+											int *err_code);
 
 /*
  * emstorage_mail_search_result
@@ -1034,7 +1044,11 @@ INTERNAL_FUNC int emstorage_mail_search_start(char *multi_user_name, emstorage_s
  *    mail  :  double pointer to hold mail
  * return  :
  */
-INTERNAL_FUNC int emstorage_mail_search_result(int search_handle, emstorage_mail_field_type_t type, void **data, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_mail_search_result(DB_STMT search_handle, 
+												emstorage_mail_field_type_t type, 
+												void **data, 
+												int transaction, 
+												int *err_code);
 
 /*
  * emstorage_mail_search_end
@@ -1044,7 +1058,7 @@ INTERNAL_FUNC int emstorage_mail_search_result(int search_handle, emstorage_mail
  *    search_handle  :  handle to be finished
  * return  :
  */
-INTERNAL_FUNC int emstorage_mail_search_end(int search_handle, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_mail_search_end(DB_STMT search_handle, int transaction, int *err_code);
 
 /*
  * emstorage_set_field_of_mails_with_integer_value

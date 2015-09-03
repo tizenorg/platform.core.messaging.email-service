@@ -2090,7 +2090,7 @@ INTERNAL_FUNC int emcore_send_saved_mail(char *multi_user_name, int account_id, 
 	int err2 = EMAIL_ERROR_NONE;
 	int status = EMAIL_SEND_FAIL;
 	int *mail_ids = NULL;
-	int handle = 0;
+	DB_STMT handle;
 	int i = 0;
 	int total = 0;
 	int attachment_tbl_count = 0;
@@ -4485,7 +4485,8 @@ INTERNAL_FUNC int emcore_schedule_sending_mail(char *multi_user_name, int input_
 	}
 
 FINISH_OFF:
-	if(mail_data)
+
+	if (mail_data)
 		emstorage_free_mail(&mail_data, 1, NULL);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
