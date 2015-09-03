@@ -238,6 +238,7 @@ INTERNAL_FUNC char *__em_get_month_in_string(int month);
 INTERNAL_FUNC int emcore_make_date_string_for_search(time_t input_time, char *output_date_string);
 INTERNAL_FUNC int emcore_make_uid_range_string(emcore_uid_list *uid_list, int total, char **output_uid_range_string);
 
+INTERNAL_FUNC char* emcore_convert_mutf7_to_utf8(char *mailbox_name); 
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

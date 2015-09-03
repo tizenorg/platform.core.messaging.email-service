@@ -57,7 +57,6 @@
 #include <drm_client_types.h>
 #include <drm_client.h>
 #endif /* __FEATURE_USE_DRM_API__ */
-#include <feedback.h>
 #include <storage.h>
 #include <bundle.h>
 #include <curl/curl.h>
