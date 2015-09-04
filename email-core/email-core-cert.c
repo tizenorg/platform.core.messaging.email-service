@@ -33,7 +33,6 @@
 #include <openssl/pkcs12.h>
 #include <openssl/pem.h>
 #include <openssl/err.h>
-#include <cert-service.h>
 #include <glib.h>
 #include <cert-svc/ccert.h>
 #include <cert-svc/cstring.h>
@@ -50,8 +49,6 @@
 
 #define READ_MODE "r"
 #define WRITE_MODE "w"
-
-#define TRUSTED_USER "trusteduser/email/"
 
 typedef enum {
 	CERT_TYPE_ETC          = 0,

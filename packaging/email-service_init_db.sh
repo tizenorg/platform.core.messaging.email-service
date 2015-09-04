@@ -27,5 +27,3 @@ mkdir -m775 -p ${TZ_USER_DATA}/email/.email_data
 
 mkdir -m775 -p ${TZ_USER_DATA}/email/.email_data/tmp
 
-mkdir -p ${TZ_SYS_SHARE}/cert-svc/certs/trusteduser/email
-

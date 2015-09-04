@@ -51,8 +51,6 @@
 #include "email-core-key-manager.h"
 #include "email-debug-log.h"
 
-/* /opt/share/cert-svc/certs is a base path */
-
 #define SMIME_SIGNED_FILE "smime.p7s"
 #define SMIME_ENCRYPT_FILE "smime.p7m"
 #define DECRYPT_TEMP_FILE "decrypt_temp_file.eml"
@@ -381,15 +379,12 @@ INTERNAL_FUNC int emcore_smime_set_encrypt_message(char *multi_user_name,
 //	int flags = PKCS7_DETACHED | PKCS7_STREAM;
 	int flags = PKCS7_BINARY;
 
-	CERT_CONTEXT *loaded_cert = NULL;
 	STACK_OF(X509) *recipient_certs = NULL;
 	X509 *cert = NULL;
 	BIO *bio_mime_entity = NULL, *bio_cert = NULL;
 	BIO *smime_attachment = NULL;
 	PKCS7 *encrypt_message = NULL;
 	const EVP_CIPHER *cipher = NULL;
-
-	loaded_cert = cert_svc_cert_context_init();
 
 	SNPRINTF(temp_smime_filepath, sizeof(temp_smime_filepath), "%s%s%s", MAILTEMP, DIR_SEPERATOR, SMIME_ENCRYPT_FILE);
 	EM_DEBUG_LOG_SEC("attachment file path of smime : [%s]", temp_smime_filepath);
@@ -444,7 +439,6 @@ FINISH_OFF:
 	BIO_free(bio_mime_entity);
 	BIO_free_all(smime_attachment);
 
-	cert_svc_cert_context_final(loaded_cert);
 	if (err_code != NULL)
 		*err_code = err;
 

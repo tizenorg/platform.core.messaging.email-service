@@ -33,8 +33,6 @@
 #ifndef EM_CORE_GPG_H_
 #define EM_CORE_GPG_H_
 
-#include <cert-service.h>
-
 #include "email-types.h"
 
 INTERNAL_FUNC int emcore_pgp_set_signed_message(char *certificate, char *password, char *mime_entity, char *user_id, email_digest_type digest_type, char **file_path);

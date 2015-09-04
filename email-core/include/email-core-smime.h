@@ -33,8 +33,6 @@
 #ifndef EM_CORE_SMIME_H_
 #define EM_CORE_SMIME_H_
 
-#include <cert-service.h>
-
 #include "email-types.h"
 
 INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate, char *mime_entity, email_digest_type digest_type, char **file_path, int *err_code);
