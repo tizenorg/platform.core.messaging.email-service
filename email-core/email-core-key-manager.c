@@ -30,6 +30,7 @@
 
 #include "email-core-utils.h"
 #include "email-debug-log.h"
+#include "email-utilities.h"
 
 /* Adding '/' method for system daemon */
 static char *add_shared_owner_prefix(const char *name)
@@ -164,6 +165,59 @@ INTERNAL_FUNC int emcore_remove_password_in_key_manager(char *data_name)
 FINISH_OFF:
 
 	EM_SAFE_FREE(alias);
+	EM_DEBUG_FUNC_END();
+	return err;
+}
+
+INTERNAL_FUNC int emcore_get_certificate_in_key_manager(char *alias, char *password, 
+														const unsigned char **cert_data, 
+														int *cert_size)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int err = EMAIL_ERROR_NONE;
+
+	if (alias == NULL) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		return err;
+	}
+
+	int ckmc_ret = CKMC_ERROR_NONE;
+	unsigned char *p_cert_data = NULL;
+	ckmc_cert_s *output_cert = NULL;
+
+	ckmc_ret = ckmc_get_cert(alias, password, &output_cert);
+	if (ckmc_ret != CKMC_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("ckmc_get_cert failed : [%d]", ckmc_ret);
+		err = EMAIL_ERROR_SECURED_STORAGE_FAILURE;
+		goto FINISH_OFF;
+	}
+
+	EM_DEBUG_LOG("Cert size : [%d]", output_cert->cert_size);
+	EM_DEBUG_LOG("Cert format : [%d]", output_cert->data_format);
+	EM_DEBUG_LOG_DEV("Cert string : [%s]", output_cert->raw_cert);
+
+	p_cert_data = em_malloc(output_cert->cert_size + 1);
+	if (p_cert_data == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	memcpy(p_cert_data, output_cert->raw_cert, output_cert->cert_size);
+
+	*cert_data = p_cert_data;
+	*cert_size = output_cert->cert_size;
+
+FINISH_OFF:
+
+	if (output_cert)
+		ckmc_cert_free(output_cert);
+
+	if (err != EMAIL_ERROR_NONE) {
+		EM_SAFE_FREE(p_cert_data);
+	}
+
 	EM_DEBUG_FUNC_END();
 	return err;
 }

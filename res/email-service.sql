@@ -227,21 +227,6 @@ CREATE TABLE mail_local_activity_tbl
 	src_mbox                         VARCHAR(129),
 	dest_mbox                        VARCHAR(129) 
 );
-CREATE TABLE mail_certificate_tbl 
-( 
-	certificate_id                   INTEGER,
-	issue_year                       INTEGER,
-	issue_month                      INTEGER,
-	issue_day                        INTEGER,
-	expiration_year                  INTEGER,
-	expiration_month                 INTEGER,
-	expiration_day                   INTEGER,
-	issue_organization_name          VARCHAR(256),
-	email_address                    VARCHAR(129),
-	subject_str                      VARCHAR(256),
-	filepath                         VARCHAR(256),
-	password                         VARCHAR(51)
-);
 CREATE TABLE mail_task_tbl  
 (  
 	task_id                          INTEGER PRIMARY KEY,

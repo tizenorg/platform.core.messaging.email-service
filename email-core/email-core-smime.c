@@ -48,6 +48,7 @@
 #include "email-core-smime.h"
 #include "email-core-pgp.h"
 #include "email-core-cert.h"
+#include "email-core-key-manager.h"
 #include "email-debug-log.h"
 
 /* /opt/share/cert-svc/certs is a base path */
@@ -138,17 +139,12 @@ static int get_x509_stack_of_recipient_certs(char *multi_user_name,
 	int i = 0, j = 0;
 	int cert_size = 0;
 	char *temp_recipients = NULL;
-	char *email_address = NULL;
-	char file_name[512] = {0, };
 	const unsigned char *in_cert = NULL;
 
 	ADDRESS *token_address = NULL;
 
 	X509 *x509_cert = NULL;
 	STACK_OF(X509) *temp_recipient_certs = NULL;
-
-	CERT_CONTEXT *context = NULL;
-	emstorage_certificate_tbl_t *cert = NULL;
 
 	if (!recipients || !output_recipient_certs) {
 		EM_DEBUG_EXCEPTION("Invalid parameter");
@@ -167,38 +163,14 @@ static int get_x509_stack_of_recipient_certs(char *multi_user_name,
 	rfc822_parse_adrlist(&token_address, temp_recipients, NULL);
 
 	while (token_address) {
-		context = cert_svc_cert_context_init();
-		if (!context) { /*prevent 20162*/
-			EM_DEBUG_EXCEPTION("cert_svc_cert_context_init failed");
-			goto FINISH_OFF;			
-		}
-
 		EM_DEBUG_LOG_SEC("email_address_mailbox : [%s], email_address_host : [%s]", token_address->mailbox, 
 																					token_address->host);
-
-		email_address = g_strdup_printf("<%s@%s>", token_address->mailbox, token_address->host);
-		if (!emstorage_get_certificate_by_email_address(multi_user_name, email_address, &cert, false, 0, &err)) {
-			EM_DEBUG_EXCEPTION("emstorage_get_certificate_by_email_address failed : [%d]", err);
+		/* Plan : Certificate load to using key-manager */
+		err = emcore_get_certificate_in_key_manager(token_address->host, NULL, &in_cert, &cert_size);
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_get_certificate_in_key_manager failed : [%d]", err);
 			goto FINISH_OFF;
 		}
-
-		if (!cert) { /*prevent 20161*/
-			EM_DEBUG_EXCEPTION("cert is NULL");
-			goto FINISH_OFF;	
-		}
-
-		
-		SNPRINTF(file_name, sizeof(file_name), "%s", cert->filepath);
-		EM_DEBUG_LOG_SEC("file_name : [%s]", file_name);
-		int cert_err = cert_svc_load_file_to_context(context, file_name);
-		if (cert_err != CERT_SVC_ERR_NO_ERROR) {
-			EM_DEBUG_EXCEPTION("cert_svc_load_file_to_context failed : [%d]", err);
-			err = EMAIL_ERROR_SYSTEM_FAILURE;
-			goto FINISH_OFF;
-		}
-
-		in_cert = context->certBuf->data;
-		cert_size = context->certBuf->size;
 
 		if (d2i_X509(&x509_cert, &in_cert, cert_size) == NULL) {
 			EM_DEBUG_EXCEPTION("d2i_X509 failed");
@@ -211,15 +183,8 @@ static int get_x509_stack_of_recipient_certs(char *multi_user_name,
 			err = EMAIL_ERROR_SYSTEM_FAILURE;
 			goto FINISH_OFF;
 		}
-
-		cert_svc_cert_context_final(context);
-		context = NULL;
 		
-		emstorage_free_certificate(&cert, 1, NULL);
-		cert = NULL;
-
 		x509_cert = NULL;
-
 		token_address = token_address->next;
 	}
 
@@ -237,14 +202,8 @@ FINISH_OFF:
 			X509_free(x509_cert);
 	}
 
-	if (cert)
-		emstorage_free_certificate(&cert, 1, NULL);
-
-	if (context)
-		cert_svc_cert_context_final(context);
-
+	EM_SAFE_FREE(in_cert);
 	EM_SAFE_FREE(temp_recipients);
-	EM_SAFE_FREE(email_address);
 	if (token_address)
 		mail_free_address(&token_address);
 

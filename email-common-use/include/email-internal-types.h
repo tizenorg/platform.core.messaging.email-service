@@ -544,10 +544,7 @@ enum {
 	_EMAIL_API_GET_USER_NAME                             = 0x01500006,
 
     /* Smime */
-    _EMAIL_API_ADD_CERTIFICATE                           = 0x01600000,    /**< IPC API ID for email_add_certificate */
-    _EMAIL_API_DELETE_CERTIFICATE                        = 0x01600001,    /**< IPC API ID for email_delete_certificate */
-    _EMAIL_API_VERIFY_SIGNATURE                          = 0x01600002,    /**< IPC API ID for email_verify_signature */
-    _EMAIL_API_VERIFY_CERTIFICATE                        = 0x01600003,    /**< IPC API ID for email_verify_certificate */
+    _EMAIL_API_VERIFY_SIGNATURE                          = 0x01600001,    /**< IPC API ID for email_verify_signature */
 };
 
 #ifdef __cplusplus

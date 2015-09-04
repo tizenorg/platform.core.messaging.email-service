@@ -880,86 +880,6 @@ static gboolean testapp_test_load_default_account_id()
 	return FALSE;
 }
 
-static gboolean testapp_test_add_certificate()
-{
-	int ret = 0;
-	char save_name[50] = {0, };
-	char certificate_path[255] = {0, };
-
-	testapp_print("Input cert path : ");
-	if (0 >= scanf("%s", certificate_path))
-		testapp_print("Invalid input. ");
-
-	testapp_print("Input cert email-address : ");
-	if (0 >= scanf("%s", save_name))
-		testapp_print("Invalid input. ");
-
-	testapp_print("cert path : [%s]", certificate_path);
-	testapp_print("email-address : [%s]", save_name);
-
-	ret = email_add_certificate(certificate_path, save_name);
-	if (ret != EMAIL_ERROR_NONE) {
-		testapp_print("Add certificate failed\n");
-		return false;
-	}
-
-	testapp_print("Add certificate success\n");
-	return true;
-}
-
-static gboolean testapp_test_get_certificate()
-{
-	int ret = 0;
-	char save_name[20] = {0, };
-	email_certificate_t *certificate = NULL;
-
-	testapp_print("Input cert email-address : ");
-	if (0 >= scanf("%s", save_name))
-		testapp_print("Invalid input. ");
-
-	ret = email_get_certificate(save_name, &certificate);
-	if (ret != EMAIL_ERROR_NONE) {
-		testapp_print("Get certificate failed\n");
-		return false;
-	}
-
-	testapp_print("certificate_id : %d\n", certificate->certificate_id);
-	testapp_print("issue_year : %d\n", certificate->issue_year);
-	testapp_print("issue_month : %d\n", certificate->issue_month);
-	testapp_print("issue_day : %d\n", certificate->issue_day);
-	testapp_print("expiration_year : %d\n", certificate->expiration_year);
-	testapp_print("expiration_month : %d\n", certificate->expiration_month);
-	testapp_print("expiration_day : %d\n", certificate->expiration_day);
-	testapp_print("issue_organization_name : %s\n", certificate->issue_organization_name);
-	testapp_print("subject_string : %s\n", certificate->subject_str);
-	testapp_print("file path : %s\n", certificate->filepath);
-
-	if (certificate)
-		email_free_certificate(&certificate, 1);
-
-	testapp_print("Get certificate success\n");
-	return true;
-}
-
-static gboolean testapp_test_delete_certificate()
-{
-	int ret = 0;
-	char save_name[20] = {0, };
-
-	testapp_print("Input cert email-address : ");
-	if (0 >= scanf("%s", save_name))
-		testapp_print("Invalid input. ");
-
-	ret = email_delete_certificate(save_name);
-	if (ret != EMAIL_ERROR_NONE) {
-		testapp_print("Delete certificate failed\n");
-		return false;
-	}
-
-	testapp_print("Delete certificate success\n");
-	return true;
-}
-
 static gboolean testapp_test_add_account()
 {
 	int err = EMAIL_ERROR_NONE;
@@ -1109,22 +1029,10 @@ static gboolean testapp_test_interpret_command (int selected_number)
 			break;
 
 		case 18:
-			testapp_test_add_certificate();
-			break;
-
-		case 19:
-			testapp_test_get_certificate();
-			break;
-
-		case 20:
-			testapp_test_delete_certificate();
-			break;
-
-		case 21:
 			testapp_test_add_account();
 			break;
 
-		case 22:
+		case 19:
 			testapp_test_update_peak_schedule();
 			break;
 

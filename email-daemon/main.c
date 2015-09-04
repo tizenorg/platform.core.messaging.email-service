@@ -2879,125 +2879,6 @@ void stb_get_task_information(HIPC_API a_hAPI)
 	EM_DEBUG_FUNC_END();
 }
 
-void stb_add_certificate(HIPC_API a_hAPI)
-{
-	int err = EMAIL_ERROR_NONE;
-	int cert_file_len = 0;
-	int email_address_len = 0;
-	char *cert_file_path = NULL;
-	char *email_address = NULL;
-	emipc_email_api_info *api_info = (emipc_email_api_info *)a_hAPI;
-    int nAPPID = emipc_get_app_id(a_hAPI);
-    char *multi_user_name = NULL;
-    char *prefix_path = NULL;
-    char real_file_path[255] = {0};
-
-    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
-        multi_user_name = NULL;
-    }
-
-    /* Get the absolute path */
-    if (EM_SAFE_STRLEN(multi_user_name) > 0) {
-		err = emcore_get_container_path(multi_user_name, &prefix_path);
-		if (err != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("emcore_get_container_path failed : [%d]", err);
-			goto FINISH_OFF;
-		}
-	} else {
-		prefix_path = strdup("");
-	}
-
-	cert_file_len = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 0);
-	if (cert_file_len > 0) {
-		cert_file_path = em_malloc(cert_file_len + 1);
-		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, cert_file_len, cert_file_path);
-	}
-
-	/* check smack rule for accessing file path */
-	if (cert_file_path) {
-        memset(real_file_path, 0x00, sizeof(real_file_path));
-        SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, cert_file_path);
-
-		if (!emdaemon_check_smack_rule(api_info->response_id, real_file_path)) {
-			EM_DEBUG_EXCEPTION("emdaemon_check_smack_rule fail");
-			err = EMAIL_ERROR_NO_SMACK_RULE;
-			goto FINISH_OFF;
-		}
-	}
-
-	email_address_len = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 1);
-	if (email_address_len > 0) {
-		email_address = em_malloc(email_address_len + 1);
-		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, email_address_len, email_address);
-	}
-
-	if (!emcore_add_public_certificate(multi_user_name, cert_file_path, email_address, &err)) {
-		EM_DEBUG_EXCEPTION("em_core_smime_add_certificate failed");
-	}
-
-FINISH_OFF:
-
-	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
-		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
-
-	if (EMAIL_ERROR_NONE == err) {
-		EM_DEBUG_LOG("email_mail_add_attachment -Success");
-	}
-
-	if (!emipc_execute_stub_api(a_hAPI))
-		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
-
-	EM_SAFE_FREE(prefix_path);
-	EM_SAFE_FREE(cert_file_path);
-	EM_SAFE_FREE(email_address);
-    EM_SAFE_FREE(multi_user_name);
-	EM_DEBUG_FUNC_END();
-}
-
-void stb_delete_certificate(HIPC_API a_hAPI)
-{
-	int err = EMAIL_ERROR_NONE;
-	int email_address_len = 0;
-	char *email_address = NULL;
-	char temp_email_address[130] = {0, };
-    int nAPPID = emipc_get_app_id(a_hAPI);
-    char *multi_user_name = NULL;
-
-    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
-        multi_user_name = NULL;
-    }
-
-	email_address_len = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 0);
-	if (email_address_len > 0) {
-		EM_DEBUG_LOG("email address string length [%d]", email_address_len);
-		email_address = em_malloc(email_address_len + 1);
-		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, email_address_len, email_address);
-		EM_DEBUG_LOG_SEC("email address [%s]", email_address);
-	}
-
-	SNPRINTF(temp_email_address, sizeof(temp_email_address), "<%s>", email_address);
-	if (!emcore_delete_public_certificate(multi_user_name, temp_email_address, &err)) {
-		EM_DEBUG_EXCEPTION("em_core_smime_add_certificate failed");
-	}
-
-	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
-		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
-
-	if (EMAIL_ERROR_NONE == err) {
-		EM_DEBUG_LOG("email_mail_add_attachment -Success");
-	}
-
-	if (!emipc_execute_stub_api(a_hAPI))
-		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
-
-	
-	EM_SAFE_FREE(email_address);
-    EM_SAFE_FREE(multi_user_name);
-	EM_DEBUG_FUNC_END();    
-}
-
 void stb_verify_signature(HIPC_API a_hAPI)
 {
 	int err = EMAIL_ERROR_NONE;
@@ -3080,45 +2961,6 @@ FINISH_OFF:
 
     EM_SAFE_FREE(multi_user_name);
 	EM_DEBUG_FUNC_END();
-}
-
-void stb_verify_certificate(HIPC_API a_hAPI)
-{
-	int err = EMAIL_ERROR_NONE;
-	int verify = 0;
-	int cert_file_len = 0;
-	char *cert_file_path = 0;
-    int nAPPID = emipc_get_app_id(a_hAPI);
-    char *multi_user_name = NULL;
-
-    if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
-        EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
-        multi_user_name = NULL;
-    }
-
-	cert_file_len = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 0);
-	if (cert_file_len > 0) {
-		cert_file_path = em_malloc(cert_file_len + 1);
-		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, cert_file_len, cert_file_path);
-	}
-
-	if (!emcore_verify_certificate(cert_file_path, &verify, &err)) {
-		EM_DEBUG_EXCEPTION("em_core_smime_add_certificate failed");
-	}
-
-	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &verify, sizeof(int)))
-		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
-
-	if (verify) {
-		EM_DEBUG_LOG("Verify S/MIME signed mail-Success");
-	}
-
-	if (!emipc_execute_stub_api(a_hAPI))
-		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
-
-	EM_SAFE_FREE(cert_file_path);           
-    EM_SAFE_FREE(multi_user_name);
-	EM_DEBUG_FUNC_END();    
 }
 
 void stb_ping_service(HIPC_API a_hAPI)
@@ -4068,20 +3910,8 @@ void stb_API_mapper(HIPC_API a_hAPI)
 			stb_get_task_information(a_hAPI);
 			break;
 
-		case _EMAIL_API_ADD_CERTIFICATE:
-			stb_add_certificate(a_hAPI);
-			break;
-
-		case _EMAIL_API_DELETE_CERTIFICATE:
-			stb_delete_certificate(a_hAPI);
-			break;
-
 		case _EMAIL_API_VERIFY_SIGNATURE:
 			stb_verify_signature(a_hAPI);
-			break;
-
-		case _EMAIL_API_VERIFY_CERTIFICATE:
-			stb_verify_certificate(a_hAPI);
 			break;
 
 		case _EMAIL_API_PING_SERVICE :

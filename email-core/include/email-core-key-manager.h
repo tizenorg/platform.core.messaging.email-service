@@ -29,6 +29,9 @@ extern "C" {
 INTERNAL_FUNC int emcore_add_password_in_key_manager(char *data_name, char *stored_data);
 INTERNAL_FUNC int emcore_get_password_in_key_manager(char *data_name, char **stored_data);
 INTERNAL_FUNC int emcore_remove_password_in_key_manager(char *data_name);
+INTERNAL_FUNC int emcore_get_certificate_in_key_manager(char *alias, char *password, 
+														const unsigned char **cert_data, 
+														int *cert_size);
 
 #ifdef __cplusplus
 }

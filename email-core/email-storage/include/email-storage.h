@@ -1657,19 +1657,6 @@ INTERNAL_FUNC int emstorage_free_local_activity(emstorage_activity_tbl_t **local
 INTERNAL_FUNC int emstorage_free_activity_id_list(int *activity_id_list, int *error_code);
 
 #endif
-
-INTERNAL_FUNC int emstorage_add_certificate(char *multi_user_name, emstorage_certificate_tbl_t *certificate, int transaction, int *err_code);
-
-INTERNAL_FUNC int emstorage_free_certificate(emstorage_certificate_tbl_t **certificate_list, int count, int *err_code);
-
-INTERNAL_FUNC int emstorage_get_certificate_list(char *multi_user_name, int *select_num, emstorage_certificate_tbl_t **certificate_list, int transaction, int with_password, int *err_code);
-
-INTERNAL_FUNC int emstorage_get_certificate_by_email_address(char *multi_user_name, char *email_address, emstorage_certificate_tbl_t **certificate, int transaction, int with_password, int *err_code);
-
-INTERNAL_FUNC int emstorage_get_certificate_by_index(char *multi_user_name, int index, emstorage_certificate_tbl_t **certificate, int transaction, int with_password, int *err_code);
-
-INTERNAL_FUNC int emstorage_delete_certificate(char *multi_user_name, int index, int transaction, int *err_code);
-
 /* task begin */
 INTERNAL_FUNC int emstorage_add_task(char *multi_user_name, email_task_type_t input_task_type, email_task_priority_t input_task_priority, char *input_task_parameter, int input_task_parameter_length, int input_transaction, int *output_task_id);
 
