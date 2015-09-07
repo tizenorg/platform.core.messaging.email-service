@@ -118,20 +118,6 @@ install -m 0775 %{SOURCE3} %{buildroot}%{_bindir}/
 #################################################################
 # Set executin script
 #################################################################
-echo "[EMAIL-SERVICE] Set executing script ..."
-mkdir -p %{buildroot}/etc/rc.d/rc3.d/
-mkdir -p %{buildroot}/etc/rc.d/rc5.d/
-EMAIL_SERVICE_EXEC_SCRIPT=/etc/rc.d/init.d/email-service
-EMAIL_SERVICE_BOOT_SCRIPT=/etc/rc.d/rc3.d/S70email-service
-EMAIL_SERVICE_FASTBOOT_SCRIPT=/etc/rc.d/rc5.d/S70email-service
-
-chmod 775 ${EMAIL_SERVICE_EXEC_SCRIPT}
-rm -rf ${EMAIL_SERVICE_BOOT_SCRIPT}
-rm -rf ${EMAIL_SERVICE_FASTBOOT_SCRIPT}
-ln -s ${EMAIL_SERVICE_EXEC_SCRIPT} ${EMAIL_SERVICE_BOOT_SCRIPT}
-ln -s ${EMAIL_SERVICE_EXEC_SCRIPT} ${EMAIL_SERVICE_FASTBOOT_SCRIPT}
-echo "[EMAIL-SERVICE] Finish executing script ..."
-
 chgrp %TZ_SYS_USER_GROUP %{_bindir}/email-service_init_db.sh
 
 systemctl daemon-reload
