@@ -568,7 +568,12 @@ CHECK_CONTINUE:
 			}
 
 			snprintf(uid_str, sizeof(uid_str), "%ld", event_data->server_mail_id);
-			if (!emstorage_get_maildata_by_servermailid(event_data->multi_user_name, event_data->mailbox_id, uid_str, &mail, true, &err) || !mail) {
+			if (!emstorage_get_maildata_by_servermailid(event_data->multi_user_name, 
+														uid_str, 
+														event_data->mailbox_id,
+														&mail, 
+														true, 
+														&err) || !mail) {
 				EM_DEBUG_EXCEPTION("emstorage_get_mail_data_by_servermailid failed : [%d]", err);
 			}
 			else {
@@ -712,8 +717,10 @@ INTERNAL_FUNC int emcore_insert_auto_download_job(char *multi_user_name, int acc
 FINISH_OFF:
 
 	if (!event_pushed) {
-		EM_SAFE_FREE(ad_event->multi_user_name);
-		EM_SAFE_FREE(ad_event);
+		if (ad_event) {
+			EM_SAFE_FREE(ad_event->multi_user_name);
+			free(ad_event);
+		}
 	}
 
 	EM_DEBUG_FUNC_END();

@@ -89,7 +89,7 @@ INTERNAL_FUNC int emcore_load_PFX_file(char *certificate, EVP_PKEY **pri_key, X5
 		goto FINISH_OFF;
 	}
 
-	EM_DEBUG_EXCEPTION("emcore_load_PFX_file - certificate passed : %s", certificate);
+	EM_DEBUG_LOG("emcore_load_PFX_file - certificate passed : %s", certificate);
 
 	/* Create instance */
 	err = certsvc_instance_new(&cert_instance);

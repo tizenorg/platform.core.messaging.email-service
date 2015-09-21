@@ -49,7 +49,11 @@
 extern int g_local_activity_run;
 #endif
 
-INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(char *multi_user_name, int account_id, char* mailbox, int *handle, int* err_code)
+INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(char *multi_user_name, 
+													int account_id, 
+													char* mailbox, 
+													int *handle, 
+													int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d] mailbox[%p] err_code[%p]", account_id, mailbox, err_code);
 
@@ -75,7 +79,7 @@ INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(char *multi_user_name, int acco
 	event_data->event_param_data_3 = EM_SAFE_STRDUP(mailbox);
 	event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
-	if (!emcore_insert_event(event_data, (int*)handle, &err)) {
+	if (!emcore_insert_event(event_data, handle, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", err);
 		goto FINISH_OFF;
 	}

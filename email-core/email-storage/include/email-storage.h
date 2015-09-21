@@ -1006,7 +1006,12 @@ INTERNAL_FUNC int emstorage_get_mails(char *multi_user_name, int account_id, int
 
 INTERNAL_FUNC int emstorage_get_searched_mail_list(char *multi_user_name, int account_id, int mailbox_id, int thread_id, int search_type, const char *search_value, int start_index, int limit_count, email_sort_type_t sorting, int transaction, email_mail_list_item_t **mail_list,  int *result_count,  int *err_code);
 
-INTERNAL_FUNC int emstorage_get_maildata_by_servermailid(char *multi_user_name, int mailbox_id, char *server_mail_id, emstorage_mail_tbl_t **mail, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_get_maildata_by_servermailid(char *multi_user_name, 
+															char *server_mail_id, 
+															int mailbox_id, 
+															emstorage_mail_tbl_t **mail, 
+															int transaction, 
+															int *err_code);
 
 INTERNAL_FUNC int emstorage_get_unread_mailid(char *multi_user_name, int account_id, int vip_mode, int **mail_ids, int *mail_number, int *err_code);
 
@@ -1499,7 +1504,17 @@ INTERNAL_FUNC int emstorage_get_thread_id_of_thread_mails(char *multi_user_name,
 
 INTERNAL_FUNC int emstorage_get_thread_id_by_mail_id(char *multi_user_name, int mail_id, int *thread_id, int *err_code);
 
-INTERNAL_FUNC int emstorage_update_latest_thread_mail(char *multi_user_name, int account_id, int mailbox_id, int thread_id, int *updated_thread_id, int latest_mail_id, int thread_item_count, int noti_type, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_update_latest_thread_mail(char *multi_user_name, 
+														int account_id, 
+														int mailbox_id, 
+														int mailbox_type,
+														int thread_id, 
+														int *updated_thread_id, 
+														int latest_mail_id, 
+														int thread_item_count, 
+														int noti_type, 
+														int transaction, 
+														int *err_code);
 
 INTERNAL_FUNC int emstorage_get_thread_id_from_mailbox(char *multi_user_name, int account_id, int mailbox_id, char *mail_subject, int *thread_id, int *thread_item_count);
 

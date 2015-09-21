@@ -400,8 +400,7 @@ INTERNAL_FUNC int emdaemon_validate_account_and_update(char *multi_user_name, in
 	email_event_t *event_data = NULL;
 
 	event_data = em_malloc(sizeof(email_event_t));
-
-	if(!event_data) { /*prevent 53094*/
+	if (!event_data) { /*prevent 53094*/
 		EM_DEBUG_EXCEPTION("em_malloc failed");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;

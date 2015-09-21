@@ -454,9 +454,15 @@ FINISH_OFF:
 	return err;
 }
 
-EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_id_array, int input_mailbox_id_count, int input_on_server, int *output_handle)
+EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_id_array, 
+										int input_mailbox_id_count, int input_on_server, 
+										int *output_handle)
 {
-	EM_DEBUG_API_BEGIN ("input_account_id[%d] input_mailbox_id_array[%p] input_mailbox_id_count[%d] input_on_server[%d] output_handle[%p]", input_mailbox_id_array, input_mailbox_id_array, input_mailbox_id_count, input_on_server, output_handle);
+	EM_DEBUG_API_BEGIN ("input_account_id[%d] input_mailbox_id_array[%p] "
+						"input_mailbox_id_count[%d] input_on_server[%d] "
+						"output_handle[%p]", input_mailbox_id_array, input_mailbox_id_array, 
+						input_mailbox_id_count, input_on_server, output_handle);
+
 	int err = EMAIL_ERROR_NONE;
     char *multi_user_name = NULL;
 	email_account_server_t account_server_type;
@@ -474,7 +480,11 @@ EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_
     }
 
 	/*  check account bind type and branch off  */
-	if (em_get_account_server_type_by_account_id(multi_user_name, input_account_id, &account_server_type, false, &err) == false) {
+	if (em_get_account_server_type_by_account_id(multi_user_name, 
+													input_account_id, 
+													&account_server_type, 
+													false, 
+													&err) == false) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
@@ -513,7 +523,8 @@ EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_
 		task_parameter.mailbox_id_count  = input_mailbox_id_count;
 		task_parameter.on_server         = input_on_server;
 
-		if ((err = emipc_execute_proxy_task(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, &task_parameter)) != EMAIL_ERROR_NONE) {
+		if ((err = emipc_execute_proxy_task(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, 
+											&task_parameter)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("execute_proxy_task failed [%d]", err);
 			goto FINISH_OFF;
 		}

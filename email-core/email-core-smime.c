@@ -317,7 +317,8 @@ INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate,
 
 	signed_message = PKCS7_sign(NULL, NULL, other_certs, bio_mime_entity, flags);
 	if (!signed_message) {
-		EM_DEBUG_EXCEPTION("Error creating PKCS#7 structure");
+		unsigned long error = ERR_get_error();
+		EM_DEBUG_EXCEPTION("Error creating PKCS#7 structure : [%ld][%s]", error, ERR_error_string(error, NULL));
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
@@ -326,19 +327,22 @@ INTERNAL_FUNC int emcore_smime_set_signed_message(char *certificate,
 	digest = emcore_get_digest_algorithm(digest_type);
 
 	if (!PKCS7_sign_add_signer(signed_message, cert, private_key, digest, flags)) {
-		EM_DEBUG_EXCEPTION("PKCS7_sign_add_signer failed");
+		unsigned long error = ERR_get_error();
+		EM_DEBUG_EXCEPTION("PKCS7_sign_add_signer failed : [%ld][%s]", error, ERR_error_string(error, NULL));
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 
 	if (!PKCS7_final(signed_message, bio_mime_entity, flags)) {
-		EM_DEBUG_EXCEPTION("PKCS7_final failed");
+		unsigned long error = ERR_get_error();
+		EM_DEBUG_EXCEPTION("PKCS7_final failed : [%ld][%s]", error, ERR_error_string(error, NULL));
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 
 	if (!i2d_PKCS7_bio_stream(smime_attachment, signed_message, bio_mime_entity, flags)) {
-		EM_DEBUG_EXCEPTION("i2d_PKCS7_bio_stream failed");
+		unsigned long error = ERR_get_error();
+		EM_DEBUG_EXCEPTION("i2d_PKCS7_bio_stream failed : [%ld][%s]", error, ERR_error_string(error, NULL));
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
@@ -412,13 +416,15 @@ INTERNAL_FUNC int emcore_smime_set_encrypt_message(char *multi_user_name,
 	
 	encrypt_message = PKCS7_encrypt(recipient_certs, bio_mime_entity, cipher, flags);
 	if (encrypt_message == NULL) {
-		EM_DEBUG_EXCEPTION("PKCS7_encrypt failed [%ld]", ERR_get_error());
+		unsigned long error = ERR_get_error();
+		EM_DEBUG_EXCEPTION("PKCS7_encrypt failed [%ld][%s]", error, ERR_error_string(error, NULL));
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 
 	if (!i2d_PKCS7_bio_stream(smime_attachment, encrypt_message, bio_mime_entity, flags)) {
-		EM_DEBUG_EXCEPTION("i2d_PKCS7_bio_stream failed");
+		unsigned long error = ERR_get_error();
+		EM_DEBUG_EXCEPTION("i2d_PKCS7_bio_stream failed : [%ld][%s]", error, ERR_error_string(error, NULL));
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
@@ -503,7 +509,8 @@ INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *multi_user_n
 	/* 3. signing */
 	signed_message = PKCS7_sign(NULL, NULL, other_certs, bio_mime_entity, flags);
 	if (!signed_message) {
-		EM_DEBUG_EXCEPTION("Error creating PKCS#7 structure");
+		unsigned long error = ERR_get_error();
+		EM_DEBUG_EXCEPTION("Error creating PKCS#7 structure : [%ld][%s]", error, ERR_error_string(error, NULL));
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
@@ -513,7 +520,8 @@ INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *multi_user_n
 
 	/* 5. Apply a digest algorithm */
 	if (!PKCS7_sign_add_signer(signed_message, cert, private_key, digest, flags)) {
-		EM_DEBUG_EXCEPTION("PKCS7_sign_add_signer failed");
+		unsigned long error = ERR_get_error();
+		EM_DEBUG_EXCEPTION("PKCS7_sign_add_signer failed : [%ld][%s]", error, ERR_error_string(error, NULL));
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
@@ -529,8 +537,10 @@ INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *multi_user_n
 		goto FINISH_OFF;
 	}
 
-	if (!SMIME_write_PKCS7(bio_signed_message, signed_message, bio_mime_entity, flags | SMIME_OLDMIME | SMIME_CRLFEOL)) {
-		EM_DEBUG_EXCEPTION("SMIME_write_PKCS7 error");
+	if (!SMIME_write_PKCS7(bio_signed_message, signed_message, bio_mime_entity, 
+						flags | SMIME_OLDMIME | SMIME_CRLFEOL)) {
+		unsigned long error = ERR_get_error();
+		EM_DEBUG_EXCEPTION("SMIME_write_PKCS7 error : [%ld][%s]", error, ERR_error_string(error, NULL));
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
@@ -559,14 +569,16 @@ INTERNAL_FUNC int emcore_smime_set_signed_and_encrypt_message(char *multi_user_n
 
 	encrypt_message = PKCS7_encrypt(recipient_certs, bio_signed_message, cipher, flags);
 	if (encrypt_message == NULL) {
-		EM_DEBUG_EXCEPTION("PKCS7_encrypt failed [%ld]", ERR_get_error());
+		unsigned long error = ERR_get_error();
+		EM_DEBUG_EXCEPTION("PKCS7_encrypt failed [%ld][%s]", error, ERR_error_string(error, NULL));
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 	
 	/* 4. Write the encrypt message in file */
 	if (!i2d_PKCS7_bio_stream(smime_attachment, encrypt_message, bio_mime_entity, flags)) {
-		EM_DEBUG_EXCEPTION("i2d_PKCS7_bio_stream failed");
+		unsigned long error = ERR_get_error();
+		EM_DEBUG_EXCEPTION("i2d_PKCS7_bio_stream failed : [%ld][%s]", error, ERR_error_string(error, NULL));
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
@@ -649,7 +661,8 @@ INTERNAL_FUNC int emcore_smime_get_decrypt_message(char *encrypt_message,
 	}
 
 	if (!PKCS7_decrypt(p7_encrypt_message, private_key, cert, out_buf, 0)) {
-		EM_DEBUG_EXCEPTION("Decrpyt failed");
+		unsigned long error = ERR_get_error();
+		EM_DEBUG_EXCEPTION("Decrpyt failed : [%ld][%s]", error, ERR_error_string(error, NULL));
 		err = EMAIL_ERROR_DECRYPT_FAILED;
 		goto FINISH_OFF;
 	}

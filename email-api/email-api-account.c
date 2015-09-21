@@ -469,7 +469,8 @@ EXPORT_API int email_validate_account_ex(email_account_t* account, int *handle)
 	int size = 0;
 	int err = EMAIL_ERROR_NONE;
 
-	if (account == NULL || account->user_email_address == NULL || account->incoming_server_user_name == NULL || account->incoming_server_address == NULL||
+	if (account == NULL || account->user_email_address == NULL || 
+		account->incoming_server_user_name == NULL || account->incoming_server_address == NULL||
 		account->outgoing_server_user_name == NULL || account->outgoing_server_address == NULL)  {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return EMAIL_ERROR_INVALID_PARAM;

@@ -326,7 +326,12 @@ INTERNAL_FUNC int emcore_delete_mail(char *multi_user_name, int account_id, int 
  * @return This function returns true on success or false on failure.
  */
 INTERNAL_FUNC int   emcore_delete_all_mails_of_acount(char *multi_user_name, int input_account_id);
-INTERNAL_FUNC int   emcore_delete_all_mails_of_mailbox(char *multi_user_name, int input_account_id, int input_mailbox_id, int input_from_server, int *err_code);
+INTERNAL_FUNC int   emcore_delete_all_mails_of_mailbox(char *multi_user_name, 
+														int input_account_id, 
+														int input_mailbox_id, 
+														int input_mailbox_type,
+														int input_from_server, 
+														int *err_code);
 
 INTERNAL_FUNC void  emcore_free_mail_data_list(email_mail_data_t **mail_list, int count);
 INTERNAL_FUNC void  emcore_free_mail_data(email_mail_data_t *mail);
@@ -363,12 +368,19 @@ INTERNAL_FUNC int   emcore_delete_rule(char *multi_user_name, int filter_id);
  * @param[in] mailbox_id                Specifies the id of mailbox
  * @param[in] input_search_filter       Specifies the filter list for searching field
  * @param[in] input_search_filter_count Specifies the filter count
+ * @param[in] cancellable               Specifies the cancellable
  * @param[in] handle                    Specifies the handle for searching mails
  * @remarks N/A
  * @return EMAIL_ERROR_NONE on success or an error code (refer to EMAIL_ERROR_XXX) on failure 
  */
 
-INTERNAL_FUNC int   emcore_search_on_server(char *multi_user_name, int account_id, int mailbox_id, email_search_filter_t *input_search_filter, int input_search_filter_count, int handle_to_be_published);
+INTERNAL_FUNC int   emcore_search_on_server(char *multi_user_name, 
+											int account_id, 
+											int mailbox_id, 
+											email_search_filter_t *input_search_filter, 
+											int input_search_filter_count, 
+											int cancellable,
+											int event_handle);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

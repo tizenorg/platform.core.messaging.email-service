@@ -163,9 +163,8 @@ INTERNAL_FUNC void* emcore_default_async_task_handler(void *input_param)
 	}
 
 FINISH_OFF:
-	emcore_finalize_async_task_handler(task, err);
 
-	EM_SAFE_FREE(decoded_task_parameter);
+	emcore_finalize_async_task_handler(task, err);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return NULL;
@@ -197,8 +196,6 @@ INTERNAL_FUNC int emcore_default_sync_task_handler(void *intput_param)
 		err = *return_err;
 		free(return_err);
 	}
-
-	EM_SAFE_FREE(decoded_task_parameter);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;

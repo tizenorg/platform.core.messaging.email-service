@@ -273,7 +273,7 @@ INTERNAL_FUNC int emdaemon_add_meeting_request(char *multi_user_name, int accoun
 /**
  * Delete a mail or multiple mails.
  *
- * @param[in] mailbox_id		Specifies the mailbox.
+ * @param[in] account_id		Specifies the account.
  * @param[in] mail_id			Specifies the arrary of mail id.
  * @param[in] num				Specifies the number of mail id.
  * @param[in] from_server	    Specifies whether mails are deleted from server.
@@ -284,7 +284,7 @@ INTERNAL_FUNC int emdaemon_add_meeting_request(char *multi_user_name, int accoun
  * @return This function returns true on success or false on failure.
  */
 
-INTERNAL_FUNC int emdaemon_delete_mail(char *multi_user_name, int mailbox_id, int mail_id[], int num, int from_server,  int *handle, int* err_code);
+INTERNAL_FUNC int emdaemon_delete_mail(char *multi_user_name, int account_id, int mail_id[], int num, int from_server,  int *handle, int* err_code);
 
 /**
  * Delete all mail from a mailbox.

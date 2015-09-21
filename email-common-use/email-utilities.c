@@ -52,10 +52,14 @@ INTERNAL_FUNC void* em_malloc(int len)
 		return NULL;
 	}
 
-	void *p = calloc(1,len);
-	if (!p)
+	void *p = NULL;
+	p = malloc(len);
+	if (!p) {
 		EM_DEBUG_PERROR("malloc failed");
+		return NULL;
+	}
 
+	memset(p, 0x00, len);
 	return p;
 }
 

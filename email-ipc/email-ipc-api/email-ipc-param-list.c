@@ -229,7 +229,7 @@ EXPORT_API void *emipc_get_param_of_param_list(emipc_param_list *param_list, int
 {
 	EM_DEBUG_FUNC_BEGIN("index [%d]", index);
 	if (index < 0 || index >= param_list->param_count) {
-		EM_DEBUG_EXCEPTION("Index value is not valid");
+//		EM_DEBUG_EXCEPTION("Index value is not valid");
 		return NULL;
 	}
 	return emipc_get_data(param_list->params[index]);
@@ -239,7 +239,7 @@ EXPORT_API int emipc_get_param_len_of_param_list(emipc_param_list *param_list, i
 {
 	EM_DEBUG_FUNC_BEGIN();
 	if (index < 0 || index >= param_list->param_count) {
-		EM_DEBUG_EXCEPTION("Index valud is not valid");
+//		EM_DEBUG_EXCEPTION("Index value is not valid");
 		return 0;
 	}
 	return emipc_get_length(param_list->params[index]);

@@ -340,11 +340,11 @@ EXPORT_API int email_verify_signature_ex(email_mail_data_t *input_mail_data, ema
 	}
 
 	if (input_mail_data->smime_type == EMAIL_SMIME_SIGNED) {
-                emcore_init_openssl_library();
+		emcore_init_openssl_library();
 		if (!emcore_verify_signature(input_attachment_data[count].attachment_path, input_mail_data->file_path_mime_entity, verify, &err)) 
 			EM_DEBUG_EXCEPTION("emcore_verify_signature failed : [%d]", err);
 
-                emcore_clean_openssl_library();
+		emcore_clean_openssl_library();
 	} else if(input_mail_data->smime_type == EMAIL_PGP_SIGNED) {
 		if ((err = emcore_pgp_get_verify_signature(input_attachment_data[count].attachment_path, input_mail_data->file_path_mime_entity, input_mail_data->digest_type, verify)) != EMAIL_ERROR_NONE)
 			EM_DEBUG_EXCEPTION("emcore_pgp_get_verify_siganture failed : [%d]", err);

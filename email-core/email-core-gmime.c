@@ -1438,14 +1438,16 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_foreach_cb(GMimeObject *parent, GMime
 		/*Figure out TEXT or ATTACHMENT(INLINE) ?*/
 		int result = false;
 		if (disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) {
-                	if (content_id &&
-		        	(emcore_search_string_from_file(cnt_info->text.html, content_id, NULL, &result) == EMAIL_ERROR_NONE && result)) {
+			if (content_id && (emcore_search_string_from_file(cnt_info->text.html, 
+																content_id, 
+																NULL, 
+																&result) == EMAIL_ERROR_NONE && result)) {
 				content_disposition_type = INLINE_ATTACHMENT;
 				EM_DEBUG_LOG("INLINE_ATTACHMENT");
-                        } else {
-        			content_disposition_type = ATTACHMENT;
-        			EM_DEBUG_LOG("ATTACHMENT");
-                        }
+			} else {
+				content_disposition_type = ATTACHMENT;
+				EM_DEBUG_LOG("ATTACHMENT");
+			}
 		} else if ((content_id || content_location) && (ctype_name || disposition_filename)) {
 			if (cnt_info->attachment_only) {
 				content_disposition_type = ATTACHMENT;
@@ -1956,8 +1958,10 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 				EM_DEBUG_LOG("INLINE_ATTACHMENT");
 			}
 		} else {
-			if (content_id &&
-					(emcore_search_string_from_file(cnt_info->text.html, content_id, NULL, &result) == EMAIL_ERROR_NONE && result)) {
+			if (content_id && (emcore_search_string_from_file(cnt_info->text.html, 
+																content_id, 
+																NULL, 
+																&result) == EMAIL_ERROR_NONE && result)) {
 				content_disposition_type = INLINE_ATTACHMENT;
 				EM_DEBUG_LOG("INLINE_ATTACHMENT");
 			} else if (content_id || content_location) {
@@ -1974,8 +1978,9 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 					}
 				}
 			} else {
-				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+				if (g_ascii_strcasecmp(ctype_type, "text") == 0 && 
+						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+						 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
 					EM_DEBUG_LOG("TEXT");
 				} else {
 					content_disposition_type = ATTACHMENT;

@@ -596,12 +596,12 @@ INTERNAL_FUNC void emcore_get_sync_fail_event_data(email_event_t **event_data)
 		new_event->event_param_data_3 = EM_SAFE_STRDUP(sync_failed_event_data->event_param_data_3);
 	new_event->event_param_data_4 = sync_failed_event_data->event_param_data_4;
 	new_event->event_param_data_5 = sync_failed_event_data->event_param_data_5;
+	new_event->multi_user_name = EM_SAFE_STRDUP(sync_failed_event_data->multi_user_name);
 
 	*event_data = new_event;
 
 	emcore_free_event(sync_failed_event_data);
 	EM_SAFE_FREE(sync_failed_event_data);
-	sync_failed_event_data = NULL;
 }
 
 INTERNAL_FUNC int emcore_insert_event_for_sending_mails(email_event_t *event_data, int *handle, int *err_code)
@@ -1501,6 +1501,8 @@ INTERNAL_FUNC int emcore_free_event(email_event_t *event_data)
 						case EMAIL_SEARCH_FILTER_TYPE_TO               :
 						case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
 						case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  :
+						case EMAIL_SEARCH_FILTER_TYPE_CHARSET          :
+						case EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED     :
 							EM_SAFE_FREE(search_filter[i].search_filter_key_value.string_type_key_value);
 							break;
 						default:

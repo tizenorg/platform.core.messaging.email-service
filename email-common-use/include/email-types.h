@@ -1112,6 +1112,8 @@ typedef enum {
     EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       = 43,  /* string type */     /**< Messages with specified message ID */
     EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY  = 50,  /* integer type */    /**< Messages that have a header with the specified priority */
     EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  = 60,  /* string type */     /**< Messages that contain the specified string in attachment name */
+	EMAIL_SEARCH_FILTER_TYPE_CHARSET          = 61,  /* string type */     /**< Messages of encoded type */
+	EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED     = 62,  /* string type */     /**< Messages that extend and user defined string */ 
 } email_search_filter_type;
 
 typedef enum {

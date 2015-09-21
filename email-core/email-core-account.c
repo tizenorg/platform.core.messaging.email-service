@@ -457,7 +457,8 @@ INTERNAL_FUNC int emcore_delete_account(char *multi_user_name, int account_id, i
 			error_code_from_account_svc = account_delete_from_db_by_id(account_to_be_deleted->account_svc_id);
 			EM_DEBUG_LOG("account_delete_from_db_by_id returns [%d]", error_code_from_account_svc);
 
-			emcore_unset_join_zone(join_zone);
+			if (join_zone)
+				emcore_unset_join_zone(join_zone);
 		}
 
 		if (account_to_be_deleted) {
@@ -622,7 +623,7 @@ INTERNAL_FUNC int emcore_create_account(char *multi_user_name, email_account_t *
 			if(error_code != ACCOUNT_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("account_create failed [%d]", error_code);
 				err = error_code;
-				emcore_unset_join_zone(join_zone);
+				if (join_zone) emcore_unset_join_zone(join_zone);
 				goto FINISH_OFF;
 			}
 
@@ -681,7 +682,7 @@ INTERNAL_FUNC int emcore_create_account(char *multi_user_name, email_account_t *
 			if (account_handle)
 				account_destroy(account_handle);
 
-			emcore_unset_join_zone(join_zone);
+			if (join_zone) emcore_unset_join_zone(join_zone);
 		}
 	}
 

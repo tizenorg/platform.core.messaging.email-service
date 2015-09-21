@@ -317,6 +317,8 @@ INTERNAL_FUNC int em_send_notification_to_active_sync_engine(int subType, ASNoti
 					case EMAIL_SEARCH_FILTER_TYPE_TO               :
 					case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
 					case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  :
+					case EMAIL_SEARCH_FILTER_TYPE_CHARSET          :
+					case EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED     :
 						dbus_message_append_args(signal, DBUS_TYPE_STRING, &(data->search_mail_on_server.search_filter_list[i].search_filter_key_value.string_type_key_value), DBUS_TYPE_INVALID);
 						break;
 

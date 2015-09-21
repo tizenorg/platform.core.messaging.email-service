@@ -251,15 +251,15 @@ int emcore_get_long_encoded_path_with_account_info(char *multi_user_name, email_
             SNPRINTF(p, long_enc_path_len, "{%s:%d/%s/user=%d%s%s",
                 account->incoming_server_address,
                 account->incoming_server_port_number,
-                account->incoming_server_type == EMAIL_SERVER_TYPE_POP3 ? "pop3" : "imap", 
-                account->account_id, 
-                TOKEN_FOR_MULTI_USER, 
+                account->incoming_server_type == EMAIL_SERVER_TYPE_POP3 ? "pop3" : "imap",
+                account->account_id,
+                TOKEN_FOR_MULTI_USER,
                 multi_user_name);
         } else {
             SNPRINTF(p, long_enc_path_len, "{%s:%d/%s/user=%d",
                 account->incoming_server_address,
                 account->incoming_server_port_number,
-                account->incoming_server_type == EMAIL_SERVER_TYPE_POP3 ? "pop3" : "imap", 
+                account->incoming_server_type == EMAIL_SERVER_TYPE_POP3 ? "pop3" : "imap",
                 account->account_id);
         }
 
@@ -298,12 +298,12 @@ int emcore_get_long_encoded_path_with_account_info(char *multi_user_name, email_
 
 		if (account->outgoing_server_need_authentication > 0) {
             if (multi_user_name) {
-			    SNPRINTF(p + EM_SAFE_STRLEN(p), long_enc_path_len-(EM_SAFE_STRLEN(p)), "/user=%d%s%s", 
-                                                                                        account->account_id, 
-                                                                                        TOKEN_FOR_MULTI_USER, 
+			    SNPRINTF(p + EM_SAFE_STRLEN(p), long_enc_path_len-(EM_SAFE_STRLEN(p)), "/user=%d%s%s",
+                                                                                        account->account_id,
+                                                                                        TOKEN_FOR_MULTI_USER,
                                                                                         multi_user_name);
             } else {
-			    SNPRINTF(p + EM_SAFE_STRLEN(p), long_enc_path_len-(EM_SAFE_STRLEN(p)), "/user=%d", 
+			    SNPRINTF(p + EM_SAFE_STRLEN(p), long_enc_path_len-(EM_SAFE_STRLEN(p)), "/user=%d",
                                                                                         account->account_id);
             }
 
@@ -1012,9 +1012,9 @@ void emcore_display_unread_in_badge(void *data)
 	int total_mail_count = 0;
 	int unseen = 0;
 
-	if (!emcore_get_mail_count_by_query((char *)data, ALL_ACCOUNT, 
-										EMAIL_MAILBOX_TYPE_INBOX, 0, 
-										&total_mail_count, &total_unread_count, 
+	if (!emcore_get_mail_count_by_query((char *)data, ALL_ACCOUNT,
+										EMAIL_MAILBOX_TYPE_INBOX, 0,
+										&total_mail_count, &total_unread_count,
 										&err)) {
 		EM_DEBUG_EXCEPTION("emcore_get_mail_count_by_query failed");
 		goto FINISH_OFF;
@@ -2020,8 +2020,8 @@ int emcore_get_storage_status(void)
 	EM_DEBUG_FUNC_BEGIN();
 	int storage_status = 0, nError = 0;
 
-#if !GLIB_CHECK_VERSION(2, 36, 0) 
-	g_type_init(); 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
+	g_type_init();
 #endif
 
 #ifdef STORAGE_STATUS
@@ -2156,7 +2156,7 @@ char *emcore_get_alias_of_mailbox(const char *mailbox_path)
 
 
 	mailbox = g_strdup(mailbox_path);
-	token_list = g_strsplit_set(mailbox, "/", -1);
+	token_list = g_strsplit_set(mailbox, "/\\", -1);
 
 	if(token_list == NULL) {
 		EM_DEBUG_LOG("g_strsplit_set failed.");
@@ -2652,7 +2652,7 @@ int emcore_get_preview_text_from_file(char *multi_user_name, const char *input_p
 	} else {
 		prefix_path = strdup("");
 	}
-	
+
 	if (input_html_path) { /*prevent 26249*/
 		/*	get preview text from html file */
 		char result_buffer[MAX_PREVIEW_TEXT_LENGTH] = { 0, };
@@ -4117,7 +4117,7 @@ static int emcore_get_next_peak_start_time(emstorage_account_tbl_t *input_accoun
 	if (time_info == NULL) {
 		EM_DEBUG_EXCEPTION("localtime failed");
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
-		goto FINISH_OFF;		
+		goto FINISH_OFF;
 	}
 
 	EM_DEBUG_LOG("input time and date: %s", asctime(time_info));
@@ -4191,7 +4191,7 @@ static int emcore_check_time_in_peak_schedule(emstorage_account_tbl_t *input_acc
 	if (time_info == NULL) {
 		EM_DEBUG_EXCEPTION("localtime failed");
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
-		goto FINISH_OFF;		
+		goto FINISH_OFF;
 	}
 
 	EM_DEBUG_LOG("input time and date: %s", asctime(time_info));
@@ -4344,7 +4344,7 @@ int emcore_get_mail_contact_info(char *multi_user_name, email_mail_contact_info_
 
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	
+
 	if (!emcore_get_mail_contact_info_with_update(multi_user_name, contact_info, full_address, 0, &err))
 		EM_DEBUG_EXCEPTION("emcore_get_mail_contact_info_with_update failed [%d]", err);
 	else
@@ -4627,10 +4627,10 @@ FINISH_OFF:
 }
 
 int emcore_set_contacts_log (char *multi_user_name,
-                                int   account_id, 
-                                char *email_address, 
-                                char *subject, 
-                                time_t date_time, 
+                                int   account_id,
+                                char *email_address,
+                                char *subject,
+                                time_t date_time,
                                 email_action_t action)
 {
 	/* arg shall be destroyed in emcore_set_contacts_log_internal */
@@ -4669,11 +4669,11 @@ INTERNAL_FUNC int emcore_set_sent_contacts_log(char *multi_user_name, emstorage_
 			rfc822_parse_adrlist(&addr, address_array[i], NULL);
 			for (p_addr = addr ; p_addr ;p_addr = p_addr->next) {
 				SNPRINTF(email_address, MAX_EMAIL_ADDRESS_LENGTH, "%s@%s", addr->mailbox, addr->host);
-				if ((err = emcore_set_contacts_log(multi_user_name, 
-                                                    input_mail_data->account_id, 
-                                                    email_address, 
-                                                    input_mail_data->subject, 
-                                                    input_mail_data->date_time, 
+				if ((err = emcore_set_contacts_log(multi_user_name,
+                                                    input_mail_data->account_id,
+                                                    email_address,
+                                                    input_mail_data->subject,
+                                                    input_mail_data->date_time,
                                                     EMAIL_ACTION_SEND_MAIL)) != EMAIL_ERROR_NONE) {
 					EM_DEBUG_EXCEPTION("emcore_set_contacts_log failed : [%d]", err);
 					goto FINISH_OFF;
@@ -4702,11 +4702,11 @@ INTERNAL_FUNC int emcore_set_received_contacts_log(char *multi_user_name, emstor
 	EM_DEBUG_FUNC_BEGIN("input_mail_data : [%p]", input_mail_data);
 	int err = EMAIL_ERROR_NONE;
 
-	if ((err = emcore_set_contacts_log(multi_user_name, 
-                                        input_mail_data->account_id, 
-                                        input_mail_data->email_address_sender, 
-                                        input_mail_data->subject, 
-                                        input_mail_data->date_time, 
+	if ((err = emcore_set_contacts_log(multi_user_name,
+                                        input_mail_data->account_id,
+                                        input_mail_data->email_address_sender,
+                                        input_mail_data->subject,
+                                        input_mail_data->date_time,
                                         EMAIL_ACTION_SYNC_HEADER)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_set_contacts_log failed [%d]", err);
 	}
@@ -4724,7 +4724,7 @@ typedef struct _contacts_delete_data
 gboolean emcore_delete_contacts_log_internal(void* arg)
 {
 	EM_DEBUG_FUNC_BEGIN();
-    
+
     contacts_delete_data *data = (contacts_delete_data *)arg;
 	int contacts_error = CONTACTS_ERROR_NONE;
 
@@ -4768,7 +4768,7 @@ INTERNAL_FUNC int emcore_delete_contacts_log(char *multi_user_name, int account_
 
 	g_main_context_invoke (NULL, emcore_delete_contacts_log_internal, (void*) data);
 
-	return EMAIL_ERROR_NONE;		
+	return EMAIL_ERROR_NONE;
 }
 
 INTERNAL_FUNC int emcore_get_mail_display_name (char *multi_user_name, char *email_address, char **contact_display_name)
@@ -4783,8 +4783,8 @@ INTERNAL_FUNC int emcore_get_mail_display_name (char *multi_user_name, char *ema
 	GVariant *result = NULL;
 	int ret = EMAIL_ERROR_NONE;
 
-#if !GLIB_CHECK_VERSION(2, 36, 0) 
-	g_type_init(); 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
+	g_type_init();
 #endif
 
 	GDBusProxy* bproxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
@@ -4802,17 +4802,17 @@ INTERNAL_FUNC int emcore_get_mail_display_name (char *multi_user_name, char *ema
 		goto FINISH_OFF;
 	}
 
-	result = g_dbus_proxy_call_sync (bproxy, 
-                                      "GetDisplayName", 
-                                      g_variant_new ("(ss)", email_address, multi_user_name), 
-                                      G_DBUS_CALL_FLAGS_NONE, 
-                                      -1, 
-                                      NULL, 
+	result = g_dbus_proxy_call_sync (bproxy,
+                                      "GetDisplayName",
+                                      g_variant_new ("(ss)", email_address, multi_user_name),
+                                      G_DBUS_CALL_FLAGS_NONE,
+                                      -1,
+                                      NULL,
                                       &gerror);
 
 
 	if (!result) {
-		EM_DEBUG_EXCEPTION ("g_dbus_proxy_call_sync 'GetDisplayName' error [%s]", 
+		EM_DEBUG_EXCEPTION ("g_dbus_proxy_call_sync 'GetDisplayName' error [%s]",
                                  gerror->message);
 		ret = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
 		goto FINISH_OFF;
@@ -4837,8 +4837,8 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC int emcore_get_mail_display_name_internal (char *multi_user_name, 
-                                                        char *email_address, 
+INTERNAL_FUNC int emcore_get_mail_display_name_internal (char *multi_user_name,
+                                                        char *email_address,
                                                         char **contact_display_name)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("contact_name_value[%s], contact_display_name[%p]", email_address, contact_display_name);
@@ -4915,7 +4915,7 @@ INTERNAL_FUNC int emcore_connect_contacts_service(char *multi_user_name)
     if (EM_SAFE_STRLEN(multi_user_name) > 0) {
 		if ((err = emcore_set_join_zone(multi_user_name, &join_zone)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_set_join_zone failed : [%d]", err);
-			return err;			
+			return err;
 		}
     }
 
@@ -4943,7 +4943,7 @@ INTERNAL_FUNC int emcore_disconnect_contacts_service(char *multi_user_name)
 	if (EM_SAFE_STRLEN(multi_user_name) > 0) {
 		if ((err = emcore_set_join_zone(multi_user_name, &join_zone)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_set_join_zone failed : [%d]", err);
-			return err;			
+			return err;
 		}
     }
 
@@ -5001,8 +5001,8 @@ INTERNAL_FUNC int emcore_check_blocking_mode (char *multi_user_name, char *sende
 	GVariant *result = NULL;
 	int ret = EMAIL_ERROR_NONE;
 
-#if !GLIB_CHECK_VERSION(2, 36, 0) 
-	g_type_init(); 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
+	g_type_init();
 #endif
 
 	GDBusProxy* bproxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION,
@@ -5020,17 +5020,17 @@ INTERNAL_FUNC int emcore_check_blocking_mode (char *multi_user_name, char *sende
 		goto FINISH_OFF;
 	}
 
-	result = g_dbus_proxy_call_sync (bproxy, 
-                                      "CheckBlockingMode", 
-                                      g_variant_new ("(ss)", sender_address, multi_user_name), 
-                                      G_DBUS_CALL_FLAGS_NONE, 
-                                      -1, 
-                                      NULL, 
+	result = g_dbus_proxy_call_sync (bproxy,
+                                      "CheckBlockingMode",
+                                      g_variant_new ("(ss)", sender_address, multi_user_name),
+                                      G_DBUS_CALL_FLAGS_NONE,
+                                      -1,
+                                      NULL,
                                       &gerror);
 
 
 	if (!result) {
-		EM_DEBUG_EXCEPTION ("g_dbus_proxy_call_sync 'CheckBlockingMode' error [%s]", 
+		EM_DEBUG_EXCEPTION ("g_dbus_proxy_call_sync 'CheckBlockingMode' error [%s]",
                                  gerror->message);
 		ret = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
 		goto FINISH_OFF;

@@ -3657,9 +3657,15 @@ FINISH_OFF:
 	return err;
 }
 
-INTERNAL_FUNC int emcore_delete_all_mails_of_mailbox(char *multi_user_name, int input_account_id, int input_mailbox_id, int input_from_server, int *err_code)
+INTERNAL_FUNC int emcore_delete_all_mails_of_mailbox(char *multi_user_name, 
+														int input_account_id, 
+														int input_mailbox_id, 
+														int input_mailbox_type,
+														int input_from_server, 
+														int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("input_account_id[%d] input_mailbox_id[%d] input_from_server[%d] err_code[%p]", input_account_id, input_mailbox_id, input_from_server, err_code);
+	EM_DEBUG_FUNC_BEGIN("input_account_id[%d] input_mailbox_id[%d] input_from_server[%d] err_code[%p]", 
+							input_account_id, input_mailbox_id, input_from_server, err_code);
 
 	int   ret = false;
 	int   err = EMAIL_ERROR_NONE;
@@ -3667,22 +3673,45 @@ INTERNAL_FUNC int emcore_delete_all_mails_of_mailbox(char *multi_user_name, int 
 	int   mail_id_count = 0;
 	char  conditional_clause[QUERY_SIZE] = { 0, };
 
-	if (!input_mailbox_id) {
+	if (input_mailbox_id <= 0 && input_mailbox_type <= 0) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		goto FINISH_OFF;
 	}
 
 	/* Delete all mails in specific mailbox */
+	SNPRINTF(conditional_clause, QUERY_SIZE, " where ");
 
-	SNPRINTF(conditional_clause, QUERY_SIZE, " where mailbox_id = %d ", input_mailbox_id);
+	if (input_mailbox_id <= 0 && input_mailbox_type > 0) {
+		SNPRINTF(conditional_clause + strlen(conditional_clause), QUERY_SIZE, 
+					"mailbox_type = %d ", input_mailbox_type);
+	} else if (input_mailbox_id > 0 && input_mailbox_type <= 0) {
+		SNPRINTF(conditional_clause + strlen(conditional_clause), QUERY_SIZE, 
+					"mailbox_id = %d ", input_mailbox_id);
+	} else {
+		SNPRINTF(conditional_clause + strlen(conditional_clause), QUERY_SIZE,
+					"mailbox_type = %d and mailbox_id = %d ", input_mailbox_type, input_mailbox_id);
+	}
 
-	emstorage_query_mail_id_list(multi_user_name, conditional_clause, false, &mail_id_array, &mail_id_count);
+	EM_DEBUG_LOG("command : [%s]", conditional_clause);
+
+	err = emstorage_query_mail_id_list(multi_user_name, conditional_clause, false, &mail_id_array, &mail_id_count);
+	if (err != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emstorage_query_mail_id_list failed : [%d]", err);
+		goto FINISH_OFF;
+	}
 
 	EM_DEBUG_LOG("emstorage_query_mail_id_list returns [%d]", mail_id_count);
 
 	if (mail_id_count > 0) {
-		if (!emcore_delete_mail(multi_user_name, input_account_id, mail_id_array, mail_id_count, input_from_server, EMAIL_DELETED_BY_COMMAND, false, &err)) {
+		if (!emcore_delete_mail(multi_user_name, 
+								input_account_id, 
+								mail_id_array, 
+								mail_id_count, 
+								input_from_server, 
+								EMAIL_DELETED_BY_COMMAND, 
+								false, 
+								&err)) {
 			EM_DEBUG_EXCEPTION("emcore_delete_mail failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -3691,6 +3720,7 @@ INTERNAL_FUNC int emcore_delete_all_mails_of_mailbox(char *multi_user_name, int 
 	ret = true;
 
 FINISH_OFF:
+
 	EM_SAFE_FREE(mail_id_array);
 
 	if (err_code != NULL)
@@ -3743,7 +3773,17 @@ INTERNAL_FUNC int emcore_delete_mails_from_local_storage(char *multi_user_name, 
 	/* Updating Thread informations */
 	for(i = 0; i < num; i++) {
 		if (result_mail_list[i].thread_id != 0) {
-			if (!emstorage_update_latest_thread_mail(multi_user_name, account_id, result_mail_list[i].mailbox_id, result_mail_list[i].thread_id, NULL, 0, 0, NOTI_THREAD_ID_CHANGED_BY_MOVE_OR_DELETE, false, &err)) {
+			if (!emstorage_update_latest_thread_mail(multi_user_name, 
+														account_id, 
+														result_mail_list[i].mailbox_id,
+														result_mail_list[i].mailbox_type,
+														result_mail_list[i].thread_id, 
+														NULL, 
+														0, 
+														0, 
+														NOTI_THREAD_ID_CHANGED_BY_MOVE_OR_DELETE, 
+														false, 
+														&err)) {
 				EM_DEBUG_EXCEPTION("emstorage_update_latest_thread_mail failed [%d]", err);
 				goto FINISH_OFF;
 			}
@@ -5059,19 +5099,49 @@ INTERNAL_FUNC int emcore_move_mail(char *multi_user_name, int mail_ids[], int ma
 			EM_DEBUG_LOG("emstorage_get_thread_id_of_thread_mails is failed.");
 
 		/* Original mailbox replace thread id */
-		if (!emstorage_update_latest_thread_mail(multi_user_name, account_id, mail_list[i].mailbox_id, mail_list[i].thread_id, NULL, 0, 0, NOTI_THREAD_ID_CHANGED_BY_MOVE_OR_DELETE, false, &err)) {
+		if (!emstorage_update_latest_thread_mail(multi_user_name, 
+													account_id, 
+													mail_list[i].mailbox_id,
+													mail_list[i].mailbox_type,
+													mail_list[i].thread_id, 
+													NULL, 
+													0, 
+													0, 
+													NOTI_THREAD_ID_CHANGED_BY_MOVE_OR_DELETE, 
+													false, 
+													&err)) {
 			EM_DEBUG_EXCEPTION("emstorage_update_latest_thread_mail failed [%d]", err);
 			goto FINISH_OFF;
 		}
 
 		/* Destination mailbox replace thread id */
 		if (p_thread_id == -1) {
-			if (!emstorage_update_latest_thread_mail(multi_user_name, account_id, p_mail_data->mailbox_id, p_mail_data->mail_id, NULL, p_mail_data->mail_id, 1, NOTI_THREAD_ID_CHANGED_BY_MOVE_OR_DELETE, false, &err)) {
+			if (!emstorage_update_latest_thread_mail(multi_user_name, 
+														account_id, 
+														p_mail_data->mailbox_id,
+														p_mail_data->mailbox_type,
+														p_mail_data->mail_id, 
+														NULL, 
+														p_mail_data->mail_id, 
+														1, 
+														NOTI_THREAD_ID_CHANGED_BY_MOVE_OR_DELETE, 
+														false, 
+														&err)) {
 				EM_DEBUG_EXCEPTION("emstorage_update_latest_thread_mail failed [%d]", err);
 				goto FINISH_OFF;
 			}
 		} else {
-			if (!emstorage_update_latest_thread_mail(multi_user_name, account_id, p_mail_data->mailbox_id, dest_prev_thread_id_list[i], NULL, 0, 0, NOTI_THREAD_ID_CHANGED_BY_MOVE_OR_DELETE, false, &err)) {
+			if (!emstorage_update_latest_thread_mail(multi_user_name, 
+														account_id, 
+														p_mail_data->mailbox_id,
+														p_mail_data->mailbox_type,
+														dest_prev_thread_id_list[i], 
+														NULL, 
+														0, 
+														0, 
+														NOTI_THREAD_ID_CHANGED_BY_MOVE_OR_DELETE, 
+														false, 
+														&err)) {
 				EM_DEBUG_EXCEPTION("emstorage_update_latest_thread_mail failed [%d]", err);
 				goto FINISH_OFF;
 			}
@@ -7084,475 +7154,6 @@ INTERNAL_FUNC void emcore_free_attachment_info(struct attachment_info *attchment
 	EM_DEBUG_FUNC_END();
 }
 
-#if 0
-static char *make_time_string_to_time_t(time_t time)
-{
-	char *time_string = NULL;
-	struct tm *struct_time = NULL;
-
-	if (!time) {
-		EM_DEBUG_EXCEPTION("Invalid paramter");
-		return NULL;
-	}
-
-	time_string = em_malloc(MAX_DATETIME_STRING_LENGTH);
-	if (time_string == NULL) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
-		return NULL;
-	}
-
-	struct_time = localtime(&time);
-	SNPRINTF(time_string, MAX_DATETIME_STRING_LENGTH, "%d/%d/%d", struct_time->tm_mon + 1, struct_time->tm_mday, struct_time->tm_year + 1900);
-
-	EM_DEBUG_LOG("time string = [%s]", time_string);
-	return time_string;
-}
-
-static SEARCHOR *make_all_search_program(email_search_filter_t *search_filter, int search_filter_count, int current_index, int *output_current_index)
-{
-	EM_DEBUG_FUNC_BEGIN("search_filter : [%p], search_filter_count : [%d], current_index : [%d]", search_filter, search_filter_count, current_index);
-
-	int i = 0;
-	char *time_string = NULL;
-	char temp_criteria[STRING_LENGTH_FOR_DISPLAY] = {0,};
-
-	SEARCHOR *p_search_or_program = NULL;
-	SEARCHPGM *child_search_pgm = NULL;
-
-	for (i = current_index; i < search_filter_count; i++) {
-
-		memset(temp_criteria, 0x00 ,sizeof(temp_criteria));
-
-		switch (search_filter[i].search_filter_type) {
-		case EMAIL_SEARCH_FILTER_TYPE_ALL:
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			goto FINISH_OFF;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			if (search_filter[i].search_filter_key_value.integer_type_key_value)
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "ANSWERED ");
-			else
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "UNANSWERED ");
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_BCC :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "BCC %s ", search_filter[i].search_filter_key_value.string_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :
-			EM_DEBUG_LOG("time_type_key_value [%d]", search_filter[i].search_filter_key_value.time_type_key_value);
-			time_string = make_time_string_to_time_t(search_filter[i].search_filter_key_value.time_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "BEFORE %s ", time_string);
-			EM_SAFE_FREE(time_string);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_BODY :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "BODY \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_CC :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "CC \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			if (search_filter[i].search_filter_key_value.integer_type_key_value)
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "DELETED ");
-			else
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "UNDELETED ");
-
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			if (search_filter[i].search_filter_key_value.integer_type_key_value)
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "FLAGGED ");
-			else
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "UNFLAGGED ");
-
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FROM :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "FROM \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_KEYWORD :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "KEYWORD \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_NEW:
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_OLD:
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON :
-			EM_DEBUG_LOG("time_type_key_value [%d]", search_filter[i].search_filter_key_value.time_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			if (search_filter[i].search_filter_key_value.integer_type_key_value)
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "RECENT ");
-
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			if (search_filter[i].search_filter_key_value.integer_type_key_value)
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "SEEN ");
-			else
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "UNSEEN ");
-
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE :
-			EM_DEBUG_LOG("time_type_key_value [%d]", search_filter[i].search_filter_key_value.time_type_key_value);
-			time_string = make_time_string_to_time_t(search_filter[i].search_filter_key_value.time_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "SINCE %s ", time_string);
-			EM_SAFE_FREE(time_string);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_SUBJECT :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "SUBJECT \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_TEXT :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "TEXT \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_TO :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "TO \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "HEADER x-priority %d ", search_filter[i].search_filter_key_value.integer_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO :
-		case EMAIL_SEARCH_FILTER_TYPE_UID :
-		case EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER :
-		case EMAIL_SEARCH_FILTER_TYPE_SIZE_SMALLER :
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			break;
-
-		default :
-			EM_DEBUG_EXCEPTION("Invalid list_filter_item_type [%d]", search_filter);
-			break;
-		}
-
-		while (true) {
-			if (!p_search_or_program) {
-				p_search_or_program = (SEARCHOR *)em_malloc(sizeof(SEARCHOR));
-			} else {
-				if (!p_search_or_program->first) {
-					p_search_or_program->first = mail_criteria(temp_criteria);
-					break;
-				}
-				else if (!p_search_or_program->second) {
-					p_search_or_program->second = mail_criteria(temp_criteria);
-					break;
-				}
-				else {
-					child_search_pgm = mail_newsearchpgm();
-					child_search_pgm->or = p_search_or_program;
-
-					p_search_or_program = NULL;
-					p_search_or_program = (SEARCHOR *)em_malloc(sizeof(SEARCHOR));
-					p_search_or_program->first = child_search_pgm;
-				}
-			}
-		}
-	}
-
-FINISH_OFF:
-
-	if (output_current_index)
-		*output_current_index = i;
-
-	EM_SAFE_FREE(time_string);
-
-	EM_DEBUG_FUNC_END();
-
-	return p_search_or_program;
-}
-
-static int make_criteria_to_search_filter(email_search_filter_t *search_filter, int search_filter_count, SEARCHPGM **output_search_program)
-{
-	EM_DEBUG_FUNC_BEGIN("search_filter : [%p], search_filter_count : [%d]", search_filter, search_filter_count);
-
-	int i = 0;
-	int err = EMAIL_ERROR_NONE;
-	char *criteria = NULL;
-	char *temp_criteria = NULL;
-	char *time_string = NULL;
-	int current_index = 0;
-	int draft = 0;
-	int undraft = 0;
-	unsigned long larger_size = 0;
-	unsigned long smaller_size = 0;
-
-	SEARCHOR  *or_search_program = NULL;
-	SEARCHPGM *p_search_program = NULL;
-
-	if (search_filter == NULL || search_filter_count < 0) {
-		EM_DEBUG_EXCEPTION("Invalid paramter");
-		err = EMAIL_ERROR_INVALID_PARAM;
-		goto FINISH_OFF;
-	}
-
-	criteria = (char *)em_malloc(STRING_LENGTH_FOR_DISPLAY * search_filter_count);
-	if (criteria == NULL) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
-		err = EMAIL_ERROR_OUT_OF_MEMORY;
-		goto FINISH_OFF;
-	}
-
-	temp_criteria = (char *)em_malloc(STRING_LENGTH_FOR_DISPLAY);
-	if (temp_criteria == NULL) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
-		err = EMAIL_ERROR_OUT_OF_MEMORY;
-		goto FINISH_OFF;
-	}
-
-	for (i = 0; i < search_filter_count; i++) {
-		EM_DEBUG_LOG("search_filter_type [%d]", search_filter[i].search_filter_type);
-		memset(temp_criteria, 0x00, STRING_LENGTH_FOR_DISPLAY);
-
-		switch (search_filter[i].search_filter_type) {
-		case EMAIL_SEARCH_FILTER_TYPE_ALL:
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "ALL ");
-			if (!search_filter[i].search_filter_key_value.integer_type_key_value) {
-				or_search_program = make_all_search_program(search_filter, search_filter_count, i + 1, &current_index);
-				i = current_index;
-			}
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			if (search_filter[i].search_filter_key_value.integer_type_key_value)
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "ANSWERED ");
-			else
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "UNANSWERED ");
-
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_BCC :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "BCC \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :
-			EM_DEBUG_LOG("time_type_key_value [%d]", search_filter[i].search_filter_key_value.time_type_key_value);
-			time_string = make_time_string_to_time_t(search_filter[i].search_filter_key_value.time_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "BEFORE %s ", time_string);
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			EM_SAFE_FREE(time_string);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_BODY :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "BODY \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_CC :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "CC \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			if (search_filter[i].search_filter_key_value.integer_type_key_value)
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "DELETED ");
-			else
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "UNDELETED ");
-
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			if (search_filter[i].search_filter_key_value.integer_type_key_value)
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "FLAGGED ");
-			else
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "UNFLAGGED ");
-
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FROM :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "FROM \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_KEYWORD :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "KEYWORD \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_NEW:
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			if (search_filter[i].search_filter_key_value.integer_type_key_value)
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "NEW ");
-
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_OLD:
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			if (search_filter[i].search_filter_key_value.integer_type_key_value)
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "OLD ");
-
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON :
-			EM_DEBUG_LOG("time_type_key_value [%d]", search_filter[i].search_filter_key_value.time_type_key_value);
-			time_string = make_time_string_to_time_t(search_filter[i].search_filter_key_value.time_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "ON %s ", time_string);
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			EM_SAFE_FREE(time_string);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			if (search_filter[i].search_filter_key_value.integer_type_key_value)
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "RECENT ");
-
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			if (search_filter[i].search_filter_key_value.integer_type_key_value)
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "SEEN ");
-			else
-				SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "UNSEEN ");
-
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE :
-			EM_DEBUG_LOG("time_type_key_value [%d]", search_filter[i].search_filter_key_value.time_type_key_value);
-			time_string = make_time_string_to_time_t(search_filter[i].search_filter_key_value.time_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "SINCE %s ", time_string);
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			EM_SAFE_FREE(time_string);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_SUBJECT :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "SUBJECT \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_TEXT :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "TEXT \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_TO :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "TO \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "HEADER x-priority %d ", search_filter[i].search_filter_key_value.integer_type_key_value);
-			strncat(criteria, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			larger_size = search_filter[i].search_filter_key_value.integer_type_key_value;
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_SIZE_SMALLER :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			smaller_size = search_filter[i].search_filter_key_value.integer_type_key_value;
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			if (search_filter[i].search_filter_key_value.integer_type_key_value)
-				draft = search_filter[i].search_filter_key_value.integer_type_key_value;
-			else
-				undraft = search_filter[i].search_filter_key_value.integer_type_key_value;
-
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO :
-		case EMAIL_SEARCH_FILTER_TYPE_UID :
-			EM_DEBUG_LOG("integer_type_key_value [%d]", search_filter[i].search_filter_key_value.integer_type_key_value);
-			break;
-
-		case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID :
-			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			break;
-
-		default :
-			EM_DEBUG_EXCEPTION("Invalid list_filter_item_type [%d]", search_filter);
-			err = EMAIL_ERROR_INVALID_PARAM;
-			goto FINISH_OFF;
-		}
-		EM_SAFE_FREE(time_string); /*prevent 26258*/
-	}
-
-	EM_DEBUG_LOG("criteria[%s]", criteria);
-
-	p_search_program = mail_criteria(criteria);
-	p_search_program->or = or_search_program;
-	p_search_program->larger = larger_size;
-	p_search_program->smaller = smaller_size;
-	p_search_program->draft = draft;
-	p_search_program->undraft = undraft;
-
-FINISH_OFF:
-
-	EM_SAFE_FREE(temp_criteria);
-	EM_SAFE_FREE(time_string);
-	EM_SAFE_FREE(criteria);
-
-	if (output_search_program != NULL)
-		*output_search_program = p_search_program;
-
-	EM_DEBUG_FUNC_END();
-	return err;
-}
-#endif
-
 static int get_search_filter_string(email_search_filter_t *search_filter, int search_filter_count, char **output_filter_string)
 {
 	EM_DEBUG_FUNC_BEGIN("search_filter : [%p], search_filter_count : [%d]", search_filter, search_filter_count);
@@ -7600,7 +7201,8 @@ static int get_search_filter_string(email_search_filter_t *search_filter, int se
 
 		case EMAIL_SEARCH_FILTER_TYPE_BCC :
 		    EM_DEBUG_LOG_SEC("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "BCC \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
+			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "BCC \"%s\" ", 
+						search_filter[i].search_filter_key_value.string_type_key_value);
 			strncat(filter_string, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
 			break;
 
@@ -7613,13 +7215,15 @@ static int get_search_filter_string(email_search_filter_t *search_filter, int se
 
 		case EMAIL_SEARCH_FILTER_TYPE_BODY :
 		    EM_DEBUG_LOG_SEC("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "BODY \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
+			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "BODY \"%s\" ", 
+						search_filter[i].search_filter_key_value.string_type_key_value);
 			strncat(filter_string, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
 			break;
 
 		case EMAIL_SEARCH_FILTER_TYPE_CC :
 		    EM_DEBUG_LOG_SEC("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "CC \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
+			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "CC \"%s\" ", 
+						search_filter[i].search_filter_key_value.string_type_key_value);
 			strncat(filter_string, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
 			break;
 
@@ -7645,13 +7249,16 @@ static int get_search_filter_string(email_search_filter_t *search_filter, int se
 
 		case EMAIL_SEARCH_FILTER_TYPE_FROM :
 		    EM_DEBUG_LOG_SEC("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "FROM \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
+			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "FROM \"%s\" ", 
+						search_filter[i].search_filter_key_value.string_type_key_value);
 			strncat(filter_string, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
 			break;
 
 		case EMAIL_SEARCH_FILTER_TYPE_KEYWORD :
 		    EM_DEBUG_LOG_SEC("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "KEYWORD \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
+			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "KEYWORD \"%s\" ", 
+						search_filter[i].search_filter_key_value.string_type_key_value);
+
 			strncat(filter_string, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
 			break;
 
@@ -7704,19 +7311,22 @@ static int get_search_filter_string(email_search_filter_t *search_filter, int se
 
 		case EMAIL_SEARCH_FILTER_TYPE_SUBJECT :
 			EM_DEBUG_LOG_SEC("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "SUBJECT \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
+			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "SUBJECT \"%s\" ", 
+						search_filter[i].search_filter_key_value.string_type_key_value);
 			strncat(filter_string, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
 			break;
 
 		case EMAIL_SEARCH_FILTER_TYPE_TEXT :
 		    EM_DEBUG_LOG_SEC("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "TEXT \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
+			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "TEXT \"%s\" ", 
+						search_filter[i].search_filter_key_value.string_type_key_value);
 			strncat(filter_string, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
 			break;
 
 		case EMAIL_SEARCH_FILTER_TYPE_TO :
 		    EM_DEBUG_LOG_SEC("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
-			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "TO \"%s\" ", search_filter[i].search_filter_key_value.string_type_key_value);
+			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "TO \"%s\" ", 
+						search_filter[i].search_filter_key_value.string_type_key_value);
 			strncat(filter_string, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
 			break;
 
@@ -7740,6 +7350,22 @@ static int get_search_filter_string(email_search_filter_t *search_filter, int se
 
 		case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME :
 		    EM_DEBUG_LOG_SEC("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
+			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "X-GM-RAW \"has:attachment filename:%s\"", 
+						search_filter[i].search_filter_key_value.string_type_key_value);
+			strncat(filter_string, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
+			break;
+
+		case EMAIL_SEARCH_FILTER_TYPE_CHARSET:
+			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
+			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "charset %s", search_filter[i].search_filter_key_value.string_type_key_value);
+			strncat(filter_string, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
+			break;
+
+
+		case EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED:
+			EM_DEBUG_LOG("string_type_key_value [%s]", search_filter[i].search_filter_key_value.string_type_key_value);
+			SNPRINTF(temp_criteria, STRING_LENGTH_FOR_DISPLAY, "%s", search_filter[i].search_filter_key_value.string_type_key_value);
+			strncat(filter_string, temp_criteria, STRING_LENGTH_FOR_DISPLAY);
 			break;
 
 		case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO :
@@ -7771,9 +7397,13 @@ FINISH_OFF:
 	return err;
 }
 
-int emcore_search_mail_and_uids(MAILSTREAM *stream, email_search_filter_t *input_search_filter, int input_search_filter_count, emcore_uid_list** output_uid_list, int *output_uid_count)
+int emcore_search_mail_and_uids(MAILSTREAM *stream, email_search_filter_t *input_search_filter, 
+								int input_search_filter_count, emcore_uid_list** output_uid_list, 
+								int *output_uid_count)
 {
-	EM_DEBUG_FUNC_BEGIN("stream[%p] input_search_filter[%p] input_search_filter_count[%d] output_uid_list[%p] output_uid_count[%p]", stream, input_search_filter_count, output_uid_list, output_uid_count);
+	EM_DEBUG_FUNC_BEGIN("stream[%p] input_search_filter[%p] input_search_filter_count[%d] "
+						"output_uid_list[%p] output_uid_count[%p]", 
+						stream, input_search_filter_count, output_uid_list, output_uid_count);
 
 	int err = EMAIL_ERROR_NONE;
 
@@ -7803,16 +7433,15 @@ int emcore_search_mail_and_uids(MAILSTREAM *stream, email_search_filter_t *input
 	memset(tag, 0x00, sizeof(tag));
 	memset(command, 0x00, sizeof(command));
 
-	if ((err = get_search_filter_string(input_search_filter, input_search_filter_count, &search_filter_string)) != EMAIL_ERROR_NONE) {
+	if ((err = get_search_filter_string(input_search_filter, 
+										input_search_filter_count, 
+										&search_filter_string)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("get_search_filter_string failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	SNPRINTF(tag, sizeof(tag), "%08lx", 0xffffffff & (stream->gensym++));
 	SNPRINTF(command, MAX_PREVIEW_TEXT_LENGTH, "%s UID SEARCH %s\015\012", tag, search_filter_string);
-	/*
-	SNPRINTF(command, sizeof(command), "%s UID SEARCH BEFORE %s SINCE %s OR OR SUBJECT \"%s\" FROM \"%s\" BODY \"%s\"\015\012", tag, before_date_string, since_date_string, input_keyword, input_keyword, input_keyword);
-	*/
 	EM_DEBUG_LOG_SEC("COMMAND [%s] ", command);
 
 #ifdef FEATURE_CORE_DEBUG
@@ -7888,7 +7517,9 @@ int emcore_search_mail_and_uids(MAILSTREAM *stream, email_search_filter_t *input
 
 	EM_DEBUG_LOG("uid_count [%d] ", uid_count);
 	if (uid_count > 0) {
-		if ((err = emcore_make_uid_range_string(uid_list_for_listing, uid_count, &uid_range_string)) != EMAIL_ERROR_NONE) {
+		if ((err = emcore_make_uid_range_string(uid_list_for_listing, 
+												uid_count, 
+												&uid_range_string)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_make_uid_range_string failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -7919,7 +7550,11 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC int emcore_search_on_server(char *multi_user_name, int account_id, int mailbox_id, email_search_filter_t *input_search_filter, int input_search_filter_count, int handle_to_be_published)
+INTERNAL_FUNC int emcore_search_on_server(char *multi_user_name, int account_id, int mailbox_id, 
+										email_search_filter_t *input_search_filter, 
+										int input_search_filter_count, 
+										int cancellable,
+										int event_handle)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("account_id : [%d], mailbox_id : [%d]", account_id, mailbox_id);
 
@@ -7928,19 +7563,15 @@ INTERNAL_FUNC int emcore_search_on_server(char *multi_user_name, int account_id,
 	int mail_id = 0;
 	int thread_id = 0;
 	int uid_count = 0;
-	//char temp_uid_string[20] = {0,};
 	char *uid_range = NULL;
+	char mailbox_id_param_string[10] = {0,};
 	emcore_uid_list *uid_list = NULL;
 	emcore_uid_list *uid_elem = NULL;
 	emstorage_mailbox_tbl_t *search_mailbox = NULL;
 	emstorage_mail_tbl_t *new_mail_tbl_data = NULL;
 
-//	SEARCHPGM *search_program = NULL;
 	MAILSTREAM *stream = NULL;
-	//MESSAGECACHE *mail_cache_element = NULL;
 	ENVELOPE *env = NULL;
-	emstorage_mailbox_tbl_t* local_mailbox = NULL;
-	char mailbox_id_param_string[10] = {0,};
 
 	if (account_id < 0 || mailbox_id == 0) {
 		EM_DEBUG_EXCEPTION("Invalid parameter");
@@ -7948,50 +7579,28 @@ INTERNAL_FUNC int emcore_search_on_server(char *multi_user_name, int account_id,
 		goto FINISH_OFF;
 	}
 
-	/*
-	if ((err = make_criteria_to_search_filter(input_search_filter, input_search_filter_count, &search_program)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("make_criteria_to_search_filter failed [%d]", err);
-		goto FINISH_OFF;
-	}
-	*/
-
-	if ( (err = emstorage_get_mailbox_by_id(multi_user_name, mailbox_id, &local_mailbox)) != EMAIL_ERROR_NONE || !local_mailbox) {
-		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed [%d]", err);
-		goto FINISH_OFF;
-	}
-
-	SNPRINTF(mailbox_id_param_string, 10, "%d", local_mailbox->mailbox_id);
-
-	if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_START, account_id, mailbox_id_param_string, handle_to_be_published, 0))
-		EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_START] failed >>>>");
-
-	if (!emnetwork_check_network_status(&err)) {
-		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
-		if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string,  0, err))
-			EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed");
-		goto FINISH_OFF;
-	}
+	if (cancellable)
+		FINISH_OFF_IF_EVENT_CANCELED(err, event_handle);
 
 	if (!emcore_connect_to_remote_mailbox(multi_user_name, account_id, mailbox_id, (void **)&stream, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed");
-		if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
-			EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
 		goto FINISH_OFF;
 	}
 
-	/*
-	if (!mail_search_full(stream, NIL, search_program, 0)) {
-		EM_DEBUG_EXCEPTION("mail_search failed");
-		if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
-			EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
-		goto FINISH_OFF;
-	}
-	*/
+	if (cancellable)
+		FINISH_OFF_IF_EVENT_CANCELED(err, event_handle);
 
-	if ((err = emcore_search_mail_and_uids(stream, input_search_filter, input_search_filter_count, &uid_list, &uid_count)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_search_mail_and_uids(stream, 
+											input_search_filter, 
+											input_search_filter_count, 
+											&uid_list, 
+											&uid_count)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_search_mail_and_uids failed [%d]", err);
 		goto FINISH_OFF;
 	}
+
+	if (cancellable)
+		FINISH_OFF_IF_EVENT_CANCELED(err, event_handle);
 
 	uid_elem = uid_list;
 
@@ -8009,6 +7618,9 @@ INTERNAL_FUNC int emcore_search_on_server(char *multi_user_name, int account_id,
 	}
 
 	while (uid_elem) {
+		if (cancellable)
+			FINISH_OFF_IF_EVENT_CANCELED(err, event_handle);
+
 		EM_DEBUG_LOG("msgno : [%4lu]", uid_elem->msgno);
 #ifdef __FEATURE_HEADER_OPTIMIZATION__
 		env = mail_fetchstructure_full(stream, uid_elem->msgno, NULL, FT_PEEK, 0);
@@ -8019,10 +7631,14 @@ INTERNAL_FUNC int emcore_search_on_server(char *multi_user_name, int account_id,
 		if (env)
 			EM_DEBUG_LOG("message_id[%s]", env->message_id);
 
-		if (!emcore_make_mail_tbl_data_from_envelope(multi_user_name, account_id, stream, env, uid_elem, &new_mail_tbl_data, &err) || !new_mail_tbl_data) {
+		if (!emcore_make_mail_tbl_data_from_envelope(multi_user_name, 
+													account_id, 
+													stream, 
+													env, 
+													uid_elem, 
+													&new_mail_tbl_data, 
+													&err) || !new_mail_tbl_data) {
 			EM_DEBUG_EXCEPTION("emcore_make_mail_tbl_data_from_envelope failed [%d]", err);
-			if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
-				EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
 			goto FINISH_OFF;
 		}
 
@@ -8030,8 +7646,6 @@ INTERNAL_FUNC int emcore_search_on_server(char *multi_user_name, int account_id,
 		if (search_mailbox == NULL) {
 			EM_DEBUG_EXCEPTION("em_malloc failed");
 			err = EMAIL_ERROR_OUT_OF_MEMORY;
-			if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
-				EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
 			goto FINISH_OFF;
 		}
 
@@ -8040,15 +7654,29 @@ INTERNAL_FUNC int emcore_search_on_server(char *multi_user_name, int account_id,
 		search_mailbox->mailbox_name = EM_SAFE_STRDUP(EMAIL_SEARCH_RESULT_MAILBOX_NAME);
 		search_mailbox->mailbox_type = EMAIL_MAILBOX_TYPE_SEARCH_RESULT;
 
-		if ((err = emcore_add_mail_to_mailbox(multi_user_name, search_mailbox, new_mail_tbl_data, &mail_id, &thread_id)) != EMAIL_ERROR_NONE) {
+		if ((err = emcore_add_mail_to_mailbox(multi_user_name, 
+												search_mailbox, 
+												new_mail_tbl_data, 
+												&mail_id, 
+												&thread_id)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_add_mail_to_mailbox failed [%d]", err);
-			if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, handle_to_be_published, err))
-				EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_FAIL] Failed >>>>");
 			goto FINISH_OFF;
 		}
 
 		memset(mailbox_id_param_string, 0, 10);
 		SNPRINTF(mailbox_id_param_string, 10, "%d", search_mailbox->mailbox_id);
+
+		if (!emcore_initiate_pbd(multi_user_name,
+									stream,
+									account_id,
+									mail_id,
+									uid_elem->uid,
+									search_mailbox->mailbox_id,
+									search_mailbox->mailbox_name,
+									&err)) {
+			EM_DEBUG_EXCEPTION("emcore_initiate_pbd failed : [%d]", err);
+		}
+
 		if (!emcore_notify_storage_event(NOTI_MAIL_ADD, account_id, mail_id, mailbox_id_param_string, thread_id)) {
 			EM_DEBUG_EXCEPTION("emcore_notify_storage_event [NOTI_MAIL_ADD] failed");
 		}
@@ -8062,9 +7690,6 @@ INTERNAL_FUNC int emcore_search_on_server(char *multi_user_name, int account_id,
 		i++;
 	}
 
-	if (err == EMAIL_ERROR_NONE && !emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FINISH, account_id, NULL, handle_to_be_published, 0))
-		EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_SEARCH_ON_SERVER_FINISH] Failed >>>>>");
-
 FINISH_OFF:
 
 	if (stream)
@@ -8072,18 +7697,12 @@ FINISH_OFF:
 
 	if (uid_list)
 		emcore_free_uids(uid_list, NULL);
-/*
-	if (search_program)
-		mail_free_searchpgm(&search_program);
-*/
+
 	if (search_mailbox != NULL)
 		emstorage_free_mailbox(&search_mailbox, 1, NULL);
 
 	if (new_mail_tbl_data)
 		emstorage_free_mail(&new_mail_tbl_data, 1, NULL);
-
-	if (local_mailbox)
-		emstorage_free_mailbox(&local_mailbox, 1, NULL);
 
 	EM_DEBUG_FUNC_END();
 	return err;

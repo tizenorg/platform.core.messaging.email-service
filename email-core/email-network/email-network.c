@@ -154,10 +154,10 @@ INTERNAL_FUNC int emnetwork_check_network_status(int *err_code)
 	int err            = EMAIL_ERROR_NONE;
 	int ret            = false;
 
-	if(network_status == 0) {
+	if (network_status == 0) {
 		EM_DEBUG_LOG("VCONFKEY_NETWORK_STATUS is 0");
 
-		if ( (err = _get_flight_mode(&flight_mode)) != EMAIL_ERROR_NONE) {
+		if ((err = _get_flight_mode(&flight_mode)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("_get_flight_mode failed : [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -168,7 +168,7 @@ INTERNAL_FUNC int emnetwork_check_network_status(int *err_code)
 			goto FINISH_OFF;			
 		}
 
-		if ( (err = emnetwork_get_wifi_status(&wifi_status)) != EMAIL_ERROR_NONE) {
+		if ((err = emnetwork_get_wifi_status(&wifi_status)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emnetwork_get_wifi_status failed [%d]", err);
 			goto FINISH_OFF;
 		}

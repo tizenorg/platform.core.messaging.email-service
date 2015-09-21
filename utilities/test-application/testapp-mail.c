@@ -2031,7 +2031,7 @@ static gboolean testapp_test_search_mail_on_server()
 	email_search_filter_t search_filter[10];
 	int handle = 0;
 	time_t current_time = 0;
-	char search_key_value_string[MAX_EMAIL_ADDRESS_LENGTH];
+	char search_key_value_string[256];
 
 	testapp_print("input account id : ");
 	if (0 >= scanf("%d",&account_id))
@@ -2047,13 +2047,13 @@ static gboolean testapp_test_search_mail_on_server()
 		testapp_print(
 			"	EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO       =  1,  ( integer type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_UID              =  2,  ( integer type ) \n"
-			"       EMAIL_SEARCH_FILTER_TYPE_ALL              =  3,  ( integer type ) \n"
+			"   EMAIL_SEARCH_FILTER_TYPE_ALL              =  3,  ( integer type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_BCC              =  7,  ( string type ) \n"
-			"       EMAIL_SEARCH_FILTER_TYPE_BODY             =  8,  ( string type ) \n"
+			"   EMAIL_SEARCH_FILTER_TYPE_BODY             =  8,  ( string type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_CC               =  9,  ( string type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_FROM             = 10,  ( string type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_KEYWORD          = 11,  ( string type ) \n"
-			"       EMAIL_SEARCH_FILTER_TYPE_TEXT             = 12,  ( string type ) \n"
+			"   EMAIL_SEARCH_FILTER_TYPE_TEXT             = 12,  ( string type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_SUBJECT          = 13,  ( string type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_TO               = 15,  ( string type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER      = 16,  ( integet type ) \n"
@@ -2062,16 +2062,18 @@ static gboolean testapp_test_search_mail_on_server()
 			"	EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON     = 21,  ( time type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE  = 22,  ( time type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED   = 26,  ( integer type ) \n"
-			"       EMAIL_SEARCH_FILTER_TYPE_FLAGS_NEW        = 27,  ( integer type ) \n"
+			"   EMAIL_SEARCH_FILTER_TYPE_FLAGS_NEW        = 27,  ( integer type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED    = 28,  ( integer type ) \n"
-			"       EMAIL_SEARCH_FILTER_TYPE_FLAGS_OLD        = 29,  ( integer type ) \n"
+			"   EMAIL_SEARCH_FILTER_TYPE_FLAGS_OLD        = 29,  ( integer type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT      = 30,  ( integer type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED     = 32,  ( integer type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT     = 34,  ( integer type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN       = 36,  ( integer type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       = 43,  ( string type ) \n"
-			"       EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY  = 50,  ( integer type ) \n"
+			"   EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY  = 50,  ( integer type ) \n"
 			"	EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  = 60,  ( string type ) \n"
+			"   EMAIL_SEARCH_FILTER_TYPE_CHARSET          = 61,  ( string type ) \n"
+			"   EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED     = 62,  ( string type ) \n"
 			"	END                                       = 0 \n");
 
 		testapp_print("input search filter type : ");
@@ -2111,10 +2113,14 @@ static gboolean testapp_test_search_mail_on_server()
 			case EMAIL_SEARCH_FILTER_TYPE_TO               :
 			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
 			case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  :
+			case EMAIL_SEARCH_FILTER_TYPE_CHARSET          :
+			case EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED     :
 				testapp_print("input search filter key value : ");
-				if (0 >= scanf("%s", search_key_value_string))
+				int readn = read(0, search_key_value_string, 256);
+				if (readn < 0)
 					testapp_print("Invalid input. ");
-				search_filter[search_filter_count].search_filter_key_value.string_type_key_value = strdup(search_key_value_string);
+
+				search_filter[search_filter_count].search_filter_key_value.string_type_key_value = strndup(search_key_value_string, readn - 1);
 				break;
 
 			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :

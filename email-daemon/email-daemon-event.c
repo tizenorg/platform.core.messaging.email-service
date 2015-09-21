@@ -449,7 +449,11 @@ static void* worker_event_queue(void *arg)
 
 					case EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT: {
 							email_account_t *account = (email_account_t *)event_data->event_param_data_1;
-							event_handler_EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT(event_data->multi_user_name, event_data->account_id, account, handle_to_be_published, &err);
+							event_handler_EMAIL_EVENT_VALIDATE_AND_UPDATE_ACCOUNT(event_data->multi_user_name, 
+																					event_data->account_id, 
+																					account, 
+																					handle_to_be_published, 
+																					&err);
 						}
 						break;
 
@@ -489,19 +493,25 @@ static void* worker_event_queue(void *arg)
 				}
 			}
 
-			if ((event_data->type == EMAIL_EVENT_SYNC_HEADER || event_data->type == EMAIL_EVENT_SYNC_IMAP_MAILBOX) && (err != EMAIL_ERROR_NONE)) {
+			if ((event_data->type == EMAIL_EVENT_SYNC_HEADER || event_data->type == EMAIL_EVENT_SYNC_IMAP_MAILBOX) && 
+				(err != EMAIL_ERROR_NONE)) {
 				EM_DEBUG_LOG("retry syncing");
+				if (event_data->type == EMAIL_EVENT_SYNC_IMAP_MAILBOX && err == EMAIL_ERROR_INVALID_ACCOUNT) {
+					EM_DEBUG_LOG("Unsupported account");
+					goto FINISH_OFF;
+				}
+
 				/* for the retry syncing */
 				if (sync_failed_event_data) {
 					emcore_free_event(sync_failed_event_data);
 					EM_SAFE_FREE(sync_failed_event_data);
-					sync_failed_event_data = NULL;
 				}
 
 				sync_failed_event_data = em_malloc(sizeof(email_event_t));
 				if (sync_failed_event_data == NULL) {
 					EM_DEBUG_EXCEPTION("em_malloc failed");
 					err = EMAIL_ERROR_OUT_OF_MEMORY;
+					goto FINISH_OFF;
 				}
 
 				if (event_data->type == EMAIL_EVENT_SYNC_IMAP_MAILBOX && sync_failed_event_data) {
@@ -509,6 +519,7 @@ static void* worker_event_queue(void *arg)
 					sync_failed_event_data->account_id         = event_data->account_id;
 					sync_failed_event_data->status             = EMAIL_EVENT_STATUS_WAIT;
 					sync_failed_event_data->event_param_data_3 = EM_SAFE_STRDUP(event_data->event_param_data_3);
+					sync_failed_event_data->multi_user_name    = EM_SAFE_STRDUP(event_data->multi_user_name);
 				}
 
 				if (event_data->type == EMAIL_EVENT_SYNC_HEADER && sync_failed_event_data) {
@@ -517,19 +528,17 @@ static void* worker_event_queue(void *arg)
 					sync_failed_event_data->status             = EMAIL_EVENT_STATUS_WAIT;
 					sync_failed_event_data->event_param_data_5 = event_data->event_param_data_5;
 					sync_failed_event_data->event_param_data_4 = event_data->event_param_data_4;
+					sync_failed_event_data->multi_user_name    = EM_SAFE_STRDUP(event_data->multi_user_name);
 				}
 			}
-
-			/* free internals in event */
-			emcore_free_event(event_data); /*detected by valgrind*/
+FINISH_OFF:
+			if (!emcore_notify_response_to_api(event_data->type, handle_to_be_published, err))
+				EM_DEBUG_EXCEPTION("emcore_notify_response_to_api failed");
 
 			if (account_tbl) {
 				emstorage_free_account(&account_tbl, 1, NULL);
 				account_tbl = NULL;
 			}
-
-			if (!emcore_notify_response_to_api(event_data->type, handle_to_be_published, err))
-				EM_DEBUG_EXCEPTION("emcore_notify_response_to_api failed");
 
 			/* free event itself */
 			ENTER_RECURSIVE_CRITICAL_SECTION(_event_queue_lock);
@@ -539,7 +548,9 @@ static void* worker_event_queue(void *arg)
 				EM_DEBUG_EXCEPTION("Failed to g_queue_pop_head");
 			}
 			else {
+				/* freed event_data : event_data is started event */
 				emcore_return_handle(started_event->handle);
+				emcore_free_event(started_event); /*detected by valgrind*/
 				EM_SAFE_FREE(started_event);
 			}
 		}
@@ -1597,7 +1608,12 @@ static int event_handler_EMAIL_EVENT_DELETE_MAIL_ALL(char *multi_user_name, int 
 	EM_DEBUG_FUNC_BEGIN("input_account_id [%d] input_mailbox_id [%d], input_from_server [%d], error [%p]", input_account_id, input_mailbox_id, input_from_server, error);
 	int err = EMAIL_ERROR_NONE;
 
-	if (!emcore_delete_all_mails_of_mailbox(multi_user_name, input_account_id, input_mailbox_id, input_from_server, &err))
+	if (!emcore_delete_all_mails_of_mailbox(multi_user_name, 
+											input_account_id, 
+											input_mailbox_id, 
+											0,
+											input_from_server, 
+											&err))
 		EM_DEBUG_EXCEPTION("emcore_delete_all_mails_of_mailbox failed [%d]", err);
 
 	if (error)
@@ -1663,16 +1679,73 @@ static int event_hanlder_EMAIL_EVENT_SYNC_HEADER_OMA(char *multi_user_name, int 
 	return true;
 }
 
-static int event_handler_EMAIL_EVENT_SEARCH_ON_SERVER(char *multi_user_name, int account_id, int mailbox_id, email_search_filter_t *input_search_filter, int input_search_filter_count, int handle_to_be_published)
+static int event_handler_EMAIL_EVENT_SEARCH_ON_SERVER(char *multi_user_name, int account_id, int mailbox_id, 
+														email_search_filter_t *input_search_filter, 
+														int input_search_filter_count, int handle_to_be_published)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id : [%d], mailbox_id : [%d], input_search_filter : [%p], input_search_filter_count : [%d], handle_to_be_published [%d]", account_id, mailbox_id, input_search_filter, input_search_filter_count, handle_to_be_published);
+	EM_DEBUG_FUNC_BEGIN("account_id : [%d], mailbox_id : [%d], input_search_filter : [%p], "
+						"input_search_filter_count : [%d], handle_to_be_published [%d]", 
+						account_id, mailbox_id, input_search_filter, 
+						input_search_filter_count, handle_to_be_published);
+
 	int err = EMAIL_ERROR_NONE;
-	
-	if (err == EMAIL_ERROR_NONE) {
-		if ((err = emcore_search_on_server(multi_user_name, account_id, mailbox_id, input_search_filter, input_search_filter_count, handle_to_be_published)) != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("emcore_search_on_server failed [%d]", err);
-		}
+	char mailbox_id_param_string[10] = {0,};
+	emstorage_mailbox_tbl_t *local_mailbox = NULL;
+
+	if ((err = emstorage_get_mailbox_by_id(multi_user_name, 
+											mailbox_id, 
+											&local_mailbox)) != EMAIL_ERROR_NONE || !local_mailbox) {
+		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed [%d]", err);
+		goto FINISH_OFF;
 	}
+
+	SNPRINTF(mailbox_id_param_string, 10, "%d", local_mailbox->mailbox_id);
+
+	if (!emnetwork_check_network_status(&err)) {
+		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
+		if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, account_id, mailbox_id_param_string, 0, err))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_DOWNLOAD_FAIL] Failed");
+		goto FINISH_OFF;
+	}
+
+	if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_START, 
+										account_id, 
+										mailbox_id_param_string, 
+										handle_to_be_published, 
+										0))
+		EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_START] failed >>>>");
+
+	if ((err = emcore_search_on_server(multi_user_name, 
+										account_id, 
+										mailbox_id, 
+										input_search_filter, 
+										input_search_filter_count, 
+										true,
+										handle_to_be_published)) != EMAIL_ERROR_NONE) {
+		EM_DEBUG_EXCEPTION("emcore_search_on_server failed [%d]", err);
+		goto FINISH_OFF;
+	}
+
+FINISH_OFF:
+
+	if (err != EMAIL_ERROR_NONE) {
+		if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FAIL, 
+											account_id, 
+											mailbox_id_param_string, 
+											handle_to_be_published, 
+											0))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEARCH_ON_SERVER_FAILED] failed >>>>");
+	} else {
+		if (!emcore_notify_network_event(NOTI_SEARCH_ON_SERVER_FINISH, 
+																account_id, 
+																NULL, 
+																handle_to_be_published, 
+																0))
+			EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_SEARCH_ON_SERVER_FINISH] Failed >>>>>");
+	}
+
+	if (local_mailbox)
+		emstorage_free_mailbox(&local_mailbox, 1, NULL);
 
 	EM_DEBUG_FUNC_END();
 	return err;

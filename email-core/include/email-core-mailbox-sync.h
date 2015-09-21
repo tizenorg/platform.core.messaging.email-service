@@ -189,7 +189,15 @@ INTERNAL_FUNC int emcore_update_attachment_except_inline(char *multi_user_name,
                                                         int *output_inline_attachment_count);
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
-INTERNAL_FUNC int emcore_download_bulk_partial_mail_body(MAILSTREAM *stream, email_event_partial_body_thd *pbd_event, int count, int *error);
+INTERNAL_FUNC int emcore_download_bulk_partial_mail_body(MAILSTREAM *stream, 
+														email_event_partial_body_thd *pbd_event, 
+														int count, 
+														int *error);
+
+INTERNAL_FUNC int emcore_initiate_pbd(char *multi_user_name, MAILSTREAM *stream, 
+										int account_id, int mail_id, char *uid, 
+										int input_mailbox_id, char *input_mailbox_name,	
+										int *err_code);
 #endif /* __FEATURE_PARTIAL_BODY_DOWNLOAD__ */
 
 

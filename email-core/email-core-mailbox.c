@@ -625,9 +625,16 @@ INTERNAL_FUNC int emcore_delete_mailbox(char *multi_user_name, int input_mailbox
 				EM_DEBUG_LOG("Delete the mailbox in server : success");
 		}
 
-		if (!emcore_delete_all_mails_of_mailbox(multi_user_name, target_mailbox_array[i].account_id, target_mailbox_array[i].mailbox_id, false, &err))  {
-			EM_DEBUG_EXCEPTION("emcore_delete_all_mails_of_mailbox failed [%d]", err);
-			goto FINISH_OFF;
+		if (!emcore_delete_all_mails_of_mailbox(multi_user_name, 
+												target_mailbox_array[i].account_id, 
+												target_mailbox_array[i].mailbox_id,
+												0,
+												false, 
+												&err))  {
+			if (err != EMAIL_ERROR_MAIL_NOT_FOUND) {
+				EM_DEBUG_EXCEPTION("emcore_delete_all_mails_of_mailbox failed [%d]", err);
+				goto FINISH_OFF;
+			}
 		}
 
 		if (!emstorage_delete_mailbox(multi_user_name, target_mailbox_array[i].account_id, -1, target_mailbox_array[i].mailbox_id, true, &err))  {
@@ -693,10 +700,16 @@ INTERNAL_FUNC int emcore_delete_mailbox_all(char *multi_user_name, email_mailbox
 		goto FINISH_OFF;
 	}
 	
-	if (!emcore_delete_all_mails_of_mailbox(multi_user_name, mailbox->account_id, mailbox->mailbox_id, 0, /*NULL, */ &err)) {
-		EM_DEBUG_EXCEPTION(" emcore_delete_all_mails_of_mailbox failed - %d", err);
-
-		goto FINISH_OFF;
+	if (!emcore_delete_all_mails_of_mailbox(multi_user_name, 
+											mailbox->account_id, 
+											mailbox->mailbox_id,
+											0,
+											0, /*NULL, */ 
+											&err)) {
+		if (err != EMAIL_ERROR_MAIL_NOT_FOUND) {
+			EM_DEBUG_EXCEPTION(" emcore_delete_all_mails_of_mailbox failed - %d", err);
+			goto FINISH_OFF;
+		}
 	}
 
 	if (!emstorage_delete_mailbox(multi_user_name, mailbox->account_id, -1, mailbox->mailbox_id, true, &err)) {
@@ -886,9 +899,11 @@ FINISH_OFF:
 extern long smtp_send(SENDSTREAM *stream, char *command, char *args);
 #endif /* __FEATURE_KEEP_CONNECTION__ */
 
-INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info (char *multi_user_name, email_account_t *account, 
-                                        int input_mailbox_id, void **result_stream, /*either MAILSTREAM or SENDSTREAM*/ 
-                                        int *err_code)
+INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info (char *multi_user_name, 
+																		email_account_t *account, 
+																		int input_mailbox_id, 
+									/*either MAILSTREAM or SENDSTREAM*/ void **result_stream, 
+																		int *err_code)
 {
 	EM_PROFILE_BEGIN(emCoreMailboxOpen);
 	EM_DEBUG_FUNC_BEGIN("account[%p], input_mailbox_id[%d], mail_stream[%p], err_code[%p]", account, input_mailbox_id,
@@ -938,16 +953,15 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info (char *mult
 		EM_DEBUG_LOG("Stream reuse desired");
 #endif
 
+	/* set current network error as EMAIL_ERROR_NONE before network operation */
 	session->error = EMAIL_ERROR_NONE;
-	emcore_set_network_error (EMAIL_ERROR_NONE);	/* set current network error as EMAIL_ERROR_NONE before network operation */
-
+	emcore_set_network_error(EMAIL_ERROR_NONE);		
+	
 	if (input_mailbox_id == EMAIL_CONNECT_FOR_SENDING) {
 		mailbox_name = EM_SAFE_STRDUP(ENCODED_PATH_SMTP);
-	}
-	else if (input_mailbox_id == 0) {
+	} else if (input_mailbox_id == 0) {
 		mailbox_name = NULL;
-	}
-	else {
+	} else {
 		if ((error = emstorage_get_mailbox_by_id (multi_user_name, input_mailbox_id, &mailbox)) != EMAIL_ERROR_NONE || !mailbox) {
 			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed [%d]", error);
 			goto FINISH_OFF;
@@ -957,7 +971,12 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info (char *mult
 
 	if (is_connection_for == _SERVICE_THREAD_TYPE_RECEIVING) {
 		/*  open pop3/imap server */
-		if (!emcore_get_long_encoded_path_with_account_info (multi_user_name, account, mailbox_name, '/', &mbox_path, &error)) {
+		if (!emcore_get_long_encoded_path_with_account_info(multi_user_name, 
+															account, 
+															mailbox_name, 
+															'/', 
+															&mbox_path, 
+															&error)) {
 			EM_DEBUG_EXCEPTION("emcore_get_long_encoded_path failed - %d", error);
 			session->error = error;
 			goto FINISH_OFF;
@@ -967,32 +986,39 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info (char *mult
 
 		session->auth = 0; /*  ref_account->receiving_auth ? 1  :  0 */
 
-		if (!(*result_stream = mail_open (*result_stream, mbox_path, IMAP_2004_LOG))) {
-			EM_DEBUG_EXCEPTION("mail_open failed. session->error[%d], session->network[%d]", session->error, session->network);
-			*result_stream = mail_close (*result_stream);
+		if (!(*result_stream = mail_open(*result_stream, mbox_path, IMAP_2004_LOG))) {
+			EM_DEBUG_EXCEPTION("mail_open failed. session->error[%d], session->network[%d]", 
+								session->error, session->network);
+			*result_stream = mail_close(*result_stream);
 
-			if(account->account_id > 0 && (session->network == EMAIL_ERROR_XOAUTH_BAD_REQUEST || session->network == EMAIL_ERROR_XOAUTH_INVALID_UNAUTHORIZED)) {
-				if((error = emcore_refresh_xoauth2_access_token (multi_user_name, account->account_id)) != EMAIL_ERROR_NONE) {
+			if (account->account_id > 0 && (session->network == EMAIL_ERROR_XOAUTH_BAD_REQUEST || 
+				session->network == EMAIL_ERROR_XOAUTH_INVALID_UNAUTHORIZED)) {
+				error = emcore_refresh_xoauth2_access_token (multi_user_name, account->account_id);
+
+				if (error != EMAIL_ERROR_NONE) {
 					EM_DEBUG_EXCEPTION("emcore_refresh_xoauth2_access_token failed. [%d]", error);
-				}
-				else {
+				} else {
 					while (*result_stream == NULL && connection_retry_count < 3) {
 
 						sleep(3); /* wait for updating access token */
-						if (!(*result_stream = mail_open (*result_stream, mbox_path, IMAP_2004_LOG))) {
-							EM_DEBUG_LOG("mail_open failed. session->error[%d], session->network[%d]", session->error, session->network);
+						if (!(*result_stream = mail_open(*result_stream, mbox_path, IMAP_2004_LOG))) {
+							EM_DEBUG_LOG("mail_open failed. session->error[%d], session->network[%d]", 
+											session->error, session->network);
 						}
 						connection_retry_count++;
 						EM_DEBUG_LOG ("connection_retry_count [%d]", connection_retry_count);
 					}
 				}
-			} else if ((session->error == EMAIL_ERROR_TLS_SSL_FAILURE || session->error == EMAIL_ERROR_CANNOT_NEGOTIATE_TLS)) {
+			} else if ((session->error == EMAIL_ERROR_TLS_SSL_FAILURE || 
+						session->error == EMAIL_ERROR_CANNOT_NEGOTIATE_TLS)) {
 				char *replaced_mbox_path = NULL;
 				replaced_mbox_path = em_replace_string(mbox_path, "}", "/force_tls_v1_0}");
 
-				if (replaced_mbox_path != NULL && !(*result_stream = mail_open (*result_stream, replaced_mbox_path, IMAP_2004_LOG))) {
-					EM_DEBUG_EXCEPTION("retry --> mail_open failed. session->error[%d], session->network[%d]", session->error, session->network);
-					*result_stream = mail_close (*result_stream);
+				if (replaced_mbox_path != NULL && 
+					!(*result_stream = mail_open(*result_stream, replaced_mbox_path, IMAP_2004_LOG))) {
+					EM_DEBUG_EXCEPTION("retry --> mail_open failed. session->error[%d], session->network[%d]", 
+										session->error, session->network);
+					*result_stream = mail_close(*result_stream);
 				}
 
 				EM_SAFE_FREE(replaced_mbox_path);
@@ -1005,8 +1031,7 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info (char *mult
 				goto FINISH_OFF;
 			}
 		}
-	}
-	else {
+	} else {
 		/*  open smtp server */
 		char *host_list[2] = {NULL, NULL};
 
@@ -1026,7 +1051,12 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info (char *mult
 		}
 #endif
 		if (!*result_stream) {
-			if (!emcore_get_long_encoded_path_with_account_info (multi_user_name, account, mailbox_name, 0, &mbox_path, &error)) {
+			if (!emcore_get_long_encoded_path_with_account_info(multi_user_name, 
+																account, 
+																mailbox_name, 
+																0, 
+																&mbox_path, 
+																&error)) {
 				EM_DEBUG_EXCEPTION(" emcore_get_long_encoded_path failed - %d", error);
 				session->error = error;
 				goto FINISH_OFF;
@@ -1040,13 +1070,16 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info (char *mult
 
 			if (!(*result_stream = smtp_open (host_list, 1))) {
 				EM_DEBUG_EXCEPTION_SEC("smtp_open error : outgoing_server_secure_connection[%d] "
-                                               "session->error[%d] session->network[%d]",
-                                          account->outgoing_server_secure_connection, session->error, session->network);
+									   "session->error[%d] session->network[%d]",
+										  account->outgoing_server_secure_connection, 
+										  session->error, session->network);
 
 				if (account->account_id > 0 && (session->network == EMAIL_ERROR_XOAUTH_BAD_REQUEST ||
-                                                         session->network == EMAIL_ERROR_XOAUTH_INVALID_UNAUTHORIZED)) {
-					*result_stream = smtp_close (*result_stream);
-					if((error = emcore_refresh_xoauth2_access_token (multi_user_name, account->account_id)) != EMAIL_ERROR_NONE) {
+					 session->network == EMAIL_ERROR_XOAUTH_INVALID_UNAUTHORIZED)) {
+					*result_stream = smtp_close(*result_stream);
+
+					error = emcore_refresh_xoauth2_access_token(multi_user_name, account->account_id);
+					if (error != EMAIL_ERROR_NONE) {
 						EM_DEBUG_EXCEPTION ("emcore_refresh_xoauth2_access_token failed. [%d]", error);
 						if ((session->error == EMAIL_ERROR_UNKNOWN) || (session->error == EMAIL_ERROR_NONE))
 							session->error = EMAIL_ERROR_CONNECTION_FAILURE;
@@ -1055,8 +1088,7 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info (char *mult
 					}
 
 					sleep(2); /* wait for updating access token */
-
-					if (!(*result_stream = smtp_open (host_list, 1))) {
+					if (!(*result_stream = smtp_open(host_list, 1))) {
 						if (session->network != EMAIL_ERROR_NONE)
 							session->error = session->network;
 						if ((session->error == EMAIL_ERROR_UNKNOWN) || (session->error == EMAIL_ERROR_NONE))
@@ -1065,8 +1097,7 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info (char *mult
 						error = session->error;
 						goto FINISH_OFF;
 					}
-				}
-				else {
+				} else {
 					error = EMAIL_ERROR_CONNECTION_FAILURE;
 					goto FINISH_OFF;
 				}
@@ -1152,6 +1183,7 @@ FINISH_OFF:
 
 	if (err_code)
 		*err_code = error;
+
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
 	return ret;
 }

@@ -748,8 +748,8 @@ static char *convert_format(char *fmt)
         c++;
     }
 
-	EM_DEBUG_LOG("original fmt : [%s]", fmt);
-	EM_DEBUG_LOG("converted_fmt : [%s]", converted_fmt);
+	EM_DEBUG_LOG_DEV("original fmt  : [%s]", fmt);
+	EM_DEBUG_LOG_DEV("converted_fmt : [%s]", converted_fmt);
 
 	ret = true;
 
@@ -1410,6 +1410,8 @@ INTERNAL_FUNC char* em_convert_search_filter_to_byte_stream(email_search_filter_
 			case EMAIL_SEARCH_FILTER_TYPE_TO               :
 			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
 			case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  :
+			case EMAIL_SEARCH_FILTER_TYPE_CHARSET          :
+			case EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED     :
 				result_stream = append_string_to_stream(result_stream, &stream_size, input_search_filter_list[i].search_filter_key_value.string_type_key_value);
 				break;
 
@@ -1490,6 +1492,8 @@ INTERNAL_FUNC void em_convert_byte_stream_to_search_filter(char *input_stream,
 			case EMAIL_SEARCH_FILTER_TYPE_TO               :
 			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
 			case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  :
+			case EMAIL_SEARCH_FILTER_TYPE_CHARSET          :
+			case EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED     :
 				fetch_string_from_stream(input_stream, &stream_offset, &(local_search_filter[i].search_filter_key_value.string_type_key_value));
 				break;
 

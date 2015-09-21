@@ -70,7 +70,7 @@ EXPORT_API void emipc_destroy_email_api(HIPC_API api)
 EXPORT_API long emipc_get_api_id(HIPC_API api)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	emipc_email_api_info *api_info = (emipc_email_api_info*)api;
+	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
 	EM_DEBUG_FUNC_END("api_id [%d]", api_info->api_id);
 	return api_info->api_id;
 }
@@ -79,6 +79,7 @@ EXPORT_API long emipc_get_app_id(HIPC_API api)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
+	EM_DEBUG_FUNC_END("app_id [%d]", api_info->app_id);
 	return api_info->app_id;
 }
 
@@ -135,14 +136,12 @@ EXPORT_API int emipc_get_parameter(HIPC_API input_api_handle, EPARAMETER_DIRECTI
 	}
 
 	parameters = emipc_get_api_parameters(input_api_handle, input_parameter_direction);
-
 	if (parameters == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_IPC_PROTOCOL_FAILURE");
 		return EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
 	}
 
 	local_buffer = emipc_get_param_of_param_list(parameters, input_parameter_index);
-
 	if (local_buffer == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_IPC_PROTOCOL_FAILURE");
 		return EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
@@ -167,14 +166,12 @@ EXPORT_API void* emipc_get_nth_parameter_data(HIPC_API api_handle, EPARAMETER_DI
 	void *buf = NULL;
 
 	parameters = emipc_get_api_parameters(api_handle, direction);
-
 	if (parameters == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_IPC_PROTOCOL_FAILURE");
 		return NULL;
 	}
 
 	buf = emipc_get_param_of_param_list(parameters, param_index);
-
 	if (!buf) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_IPC_PROTOCOL_FAILURE");
 		return NULL;
@@ -190,7 +187,7 @@ EXPORT_API int emipc_get_parameter_length(HIPC_API api, EPARAMETER_DIRECTION dir
 	EM_DEBUG_FUNC_BEGIN();
 	emipc_param_list *parameters = emipc_get_api_parameters(api, direction);
 	if (parameters) {
-		EM_DEBUG_FUNC_END("Suceeded");
+		EM_DEBUG_LOG("Suceeded");
 		return emipc_get_param_len_of_param_list(parameters, parameter_index);
 	}
 	EM_DEBUG_FUNC_END("Failed");
@@ -202,7 +199,7 @@ EXPORT_API int emipc_get_nth_parameter_length(HIPC_API api, EPARAMETER_DIRECTION
 	EM_DEBUG_FUNC_BEGIN();
 	emipc_param_list *parameters = emipc_get_api_parameters(api, direction);
 	if (parameters) {
-		EM_DEBUG_FUNC_END("Suceeded");
+		EM_DEBUG_LOG("Suceeded");
 		return emipc_get_param_len_of_param_list(parameters, parameter_index);
 	}
 	EM_DEBUG_FUNC_END("Failed");

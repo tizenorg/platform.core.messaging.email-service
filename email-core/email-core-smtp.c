@@ -55,6 +55,7 @@
 #include "email-debug-log.h"
 #include "email-core-gmime.h"
 #include "email-core-container.h"
+#include "email-network.h"
 
 #undef min
 
@@ -415,8 +416,6 @@ static int emcore_write_body (BODY *body, BODY *root_body, FILE *fp)
 	if (body->encoding == ENCQUOTEDPRINTABLE || body->encoding == ENCBASE64)
 		fprintf(fp, CRLF_STRING);
 
-	fprintf(fp, CRLF_STRING);
-
 FINISH_OFF: /* prevent 34226 */
 
 	/* cleanup local vars */
@@ -463,26 +462,27 @@ static int emcore_write_rfc822_body(BODY *body, BODY *root_body, FILE *fp, int *
 
 				rfc822_write_body_header(&p, &part->body);
 
-				fprintf(fp, "--%s"CRLF_STRING, bndry);
+				fprintf(fp, CRLF_STRING"--%s"CRLF_STRING, bndry);
 				if (body->subtype && (body->subtype[0] == 'S' || body->subtype[0] == 's')) {
 					if ((error = emcore_write_body (body, root_body, fp)) != EMAIL_ERROR_NONE) {
 						EM_DEBUG_EXCEPTION("emcore_write_body failed : [%d]", error);
 						return false;
 					}
-					fprintf(fp, "--%s"CRLF_STRING, bndry);
+					fprintf(fp, CRLF_STRING"--%s"CRLF_STRING, bndry);
 				}
 
-				fprintf(fp, "%s"CRLF_STRING, buf);
-
+				fprintf(fp, "%s", buf);
 				emcore_write_rfc822_body(&part->body, root_body, fp, err_code);
+
 			} while ((part = part->next));
 
-			fprintf(fp, "--%s--"CRLF_STRING, bndry);
+			fprintf(fp, CRLF_STRING"--%s--"CRLF_STRING, bndry);
 			break;
 
 		default:
 			EM_DEBUG_LOG_DEV("body->type is not TYPEMULTIPART");
 
+			fprintf(fp, CRLF_STRING);
 			if ((error = emcore_write_body (body, root_body, fp)) != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("emcore_write_body failed : [%d]", error);
 				return false;
@@ -553,7 +553,6 @@ static int emcore_write_rfc822 (ENVELOPE *env, BODY *body, email_mail_priority_t
 	rfc822_output_header(&buf, env, body, NIL, NIL);		/*  Excluding BCC */
 
 	EM_DEBUG_LOG("header_buffer [%d]", strlen(header_buffer));
-
 	{
 		gchar **tokens = g_strsplit(header_buffer, "CHARSET=X-UNKNOWN", 2);
 
@@ -634,8 +633,7 @@ static int emcore_write_rfc822 (ENVELOPE *env, BODY *body, email_mail_priority_t
 		}
 	}
 
-	SNPRINTF(header_buffer + EM_SAFE_STRLEN(header_buffer), header_buffer_lenth-(EM_SAFE_STRLEN(header_buffer)), CRLF_STRING);
-
+//	SNPRINTF(header_buffer + EM_SAFE_STRLEN(header_buffer), header_buffer_lenth-(EM_SAFE_STRLEN(header_buffer)), CRLF_STRING);
 	if (data && EM_SAFE_STRLEN(*data) > 0) {
 		fname = EM_SAFE_STRDUP(*data);
 		file_exist = 1;
@@ -1123,7 +1121,17 @@ INTERNAL_FUNC int emcore_add_mail(char *multi_user_name, email_mail_data_t *inpu
 	EM_DEBUG_LOG("thread_item_count [%d]", thread_item_count);
 
 	if (thread_item_count > 1) {
-		if (!emstorage_update_latest_thread_mail(multi_user_name, mail_data->account_id, mail_data->mailbox_id, converted_mail_tbl->thread_id, &updated_thread_id, 0, 0, NOTI_THREAD_ID_CHANGED_BY_ADD, false, &err)) {
+		if (!emstorage_update_latest_thread_mail(multi_user_name, 
+													mail_data->account_id, 
+													mail_data->mailbox_id,
+													mail_data->mailbox_type,
+													converted_mail_tbl->thread_id, 
+													&updated_thread_id, 
+													0, 
+													0, 
+													NOTI_THREAD_ID_CHANGED_BY_ADD, 
+													false, 
+													&err)) {
 			EM_DEBUG_EXCEPTION("emstorage_update_latest_thread_mail failed [%d]", err);
 			emstorage_rollback_transaction(multi_user_name, NULL, NULL, NULL);
 			goto FINISH_OFF;
@@ -1779,6 +1787,10 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 	dst_mailbox_id = local_mailbox->mailbox_id;
 	emstorage_free_mailbox(&local_mailbox, 1, NULL);
 
+	if (!emnetwork_check_network_status(&err)) {
+		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
+		goto FINISH_OFF;
+	}
 
 	send_stream = emcore_get_smtp_stream (multi_user_name, account_id, &err);
 	if (!send_stream) {
@@ -1936,7 +1948,12 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 					EM_DEBUG_EXCEPTION("emcore_sync_header failed");
 				}
 				mail_close (local_stream);
-				if (!emstorage_get_maildata_by_servermailid(multi_user_name, local_mailbox->mailbox_id, "0", &temp_mail, false, &err)) {
+				if (!emstorage_get_maildata_by_servermailid(multi_user_name, 
+															"0", 
+															local_mailbox->mailbox_id,
+															&temp_mail, 
+															false, 
+															&err)) {
 					if (err != EMAIL_ERROR_MAIL_NOT_FOUND) {
 						EM_DEBUG_EXCEPTION("emstorage_get_maildata_by_servermailid failed : [%d]", err);
 						goto FINISH_OFF;
@@ -2090,7 +2107,7 @@ INTERNAL_FUNC int emcore_send_saved_mail(char *multi_user_name, int account_id, 
 	int err2 = EMAIL_ERROR_NONE;
 	int status = EMAIL_SEND_FAIL;
 	int *mail_ids = NULL;
-	DB_STMT handle;
+	DB_STMT handle = NULL;
 	int i = 0;
 	int total = 0;
 	int attachment_tbl_count = 0;
@@ -2121,6 +2138,11 @@ INTERNAL_FUNC int emcore_send_saved_mail(char *multi_user_name, int account_id, 
 
 /*don't delete the comment. several threads including event thread call this func */
 /*	FINISH_OFF_IF_CANCELED; */
+
+	if (!emnetwork_check_network_status(&err)) {
+		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
+		goto FINISH_OFF;
+	}
 
 	opt = &(ref_account->options);
 
@@ -2502,7 +2524,6 @@ static int emcore_send_mail_smtp(char *multi_user_name, SENDSTREAM *stream, ENVE
 			recipients++;
 	}
 
-
 	if (send_err) {
 		EM_DEBUG_EXCEPTION("One or more recipients failed...");
 		err = EMAIL_ERROR_INVALID_ADDRESS;
@@ -2573,14 +2594,13 @@ static int emcore_send_mail_smtp(char *multi_user_name, SENDSTREAM *stream, ENVE
 		}
 
 		while (total) {
-#if 0
 			/* Cancel the sending event */
 			if (!emcore_check_send_mail_thread_status()) {
 				EM_DEBUG_EXCEPTION(" emcore_check_send_mail_thread_status failed...");
 				err = EMAIL_ERROR_CANCELLED;
 				goto FINISH_OFF;
 			}
-#endif
+
 			if (total  < allocSize)
 				dataSize = total;
 			else
@@ -3436,8 +3456,9 @@ static int emcore_make_envelope_from_mail(char *multi_user_name, emstorage_mail_
 	emcore_encode_rfc2047_address(envelope->cc, &error);
 	emcore_encode_rfc2047_address(envelope->bcc, &error);
 
-	if (input_mail_tbl_data->subject)
+	if (input_mail_tbl_data->subject) {
 		envelope->subject = emcore_encode_rfc2047_text(input_mail_tbl_data->subject, &error);
+	}
 
 	char rfc822_date_string[DATE_STR_LENGTH] = { 0, };
 	rfc822_date(rfc822_date_string);
@@ -4657,7 +4678,7 @@ INTERNAL_FUNC int emcore_create_alarm_for_auto_resend(char *multi_user_name, int
 
 		trigger_at_time = current_time + input_alarm_interval_in_second;
 
-		if ((err = emcore_add_alarm(multi_user_name, trigger_at_time, EMAIL_ALARM_CLASS_AUTO_RESEND, 0, emcore_auto_resend_cb, (void *)multi_user_name)) != EMAIL_ERROR_NONE) {
+		if ((err = emcore_add_alarm(multi_user_name, trigger_at_time, EMAIL_ALARM_CLASS_AUTO_RESEND, 0, emcore_auto_resend_cb, NULL)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_add_alarm failed [%d]",err);
 			goto FINISH_OFF;
 		}
