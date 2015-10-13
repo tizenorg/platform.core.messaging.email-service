@@ -43,7 +43,7 @@ static char *add_shared_owner_prefix(const char *name)
 		return NULL;
 	}
 
-	ckm_alias = g_strconcat(ckmc_label_shared_owner, ckmc_label_name_separator, name, NULL);
+	ckm_alias = g_strconcat(ckmc_owner_id_system, ckmc_owner_id_separator, name, NULL);
 
 	EM_DEBUG_FUNC_END();
 	return ckm_alias;
