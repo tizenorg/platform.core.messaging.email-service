@@ -1053,7 +1053,14 @@ void stb_delete_mail(HIPC_API a_hAPI)
 		goto FINISH_OFF;
 	}
 
-	emdaemon_delete_mail(multi_user_name, mailbox_tbl->account_id, mail_ids, num, from_server, NULL, &err);
+	emdaemon_delete_mail(multi_user_name, 
+							mailbox_tbl->account_id, 
+							mailbox_id, 
+							mail_ids, 
+							num, 
+							from_server, 
+							NULL, 
+							&err);
 
 FINISH_OFF:
 
@@ -1975,14 +1982,17 @@ void stb_expunge_mails_deleted_flagged(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), (void*)&on_server);
 	EM_DEBUG_LOG("on_server [%d]", on_server);
 
-	if( (err = emdaemon_expunge_mails_deleted_flagged(multi_user_name, mailbox_id, on_server, &handle)) != EMAIL_ERROR_NONE)
+	if ((err = emdaemon_expunge_mails_deleted_flagged(multi_user_name, 
+														mailbox_id, 
+														on_server, 
+														&handle)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_LOG("emdaemon_expunge_mails_deleted_flagged success");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter fail");
 	}
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int))) {
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int))) {
 		EM_DEBUG_LOG("ipcAPI_AddParameter local_result failed ");
 	}
 
@@ -2638,6 +2648,7 @@ void stb_clear_result_of_search_mail_on_server(HIPC_API a_hAPI)
 	/* Remove the searched mails */
 	if (!emdaemon_delete_mail(multi_user_name, 
 								account_id, 
+								0,
 								mail_id_list, 
 								mail_id_count, 
 								EMAIL_DELETE_LOCALLY, 
@@ -3734,8 +3745,8 @@ void stb_API_mapper(HIPC_API a_hAPI)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
-	int nAPIID = emipc_get_api_id(a_hAPI);
-	int client_fd = emipc_get_response_id(a_hAPI);
+	unsigned int nAPIID = emipc_get_api_id(a_hAPI);
+	unsigned int client_fd = emipc_get_response_id(a_hAPI);
 
 	err = emcore_check_privilege(client_fd);
 	if (err != EMAIL_ERROR_NONE) {

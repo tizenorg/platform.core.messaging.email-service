@@ -4,7 +4,7 @@
 * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Sunghyun Kwon <sh0701.kwon@samsung.com>, Minsoo Kim <minnsoo.kim@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -26,11 +26,11 @@
  * @file	email-core-cynara.h
  * @author	sh0701.kwon@samsung.com
  * @version	0.1
- * @brief	This file contains functionality to provide cynara support in email-service. 
+ * @brief	This file contains functionality to provide cynara support in email-service.
  */
 
 INTERNAL_FUNC int emcore_init_cynara();
 
 INTERNAL_FUNC void emcore_finish_cynara();
 
-INTERNAL_FUNC int emcore_check_privilege(int socket_fd);
+INTERNAL_FUNC int emcore_check_privilege(unsigned int socket_fd);

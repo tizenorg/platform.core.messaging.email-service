@@ -176,9 +176,9 @@ INTERNAL_FUNC int emcore_gmime_pop3_parse_mime(char *eml_path, struct _m_content
 }
 
 
-INTERNAL_FUNC int emcore_gmime_eml_parse_mime(char *eml_path, 
-											struct _rfc822header *rfc822_header, 
-											struct _m_content_info *cnt_info, 
+INTERNAL_FUNC int emcore_gmime_eml_parse_mime(char *eml_path,
+											struct _rfc822header *rfc822_header,
+											struct _m_content_info *cnt_info,
 											int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("cnt_info[%p], err_code[%p]", cnt_info, err_code);
@@ -397,6 +397,20 @@ static void emcore_gmime_pop3_parse_foreach_cb(GMimeObject *parent, GMimeObject 
 		char *content_location = (char *)g_mime_part_get_content_location(leaf_part);
 		EM_DEBUG_LOG_SEC("Location:%s", content_location);
 
+		/* Parent object */
+		/* because of distinguished the inline or attachment */
+		/* multipart/related : inline */
+		/* multipart/mixed : attachment */
+		char *parent_ctype_type = NULL;
+		char *parent_ctype_subtype = NULL;
+		GMimeContentType *parent_ctype = NULL;
+
+		parent_ctype = g_mime_object_get_content_type(parent);
+		parent_ctype_type = (char *)g_mime_content_type_get_media_type(parent_ctype);
+		parent_ctype_subtype = (char *)g_mime_content_type_get_media_subtype(parent_ctype);
+		EM_DEBUG_LOG("Content-type[%s/%s]", parent_ctype_type, parent_ctype_subtype);
+		/* Parent content type - END */
+
 		GMimeObject *mobject = (GMimeObject *)part;
 
 		/*Content ID*/
@@ -491,21 +505,39 @@ static void emcore_gmime_pop3_parse_foreach_cb(GMimeObject *parent, GMimeObject 
 		/*Content - END*/
 
 		/*Figure out TEXT or ATTACHMENT(INLINE) ?*/
-		int result = false;
-		if (content_id && (emcore_search_string_from_file(cnt_info->text.html, content_id, NULL, &result) == EMAIL_ERROR_NONE && result)) {
+		if ((!disposition_str && g_ascii_strcasecmp(ctype_type, "text") == 0) &&
+			(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+			 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+			EM_DEBUG_LOG("TEXT");
+		} else if (parent_ctype_subtype &&
+					((g_ascii_strncasecmp(parent_ctype_subtype, "related", strlen("related")) == 0) ||
+					 (g_ascii_strncasecmp(parent_ctype_subtype, "relative", strlen("relative")) == 0))) {
 			content_disposition_type = INLINE_ATTACHMENT;
 			EM_DEBUG_LOG("INLINE_ATTACHMENT");
-		} else if ((disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) || disposition_filename || ctype_name) {
-			content_disposition_type = ATTACHMENT;
-			EM_DEBUG_LOG("ATTACHMENT");
-		} else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "delivery-status") == 0) {
-			content_disposition_type = ATTACHMENT;
-			EM_DEBUG_LOG("ATTACHMENT");
-		} else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "calendar") == 0) {
+		} else if (parent_ctype_subtype && g_ascii_strcasecmp(parent_ctype_subtype, "mixed") == 0) {
 			content_disposition_type = ATTACHMENT;
 			EM_DEBUG_LOG("ATTACHMENT");
 		} else {
-			EM_DEBUG_LOG("Not INLINE or ATTACHMENT");
+			int result = false;
+			if (content_id && (emcore_search_string_from_file(cnt_info->text.html,
+																content_id,
+																NULL,
+																&result) == EMAIL_ERROR_NONE && result)) {
+				content_disposition_type = INLINE_ATTACHMENT;
+				EM_DEBUG_LOG("INLINE_ATTACHMENT");
+			} else if ((disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) ||
+						disposition_filename || ctype_name) {
+				content_disposition_type = ATTACHMENT;
+				EM_DEBUG_LOG("ATTACHMENT");
+			} else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "delivery-status") == 0) {
+				content_disposition_type = ATTACHMENT;
+				EM_DEBUG_LOG("ATTACHMENT");
+			} else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "calendar") == 0) {
+				content_disposition_type = ATTACHMENT;
+				EM_DEBUG_LOG("ATTACHMENT");
+			} else {
+				EM_DEBUG_LOG("Not INLINE or ATTACHMENT");
+			}
 		}
 
 		if (content_disposition_type != ATTACHMENT && content_disposition_type != INLINE_ATTACHMENT) {
@@ -930,6 +962,20 @@ static void emcore_gmime_eml_parse_foreach_cb(GMimeObject *parent, GMimeObject *
 
 		GMimeObject *mobject = (GMimeObject *)part;
 
+		/* Parent object */
+		/* because of distinguished the inline or attachment */
+		/* multipart/related : inline */
+		/* multipart/mixed : attachment */
+		char *parent_ctype_type = NULL;
+		char *parent_ctype_subtype = NULL;
+		GMimeContentType *parent_ctype = NULL;
+
+		parent_ctype = g_mime_object_get_content_type(parent);
+		parent_ctype_type = (char *)g_mime_content_type_get_media_type(parent_ctype);
+		parent_ctype_subtype = (char *)g_mime_content_type_get_media_subtype(parent_ctype);
+		EM_DEBUG_LOG("Content-type[%s/%s]", parent_ctype_type, parent_ctype_subtype);
+		/* Parent Content Type - END */
+
 		/*Content ID*/
 		char *content_id = (char *)g_mime_object_get_content_id(mobject);
 
@@ -1039,28 +1085,50 @@ static void emcore_gmime_eml_parse_foreach_cb(GMimeObject *parent, GMimeObject *
 			EM_DEBUG_LOG("save_status : [%d]", save_status);
 		}
 
-		/*Figure out TEXT or ATTACHMENT(INLINE) ?*/
-		int result = false;
 		cnt_info->total_mail_size += content_size;
-		if (content_id && (emcore_search_string_from_file(cnt_info->text.html, content_id, NULL, &result) == EMAIL_ERROR_NONE && result)) {
+		/*Figure out TEXT or ATTACHMENT(INLINE) ?*/
+		if ((!disposition_str && g_ascii_strcasecmp(ctype_type, "text") == 0) &&
+			(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+			 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+			cnt_info->total_body_size += content_size;
+			EM_DEBUG_LOG("TEXT");
+		} else if (parent_ctype_subtype &&
+					((g_ascii_strncasecmp(parent_ctype_subtype, "related", strlen("related")) == 0) ||
+					 (g_ascii_strncasecmp(parent_ctype_subtype, "relative", strlen("relative")) == 0))) {
 			content_disposition_type = INLINE_ATTACHMENT;
 			cnt_info->total_body_size += content_size;
 			EM_DEBUG_LOG("INLINE_ATTACHMENT");
-		} else if ((disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) || disposition_filename || ctype_name) {
-			content_disposition_type = ATTACHMENT;
-			cnt_info->total_attachment_size += content_size;
-			EM_DEBUG_LOG("ATTACHMENT");
-		} else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "delivery-status") == 0) {
-			content_disposition_type = ATTACHMENT;
-			cnt_info->total_attachment_size += content_size;
-			EM_DEBUG_LOG("ATTACHMENT");
-		} else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "calendar") == 0) {
+		} else if (parent_ctype_subtype &&
+					g_ascii_strncasecmp(parent_ctype_subtype, "mixed", strlen("mixed")) == 0) {
 			content_disposition_type = ATTACHMENT;
 			cnt_info->total_attachment_size += content_size;
 			EM_DEBUG_LOG("ATTACHMENT");
 		} else {
-			cnt_info->total_body_size += content_size;
-			EM_DEBUG_LOG("Not INLINE or ATTACHMENT");
+			int result = false;
+			if (content_id && (emcore_search_string_from_file(cnt_info->text.html,
+																content_id,
+																NULL,
+																&result) == EMAIL_ERROR_NONE && result)) {
+				content_disposition_type = INLINE_ATTACHMENT;
+				cnt_info->total_body_size += content_size;
+				EM_DEBUG_LOG("INLINE_ATTACHMENT");
+			} else if ((disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) ||
+						disposition_filename || ctype_name) {
+				content_disposition_type = ATTACHMENT;
+				cnt_info->total_attachment_size += content_size;
+				EM_DEBUG_LOG("ATTACHMENT");
+			} else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "delivery-status") == 0) {
+				content_disposition_type = ATTACHMENT;
+				cnt_info->total_attachment_size += content_size;
+				EM_DEBUG_LOG("ATTACHMENT");
+			} else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "calendar") == 0) {
+				content_disposition_type = ATTACHMENT;
+				cnt_info->total_attachment_size += content_size;
+				EM_DEBUG_LOG("ATTACHMENT");
+			} else {
+				cnt_info->total_body_size += content_size;
+				EM_DEBUG_LOG("Not INLINE or ATTACHMENT");
+			}
 		}
 
 		if (content_disposition_type != ATTACHMENT && content_disposition_type != INLINE_ATTACHMENT) {
@@ -1397,6 +1465,19 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_foreach_cb(GMimeObject *parent, GMime
 		GMimeObject *mobject = (GMimeObject *)part;
 		leaf_part = (GMimePart *)part;
 
+		/* Parent object */
+		/* because of distinguished the inline or attachment */
+		/* multipart/related : inline */
+		/* multipart/mixed : attachment */
+		char *parent_ctype_type = NULL;
+		char *parent_ctype_subtype = NULL;
+		GMimeContentType *parent_ctype = NULL;
+
+		parent_ctype = g_mime_object_get_content_type(parent);
+		parent_ctype_type = (char *)g_mime_content_type_get_media_type(parent_ctype);
+		parent_ctype_subtype = (char *)g_mime_content_type_get_media_subtype(parent_ctype);
+		EM_DEBUG_LOG("Content-type[%s/%s]", parent_ctype_type, parent_ctype_subtype);
+
 		/*Content Type*/
 		ctype = g_mime_object_get_content_type(mobject);
 		ctype_type = (char *)g_mime_content_type_get_media_type(ctype);
@@ -1436,62 +1517,41 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_foreach_cb(GMimeObject *parent, GMime
 		EM_DEBUG_LOG_SEC("Content-Location:%s", content_location);
 
 		/*Figure out TEXT or ATTACHMENT(INLINE) ?*/
-		int result = false;
-		if (disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) {
-			if (content_id && (emcore_search_string_from_file(cnt_info->text.html, 
-																content_id, 
-																NULL, 
+		if ((!disposition_str && g_ascii_strcasecmp(ctype_type, "text") == 0) &&
+			(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+			 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+			EM_DEBUG_LOG("TEXT");
+		} else if (parent_ctype_subtype &&
+					((g_ascii_strncasecmp(parent_ctype_subtype, "related", strlen("related")) == 0) ||
+					 (g_ascii_strncasecmp(parent_ctype_subtype, "relative", strlen("relative")) == 0))) {
+			content_disposition_type = INLINE_ATTACHMENT;
+			EM_DEBUG_LOG("INLINE_ATTACHMENT");
+		} else if (parent_ctype_subtype &&
+					g_ascii_strncasecmp(parent_ctype_subtype, "mixed", strlen("mixed")) == 0) {
+			content_disposition_type = ATTACHMENT;
+			EM_DEBUG_LOG("ATTACHMENT");
+		} else {
+			int result = false;
+			if (content_id && (emcore_search_string_from_file(cnt_info->text.html,
+																content_id,
+																NULL,
 																&result) == EMAIL_ERROR_NONE && result)) {
 				content_disposition_type = INLINE_ATTACHMENT;
 				EM_DEBUG_LOG("INLINE_ATTACHMENT");
-			} else {
+			} else if ((disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) ||
+						disposition_filename || ctype_name) {
 				content_disposition_type = ATTACHMENT;
 				EM_DEBUG_LOG("ATTACHMENT");
-			}
-		} else if ((content_id || content_location) && (ctype_name || disposition_filename)) {
-			if (cnt_info->attachment_only) {
+			} else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "delivery-status") == 0) {
+				content_disposition_type = ATTACHMENT;
+				EM_DEBUG_LOG("ATTACHMENT");
+			} else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "calendar") == 0) {
 				content_disposition_type = ATTACHMENT;
 				EM_DEBUG_LOG("ATTACHMENT");
 			} else {
-				content_disposition_type = INLINE_ATTACHMENT;
-				EM_DEBUG_LOG("INLINE_ATTACHMENT");
-			}
-		} else {
-			if (content_id &&
-					(emcore_search_string_from_file(cnt_info->text.html, content_id, NULL, &result) == EMAIL_ERROR_NONE && result)) {
-				content_disposition_type = INLINE_ATTACHMENT;
-				EM_DEBUG_LOG("INLINE_ATTACHMENT");
-			} else if (content_id || content_location) {
-				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
-					EM_DEBUG_LOG("TEXT");
-				} else {
-					if (cnt_info->attachment_only) {
-						content_disposition_type = ATTACHMENT;
-						EM_DEBUG_LOG("ATTACHMENT");
-					} else {
-						content_disposition_type = INLINE_ATTACHMENT;
-						EM_DEBUG_LOG("INLINE_ATTACHMENT");
-					}
-				}
-			} else {
-				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
-					EM_DEBUG_LOG("TEXT");
-				} else {
-					content_disposition_type = ATTACHMENT;
-					EM_DEBUG_LOG("ATTACHMENT");
-				}
+				EM_DEBUG_LOG("Not INLINE or ATTACHMENT");
 			}
 		}
-
-		/*if (content_id && (emcore_search_string_from_file(cnt_info->text.html, content_id, NULL, &result) == EMAIL_ERROR_NONE && result)) {
-			content_disposition_type = INLINE_ATTACHMENT;
-			EM_DEBUG_LOG("INLINE_ATTACHMENT");
-		} else if ((disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) || disposition_filename || ctype_name) {
-			content_disposition_type = ATTACHMENT;
-			EM_DEBUG_LOG("ATTACHMENT");
-		}*/
 
 		if (!emcore_get_temp_file_name(&content_path, &error))  {
 			EM_DEBUG_EXCEPTION("emcore_get_temp_file_name failed [%d]", error);
@@ -1911,6 +1971,19 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 		GMimeObject *mobject = (GMimeObject *)part;
 		leaf_part = (GMimePart *)part;
 
+		/* Parent object */
+		/* because of distinguished the inline or attachment */
+		/* multipart/related : inline */
+		/* multipart/mixed : attachment */
+		char *parent_ctype_type = NULL;
+		char *parent_ctype_subtype = NULL;
+		GMimeContentType *parent_ctype = NULL;
+
+		parent_ctype = g_mime_object_get_content_type(parent);
+		parent_ctype_type = (char *)g_mime_content_type_get_media_type(parent_ctype);
+		parent_ctype_subtype = (char *)g_mime_content_type_get_media_subtype(parent_ctype);
+		EM_DEBUG_LOG("Content-type[%s/%s]", parent_ctype_type, parent_ctype_subtype);
+
 		/*Content Type*/
 		ctype = g_mime_object_get_content_type(mobject);
 		ctype_type = (char *)g_mime_content_type_get_media_type(ctype);
@@ -1943,59 +2016,42 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 		content_location = (char *)g_mime_part_get_content_location(leaf_part);
 		EM_DEBUG_LOG_SEC("Content-Location:%s", content_location);
 
-
 		/*Figure out TEXT or ATTACHMENT(INLINE) ?*/
-		int result = false;
-		if (disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) {
+		if ((!disposition_str && g_ascii_strcasecmp(ctype_type, "text") == 0) &&
+			(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+			 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+			EM_DEBUG_LOG("TEXT");
+		} else if (parent_ctype_subtype &&
+					((g_ascii_strncasecmp(parent_ctype_subtype, "related", strlen("related")) == 0) ||
+					 (g_ascii_strncasecmp(parent_ctype_subtype, "relative", strlen("relative")) == 0)))	{
+			content_disposition_type = INLINE_ATTACHMENT;
+			EM_DEBUG_LOG("INLINE_ATTACHMENT");
+		} else if (parent_ctype_subtype &&
+					g_ascii_strncasecmp(parent_ctype_subtype, "mixed", strlen("mixed")) == 0) {
 			content_disposition_type = ATTACHMENT;
 			EM_DEBUG_LOG("ATTACHMENT");
-		} else if ((content_id || content_location) && (ctype_name || disposition_filename)) {
-			if (cnt_info->attachment_only) {
-				content_disposition_type = ATTACHMENT;
-				EM_DEBUG_LOG("ATTACHMENT");
-			} else {
-				content_disposition_type = INLINE_ATTACHMENT;
-				EM_DEBUG_LOG("INLINE_ATTACHMENT");
-			}
 		} else {
-			if (content_id && (emcore_search_string_from_file(cnt_info->text.html, 
-																content_id, 
-																NULL, 
+			int result = false;
+			if (content_id && (emcore_search_string_from_file(cnt_info->text.html,
+																content_id,
+																NULL,
 																&result) == EMAIL_ERROR_NONE && result)) {
 				content_disposition_type = INLINE_ATTACHMENT;
 				EM_DEBUG_LOG("INLINE_ATTACHMENT");
-			} else if (content_id || content_location) {
-				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
-					EM_DEBUG_LOG("TEXT");
-				} else {
-					if (cnt_info->attachment_only) {
-						content_disposition_type = ATTACHMENT;
-						EM_DEBUG_LOG("ATTACHMENT");
-					} else {
-						content_disposition_type = INLINE_ATTACHMENT;
-						EM_DEBUG_LOG("INLINE_ATTACHMENT");
-					}
-				}
+			} else if ((disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) ||
+						disposition_filename || ctype_name) {
+				content_disposition_type = ATTACHMENT;
+				EM_DEBUG_LOG("ATTACHMENT");
+			} else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "delivery-status") == 0) {
+				content_disposition_type = ATTACHMENT;
+				EM_DEBUG_LOG("ATTACHMENT");
+			} else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "calendar") == 0) {
+				content_disposition_type = ATTACHMENT;
+				EM_DEBUG_LOG("ATTACHMENT");
 			} else {
-				if (g_ascii_strcasecmp(ctype_type, "text") == 0 && 
-						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
-						 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
-					EM_DEBUG_LOG("TEXT");
-				} else {
-					content_disposition_type = ATTACHMENT;
-					EM_DEBUG_LOG("ATTACHMENT");
-				}
+				EM_DEBUG_LOG("Not INLINE or ATTACHMENT");
 			}
 		}
-
-		/*if (content_id && (emcore_search_string_from_file(cnt_info->text.html, content_id, NULL, &result) == EMAIL_ERROR_NONE && result)) {
-			content_disposition_type = INLINE_ATTACHMENT;
-			EM_DEBUG_LOG("INLINE_ATTACHMENT");
-		} else if ((disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) || disposition_filename || ctype_name) {
-			content_disposition_type = ATTACHMENT;
-			EM_DEBUG_LOG("ATTACHMENT");
-		}*/
 
 		/*Content*/
 		if (!emcore_get_temp_file_name(&content_path, &error)) {
@@ -2367,6 +2423,20 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_bodystructure_foreach_cb(GMimeObject 
 		GMimeObject *mobject = (GMimeObject *)part;
 		leaf_part = (GMimePart *)part;
 
+		/* Parent object */
+		/* because of distinguished the inline or attachment */
+		/* multipart/related : inline */
+		/* multipart/mixed : attachment */
+		char *parent_ctype_type = NULL;
+		char *parent_ctype_subtype = NULL;
+		GMimeContentType *parent_ctype = NULL;
+
+		parent_ctype = g_mime_object_get_content_type(parent);
+		parent_ctype_type = (char *)g_mime_content_type_get_media_type(parent_ctype);
+		parent_ctype_subtype = (char *)g_mime_content_type_get_media_subtype(parent_ctype);
+		EM_DEBUG_LOG("Content-type[%s/%s]", parent_ctype_type, parent_ctype_subtype);
+		/* Parent content type - END */
+
 		/*Content Type*/
 		ctype = g_mime_object_get_content_type(mobject);
 		ctype_type = (char *)g_mime_content_type_get_media_type(ctype);
@@ -2404,48 +2474,66 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_bodystructure_foreach_cb(GMimeObject 
 		EM_DEBUG_LOG_SEC("Content-Location:%s", content_location);
 
 		/*Figure out TEXT or ATTACHMENT(INLINE) */
-		if (disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) {
+		if ((!disposition_str && g_ascii_strcasecmp(ctype_type, "text") == 0) &&
+			(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+			 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+			cnt_info->total_body_size += content_size;
+			EM_DEBUG_LOG("TEXT");
+		} else if (parent_ctype_subtype &&
+					((g_ascii_strncasecmp(parent_ctype_subtype, "related", strlen("related")) == 0) ||
+					 (g_ascii_strncasecmp(parent_ctype_subtype, "relative", strlen("relative")) == 0)))	{
+			content_disposition_type = INLINE_ATTACHMENT;
+			cnt_info->total_body_size += content_size;
+			EM_DEBUG_LOG("INLINE_ATTACHMENT");
+		} else if (parent_ctype_subtype &&
+					g_ascii_strncasecmp(parent_ctype_subtype, "mixed", strlen("mixed")) == 0) {
 			content_disposition_type = ATTACHMENT;
 			cnt_info->total_attachment_size += content_size;
 			EM_DEBUG_LOG("ATTACHMENT");
-		} else if ((content_id || content_location) && (ctype_name || disposition_filename)) {
-			if (cnt_info->attachment_only) {
+		} else {
+			if (disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) {
 				content_disposition_type = ATTACHMENT;
 				cnt_info->total_attachment_size += content_size;
 				EM_DEBUG_LOG("ATTACHMENT");
-			} else {
-				content_disposition_type = INLINE_ATTACHMENT;
-				cnt_info->total_body_size += content_size;
-				EM_DEBUG_LOG("INLINE_ATTACHMENT");
-			}
-		} else {
-			if (content_id || content_location) {
-				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-					(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || 
-					 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
-					cnt_info->total_body_size += content_size;
-					EM_DEBUG_LOG("TEXT");
-				} else {
-					if (cnt_info->attachment_only) {
-						content_disposition_type = ATTACHMENT;
-						cnt_info->total_attachment_size += content_size;
-						EM_DEBUG_LOG("ATTACHMENT");
-					} else {
-						content_disposition_type = INLINE_ATTACHMENT;
-						cnt_info->total_body_size += content_size;
-						EM_DEBUG_LOG("INLINE_ATTACHMENT");
-					}
-				}
-			} else {
-				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-					(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || 
-					 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
-					cnt_info->total_body_size += content_size;
-					EM_DEBUG_LOG("TEXT");
-				} else {
+			} else if ((content_id || content_location) && (ctype_name || disposition_filename)) {
+				if (cnt_info->attachment_only) {
 					content_disposition_type = ATTACHMENT;
 					cnt_info->total_attachment_size += content_size;
 					EM_DEBUG_LOG("ATTACHMENT");
+				} else {
+					content_disposition_type = INLINE_ATTACHMENT;
+					cnt_info->total_body_size += content_size;
+					EM_DEBUG_LOG("INLINE_ATTACHMENT");
+				}
+			} else {
+				if (content_id || content_location) {
+					if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
+						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+						 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+						cnt_info->total_body_size += content_size;
+						EM_DEBUG_LOG("TEXT");
+					} else {
+						if (cnt_info->attachment_only) {
+							content_disposition_type = ATTACHMENT;
+							cnt_info->total_attachment_size += content_size;
+							EM_DEBUG_LOG("ATTACHMENT");
+						} else {
+							content_disposition_type = INLINE_ATTACHMENT;
+							cnt_info->total_body_size += content_size;
+							EM_DEBUG_LOG("INLINE_ATTACHMENT");
+						}
+					}
+				} else {
+					if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
+						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+						 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+						cnt_info->total_body_size += content_size;
+						EM_DEBUG_LOG("TEXT");
+					} else {
+						content_disposition_type = ATTACHMENT;
+						cnt_info->total_attachment_size += content_size;
+						EM_DEBUG_LOG("ATTACHMENT");
+					}
 				}
 			}
 		}
@@ -2487,8 +2575,8 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent, 
-															GMimeObject *part, 
+INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent,
+															GMimeObject *part,
 															gpointer user_data)
 {
 	EM_DEBUG_FUNC_BEGIN("parent[%p], part[%p], user_data[%p]", parent, part, user_data);
@@ -2585,6 +2673,20 @@ INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent
 		GMimeObject *mobject = (GMimeObject *)part;
 		leaf_part = (GMimePart *)part;
 
+		/* Parent object */
+		/* because of distinguished the inline or attachment */
+		/* multipart/related : inline */
+		/* multipart/mixed : attachment */
+		char *parent_ctype_type = NULL;
+		char *parent_ctype_subtype = NULL;
+		GMimeContentType *parent_ctype = NULL;
+
+		parent_ctype = g_mime_object_get_content_type(parent);
+		parent_ctype_type = (char *)g_mime_content_type_get_media_type(parent_ctype);
+		parent_ctype_subtype = (char *)g_mime_content_type_get_media_subtype(parent_ctype);
+		EM_DEBUG_LOG("Content-type[%s/%s]", parent_ctype_type, parent_ctype_subtype);
+		/* Parent content type - END */
+
 		/*Content Type*/
 		ctype = g_mime_object_get_content_type(mobject);
 		ctype_type = (char *)g_mime_content_type_get_media_type(ctype);
@@ -2600,7 +2702,7 @@ INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent
 			goto FINISH_OFF;
 		}
 		/*Content Type - END*/
-		
+
 		/*Content Disposition*/
 		disposition = g_mime_object_get_content_disposition(mobject);
 		if (disposition) {
@@ -2621,40 +2723,55 @@ INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent
 		EM_DEBUG_LOG_SEC("Content-Location:%s", content_location);
 
 		/*Figure out TEXT or ATTACHMENT(INLINE) */
-		if (disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) {
+		if ((!disposition_str && g_ascii_strcasecmp(ctype_type, "text") == 0) &&
+			(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+			 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+			EM_DEBUG_LOG("TEXT");
+		} else if (parent_ctype_subtype &&
+					((g_ascii_strncasecmp(parent_ctype_subtype, "related", strlen("related")) == 0) ||
+					 (g_ascii_strncasecmp(parent_ctype_subtype, "relative", strlen("relative")) == 0))) {
+			content_disposition_type = INLINE_ATTACHMENT;
+			EM_DEBUG_LOG("INLINE_ATTACHMENT");
+		} else if (parent_ctype_subtype &&
+					g_ascii_strncasecmp(parent_ctype_subtype, "mixed", strlen("mixed")) == 0) {
 			content_disposition_type = ATTACHMENT;
 			EM_DEBUG_LOG("ATTACHMENT");
-		} else if ((content_id || content_location) && (ctype_name || disposition_filename)) {
-			if (cnt_info->attachment_only) {
+		} else {
+			if (disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) {
 				content_disposition_type = ATTACHMENT;
 				EM_DEBUG_LOG("ATTACHMENT");
-			} else {
-				content_disposition_type = INLINE_ATTACHMENT;
-				EM_DEBUG_LOG("INLINE_ATTACHMENT");
-			}
-		} else {
-			if (content_id || content_location) {
-				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-					(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || 
-					 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
-					EM_DEBUG_LOG("TEXT");
-				} else {
-					if (cnt_info->attachment_only) {
-						content_disposition_type = ATTACHMENT;
-						EM_DEBUG_LOG("ATTACHMENT");
-					} else {
-						content_disposition_type = INLINE_ATTACHMENT;
-						EM_DEBUG_LOG("INLINE_ATTACHMENT");
-					}
-				}
-			} else {
-				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-					(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || 
-					 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
-					EM_DEBUG_LOG("TEXT");
-				} else {
+			} else if ((content_id || content_location) && (ctype_name || disposition_filename)) {
+				if (cnt_info->attachment_only) {
 					content_disposition_type = ATTACHMENT;
 					EM_DEBUG_LOG("ATTACHMENT");
+				} else {
+					content_disposition_type = INLINE_ATTACHMENT;
+					EM_DEBUG_LOG("INLINE_ATTACHMENT");
+				}
+			} else {
+				if (content_id || content_location) {
+					if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
+						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+						 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+						EM_DEBUG_LOG("TEXT");
+					} else {
+						if (cnt_info->attachment_only) {
+							content_disposition_type = ATTACHMENT;
+							EM_DEBUG_LOG("ATTACHMENT");
+						} else {
+							content_disposition_type = INLINE_ATTACHMENT;
+							EM_DEBUG_LOG("INLINE_ATTACHMENT");
+						}
+					}
+				} else {
+					if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
+						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+						 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+						EM_DEBUG_LOG("TEXT");
+					} else {
+						content_disposition_type = ATTACHMENT;
+						EM_DEBUG_LOG("ATTACHMENT");
+					}
 				}
 			}
 		}
@@ -2667,7 +2784,7 @@ INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent
 		}
 		else {
 			snprintf(sections, sizeof(sections), "BODY.PEEK[%s.MIME] BODY.PEEK[%s]", ctype_section, ctype_section);
-			
+
 			if (cnt_info->sections) {
 				/* Signed message : Did not need sections */
 				if (cnt_info->content_type == 1) {
@@ -2696,8 +2813,8 @@ FINISH_OFF:
 }
 
 
-INTERNAL_FUNC void emcore_gmime_get_attachment_section_foreach_cb(GMimeObject *parent, 
-																GMimeObject *part, 
+INTERNAL_FUNC void emcore_gmime_get_attachment_section_foreach_cb(GMimeObject *parent,
+																GMimeObject *part,
 																gpointer user_data)
 {
 	EM_DEBUG_FUNC_BEGIN("parent[%p], part[%p], user_data[%p]", parent, part, user_data);
@@ -2785,6 +2902,20 @@ INTERNAL_FUNC void emcore_gmime_get_attachment_section_foreach_cb(GMimeObject *p
 			goto FINISH_OFF;
 		}
 
+		/* Parent object */
+		/* because of distinguished the inline or attachment */
+		/* multipart/related : inline */
+		/* multipart/mixed : attachment */
+		char *parent_ctype_type = NULL;
+		char *parent_ctype_subtype = NULL;
+		GMimeContentType *parent_ctype = NULL;
+
+		parent_ctype = g_mime_object_get_content_type(parent);
+		parent_ctype_type = (char *)g_mime_content_type_get_media_type(parent_ctype);
+		parent_ctype_subtype = (char *)g_mime_content_type_get_media_subtype(parent_ctype);
+		EM_DEBUG_LOG("Content-type[%s/%s]", parent_ctype_type, parent_ctype_subtype);
+		/* Parent content type - END */
+
 		/*Content Type*/
 		ctype = g_mime_object_get_content_type(mobject);
 		ctype_type = (char *)g_mime_content_type_get_media_type(ctype);
@@ -2821,40 +2952,55 @@ INTERNAL_FUNC void emcore_gmime_get_attachment_section_foreach_cb(GMimeObject *p
 		EM_DEBUG_LOG_SEC("Content-Location:%s", content_location);
 
 		/*Figure out TEXT or ATTACHMENT(INLINE) */
-		if (disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) {
+		if ((!disposition_str && g_ascii_strcasecmp(ctype_type, "text") == 0) &&
+			(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+			 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+			EM_DEBUG_LOG("TEXT");
+		} else if (parent_ctype_subtype &&
+					((g_ascii_strncasecmp(parent_ctype_subtype, "related", strlen("related")) == 0) ||
+					 (g_ascii_strncasecmp(parent_ctype_subtype, "relative", strlen("relative")) == 0))) {
+			content_disposition_type = INLINE_ATTACHMENT;
+			EM_DEBUG_LOG("INLINE_ATTACHMENT");
+		} else if (parent_ctype_subtype &&
+					g_ascii_strncasecmp(parent_ctype_subtype, "mixed", strlen("mixed")) == 0) {
 			content_disposition_type = ATTACHMENT;
 			EM_DEBUG_LOG("ATTACHMENT");
-		} else if ((content_id || content_location) && (ctype_name || disposition_filename)) {
-			if (cnt_info->attachment_only) {
+		} else {
+			if (disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) {
 				content_disposition_type = ATTACHMENT;
 				EM_DEBUG_LOG("ATTACHMENT");
-			} else {
-				content_disposition_type = INLINE_ATTACHMENT;
-				EM_DEBUG_LOG("INLINE_ATTACHMENT");
-			}
-		} else {
-			if (content_id || content_location) {
-				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || 
-						 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
-					EM_DEBUG_LOG("TEXT");
-				} else {
-					if (cnt_info->attachment_only) {
-						content_disposition_type = ATTACHMENT;
-						EM_DEBUG_LOG("ATTACHMENT");
-					} else {
-						content_disposition_type = INLINE_ATTACHMENT;
-						EM_DEBUG_LOG("INLINE_ATTACHMENT");
-					}
-				}
-			} else {
-				if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
-						(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 || 
-						 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
-					EM_DEBUG_LOG("TEXT");
-				} else {
+			} else if ((content_id || content_location) && (ctype_name || disposition_filename)) {
+				if (cnt_info->attachment_only) {
 					content_disposition_type = ATTACHMENT;
 					EM_DEBUG_LOG("ATTACHMENT");
+				} else {
+					content_disposition_type = INLINE_ATTACHMENT;
+					EM_DEBUG_LOG("INLINE_ATTACHMENT");
+				}
+			} else {
+				if (content_id || content_location) {
+					if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
+							(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+							 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+						EM_DEBUG_LOG("TEXT");
+					} else {
+						if (cnt_info->attachment_only) {
+							content_disposition_type = ATTACHMENT;
+							EM_DEBUG_LOG("ATTACHMENT");
+						} else {
+							content_disposition_type = INLINE_ATTACHMENT;
+							EM_DEBUG_LOG("INLINE_ATTACHMENT");
+						}
+					}
+				} else {
+					if (g_ascii_strcasecmp(ctype_type, "text") == 0 &&
+							(g_ascii_strcasecmp(ctype_subtype, "plain") == 0 ||
+							 g_ascii_strcasecmp(ctype_subtype, "html") == 0)) {
+						EM_DEBUG_LOG("TEXT");
+					} else {
+						content_disposition_type = ATTACHMENT;
+						EM_DEBUG_LOG("ATTACHMENT");
+					}
 				}
 			}
 		}
@@ -2956,8 +3102,8 @@ INTERNAL_FUNC void emcore_gmime_get_mime_entity_cb(GMimeObject *parent, GMimeObj
 }
 
 INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
-													BODY *body, 
-													const char *spec, 
+													BODY *body,
+													const char *spec,
 													int *total_mail_size)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -3001,7 +3147,7 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
 		if (EM_SAFE_STRLEN(subspec) > 2)
 			section = EM_SAFE_STRDUP(subspec+2);
 
-		EM_DEBUG_LOG("constructing a %s/%s part (%s/%s)", body_types[part->body.type], part->body.subtype, 
+		EM_DEBUG_LOG("constructing a %s/%s part (%s/%s)", body_types[part->body.type], part->body.subtype,
 														subspec, section);
 
 		if (part->body.type == TYPEMULTIPART) {
@@ -3172,8 +3318,8 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
 }
 
 INTERNAL_FUNC void emcore_gmime_construct_part (GMimePart *part,
-												BODY *body, 
-												const char *spec, 
+												BODY *body,
+												const char *spec,
 												int *total_mail_size)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -3199,7 +3345,7 @@ INTERNAL_FUNC void emcore_gmime_construct_part (GMimePart *part,
 	ctype_subtype = (char *)g_mime_content_type_get_media_subtype(ctype);
 
 	/* Type-Subtype */
-	if (g_strcmp0(ctype_type, "text") == 0 && g_strcmp0(ctype_subtype, "plain") == 0 
+	if (g_strcmp0(ctype_type, "text") == 0 && g_strcmp0(ctype_subtype, "plain") == 0
 			&& body->subtype) {
 		GMimeContentType *content_type = NULL;
 		char *type = g_ascii_strdown(body_types[body->type], -1);
@@ -3423,7 +3569,7 @@ FINISH_OFF:
 }
 
 INTERNAL_FUNC int emcore_gmime_get_body_sections_from_message(GMimeMessage *message,
-															struct _m_content_info *cnt_info, 
+															struct _m_content_info *cnt_info,
 															char **sections_to_fetch)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -3522,8 +3668,8 @@ FINISH_OFF:
 }
 
 INTERNAL_FUNC int emcore_gmime_get_attachment_section_from_message(GMimeMessage *message,
-																	struct _m_content_info *cnt_info, 
-																	int nth, 
+																	struct _m_content_info *cnt_info,
+																	int nth,
 																	char **section_to_fetch)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -3660,8 +3806,8 @@ static int emcore_gmime_get_section_n_bodysize(char *response, char *section, in
 }
 
 INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int msg_uid, int mail_id,
-														struct _m_content_info *cnt_info, 
-														GMimeMessage *message, int event_handle, 
+														struct _m_content_info *cnt_info,
+														GMimeMessage *message, int event_handle,
 														int auto_download, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("stream[%p], msg_uid[%d], cnt_info[%p], err_code[%p]",
@@ -3739,7 +3885,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 
 	if (GMIME_IS_MULTIPART_SIGNED(message->mime_part)) {
 		EM_DEBUG_LOG("Multi Part Signed");
-		signed_message = 1;	
+		signed_message = 1;
 	}
 
 	while (imaplocal->netstream) {
@@ -3845,7 +3991,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 				EM_DEBUG_EXCEPTION("invalid mime part type");
 				goto FINISH_OFF;
 			}
-		
+
 			if (!part_header) {
 				if (!emcore_get_temp_file_name(&buf, &err) || !buf) {
 					EM_DEBUG_EXCEPTION("emcore_get_temp_file_name failed [%d]", err);
@@ -3862,10 +4008,10 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 					if (cnt_info->total_body_size > body_size) {
 						EM_DEBUG_LOG("Multipart body size is [%d]", cnt_info->total_body_size);
 						if (!auto_download) {
-							if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, 
-															mail_id, 
-															buf, 
-															cnt_info->total_body_size, 
+							if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY,
+															mail_id,
+															buf,
+															cnt_info->total_body_size,
 															0))
 								EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 						}
@@ -3886,10 +4032,10 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 
 				if (cnt_info->grab_type == (GRAB_TYPE_TEXT | GRAB_TYPE_ATTACHMENT)) {
 					if (!auto_download) {
-						if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, 
-														mail_id, 
-														buf, 
-														cnt_info->total_mail_size, 
+						if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY,
+														mail_id,
+														buf,
+														cnt_info->total_mail_size,
 														0))
 							EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 					}
@@ -3910,16 +4056,16 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 					}
 
 					if (signed_message) {
-						content_stream = g_mime_stream_mem_new_with_buffer((const char *)encoded, 
+						content_stream = g_mime_stream_mem_new_with_buffer((const char *)encoded,
 																			EM_SAFE_STRLEN(encoded));
 						entity_parser = g_mime_parser_new_with_stream(content_stream);
 						if (content_stream) g_object_unref(content_stream);
 
 						entity_part = g_mime_parser_construct_part(entity_parser);
 						if (entity_parser) g_object_unref(entity_parser);
-					} 
+					}
 					else if (GMIME_IS_PART(mime_object) && mime_part) {
-						content_stream = g_mime_stream_mem_new_with_buffer((const char *)encoded, 
+						content_stream = g_mime_stream_mem_new_with_buffer((const char *)encoded,
 																			EM_SAFE_STRLEN(encoded));
 						//parser = g_mime_parser_new_with_stream(content_stream);
 						content = g_mime_data_wrapper_new_with_stream(content_stream, mime_part->encoding);
@@ -4111,7 +4257,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 						if (content_stream) g_object_unref (content_stream);
 						g_mime_part_set_content_object(mime_part, content);
 						if (content) g_object_unref(content);
-					} 	
+					}
 				}
 			} else {
 				EM_DEBUG_LOG("MIME header");
@@ -4155,7 +4301,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 
 					/* Replace the file name (Becase the server sometimes send the invalid name in bodystructure) */
 					if (mime_part && file_name) g_mime_part_set_filename(mime_part, file_name);
-				} 
+				}
 
 				if (object_header) g_object_unref(object_header);
 				if (ctype_header) g_object_unref(ctype_header);
@@ -4937,7 +5083,7 @@ INTERNAL_FUNC char *emcore_gmime_get_decoding_text(const char *text)
 INTERNAL_FUNC char *emcore_gmime_get_mime_entity_signed_message(GMimeObject *multipart)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	
+
 	int entity_fd = 0;
 	int error = EMAIL_ERROR_NONE;
 	char *mime_entity_path = NULL;
@@ -4997,8 +5143,8 @@ FINISH_OFF:
 INTERNAL_FUNC char *emcore_gmime_get_mime_entity(int fd)
 {
 	EM_DEBUG_FUNC_BEGIN();
+
 	char *output_path = NULL;
-	
 	GMimeStream *stream = NULL;
 	GMimeParser *parser = NULL;
 	GMimeObject *part = NULL;

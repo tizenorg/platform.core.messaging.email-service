@@ -177,7 +177,6 @@ int emcore_get_uid(emcore_uid_list *uid_list, int msgno, char **uid, int *err_co
  * @return This function returns true on success or false on failure.
  */
 int emcore_free_uids(emcore_uid_list *uid_list, int *err_code);
-
 INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(char *multi_user_name, int mail_id);
 INTERNAL_FUNC int emcore_update_attachment_except_inline(char *multi_user_name, 
                                                         struct _m_content_info *cnt_info, 
@@ -188,6 +187,10 @@ INTERNAL_FUNC int emcore_update_attachment_except_inline(char *multi_user_name,
                                                         int *output_attachment_count, 
                                                         int *output_inline_attachment_count);
 
+INTERNAL_FUNC int emcore_sync_mail_by_message_id(char *multi_user_name, 
+													int mail_id, 
+													int mailbox_id, 
+													char **output_server_uid);
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
 INTERNAL_FUNC int emcore_download_bulk_partial_mail_body(MAILSTREAM *stream, 
 														email_event_partial_body_thd *pbd_event, 

@@ -2034,6 +2034,7 @@ EXPORT_API int email_expunge_mails_deleted_flagged(int input_mailbox_id, int inp
 	}
 
 FINISH_OFF:
+
 	if(hAPI)
 		emipc_destroy_email_api(hAPI);
 

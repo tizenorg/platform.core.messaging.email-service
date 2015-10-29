@@ -103,7 +103,7 @@
 #define EMAIL_CH_SQUARE_BRACKET_S '['
 #define EMAIL_CH_SQUARE_BRACKET_E ']'
 #define EMAIL_CH_SPACE            ' '
-#define EMAIL_NOTI_ICON_PATH                "/usr/apps/org.tizen.quickpanel/shared/res/noti_icons/noti_email.png"
+#define EMAIL_NOTI_ICON_PATH                "/usr/apps/org.tizen.quickpanel/shared/res/noti_icons/E-mail/noti_email.png"
 #define EMAIL_NOTI_INDICATOR_ICON_PATH      "/usr/apps/org.tizen.indicator/res/icons/Event/B03_Event_email.png"
 #define EMAIL_NOTI_MAX_MAIL_ID   100
 
@@ -150,7 +150,7 @@ INTERNAL_FUNC char *emcore_convert_mutf7_to_utf8(char *mailbox_name)
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		return NULL;
 	}
-	
+
 	for (; *cursor; ++cursor)
 		switch (*cursor) {
 			case '+':
@@ -1633,7 +1633,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 {
 	EM_DEBUG_FUNC_BEGIN("account_id: %d, mail_id: %d, action:%d", account_id, mail_id, action );
 	int err = EMAIL_ERROR_NONE;
-#ifdef __FEATURE_NOTIFICATION_ENABLE__  
+#ifdef __FEATURE_NOTIFICATION_ENABLE__
 	int private_id = 0;
 	void *join_zone = NULL;
 	char *mailbox_name = NULL;
@@ -1754,25 +1754,25 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 			break;
 		}
 
-		if ((noti_err = notification_set_layout(noti, 
+		if ((noti_err = notification_set_layout(noti,
 												NOTIFICATION_LY_NOTI_EVENT_SINGLE)) != NOTIFICATION_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("notification_set_layout failed [%d]", noti_err);
 			err = EMAIL_ERROR_NOTI;
 			goto FINISH_OFF;
 		}
 
-		if ((noti_err = notification_set_image(noti, 
-												NOTIFICATION_IMAGE_TYPE_ICON, 
+		if ((noti_err = notification_set_image(noti,
+												NOTIFICATION_IMAGE_TYPE_ICON,
 												EMAIL_NOTI_ICON_PATH)) != NOTIFICATION_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("notification_set_image failed [%d]", noti_err);
 			err = EMAIL_ERROR_NOTI;
 			goto FINISH_OFF;
 		}
 
-		if ((noti_err = notification_set_text(noti, 
+		if ((noti_err = notification_set_text(noti,
 											NOTIFICATION_TEXT_TYPE_TITLE,
-											p_mail_data->alias_recipient,		
-											NULL, 
+											p_mail_data->alias_recipient,
+											NULL,
 											NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
 			err = EMAIL_ERROR_NOTI;
@@ -1803,9 +1803,9 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 			}
 			break;
 		default:
-			if ((noti_err = notification_set_text(noti, 
-												NOTIFICATION_TEXT_TYPE_CONTENT, 
-												"Sending failed", 
+			if ((noti_err = notification_set_text(noti,
+												NOTIFICATION_TEXT_TYPE_CONTENT,
+												"Sending failed",
 												dgettext_string,
 												NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
@@ -1816,10 +1816,10 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 		}
 
 		if (sending_error == EMAIL_ERROR_SMTP_SEND_FAILURE_BY_OVERSIZE) {
-			if ((noti_err = notification_set_text(noti, 
-												NOTIFICATION_TEXT_TYPE_INFO_1, 
-												dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_POP_THE_EMAIL_IS_TOO_LARGE"), 
-												NULL, 
+			if ((noti_err = notification_set_text(noti,
+												NOTIFICATION_TEXT_TYPE_INFO_1,
+												dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_POP_THE_EMAIL_IS_TOO_LARGE"),
+												NULL,
 												NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_INFO_1 failed");
 				err = EMAIL_ERROR_NOTI;
@@ -1827,7 +1827,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 			}
 		}
 
-		if ((noti_err = notification_set_display_applist(noti, 
+		if ((noti_err = notification_set_display_applist(noti,
 												NOTIFICATION_DISPLAY_APP_NOTIFICATION_TRAY | NOTIFICATION_DISPLAY_APP_TICKER)) != NOTIFICATION_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("notification_insert failed [%d]", noti_err);
 			err = EMAIL_ERROR_NOTI;
@@ -2125,7 +2125,7 @@ int emcore_calc_mail_size(char *multi_user_name, email_mail_data_t *input_mail_d
         SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, input_attachment_data_list[i].attachment_path);
 
 		if (stat(real_file_path, &st_buf) < 0)  {
-			EM_DEBUG_EXCEPTION("stat(\"%s\") failed...", input_attachment_data_list[i].attachment_path);
+			EM_DEBUG_EXCEPTION_SEC("stat(\"%s\") failed...", input_attachment_data_list[i].attachment_path);
 			err = EMAIL_ERROR_FILE_NOT_FOUND;
 			goto FINISH_OFF;
 		}
@@ -2978,12 +2978,12 @@ INTERNAL_FUNC char *reg_replace_new(char *input_source_text, char *input_old_pat
 		goto FINISH_OFF;
 	}
 
-	replaced_str = g_regex_replace_literal(regex, 
-											input_source_text, 
-											strlen(input_source_text), 
-											0, 
-											input_new_string, 
-											0, 
+	replaced_str = g_regex_replace_literal(regex,
+											input_source_text,
+											strlen(input_source_text),
+											0,
+											input_new_string,
+											0,
 											&error);
 	if (replaced_str == NULL) {
 		EM_DEBUG_EXCEPTION("g_regex_replace_literal failed : [%s][%d]", error->message, error->code);
@@ -2991,7 +2991,7 @@ INTERNAL_FUNC char *reg_replace_new(char *input_source_text, char *input_old_pat
 	}
 
 FINISH_OFF:
-	
+
 	if (regex) g_regex_unref(regex);
 
 	return replaced_str;
@@ -5471,12 +5471,13 @@ INTERNAL_FUNC char *__em_get_month_in_string(int month)
 	return mon;
 }
 
-INTERNAL_FUNC int emcore_make_date_string_for_search(time_t input_time, char *output_date_string)
+INTERNAL_FUNC int emcore_make_date_string_for_search(time_t input_time, char **output_date_string)
 {
 	EM_DEBUG_FUNC_BEGIN("input_time[%p] output_date_string[%p]", input_time, output_date_string);
 	int err = EMAIL_ERROR_NONE;
 	struct tm   *timeinfo = NULL;
 	char *mon = NULL;
+	char *temp_date_string = NULL;
 
 	EM_DEBUG_LOG("RawTime Info [%lu]", input_time);
 
@@ -5489,14 +5490,17 @@ INTERNAL_FUNC int emcore_make_date_string_for_search(time_t input_time, char *ou
 
 	EM_DEBUG_LOG(">>>>>Time %d %d %d %d %d %d", 1900+timeinfo->tm_year, timeinfo->tm_mon+1, timeinfo->tm_mday);
 
-	memset(output_date_string, 0x00, 20);
-
 	mon = __em_get_month_in_string(timeinfo->tm_mon);
 	if (mon) {
-		snprintf(output_date_string, 16, "%d-%s-%04d", timeinfo->tm_mday, mon, 1900 + timeinfo->tm_year);
-		EM_DEBUG_LOG("DATE IS [ %s ] ", output_date_string);
+		temp_date_string = g_strdup_printf("%d-%s-%04d", timeinfo->tm_mday, mon, 1900 + timeinfo->tm_year);
+		EM_DEBUG_LOG("DATE IS [ %s ] ", temp_date_string);
 		EM_SAFE_FREE(mon);
 	}
+
+	if (output_date_string)
+		*output_date_string = temp_date_string;
+	else 
+		EM_SAFE_FREE(temp_date_string);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
@@ -5521,7 +5525,6 @@ INTERNAL_FUNC int emcore_make_uid_range_string(emcore_uid_list *uid_list, int to
 
 	EM_DEBUG_LOG("memory allocation for uid_range [%d, %d]", msg_count, uid_range_size);
 	uid_range = malloc(sizeof(char) * uid_range_size);
-
 	if (uid_range == NULL){
 		EM_DEBUG_EXCEPTION("memory allocation for uid_range failed");
 		err  = EMAIL_ERROR_OUT_OF_MEMORY;

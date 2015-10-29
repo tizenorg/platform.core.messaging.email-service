@@ -53,8 +53,19 @@ INTERNAL_FUNC int emcore_remove_connection_info(int account_id);
 #endif /* __FEATURE_KEEP_CONNECTION__ */
 /*  in SMTP case, path argument must be (ENCODED_PATH_SMTP) */
 /*  ex) emcore_connect_to_remote_mailbox(xxx, (char *)ENCODED_PATH_SMTP, xxx, xxx); */
-INTERNAL_FUNC int  emcore_connect_to_remote_mailbox_with_account_info(char *multi_user_name, email_account_t *ref_account, int input_mailbox_id, void **mail_stream, int *err_code);
-INTERNAL_FUNC int  emcore_connect_to_remote_mailbox(char *multi_user_name, int account_id, int input_mailbox_id, void **mail_stream, int *err_code);
+INTERNAL_FUNC int  emcore_connect_to_remote_mailbox_with_account_info(char *multi_user_name, 
+																		email_account_t *ref_account, 
+																		int input_mailbox_id, 
+																		int reusable,
+																		void **mail_stream, 
+																		int *err_code);
+
+INTERNAL_FUNC int  emcore_connect_to_remote_mailbox(char *multi_user_name, 
+													int account_id, 
+													int input_mailbox_id,
+													int reusable,
+													void **mail_stream, 
+													int *err_code);
 INTERNAL_FUNC int  emcore_close_mailbox(int account_id, void *mail_stream);
 #ifdef __FEATURE_KEEP_CONNECTION__
 INTERNAL_FUNC void emcore_close_mailbox_receiving_stream();

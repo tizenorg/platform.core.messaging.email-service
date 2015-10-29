@@ -339,6 +339,12 @@ EXPORT_API int email_verify_signature_ex(email_mail_data_t *input_mail_data, ema
 			break;
 	}
 
+	if (count == input_attachment_count) {
+		EM_DEBUG_LOG("No have the signed attachment");
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		return EMAIL_ERROR_INVALID_PARAM;
+	}
+
 	if (input_mail_data->smime_type == EMAIL_SMIME_SIGNED) {
 		emcore_init_openssl_library();
 		if (!emcore_verify_signature(input_attachment_data[count].attachment_path, input_mail_data->file_path_mime_entity, verify, &err)) 

@@ -235,7 +235,7 @@ INTERNAL_FUNC int emcore_update_db_table_schema(char *multi_user_name);
 #endif /* #ifdef __FEATURE_UPDATE_DB_TABLE_SCHEMA__ */
 INTERNAL_FUNC int emcore_unescape_from_url(char *input_url, char **output_url);
 INTERNAL_FUNC char *__em_get_month_in_string(int month);
-INTERNAL_FUNC int emcore_make_date_string_for_search(time_t input_time, char *output_date_string);
+INTERNAL_FUNC int emcore_make_date_string_for_search(time_t input_time, char **output_date_string);
 INTERNAL_FUNC int emcore_make_uid_range_string(emcore_uid_list *uid_list, int total, char **output_uid_range_string);
 
 INTERNAL_FUNC char* emcore_convert_mutf7_to_utf8(char *mailbox_name); 

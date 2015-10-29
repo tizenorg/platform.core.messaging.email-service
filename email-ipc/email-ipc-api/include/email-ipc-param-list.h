@@ -36,7 +36,7 @@ typedef enum {
 }IPC_STREAM_INFO;
 
 typedef struct {
-	long param_count;
+	int param_count;
 	emipc_param params[10];
 	unsigned char *byte_stream;
 } emipc_param_list;
@@ -45,7 +45,7 @@ EXPORT_API emipc_param_list *emipc_create_param_list();
 
 EXPORT_API void emipc_destroy_param_list(emipc_param_list *param_list);
 
-EXPORT_API bool emipc_parse_stream_of_param_list(emipc_param_list *param_list, void *stream_data);
+EXPORT_API bool emipc_parse_stream_of_param_list(void *stream_data, emipc_param_list *param_list);
 
 EXPORT_API unsigned char *emipc_serialize_param_list(emipc_param_list *param_list, int *stream_length);
 

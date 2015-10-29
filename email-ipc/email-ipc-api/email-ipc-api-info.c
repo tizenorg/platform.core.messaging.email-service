@@ -44,16 +44,16 @@ EXPORT_API bool emipc_deserialize_api_info(emipc_email_api_info *api_info, EPARA
 	if (api_info->params[direction] == NULL) {
 		api_info->params[direction] = emipc_create_param_list();
 		if (api_info->params[direction] == NULL) {
-			EM_DEBUG_EXCEPTION("Malloc failed");
+			EM_DEBUG_EXCEPTION("emipc_create_param_list failed");
 			return false;
 		}
 	}
 
-	api_info->api_id = *((long *)stream + eSTREAM_APIID);
-	api_info->app_id = *((long *)stream + eSTREAM_APPID);
-	api_info->response_id = *((long *)stream + eSTREAM_RESID);
+	memcpy(&(api_info->api_id), stream + (sizeof(int) * eSTREAM_APIID), sizeof(api_info->api_id));
+	memcpy(&(api_info->response_id), stream + (sizeof(int) * eSTREAM_RESID), sizeof(api_info->response_id));
+	memcpy(&(api_info->app_id), stream + (sizeof(int) * eSTREAM_APPID), sizeof(api_info->api_id));
 
-	return emipc_parse_stream_of_param_list(api_info->params[direction], stream);
+	return emipc_parse_stream_of_param_list(stream, api_info->params[direction]);
 }
 
 EXPORT_API unsigned char *emipc_serialize_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction, int *stream_len)
@@ -69,17 +69,18 @@ EXPORT_API unsigned char *emipc_serialize_api_info(emipc_email_api_info *api_inf
 	if (api_info->params[direction] == NULL) {
 		api_info->params[direction] = emipc_create_param_list();
 		if (api_info->params[direction] == NULL) {
-			EM_DEBUG_EXCEPTION("Malloc failed");
+			EM_DEBUG_EXCEPTION("emipc_create_param_list failed");
 			return NULL;
 		}
 	}
 
 	stream = emipc_serialize_param_list(api_info->params[direction], stream_len);
 	if (stream != NULL) {
-		memcpy(stream, &(api_info->api_id), sizeof(api_info->api_id));
-		memcpy(stream+(sizeof(long)*eSTREAM_RESID), &(api_info->response_id), sizeof(api_info->response_id));
-		memcpy(stream+(sizeof(long)*eSTREAM_APPID), &(api_info->app_id), sizeof(api_info->app_id));
+		memcpy(stream + (sizeof(int) * eSTREAM_APIID), &(api_info->api_id), sizeof(api_info->api_id));
+		memcpy(stream + (sizeof(int) * eSTREAM_RESID), &(api_info->response_id), sizeof(api_info->response_id));
+		memcpy(stream + (sizeof(int) * eSTREAM_APPID), &(api_info->app_id), sizeof(api_info->app_id));
 	}
+
 	EM_DEBUG_FUNC_END();
 	return stream;
 }
