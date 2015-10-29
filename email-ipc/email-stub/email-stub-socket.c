@@ -186,7 +186,7 @@ EXPORT_API void emipc_wait_for_ipc_request()
 						EM_DEBUG_LOG("[IPCLib]Stub Socket Recv [Socket ID = %d], [recv_len = %d]", event_fd, recv_len);
 
 						/* IPC request stream is at least 16byte */
-						if (recv_len >= sizeof(long) * eSTREAM_DATA) {
+						if (recv_len >= sizeof(int) * eSTREAM_DATA) {
 							int ret = 0;
 							ret = emipc_create_task((unsigned char *)sz_buf, event_fd);
 							if (ret == EMAIL_ERROR_PERMISSION_DENIED) {

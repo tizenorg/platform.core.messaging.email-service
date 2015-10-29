@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -24,9 +24,9 @@
  * This file contains functionality related to IMAP IDLE.
  * to interact with email-service.
  * @file		em_core-imap-idle.c
- * @author	
+ * @author
  * @version	0.1
- * @brief 		This file contains functionality to provide IMAP IDLE support in email-service. 
+ * @brief 		This file contains functionality to provide IMAP IDLE support in email-service.
  */
 
 #include <email-internal-types.h>
@@ -39,7 +39,7 @@
 #include "lnx_inc.h"
 #include "email-core-imap-idle.h"
 #include "email-debug-log.h"
-#include "email-storage.h" 
+#include "email-storage.h"
 #include "email-network.h"
 #include "email-core-utils.h"
 #include "email-core-mailbox.h"
@@ -74,9 +74,12 @@ typedef struct _email_imap_idle_connection_info_t {
 int       imap_idle_pipe_fd[2];
 thread_t  imap_idle_thread_id;
 
-static int emcore_get_connection_info_by_socket_fd(GList *input_imap_idle_task_list, int input_socket_fd, email_imap_idle_connection_info_t **output_connection_info)
+static int emcore_get_connection_info_by_socket_fd(GList *input_imap_idle_task_list,
+													int input_socket_fd,
+													email_imap_idle_connection_info_t **output_connection_info)
 {
-	EM_DEBUG_FUNC_BEGIN("input_imap_idle_task_list[%p] input_socket_fd[%d] output_connection_info[%p]", input_imap_idle_task_list, input_socket_fd, output_connection_info);
+	EM_DEBUG_FUNC_BEGIN("input_imap_idle_task_list[%p] input_socket_fd[%d] output_connection_info[%p]",
+						input_imap_idle_task_list, input_socket_fd, output_connection_info);
 	int err = EMAIL_ERROR_NONE;
 	email_imap_idle_connection_info_t *connection_info = NULL;
 	GList *index = NULL;
@@ -89,27 +92,29 @@ static int emcore_get_connection_info_by_socket_fd(GList *input_imap_idle_task_l
 
 	index = g_list_first(input_imap_idle_task_list);
 
-	while(index) {
+	while (index) {
 		connection_info = index->data;
-		if(connection_info && connection_info->socket_fd == input_socket_fd) {
+		if (connection_info && connection_info->socket_fd == input_socket_fd) {
 			break;
 		}
 		index = g_list_next(index);
 	}
 
-	if(connection_info)
+	if (connection_info)
 		*output_connection_info = connection_info;
 	else
 		err = EMAIL_ERROR_DATA_NOT_FOUND;
 
 FINISH_OFF:
+
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
 
 static int emcore_clear_old_connections(int input_epoll_fd, GList **input_imap_idle_task_list)
 {
-	EM_DEBUG_FUNC_BEGIN("input_epoll_fd[%d] input_imap_idle_task_list[%p] ", input_epoll_fd, input_imap_idle_task_list);
+	EM_DEBUG_FUNC_BEGIN("input_epoll_fd[%d] input_imap_idle_task_list[%p]", input_epoll_fd, input_imap_idle_task_list);
+
 	int err = EMAIL_ERROR_NONE;
 	email_imap_idle_connection_info_t *connection_info = NULL;
 	struct epoll_event ev = {0};
@@ -122,38 +127,44 @@ static int emcore_clear_old_connections(int input_epoll_fd, GList **input_imap_i
 		goto FINISH_OFF;
 	}
 
-	index = g_list_first(*input_imap_idle_task_list);
+	index = *input_imap_idle_task_list;
 
-	while(index) {
+	while (index) {
 		connection_info = index->data;
+		if (connection_info) {
+			/* Removes all fd from epoll_fd */
+			ev.events  = EPOLLIN;
+			ev.data.fd = connection_info->socket_fd;
 
-		/* Removes all fd from epoll_fd */
-		ev.events  = EPOLLIN;
-		ev.data.fd = connection_info->socket_fd;
+			if (epoll_ctl(input_epoll_fd, EPOLL_CTL_DEL, connection_info->socket_fd, &ev) == -1) {
+				EM_DEBUG_LOG("epoll_ctl failed: %s[%d]", EM_STRERROR(errno_buf), errno);
+			}
 
-		if (epoll_ctl(input_epoll_fd, EPOLL_CTL_DEL, connection_info->socket_fd, &ev) == -1) {
-			EM_DEBUG_LOG("epoll_ctl failed: %s[%d]", EM_STRERROR(errno_buf), errno);
+			/* Close connection */
+			if (connection_info->mail_stream)
+				connection_info->mail_stream = mail_close(connection_info->mail_stream);
+
+			g_free(connection_info->multi_user_name);
+			g_free(connection_info);
 		}
 
-		/* Close connection */
-		if (connection_info->mail_stream)
-			connection_info->mail_stream = mail_close(connection_info->mail_stream);
-
-		EM_SAFE_FREE(connection_info->multi_user_name);
-		EM_SAFE_FREE(connection_info);
-
-		index = g_list_next(index);
+		EM_DEBUG_LOG("Delete the index list");
+		*input_imap_idle_task_list = g_list_delete_link(*input_imap_idle_task_list, index);
+		index = *input_imap_idle_task_list;
 	}
 
-	g_list_free(*input_imap_idle_task_list);
 	*input_imap_idle_task_list = NULL;
 
 FINISH_OFF:
+
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
 
-static int emcore_imap_idle_insert_sync_event(char *multi_user_name, int input_account_id, int input_mailbox_id, int *err_code)
+static int emcore_imap_idle_insert_sync_event(char *multi_user_name,
+												int input_account_id,
+												int input_mailbox_id,
+												int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
 
@@ -201,9 +212,15 @@ FINISH_OFF:
 	return ret;
 }
 
-static int emcore_parse_imap_idle_response(char *multi_user_name, int input_account_id, int input_mailbox_id, MAILSTREAM *input_mailstream, int input_socket_fd)
+static int emcore_parse_imap_idle_response(char *multi_user_name,
+											int input_account_id,
+											int input_mailbox_id,
+											MAILSTREAM *input_mailstream,
+											int input_socket_fd)
 {
-	EM_DEBUG_FUNC_BEGIN("input_account_id[%d] input_mailbox_id [%d] input_mailstream[%p] input_socket_fd[%d]", input_account_id, input_mailbox_id, input_mailstream, input_socket_fd);
+	EM_DEBUG_FUNC_BEGIN("input_account_id[%d] input_mailbox_id [%d] input_mailstream[%p] input_socket_fd[%d]",
+						input_account_id, input_mailbox_id, input_mailstream, input_socket_fd);
+
 	int err = EMAIL_ERROR_NONE;
 	char *p = NULL;
 	IMAPLOCAL *imap_local = NULL;
@@ -262,9 +279,17 @@ FINISH_OFF:
 }
 
 /* connects to given mailbox. send idle and returns socket id */
-static int emcore_connect_and_idle_on_mailbox(char *multi_user_name, GList **input_connection_list, email_account_t *input_account, email_mailbox_t *input_mailbox, MAILSTREAM **output_mailstream, int *output_socket_fd)
+static int emcore_connect_and_idle_on_mailbox(char *multi_user_name,
+												GList **input_connection_list,
+												email_account_t *input_account,
+												email_mailbox_t *input_mailbox,
+												MAILSTREAM **output_mailstream,
+												int *output_socket_fd)
 {
-	EM_DEBUG_FUNC_BEGIN("input_connection_list [%p] input_account [%p] input_mailbox[%p] output_mailstream [%p] output_socket_fd [%p]", input_connection_list, input_account, input_mailbox, output_mailstream, output_socket_fd);
+	EM_DEBUG_FUNC_BEGIN("input_connection_list [%p] input_account [%p] input_mailbox[%p] "
+						"output_mailstream [%p] output_socket_fd [%p]",
+						input_connection_list, input_account, input_mailbox, output_mailstream, output_socket_fd);
+
 	void            *mail_stream = NULL;
 	char             cmd[128] = { 0, };
 	char             tag[32] = { 0, };
@@ -278,7 +303,8 @@ static int emcore_connect_and_idle_on_mailbox(char *multi_user_name, GList **inp
 	GList           *imap_idle_connection_list = NULL;
 	email_imap_idle_connection_info_t *connection_info = NULL;
 
-	if (input_connection_list == NULL || input_account == NULL || input_mailbox == NULL || output_mailstream == NULL || output_socket_fd == NULL) {
+	if (input_connection_list == NULL || input_account == NULL || input_mailbox == NULL ||
+		output_mailstream == NULL || output_socket_fd == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -290,7 +316,12 @@ static int emcore_connect_and_idle_on_mailbox(char *multi_user_name, GList **inp
 		EM_DEBUG_EXCEPTION("emcore_get_empty_session failed...");
 
 	/* Open connection to mailbox */
-	if (!emcore_connect_to_remote_mailbox(multi_user_name, input_mailbox->account_id, input_mailbox->mailbox_id, (void **)&mail_stream, &err) || !mail_stream) {
+	if (!emcore_connect_to_remote_mailbox(multi_user_name,
+											input_mailbox->account_id,
+											input_mailbox->mailbox_id,
+											true,
+											(void **)&mail_stream,
+											&err) || !mail_stream) {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -299,7 +330,6 @@ static int emcore_connect_and_idle_on_mailbox(char *multi_user_name, GList **inp
 	net_stream = imap_local->netstream;
 
 	/* check if ssl option is enabled on this account - shasikala.p */
-
 	if (input_account->incoming_server_secure_connection){
 		SSLSTREAM *ssl_stream = net_stream->stream;
 		tcp_stream = ssl_stream->tcpstream;
@@ -397,18 +427,21 @@ static int emcore_refresh_alarm_for_imap_idle(char *multi_user_name)
 	email_account_t *account_ref_list = NULL;
 
 	/* Check whether the alarm is already existing */
-	if(emcore_check_alarm_by_class_id(EMAIL_ALARM_CLASS_IMAP_IDLE) == EMAIL_ERROR_NONE) {
+	if (emcore_check_alarm_by_class_id(EMAIL_ALARM_CLASS_IMAP_IDLE) == EMAIL_ERROR_NONE) {
 		EM_DEBUG_LOG("Already exist. Remove old one.");
 		emcore_delete_alram_data_by_reference_id(EMAIL_ALARM_CLASS_IMAP_IDLE, 0);
 	}
 
-	if ((err = emcore_get_account_reference_list(multi_user_name, &account_ref_list, &account_count)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_get_account_reference_list(multi_user_name,
+													&account_ref_list,
+													&account_count)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_LOG("emcore_get_account_reference_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	for (i = 0; i < account_count; i++) {
-		if (account_ref_list[i].incoming_server_type == EMAIL_SERVER_TYPE_IMAP4 && (account_ref_list[i].check_interval == 0 || account_ref_list[i].peak_interval == 0)) {
+		if (account_ref_list[i].incoming_server_type == EMAIL_SERVER_TYPE_IMAP4 &&
+			(account_ref_list[i].check_interval == 0 || account_ref_list[i].peak_interval == 0)) {
 			auto_sync_account_count++;
 		}
 	}
@@ -420,7 +453,12 @@ static int emcore_refresh_alarm_for_imap_idle(char *multi_user_name)
 		time(&current_time);
 		trigger_at_time = current_time + (29 * 60);
 
-		if ((err = emcore_add_alarm(multi_user_name, trigger_at_time, EMAIL_ALARM_CLASS_IMAP_IDLE, 0, emcore_imap_idle_cb, NULL)) != EMAIL_ERROR_NONE) {
+		if ((err = emcore_add_alarm(multi_user_name,
+									trigger_at_time,
+									EMAIL_ALARM_CLASS_IMAP_IDLE,
+									0,
+									emcore_imap_idle_cb,
+									NULL)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_add_alarm failed [%d]",err);
 		}
 	}
@@ -491,11 +529,14 @@ void* emcore_imap_idle_worker(void* thread_user_data)
 			}
 
 			if (g_list_length(zone_name_list) <= 1) {
-				if ((err = emcore_get_account_reference_list(NULL, &account_ref_list, &account_count)) != EMAIL_ERROR_NONE) 
+				if ((err = emcore_get_account_reference_list(NULL,
+																&account_ref_list,
+																&account_count)) != EMAIL_ERROR_NONE)
 					EM_DEBUG_LOG("emcore_get_account_reference_list failed [%d]", err);
 
 				for (i = 0; i < account_count; i++) {
-					if (account_ref_list[i].incoming_server_type != EMAIL_SERVER_TYPE_IMAP4 || (account_ref_list[i].check_interval != 0 && account_ref_list[i].peak_interval != 0)) {
+					if (account_ref_list[i].incoming_server_type != EMAIL_SERVER_TYPE_IMAP4 ||
+						(account_ref_list[i].check_interval != 0 && account_ref_list[i].peak_interval != 0)) {
 						EM_DEBUG_LOG("account_id[%d] is not for auto sync", account_ref_list[i].account_id);
 						continue;
 					}
@@ -504,13 +545,22 @@ void* emcore_imap_idle_worker(void* thread_user_data)
 
 					memset(&inbox_mailbox, 0, sizeof(email_mailbox_t));
 
-					if (!emcore_get_mailbox_by_type(NULL, account_ref_list[i].account_id, EMAIL_MAILBOX_TYPE_INBOX, &inbox_mailbox, &err)) {
+					if (!emcore_get_mailbox_by_type(NULL,
+													account_ref_list[i].account_id,
+													EMAIL_MAILBOX_TYPE_INBOX,
+													&inbox_mailbox,
+													&err)) {
 						EM_DEBUG_EXCEPTION("emcore_get_mailbox_by_type failed [%d]", err);
 						continue;
 					}
 
 					EM_DEBUG_LOG("Connect to IMAP server");
-					err = emcore_connect_and_idle_on_mailbox(NULL, &imap_idle_connection_list, &(account_ref_list[i]), &inbox_mailbox, &mail_stream, &socket_fd);
+					err = emcore_connect_and_idle_on_mailbox(NULL,
+																&imap_idle_connection_list,
+																&(account_ref_list[i]),
+																&inbox_mailbox,
+																&mail_stream,
+																&socket_fd);
 
 					emcore_free_mailbox(&inbox_mailbox);
 
@@ -544,12 +594,15 @@ void* emcore_imap_idle_worker(void* thread_user_data)
 
 					EM_DEBUG_LOG("Data name of node : [%s]", node->data);
 
-					if ((err = emcore_get_account_reference_list(node->data, &account_ref_list, &account_count)) != EMAIL_ERROR_NONE) {
+					if ((err = emcore_get_account_reference_list(node->data,
+																	&account_ref_list,
+																	&account_count)) != EMAIL_ERROR_NONE) {
 						EM_DEBUG_LOG("emcore_get_account_reference_list failed [%d]", err);
 					}
 
 					for (i = 0; i < account_count; i++) {
-						if (account_ref_list[i].incoming_server_type != EMAIL_SERVER_TYPE_IMAP4 || (account_ref_list[i].check_interval != 0 && account_ref_list[i].peak_interval != 0)) {
+						if (account_ref_list[i].incoming_server_type != EMAIL_SERVER_TYPE_IMAP4 ||
+							(account_ref_list[i].check_interval != 0 && account_ref_list[i].peak_interval != 0)) {
 							EM_DEBUG_LOG("account_id[%d] is not for auto sync", account_ref_list[i].account_id);
 							continue;
 						}
@@ -558,13 +611,22 @@ void* emcore_imap_idle_worker(void* thread_user_data)
 
 						memset(&inbox_mailbox, 0, sizeof(email_mailbox_t));
 
-						if (!emcore_get_mailbox_by_type(node->data, account_ref_list[i].account_id, EMAIL_MAILBOX_TYPE_INBOX, &inbox_mailbox, &err)) {
+						if (!emcore_get_mailbox_by_type(node->data,
+														account_ref_list[i].account_id,
+														EMAIL_MAILBOX_TYPE_INBOX,
+														&inbox_mailbox,
+														&err)) {
 							EM_DEBUG_EXCEPTION("emcore_get_mailbox_by_type failed [%d]", err);
 							continue;
 						}
 
 						EM_DEBUG_LOG("Connect to IMAP server");
-						err = emcore_connect_and_idle_on_mailbox(node->data, &imap_idle_connection_list, &(account_ref_list[i]), &inbox_mailbox, &mail_stream, &socket_fd);
+						err = emcore_connect_and_idle_on_mailbox(node->data,
+																	&imap_idle_connection_list,
+																	&(account_ref_list[i]),
+																	&inbox_mailbox,
+																	&mail_stream,
+																	&socket_fd);
 
 						emcore_free_mailbox(&inbox_mailbox);
 
@@ -619,15 +681,18 @@ void* emcore_imap_idle_worker(void* thread_user_data)
 					}
 				}
 				else {
-					if ((err = emcore_get_connection_info_by_socket_fd(imap_idle_connection_list, event_fd, &connection_info)) != EMAIL_ERROR_NONE) {
-						EM_DEBUG_LOG("emcore_get_connection_info_by_socket_fd couldn't find proper connection info. [%d]", err);
+					if ((err = emcore_get_connection_info_by_socket_fd(imap_idle_connection_list,
+																		event_fd,
+																		&connection_info)) != EMAIL_ERROR_NONE) {
+						EM_DEBUG_LOG("emcore_get_connection_info_by_socket_fd "
+										"couldn't find proper connection info. [%d]", err);
 						continue;
 					}
 
-					if ((err = emcore_parse_imap_idle_response(connection_info->multi_user_name, 
-															connection_info->account_id, 
-															connection_info->mailbox_id, 
-															connection_info->mail_stream, 
+					if ((err = emcore_parse_imap_idle_response(connection_info->multi_user_name,
+															connection_info->account_id,
+															connection_info->mailbox_id,
+															connection_info->mail_stream,
 															connection_info->socket_fd)) != EMAIL_ERROR_NONE) {
 						EM_DEBUG_EXCEPTION("emcore_parse_imap_idle_response failed. [%d] ", err);
 						refresh_connection_flag = 1;

@@ -227,7 +227,6 @@ INTERNAL_FUNC int em_convert_mailbox_to_mailbox_tbl(email_mailbox_t *mailbox, em
 		memcpy(mailbox_tbl->eas_data, mailbox->eas_data, mailbox->eas_data_length);
 	}
 
-
 	EM_DEBUG_FUNC_END();
 	return ret;
 }
@@ -360,7 +359,6 @@ FINISH_OFF:
 		emcore_free_mail_data_list(&temp_mail_data, item_count);
 	}
 
-
 	if(error)
 		*error = err_code;
 
@@ -449,7 +447,7 @@ INTERNAL_FUNC int   em_convert_mail_data_to_mail_tbl(email_mail_data_t *mail_dat
 				/*prevent 44357*/
 				if (i > 0)
 					emstorage_free_mail(&temp_mail_tbl, i, NULL);
-				else 
+				else
 					EM_SAFE_FREE(temp_mail_tbl);
 				goto FINISH_OFF;
 			}
@@ -739,7 +737,7 @@ static char *convert_format(char *fmt)
 				} else {
 					EM_DEBUG_LOG("size : [%d]", size);
 				}
-				
+
 				break;
             default:
                 EM_DEBUG_EXCEPTION("unsupported option %c\n", *c);
@@ -949,12 +947,12 @@ INTERNAL_FUNC char* em_convert_attachment_data_to_byte_stream(email_attachment_d
 		return NULL;
 	}
 	EM_SAFE_FREE(converted_fmt);
-	
+
 	/* if attachment_count is zero, for loop is skipped */
 	int i=0;
 	for( ; (i < attachment_count) && (attachment+i) ; i++ ) {
 		memcpy(&cur, attachment + i, sizeof(email_attachment_data_t));
-		tpl_pack(tn, 1);                       
+		tpl_pack(tn, 1);
 	}
 
 	/* write data to buffer */
@@ -974,15 +972,15 @@ INTERNAL_FUNC char* em_convert_attachment_data_to_byte_stream(email_attachment_d
 INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int stream_len, email_attachment_data_t **attachment_data, int *attachment_count)
 {
 	EM_DEBUG_FUNC_BEGIN();
+
 	EM_NULL_CHECK_FOR_VOID(stream);
 	EM_NULL_CHECK_FOR_VOID(attachment_data);
 	EM_NULL_CHECK_FOR_VOID(attachment_count);
 
-
 	email_attachment_data_t cur = {0};
 	tpl_node *tn = NULL;
 	char *converted_fmt = NULL;
-	
+
 	converted_fmt = convert_format(EMAIL_ATTACHMENT_DATA_FMT);
 	if (converted_fmt == NULL) {
 		EM_DEBUG_EXCEPTION("converting failed");
@@ -1008,7 +1006,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int s
 		attached = (email_attachment_data_t*) em_malloc(sizeof(email_attachment_data_t)*num_element);
 
 	int i = 0;
-	while( tpl_unpack(tn, 1) > 0) {
+	while (tpl_unpack(tn, 1) > 0) {
 		if (!(attached+i)) {
 			EM_DEBUG_EXCEPTION ("num element mismatched [%d] vs [%d]", num_element, i);
 			num_element = i;
@@ -1020,6 +1018,10 @@ INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int s
 		pdata->attachment_path 		= EM_SAFE_STRDUP(cur.attachment_path);
 		pdata->content_id               = EM_SAFE_STRDUP(cur.content_id);
 		pdata->attachment_mime_type 	= EM_SAFE_STRDUP(cur.attachment_mime_type);
+		EM_SAFE_FREE(cur.attachment_name);
+		EM_SAFE_FREE(cur.attachment_path);
+		EM_SAFE_FREE(cur.content_id);
+		EM_SAFE_FREE(cur.attachment_mime_type);
 		memset(&cur, 0, sizeof(email_attachment_data_t));    /* initialize variable, used for unpacking */
 		i++;
 	}

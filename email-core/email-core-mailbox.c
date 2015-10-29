@@ -257,7 +257,12 @@ INTERNAL_FUNC MAILSTREAM** emcore_get_recv_stream (char *multi_user_name, int ac
 		goto FINISH_OFF;
 	}
 
-	if (!emcore_connect_to_remote_mailbox(multi_user_name, account_id, mailbox_id, (void **)ret, &err)) {
+	if (!emcore_connect_to_remote_mailbox(multi_user_name, 
+											account_id, 
+											mailbox_id, 
+											true,
+											(void **)ret, 
+											&err)) {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
 		EM_SAFE_FREE(ret);
 		goto FINISH_OFF;
@@ -899,9 +904,10 @@ FINISH_OFF:
 extern long smtp_send(SENDSTREAM *stream, char *command, char *args);
 #endif /* __FEATURE_KEEP_CONNECTION__ */
 
-INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info (char *multi_user_name, 
+INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info(char *multi_user_name, 
 																		email_account_t *account, 
 																		int input_mailbox_id, 
+																		int reusable,
 									/*either MAILSTREAM or SENDSTREAM*/ void **result_stream, 
 																		int *err_code)
 {
@@ -938,7 +944,7 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info (char *mult
 #ifdef __FEATURE_KEEP_CONNECTION__
 	email_connection_info_t *connection_info = emcore_get_connection_info_by_account_id(account->account_id);
 
-	if(connection_info) {
+	if (connection_info && reusable) {
 		if (is_connection_for == _SERVICE_THREAD_TYPE_RECEIVING) {
 			if(connection_info->receiving_server_stream_status == EMAIL_STREAM_STATUS_CONNECTED)
 				*result_stream = connection_info->receiving_server_stream;
@@ -1157,9 +1163,15 @@ emcore_close_mailbox uses mail_close inside it.
 
 mail_close is only used in emcore_connect_to_remote_mailbox and emcore_reset_streams as an exception to above rule*/
 
-INTERNAL_FUNC int emcore_connect_to_remote_mailbox(char *multi_user_name, int account_id, char *mailbox, void **mail_stream, int *err_code)
+INTERNAL_FUNC int emcore_connect_to_remote_mailbox(char *multi_user_name, 
+													int account_id, 
+													char *mailbox, 
+													int reusable,
+													void **mail_stream, 
+													int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id[%d], mailbox[%p], mail_stream[%p], err_code[%p]", account_id, mailbox, mail_stream, err_code);
+	EM_DEBUG_FUNC_BEGIN("account_id[%d], mailbox[%p], reusable[%d], mail_stream[%p], err_code[%p]", 
+						account_id, mailbox, reusable, mail_stream, err_code);
 
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
@@ -1172,7 +1184,12 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox(char *multi_user_name, int ac
 		goto FINISH_OFF;
 	}
 	
-	ret = emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, ref_account, mailbox, mail_stream, &error);
+	ret = emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, 
+																ref_account, 
+																mailbox, 
+																reusable,
+																mail_stream, 
+																&error);
 
 FINISH_OFF:
 
@@ -1228,9 +1245,15 @@ INTERNAL_FUNC void emcore_reset_streams()
 
 #else /*  __FEATURE_KEEP_CONNECTION__ */
 
-INTERNAL_FUNC int emcore_connect_to_remote_mailbox(char *multi_user_name, int account_id, int input_mailbox_id, void **mail_stream, int *err_code)
+INTERNAL_FUNC int emcore_connect_to_remote_mailbox(char *multi_user_name, 
+													int account_id, 
+													int input_mailbox_id, 
+													int reusable,
+													void **mail_stream, 
+													int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id[%d], input_mailbox_id[%d], mail_stream[%p], err_code[%p]", account_id, input_mailbox_id, mail_stream, err_code);
+	EM_DEBUG_FUNC_BEGIN("account_id[%d], input_mailbox_id[%d], reusable[%d], mail_stream[%p], err_code[%p]", 
+						account_id, input_mailbox_id, reusable, mail_stream, err_code);
 
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
@@ -1261,9 +1284,14 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox(char *multi_user_name, int ac
 		goto FINISH_OFF; */
 	}
 
-	ret = emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, ref_account, input_mailbox_id, mail_stream, &error);
-
-	EM_DEBUG_LOG("ret[%d] incoming_server_type[%d] input_mailbox_id[%d]", ret, ref_account->incoming_server_type, input_mailbox_id);
+	ret = emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, 
+																ref_account, 
+																input_mailbox_id, 
+																reusable,
+																mail_stream, 
+																&error);
+	EM_DEBUG_LOG("ret[%d] incoming_server_type[%d] input_mailbox_id[%d]", 
+					ret, ref_account->incoming_server_type, input_mailbox_id);
 
 	if (ret == EMAIL_ERROR_NONE && input_mailbox_id == EMAIL_CONNECT_FOR_SENDING) {
 		SENDSTREAM *send_stream = (SENDSTREAM*)*mail_stream;

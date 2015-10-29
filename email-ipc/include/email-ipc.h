@@ -71,9 +71,9 @@ EXPORT_API bool emipc_execute_stub_api(HIPC_API input_api_handle);
 EXPORT_API HIPC_API emipc_create_email_api(long api_id);
 EXPORT_API void emipc_destroy_email_api(HIPC_API input_api_handle);
 
-EXPORT_API long emipc_get_api_id(HIPC_API input_api_handle);
-EXPORT_API long emipc_get_app_id(HIPC_API input_api_handle);
-EXPORT_API long emipc_get_response_id(HIPC_API input_api_handle);
+EXPORT_API unsigned int emipc_get_api_id(HIPC_API input_api_handle);
+EXPORT_API unsigned int emipc_get_response_id(HIPC_API input_api_handle);
+EXPORT_API int emipc_get_app_id(HIPC_API input_api_handle);
 
 EXPORT_API bool emipc_add_parameter(HIPC_API api, EPARAMETER_DIRECTION direction, void *data, int data_length);
 EXPORT_API bool emipc_add_dynamic_parameter(HIPC_API api, EPARAMETER_DIRECTION direction, void *data, int data_length);

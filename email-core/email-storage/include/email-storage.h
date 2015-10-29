@@ -780,7 +780,13 @@ INTERNAL_FUNC int emstorage_change_read_mail_uid(char *multi_user_name, int acco
  * arguments :
  * return  :
  */
-INTERNAL_FUNC int emstorage_remove_downloaded_mail(char *multi_user_name, int account_id, char *mailbox_name, char *uid, int transaction, int *err_code);
+INTERNAL_FUNC int emstorage_remove_downloaded_mail(char *multi_user_name, 
+													int account_id, 
+													int mailbox_id,
+													char *mailbox_name, 
+													char *uid, 
+													int transaction, 
+													int *err_code);
 
 INTERNAL_FUNC int emstorage_update_read_mail_uid(char *multi_user_name, int mail_id, char *new_server_uid, char *mbox_name, int *err_code);
 
@@ -1126,7 +1132,11 @@ INTERNAL_FUNC int emstorage_change_mail(char *multi_user_name, int mail_id, emst
 
 INTERNAL_FUNC int emstorage_clean_save_status(char *multi_user_name, int save_status, int  *err_code);
 
-INTERNAL_FUNC int emstorage_update_server_uid(char *multi_user_name, char *old_server_uid, char *new_server_uid, int *err_code);
+INTERNAL_FUNC int emstorage_update_server_uid(char *multi_user_name, 
+												int mail_id,
+												char *old_server_uid, 
+												char *new_server_uid, 
+												int *err_code);
 
 INTERNAL_FUNC int emstorage_increase_mail_id(char *multi_user_name, int *mail_id, int transaction, int *err_code);
 

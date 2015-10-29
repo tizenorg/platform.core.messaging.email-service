@@ -47,7 +47,7 @@ EXPORT_API HIPC_API emipc_create_email_api(long api_id)
 
 	emipc_email_api_info *api_info = (emipc_email_api_info *)calloc(1, sizeof(emipc_email_api_info));
 	if(api_info == NULL) {
-		EM_DEBUG_EXCEPTION("Malloc failed");
+		EM_DEBUG_EXCEPTION("calloc failed");
 		return NULL;
 	}
 
@@ -67,27 +67,28 @@ EXPORT_API void emipc_destroy_email_api(HIPC_API api)
 	EM_SAFE_FREE(api_info);
 }
 
-EXPORT_API long emipc_get_api_id(HIPC_API api)
+EXPORT_API unsigned int emipc_get_api_id(HIPC_API api)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_FUNC_BEGIN("API = %p", api);
 	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
 	EM_DEBUG_FUNC_END("api_id [%d]", api_info->api_id);
 	return api_info->api_id;
 }
 
-EXPORT_API long emipc_get_app_id(HIPC_API api)
+EXPORT_API unsigned int emipc_get_response_id(HIPC_API api)
 {
-	EM_DEBUG_FUNC_BEGIN();
+	EM_DEBUG_FUNC_BEGIN("API = %p", api);
+	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
+	EM_DEBUG_FUNC_END("response_id [%d]", api_info->response_id);
+	return api_info->response_id;
+}
+
+EXPORT_API int emipc_get_app_id(HIPC_API api)
+{
+	EM_DEBUG_FUNC_BEGIN("API = %p", api);
 	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
 	EM_DEBUG_FUNC_END("app_id [%d]", api_info->app_id);
 	return api_info->app_id;
-}
-
-EXPORT_API long emipc_get_response_id(HIPC_API api)
-{
-	EM_DEBUG_FUNC_BEGIN();
-	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
-	return api_info->response_id;
 }
 
 /* note: there incurs additional cost (malloc & memcpy). */

@@ -33,4 +33,4 @@ INTERNAL_FUNC int emcore_init_cynara();
 
 INTERNAL_FUNC void emcore_finish_cynara();
 
-INTERNAL_FUNC int emcore_check_privilege(int socket_fd);
+INTERNAL_FUNC unsigned int emcore_check_privilege(int socket_fd);

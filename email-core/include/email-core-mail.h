@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -24,9 +24,9 @@
  * File :  email-core-mail.h
  * Desc :  Mail Operation Header
  *
- * Auth : 
+ * Auth :
  *
- * History : 
+ * History :
  *    2006.08.16  :  created
  *****************************************************************************/
 #ifndef __EMAIL_CORE_MESSAGE_H__
@@ -40,7 +40,7 @@ extern "C" {
 
 #ifdef __FEATURE_BULK_DELETE_MOVE_UPDATE_REQUEST_OPTI__
 
-#define MAX_SUBSET_STRING_SIZE 260	
+#define MAX_SUBSET_STRING_SIZE 260
 #define MAX_IMAP_COMMAND_LENGTH 1000
 #define MAX_TAG_SIZE 16
 
@@ -50,9 +50,7 @@ typedef struct _emf_uid_range_set
 	char *uid_range;
 	unsigned long lowest_uid;
 	unsigned long highest_uid;
-	
 	struct _emf_uid_range_set *next;
-	
 } email_uid_range_set;
 
 #endif
@@ -206,7 +204,7 @@ struct _m_mesg {
 	int                      size;            /* text size if not contain multipart */
 };
 
-struct _m_content_info 
+struct _m_content_info
 {
 	int grab_type;	/*  1 :  download text and get attachment names (no saving attachment) -
 							#define GRAB_TYPE_TEXT retrieve text and attachment names */
@@ -220,9 +218,9 @@ struct _m_content_info
 	int content_type; /* 1 : signed */
 	char *sections;
 
-	struct text_data 
+	struct text_data
 	{
-		int   plain_save_status; 
+		int   plain_save_status;
 		char *plain;             /*  body plain text */
 		char *plain_charset;     /*  charset of body text */
 		int   html_save_status;
@@ -275,7 +273,7 @@ INTERNAL_FUNC int emcore_move_mail(char *multi_user_name, int mail_ids[], int nu
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
 INTERNAL_FUNC int emcore_insert_pbd_activity(email_event_partial_body_thd *local_activity, int *activity_id, int *err_code) ;
 INTERNAL_FUNC int emcore_delete_pbd_activity(char *multi_user_name, int account_id, int mail_id, int activity_id, int *err_code);
-#endif 
+#endif
 
 INTERNAL_FUNC int emcore_get_mail_contact_info(char *multi_user_name, email_mail_contact_info_t *contact_info, char *full_address, int *err_code);
 INTERNAL_FUNC int emcore_get_mail_contact_info_with_update(char *multi_user_name, email_mail_contact_info_t *contact_info, char *full_address, int mail_id, int *err_code);
@@ -295,7 +293,13 @@ INTERNAL_FUNC int emcore_get_mail_data(char *multi_user_name, int input_mail_id,
 
 INTERNAL_FUNC int emcore_update_mail(char *multi_user_name, email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data_list, int input_attachment_count, email_meeting_request_t* input_meeting_request, int sync_server);
 
-INTERNAL_FUNC int emcore_delete_mails_from_local_storage(char *multi_user_name, int account_id, int *mail_ids, int num, int noti_param_1, int noti_param_2, int *err_code);
+INTERNAL_FUNC int emcore_delete_mails_from_local_storage(char *multi_user_name,
+															int account_id,
+															int *mail_ids,
+															int num,
+															int noti_param_1,
+															int noti_param_2,
+															int *err_code);
 INTERNAL_FUNC int emcore_get_mail_msgno_by_uid(email_account_t *account, email_internal_mailbox_t *mailbox, char *uid, int *msgno, int *err_code);
 INTERNAL_FUNC int emcore_expunge_mails_deleted_flagged_from_local_storage(char *multi_user_name, int input_mailbox_id);
 INTERNAL_FUNC int emcore_expunge_mails_deleted_flagged_from_remote_server(char *multi_user_name, int input_account_id, int input_mailbox_id);
@@ -304,6 +308,7 @@ INTERNAL_FUNC int emcore_expunge_mails_deleted_flagged_from_remote_server(char *
  * Delete mails.
  *
  * @param[in] account_id      Specifies the account id.
+ * @param[in] mailbox_id      Specifies the mailbox id.
  * @param[in] mail_id         Specifies the array for mail id.
  * @param[in] num             Specifies the number of id.
  * @param[in] from_server     Specifies whether mails is deleted from server.
@@ -314,7 +319,15 @@ INTERNAL_FUNC int emcore_expunge_mails_deleted_flagged_from_remote_server(char *
  * @remarks N/A
  * @return This function returns true on success or false on failure.
  */
-INTERNAL_FUNC int emcore_delete_mail(char *multi_user_name, int account_id, int mail_id[], int num, int from_server, int noti_param_1, int noti_param_2, int *err_code);
+INTERNAL_FUNC int emcore_delete_mail(char *multi_user_name,
+									int account_id,
+									int mailbox_id,
+									int mail_id[],
+									int num,
+									int from_server,
+									int noti_param_1,
+									int noti_param_2,
+									int *err_code);
 
 /**
  * Delete mails.
@@ -326,11 +339,11 @@ INTERNAL_FUNC int emcore_delete_mail(char *multi_user_name, int account_id, int 
  * @return This function returns true on success or false on failure.
  */
 INTERNAL_FUNC int   emcore_delete_all_mails_of_acount(char *multi_user_name, int input_account_id);
-INTERNAL_FUNC int   emcore_delete_all_mails_of_mailbox(char *multi_user_name, 
-														int input_account_id, 
-														int input_mailbox_id, 
+INTERNAL_FUNC int   emcore_delete_all_mails_of_mailbox(char *multi_user_name,
+														int input_account_id,
+														int input_mailbox_id,
 														int input_mailbox_type,
-														int input_from_server, 
+														int input_from_server,
 														int *err_code);
 
 INTERNAL_FUNC void  emcore_free_mail_data_list(email_mail_data_t **mail_list, int count);
@@ -371,16 +384,25 @@ INTERNAL_FUNC int   emcore_delete_rule(char *multi_user_name, int filter_id);
  * @param[in] cancellable               Specifies the cancellable
  * @param[in] handle                    Specifies the handle for searching mails
  * @remarks N/A
- * @return EMAIL_ERROR_NONE on success or an error code (refer to EMAIL_ERROR_XXX) on failure 
+ * @return EMAIL_ERROR_NONE on success or an error code (refer to EMAIL_ERROR_XXX) on failure
  */
 
-INTERNAL_FUNC int   emcore_search_on_server(char *multi_user_name, 
-											int account_id, 
-											int mailbox_id, 
-											email_search_filter_t *input_search_filter, 
-											int input_search_filter_count, 
+INTERNAL_FUNC int   emcore_search_on_server(char *multi_user_name,
+											int account_id,
+											int mailbox_id,
+											email_search_filter_t *input_search_filter,
+											int input_search_filter_count,
 											int cancellable,
 											int event_handle);
+
+INTERNAL_FUNC int   emcore_search_on_server_ex(char *multi_user_name, 
+												int account_id, 
+												int mailbox_id, 
+												email_search_filter_t *input_search_filter, 
+												int input_search_filter_count, 
+												int cancellable,
+												int event_handle);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

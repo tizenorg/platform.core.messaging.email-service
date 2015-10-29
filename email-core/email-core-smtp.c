@@ -441,7 +441,7 @@ static int emcore_write_rfc822_body(BODY *body, BODY *root_body, FILE *fp, int *
 
 	PARAMETER *param = NULL;
 	PART *part = NULL;
-	char *p = NULL, *bndry = NULL, buf[1025];
+	char *p = NULL, *bndry = NULL, buf[SENDBUFLEN];
 	int error = EMAIL_ERROR_NONE;
 
 	switch (body->type)  {
@@ -947,8 +947,8 @@ INTERNAL_FUNC int emcore_add_mail(char *multi_user_name, email_mail_data_t *inpu
 				EM_SAFE_STRNCPY(body_text_file_name, "UTF-8", MAX_PATH);
 			*/
 
-			if (!emstorage_get_save_name(multi_user_name, mail_data->account_id, mail_data->mail_id, 
-										0, body_text_file_name, name_buf, path_buf, 
+			if (!emstorage_get_save_name(multi_user_name, mail_data->account_id, mail_data->mail_id,
+										0, body_text_file_name, name_buf, path_buf,
 										sizeof(path_buf), &err))  {
 				EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 				goto FINISH_OFF;
@@ -988,8 +988,8 @@ INTERNAL_FUNC int emcore_add_mail(char *multi_user_name, email_mail_data_t *inpu
 				EM_SAFE_STRNCPY(body_text_file_name, "UTF-8.htm", MAX_PATH);
 			*/
 
-			if (!emstorage_get_save_name(multi_user_name, mail_data->account_id, mail_data->mail_id, 
-										0, body_text_file_name, name_buf, path_buf, 
+			if (!emstorage_get_save_name(multi_user_name, mail_data->account_id, mail_data->mail_id,
+										0, body_text_file_name, name_buf, path_buf,
 										sizeof(path_buf), &err))  {
 				EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 				goto FINISH_OFF;
@@ -1016,8 +1016,8 @@ INTERNAL_FUNC int emcore_add_mail(char *multi_user_name, email_mail_data_t *inpu
 
 		EM_DEBUG_LOG_SEC("mail_data->file_path_mime_entity [%s]", mail_data->file_path_mime_entity);
 
-		if (!emstorage_get_save_name(multi_user_name, mail_data->account_id, mail_data->mail_id, 
-									0, "mime_entity", name_buf, path_buf, 
+		if (!emstorage_get_save_name(multi_user_name, mail_data->account_id, mail_data->mail_id,
+									0, "mime_entity", name_buf, path_buf,
 									sizeof(path_buf), &err)) {
 			EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 			goto FINISH_OFF;
@@ -1065,10 +1065,10 @@ INTERNAL_FUNC int emcore_add_mail(char *multi_user_name, email_mail_data_t *inpu
 
 	EM_DEBUG_LOG("preview_text[%p]", mail_data->preview_text);
 	if (mail_data->preview_text == NULL) {
-		if ( (err = emcore_get_preview_text_from_file(multi_user_name, 
-                                                    mail_data->file_path_plain, 
-                                                    mail_data->file_path_html, 
-                                                    MAX_PREVIEW_TEXT_LENGTH, 
+		if ( (err = emcore_get_preview_text_from_file(multi_user_name,
+                                                    mail_data->file_path_plain,
+                                                    mail_data->file_path_html,
+                                                    MAX_PREVIEW_TEXT_LENGTH,
                                                     &(mail_data->preview_text))) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_get_preview_text_from_file failed[%d]", err);
 
@@ -1107,7 +1107,11 @@ INTERNAL_FUNC int emcore_add_mail(char *multi_user_name, email_mail_data_t *inpu
 
 	mail_data->thread_id = converted_mail_tbl->thread_id;
 	converted_mail_tbl->user_name = EM_SAFE_STRDUP(account_tbl_item->user_name);
-	emstorage_begin_transaction(multi_user_name, NULL, NULL, NULL);
+
+	if (!emstorage_begin_transaction(multi_user_name, NULL, NULL, NULL)) {
+		EM_DEBUG_EXCEPTION("emstorage_begin_transaction failed [%d]");
+		goto FINISH_OFF;
+	}
 
 	/*  insert mail to mail table */
 	if (!emstorage_add_mail(multi_user_name, converted_mail_tbl, 0, false, &err))  {
@@ -1121,16 +1125,16 @@ INTERNAL_FUNC int emcore_add_mail(char *multi_user_name, email_mail_data_t *inpu
 	EM_DEBUG_LOG("thread_item_count [%d]", thread_item_count);
 
 	if (thread_item_count > 1) {
-		if (!emstorage_update_latest_thread_mail(multi_user_name, 
-													mail_data->account_id, 
+		if (!emstorage_update_latest_thread_mail(multi_user_name,
+													mail_data->account_id,
 													mail_data->mailbox_id,
 													mail_data->mailbox_type,
-													converted_mail_tbl->thread_id, 
-													&updated_thread_id, 
-													0, 
-													0, 
-													NOTI_THREAD_ID_CHANGED_BY_ADD, 
-													false, 
+													converted_mail_tbl->thread_id,
+													&updated_thread_id,
+													0,
+													0,
+													NOTI_THREAD_ID_CHANGED_BY_ADD,
+													false,
 													&err)) {
 			EM_DEBUG_EXCEPTION("emstorage_update_latest_thread_mail failed [%d]", err);
 			emstorage_rollback_transaction(multi_user_name, NULL, NULL, NULL);
@@ -1170,13 +1174,13 @@ INTERNAL_FUNC int emcore_add_mail(char *multi_user_name, email_mail_data_t *inpu
 			goto FINISH_OFF;
 		}
 
-		if (!emstorage_get_save_name(multi_user_name, 
-                                        mail_data->account_id, 
-                                        mail_data->mail_id, attachment_data_list[i].inline_content_status ? 0  :  attachment_id, 
-                                        attachment_data_list[i].attachment_name, 
-                                        name_buf, 
+		if (!emstorage_get_save_name(multi_user_name,
+                                        mail_data->account_id,
+                                        mail_data->mail_id, attachment_data_list[i].inline_content_status ? 0  :  attachment_id,
+                                        attachment_data_list[i].attachment_name,
+                                        name_buf,
                                         path_buf,
-                                        sizeof(path_buf), 
+                                        sizeof(path_buf),
                                         &err))  {
 			EM_DEBUG_EXCEPTION("emstorage_get_save_name failed [%d]", err);
 			emstorage_rollback_transaction(multi_user_name, NULL, NULL, NULL);
@@ -1498,13 +1502,23 @@ INTERNAL_FUNC int emcore_query_mail_size_limit(char *multi_user_name, int accoun
 	}
 
 	if (ref_account->pop_before_smtp != FALSE) {
-		if (!emcore_connect_to_remote_mailbox(multi_user_name, account_id, 0, (void **)&mail_stream, &err)) {
+		if (!emcore_connect_to_remote_mailbox(multi_user_name,
+												account_id,
+												0,
+												true,
+												(void **)&mail_stream,
+												&err)) {
 			EM_DEBUG_EXCEPTION(" POP before SMTP Authentication failed [%d]", err);
 			goto FINISH_OFF;
 		}
 	}
 
-	if (!emcore_connect_to_remote_mailbox(multi_user_name, account_id, EMAIL_CONNECT_FOR_SENDING, (void **)&tmp_stream, &err)) {
+	if (!emcore_connect_to_remote_mailbox(multi_user_name,
+											account_id,
+											EMAIL_CONNECT_FOR_SENDING,
+											true,
+											(void **)&tmp_stream,
+											&err)) {
 		EM_DEBUG_EXCEPTION(" emcore_connect_to_remote_mailbox failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1623,7 +1637,12 @@ INTERNAL_FUNC SENDSTREAM** emcore_get_smtp_stream (char *multi_user_name, int ac
 		goto FINISH_OFF;
 	}
 
-	if (!emcore_connect_to_remote_mailbox(multi_user_name, account_id, EMAIL_CONNECT_FOR_SENDING, (void **)ret, &err))  {
+	if (!emcore_connect_to_remote_mailbox(multi_user_name,
+											account_id,
+											EMAIL_CONNECT_FOR_SENDING,
+											true,
+											(void **)ret,
+											&err))  {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
 
 		EM_SAFE_FREE(ret);
@@ -1679,9 +1698,11 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 	email_option_t *opt = NULL;
 	char *fpath = NULL;
 	emstorage_mailbox_tbl_t* local_mailbox = NULL;
+	emstorage_read_mail_uid_tbl_t *downloaded_mail = NULL;
 	int dst_mailbox_id = 0;
 	int total_mail_size = 0;
 	int sent_flag = 0;
+	char *server_uid = NULL;
 	MAILSTREAM *mail_stream = NULL;
 
 	if (!mail_id)  {
@@ -1772,7 +1793,12 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 	}
 
 	if (ref_account->pop_before_smtp != FALSE)  {
-		if (!emcore_connect_to_remote_mailbox(multi_user_name, account_id, 0, (void **)&mail_stream, &err))  {
+		if (!emcore_connect_to_remote_mailbox(multi_user_name,
+												account_id,
+												0,
+												true,
+												(void **)&mail_stream,
+												&err))  {
 			EM_DEBUG_EXCEPTION(" POP before SMTP Authentication failed [%d]", err);
 			if (err == EMAIL_ERROR_CONNECTION_BROKEN)
 				err = EMAIL_ERROR_CANCELLED;
@@ -1801,7 +1827,12 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 	}
 
 #if 0
-	if (!emcore_connect_to_remote_mailbox(multi_user_name, account_id, EMAIL_CONNECT_FOR_SENDING, (void **)&tmp_stream, &err))  {
+	if (!emcore_connect_to_remote_mailbox(multi_user_name,
+											account_id,
+											EMAIL_CONNECT_FOR_SENDING,
+											true,
+											(void **)&tmp_stream,
+											&err))  {
 		EM_DEBUG_EXCEPTION(" emcore_connect_to_remote_mailbox failed [%d]", err);
 
 		if (err == EMAIL_ERROR_CONNECTION_BROKEN)
@@ -1877,7 +1908,12 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 
 	/*  sent mail is moved to 'SENT' box or deleted. */
 	if (opt->keep_local_copy)  {
-		if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name, account_id, EMAIL_MAILBOX_TYPE_SENTBOX, &local_mailbox, true, &err))  {
+		if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name,
+													account_id,
+													EMAIL_MAILBOX_TYPE_SENTBOX,
+													&local_mailbox,
+													true,
+													&err))  {
 			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -1933,14 +1969,19 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 			emstorage_mailbox_tbl_t* src_mailbox = NULL;
 //			emstorage_mail_tbl_t *temp_mail = NULL;
 
-			if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name, account_id, EMAIL_MAILBOX_TYPE_OUTBOX, &src_mailbox, true, &err))  {
+			if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name,
+														account_id,
+														EMAIL_MAILBOX_TYPE_OUTBOX,
+														&src_mailbox,
+														true,
+														&err))  {
 				EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
 				goto FINISH_OFF;
 			}
 
 			EM_DEBUG_LOG("local_yn:[%d]", src_mailbox->local_yn);
-			if (src_mailbox->local_yn) { 
-				/* This is syncing operation in sent box 
+			if (src_mailbox->local_yn) {
+				/* This is syncing operation in sent box
 				   but it slowed operation */
 				/*
 				void *local_stream = NULL;
@@ -1948,11 +1989,11 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 					EM_DEBUG_EXCEPTION("emcore_sync_header failed");
 				}
 				mail_close (local_stream);
-				if (!emstorage_get_maildata_by_servermailid(multi_user_name, 
-															"0", 
+				if (!emstorage_get_maildata_by_servermailid(multi_user_name,
+															"0",
 															local_mailbox->mailbox_id,
-															&temp_mail, 
-															false, 
+															&temp_mail,
+															false,
 															&err)) {
 					if (err != EMAIL_ERROR_MAIL_NOT_FOUND) {
 						EM_DEBUG_EXCEPTION("emstorage_get_maildata_by_servermailid failed : [%d]", err);
@@ -1962,18 +2003,65 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 
 				if (temp_mail) {
 					emcore_sync_mail_from_client_to_server(multi_user_name, mail_id);
-					emstorage_free_mail(&temp_mail, 1, NULL);	
+					emstorage_free_mail(&temp_mail, 1, NULL);
 				}
 				*/
 
 				/* sent box exception list : gmail (After the mail sent, moved the sent box) */
 				if (ref_account->outgoing_server_address) {
-					if (!strcasestr(ref_account->outgoing_server_address, "gmail"))
+					if (!strcasestr(ref_account->outgoing_server_address, "gmail")) {
 						emcore_sync_mail_from_client_to_server(multi_user_name, mail_id);
+					} else {
+						err = emcore_sync_mail_by_message_id(multi_user_name,
+																mail_id,
+																dst_mailbox_id,
+																&server_uid);
+						if (err != EMAIL_ERROR_NONE) {
+							EM_DEBUG_EXCEPTION("emcore_sync_mail_by_message_id failed : [%d]", err);
+						}
+
+						EM_DEBUG_LOG("server_uid : [%s]", server_uid);
+
+						if (server_uid) {
+							if (!emstorage_update_server_uid(multi_user_name,
+																mail_id,
+																NULL,
+																server_uid,
+																&err)) {
+								EM_DEBUG_EXCEPTION("emstorage_update_server_uid failed : [%d]", err);
+							}
+
+							downloaded_mail = em_malloc(sizeof(emstorage_read_mail_uid_tbl_t));
+							if (downloaded_mail == NULL) {
+								EM_DEBUG_EXCEPTION("em_malloc failed");
+								err = EMAIL_ERROR_OUT_OF_MEMORY;
+								goto FINISH_OFF;
+							}
+
+							downloaded_mail->account_id = account_id;
+							downloaded_mail->mailbox_id = dst_mailbox_id;
+							downloaded_mail->local_uid = mail_id;
+							downloaded_mail->mailbox_name = g_strdup(local_mailbox->mailbox_name);
+							downloaded_mail->server_uid = g_strdup(server_uid);
+							downloaded_mail->rfc822_size = mail_tbl_data->mail_size;
+
+							if (!emstorage_add_downloaded_mail(multi_user_name,
+																downloaded_mail,
+																true,
+																&err)) {
+								EM_DEBUG_EXCEPTION("emstorage_add_downloaded_mail failed : [%d]", err);
+							}
+						}
+					}
 				}
-			}
-			else {
-				if (!emcore_move_mail_on_server(multi_user_name, account_id, src_mailbox->mailbox_id, &mail_id, 1, local_mailbox->mailbox_name, &err)) {
+			} else {
+				if (!emcore_move_mail_on_server(multi_user_name,
+												account_id,
+												src_mailbox->mailbox_id,
+												&mail_id,
+												1,
+												local_mailbox->mailbox_name,
+												&err)) {
 					EM_DEBUG_EXCEPTION(" emcore_move_mail_on_server falied [%d]", err);
 				}
 			}
@@ -1984,11 +2072,25 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 		/* On Successful Mail sent remove the Draft flag */
 		mail_tbl_data->flags_draft_field = 0;
 
-		if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name, account_id, &mail_id, 1, "flags_draft_field", mail_tbl_data->flags_draft_field, true, &err))
+		if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name,
+															account_id,
+															&mail_id,
+															1,
+															"flags_draft_field",
+															mail_tbl_data->flags_draft_field,
+															true,
+															&err))
 			EM_DEBUG_EXCEPTION("Failed to modify extra flag [%d]", err);
-	}
-	else  {
-		if (!emcore_delete_mail(multi_user_name, account_id, &mail_id, 1, EMAIL_DELETE_LOCALLY, EMAIL_DELETED_AFTER_SENDING, false, &err))
+	} else {
+		if (!emcore_delete_mail(multi_user_name,
+								account_id,
+								0,
+								&mail_id,
+								1,
+								EMAIL_DELETE_LOCALLY,
+								EMAIL_DELETED_AFTER_SENDING,
+								false,
+								&err))
 			EM_DEBUG_EXCEPTION(" emcore_delete_mail failed [%d]", err);
 	}
 
@@ -1999,7 +2101,14 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 
 	/*Update save_status */
 	mail_tbl_data->save_status = EMAIL_MAIL_STATUS_SENT;
-	if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name, account_id, &mail_id, 1, "save_status", mail_tbl_data->save_status, true, &err))
+	if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name,
+														account_id,
+														&mail_id,
+														1,
+														"save_status",
+														mail_tbl_data->save_status,
+														true,
+														&err))
 		EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]", err);
 
 	if (!emcore_delete_transaction_info_by_mailId(mail_id))
@@ -2008,6 +2117,9 @@ INTERNAL_FUNC int emcore_send_mail(char *multi_user_name, int mail_id, int *err_
 	ret = true;
 
 FINISH_OFF:
+
+	EM_SAFE_FREE(server_uid);
+
 	if (ret == false && sent_flag == 0) {
 		emcore_show_user_message(multi_user_name, mail_id, EMAIL_ACTION_SEND_MAIL, err);
 	}
@@ -2023,7 +2135,14 @@ FINISH_OFF:
 				EM_DEBUG_LOG("EMAIL_MAIL_STATUS_SEND_CANCELED Already set for ");
 			else {
 				mail_tbl_data->save_status = EMAIL_MAIL_STATUS_SEND_CANCELED;
-				if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name, account_id, &mail_id, 1, "save_status", mail_tbl_data->save_status, true, &err2))
+				if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name,
+																	account_id,
+																	&mail_id,
+																	1,
+																	"save_status",
+																	mail_tbl_data->save_status,
+																	true,
+																	&err2))
 					EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]", err2);
 			}
 		}
@@ -2040,6 +2159,9 @@ FINISH_OFF:
 		smtp_close(stream);
 #endif /* __FEATURE_KEEP_CONNECTION__ */
 #endif
+
+	if (downloaded_mail)
+		emstorage_free_read_mail_uid(&downloaded_mail, 1, NULL);
 
 	if (mail_stream)
 		mail_stream = mail_close (mail_stream);
@@ -2059,7 +2181,7 @@ FINISH_OFF:
 		EM_SAFE_FREE (fpath);
 	}
 
-	if(local_mailbox)
+	if (local_mailbox)
 		emstorage_free_mailbox(&local_mailbox, 1, NULL);
 
 	if (ret == true) {
@@ -2231,7 +2353,12 @@ INTERNAL_FUNC int emcore_send_saved_mail(char *multi_user_name, int account_id, 
 			}
 
 			stream = NULL;
-			if (!emcore_connect_to_remote_mailbox(multi_user_name, account_id, EMAIL_CONNECT_FOR_SENDING, &tmp_stream, &err) || !tmp_stream)  {
+			if (!emcore_connect_to_remote_mailbox(multi_user_name,
+													account_id,
+													EMAIL_CONNECT_FOR_SENDING,
+													true,
+													&tmp_stream,
+													&err) || !tmp_stream)  {
 				EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
 
 				if (err == EMAIL_ERROR_CONNECTION_BROKEN)
@@ -2278,7 +2405,12 @@ INTERNAL_FUNC int emcore_send_saved_mail(char *multi_user_name, int account_id, 
 			if (!emstorage_change_mail_field(multi_user_name, mail_ids[i], UPDATE_EXTRA_FLAG, searched_mail_tbl_data, true, &err2))
 				EM_DEBUG_EXCEPTION("emstorage_change_mail_field failed [%d]", err);
 
-			if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name, account_id, EMAIL_MAILBOX_TYPE_OUTBOX, &local_mailbox, true, &err))  {
+			if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name,
+														account_id,
+														EMAIL_MAILBOX_TYPE_OUTBOX,
+														&local_mailbox,
+														false,
+														&err))  {
 				EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
 				goto FINISH_OFF;
 			}
@@ -2295,27 +2427,50 @@ INTERNAL_FUNC int emcore_send_saved_mail(char *multi_user_name, int account_id, 
 		searched_mail_tbl_data->save_status = EMAIL_MAIL_STATUS_SENT;
 
 		/*  update mail status to sent mail. */
-		if (!emstorage_change_mail_field(multi_user_name, mail_ids[i], UPDATE_EXTRA_FLAG, searched_mail_tbl_data, true, &err))  {
+		if (!emstorage_change_mail_field(multi_user_name,
+											mail_ids[i],
+											UPDATE_EXTRA_FLAG,
+											searched_mail_tbl_data,
+											true,
+											&err))  {
 			EM_DEBUG_EXCEPTION("emstorage_change_mail_field failed [%d]", err);
 			goto FINISH_OFF;
 		}
 
 		/*  sent mail is moved to 'SENT' box or deleted. */
-		if (opt->keep_local_copy)  {
-			if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name, account_id, EMAIL_MAILBOX_TYPE_SENTBOX, &local_mailbox, true, &err))  {
+		if (opt->keep_local_copy) {
+			if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name,
+														account_id,
+														EMAIL_MAILBOX_TYPE_SENTBOX,
+														&local_mailbox,
+														false,
+														&err))  {
 				EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d]", err);
 				goto FINISH_OFF;
 			}
-			dst_mailbox_id = local_mailbox->mailbox_id;
 
-			if (!emcore_move_mail(multi_user_name, &mail_ids[i], 1, dst_mailbox_id, EMAIL_MOVED_AFTER_SENDING, 0, &err))
+			dst_mailbox_id = local_mailbox->mailbox_id;
+			if (!emcore_move_mail(multi_user_name,
+									&mail_ids[i],
+									1,
+									dst_mailbox_id,
+									EMAIL_MOVED_AFTER_SENDING,
+									0,
+									&err))
 				EM_DEBUG_EXCEPTION("emcore_mail_move falied [%d]", err);
 
 			if(local_mailbox)
 				emstorage_free_mailbox(&local_mailbox, 1, NULL);
-		}
-		else  {
-			if (!emcore_delete_mail(multi_user_name, account_id, &mail_ids[i], 1, EMAIL_DELETE_LOCALLY, EMAIL_DELETED_AFTER_SENDING, false, &err))
+		} else {
+			if (!emcore_delete_mail(multi_user_name,
+									account_id,
+									0,
+									&mail_ids[i],
+									1,
+									EMAIL_DELETE_LOCALLY,
+									EMAIL_DELETED_AFTER_SENDING,
+									false,
+									&err))
 				EM_DEBUG_EXCEPTION("emcore_delete_mail falied [%d]", err);
 		}
 
@@ -2324,7 +2479,7 @@ INTERNAL_FUNC int emcore_send_saved_mail(char *multi_user_name, int account_id, 
 			EM_DEBUG_EXCEPTION("emcore_set_sent_contacts_log failed : [%d]", err);
 		}
 
-		if(searched_mail_tbl_data) {
+		if (searched_mail_tbl_data) {
 			emstorage_free_mail(&searched_mail_tbl_data, 1, NULL);
 			searched_mail_tbl_data = NULL;
 		}
@@ -2395,9 +2550,16 @@ FINISH_OFF:
 	return ret;
 }
 
-static int emcore_send_mail_smtp(char *multi_user_name, SENDSTREAM *stream, ENVELOPE *env, char *data_file, int account_id, int mail_id, int *err_code)
+static int emcore_send_mail_smtp(char *multi_user_name,
+									SENDSTREAM *stream,
+									ENVELOPE *env,
+									char *data_file,
+									int account_id,
+									int mail_id,
+									int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN_SEC("stream[%p], env[%p], data_file[%s], account_id[%d], mail_id[%d], err_code[%p]", stream, env, data_file, account_id, mail_id, err_code);
+	EM_DEBUG_FUNC_BEGIN_SEC("stream[%p], env[%p], data_file[%s], account_id[%d], mail_id[%d], err_code[%p]",
+								stream, env, data_file, account_id, mail_id, err_code);
 	EM_PROFILE_BEGIN(profile_emcore_send_mail_smtp);
 
 	int ret = false;
@@ -2444,9 +2606,12 @@ static int emcore_send_mail_smtp(char *multi_user_name, SENDSTREAM *stream, ENVE
 
 		if (stream->protocol.esmtp.dsn.ok && stream->protocol.esmtp.dsn.want) {
 			EM_DEBUG_LOG("stream->protocol.esmtp.dsn.want is required");
-			strncat (buf, stream->protocol.esmtp.dsn.full ? " RET=FULL" : " RET=HDRS", sizeof(buf)-EM_SAFE_STRLEN(buf)-1);
+			strncat(buf, stream->protocol.esmtp.dsn.full ? " RET=FULL" : " RET=HDRS",
+					sizeof(buf)-EM_SAFE_STRLEN(buf)-1);
+
 			if (stream->protocol.esmtp.dsn.envid)
-				SNPRINTF (buf + EM_SAFE_STRLEN (buf), sizeof(buf)-(EM_SAFE_STRLEN(buf)), " ENVID=%.100s", stream->protocol.esmtp.dsn.envid);
+				SNPRINTF (buf + EM_SAFE_STRLEN (buf), sizeof(buf)-(EM_SAFE_STRLEN(buf)),
+							" ENVID=%.100s", stream->protocol.esmtp.dsn.envid);
 		}
 		else
 			EM_DEBUG_LOG("stream->protocol.esmtp.dsn.want is not required or DSN is not supported");
@@ -2565,9 +2730,7 @@ static int emcore_send_mail_smtp(char *multi_user_name, SENDSTREAM *stream, ENVE
 		}
 		EM_PROFILE_END(profile_open_file);
 
-
 #ifdef __FEATURE_SEND_OPTMIZATION__
-	{
 		char *data = NULL;
 		int read_size, allocSize, dataSize, gMaxAllocSize = 40960; /*  40KB */
 		int total_fixed = 0;
@@ -2596,12 +2759,13 @@ static int emcore_send_mail_smtp(char *multi_user_name, SENDSTREAM *stream, ENVE
 		while (total) {
 			/* Cancel the sending event */
 			if (!emcore_check_send_mail_thread_status()) {
+				EM_SAFE_FREE(data);
 				EM_DEBUG_EXCEPTION(" emcore_check_send_mail_thread_status failed...");
 				err = EMAIL_ERROR_CANCELLED;
 				goto FINISH_OFF;
 			}
 
-			if (total  < allocSize)
+			if (total < allocSize)
 				dataSize = total;
 			else
 				dataSize = allocSize;
@@ -2634,7 +2798,8 @@ static int emcore_send_mail_smtp(char *multi_user_name, SENDSTREAM *stream, ENVE
 
 					emcore_update_notification_for_send(account_id, mail_id, progress);
 				}
-				EM_DEBUG_LOG("Sent data Successfully. sent[%d] total[%d]", sent, total);
+				EM_DEBUG_LOG("Sent data Successfully. sent[%d] total[%d] datasize[%d]",
+								sent, total, dataSize);
 			}
 			total -= dataSize;
 		}
@@ -2665,13 +2830,13 @@ static int emcore_send_mail_smtp(char *multi_user_name, SENDSTREAM *stream, ENVE
 			}
 		}
 
-#endif
 		if (!send_ret) {
 			EM_DEBUG_EXCEPTION("smtp_soutr failed - %ld", send_ret);
 			err = EMAIL_ERROR_SMTP_SEND_FAILURE;
 			goto FINISH_OFF;
 		}
 	}
+#endif
 
 	send_ret = smtp_send(stream, ".", 0);
 	EM_DEBUG_LOG("[SMTP] . --------> %s", stream->reply);
@@ -2684,6 +2849,7 @@ static int emcore_send_mail_smtp(char *multi_user_name, SENDSTREAM *stream, ENVE
 	ret = true;
 
 FINISH_OFF:
+
 	if (ret == false)
 		smtp_send(stream, "RSET", 0);
 
@@ -2697,6 +2863,7 @@ FINISH_OFF:
 
 	if (fp)
 		fclose(fp);
+
 	EM_PROFILE_END(profile_emcore_send_mail_smtp);
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
 	return ret;
@@ -3695,7 +3862,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(char *multi_user_name, emsto
 			protocol_param->value       = cpystr("application/pkcs7-signature");
 			protocol_param->next        = NULL;
 			param->next	            = protocol_param;
-		} else if (input_mail_tbl_data->smime_type == EMAIL_SMIME_SIGNED || input_mail_tbl_data->smime_type == EMAIL_SMIME_SIGNED_AND_ENCRYPTED) {
+		} else if (input_mail_tbl_data->smime_type == EMAIL_SMIME_ENCRYPTED || input_mail_tbl_data->smime_type == EMAIL_SMIME_SIGNED_AND_ENCRYPTED) {
 			root_body->type    = TYPEAPPLICATION;
 			root_body->subtype = strdup("PKCS7-MIME");
 
@@ -3755,7 +3922,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(char *multi_user_name, emsto
 
 			if (strlen(input_mail_tbl_data->file_path_plain) > 0) {
 				EM_DEBUG_LOG_SEC("file_path_plain[%s]", input_mail_tbl_data->file_path_plain);
-                
+
                 memset(real_file_path, 0x00, sizeof(real_file_path));
                 SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, input_mail_tbl_data->file_path_plain);
 
@@ -3783,7 +3950,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(char *multi_user_name, emsto
                                           (input_mail_tbl_data->file_path_plain || input_mail_tbl_data->file_path_html)) {
 			if (input_mail_tbl_data->file_path_plain && EM_SAFE_STRLEN(input_mail_tbl_data->file_path_plain) > 0) {
 				EM_DEBUG_LOG_SEC("file_path_plain[%s]", input_mail_tbl_data->file_path_plain);
-                
+
                 memset(real_file_path, 0x00, sizeof(real_file_path));
                 SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, input_mail_tbl_data->file_path_plain);
 
@@ -3795,7 +3962,7 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(char *multi_user_name, emsto
 
 			if (input_mail_tbl_data->file_path_html && EM_SAFE_STRLEN(input_mail_tbl_data->file_path_html) > 0) {
 				EM_DEBUG_LOG_SEC("file_path_html[%s]", input_mail_tbl_data->file_path_html);
-				if (input_mail_tbl_data->inline_content_count > 0 && 
+				if (input_mail_tbl_data->inline_content_count > 0 &&
 						(root_body->subtype && (strcasecmp(root_body->subtype, "RELATED") != 0))) {
 					part_for_related = attach_multipart_with_sub_type(root_body, "RELATED", &error);
 					if (!part_for_related) {
@@ -3808,13 +3975,13 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(char *multi_user_name, emsto
                 SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, input_mail_tbl_data->file_path_html);
 
 				if (part_for_related) {
-					if (!attach_part(&(part_for_related->body), (unsigned char *)real_file_path, 0, 
+					if (!attach_part(&(part_for_related->body), (unsigned char *)real_file_path, 0,
                                                                                          NULL, "html", false, &error)) {
 						EM_DEBUG_EXCEPTION("attach_part failed [%d]", error);
 						goto FINISH_OFF;
 					}
 				} else {
-					if (!attach_part (root_body, (unsigned char *)real_file_path, 0, 
+					if (!attach_part (root_body, (unsigned char *)real_file_path, 0,
                                                                                          NULL, "html", false, &error)) {
 						EM_DEBUG_EXCEPTION("attach_part failed [%d]", error);
 						goto FINISH_OFF;
@@ -3872,11 +4039,11 @@ INTERNAL_FUNC int emcore_make_rfc822_file_from_mail(char *multi_user_name, emsto
                 SNPRINTF(real_file_path, sizeof(real_file_path), "%s%s", prefix_path, temp_attachment_tbl->attachment_path);
 
 				if (!attach_part(body_to_attach,
-						(unsigned char *)real_file_path, 
-						0, 
-						name, 
-						temp_attachment_tbl->attachment_mime_type, 
-						temp_attachment_tbl->attachment_inline_content_status, 
+						(unsigned char *)real_file_path,
+						0,
+						name,
+						temp_attachment_tbl->attachment_mime_type,
+						temp_attachment_tbl->attachment_inline_content_status,
 						&error))
 				{
 					EM_DEBUG_EXCEPTION("attach_part failed [%d]", error);
@@ -4042,8 +4209,8 @@ INTERNAL_FUNC int emcore_make_rfc822_file(char *multi_user_name, email_mail_data
 	}
 
 	modified_mail_data->attachment_count = attachment_count;
-	modified_mail_data->inline_content_count = inline_content_count;	
-	
+	modified_mail_data->inline_content_count = inline_content_count;
+
 	if (!emcore_make_rfc822_file_from_mail(multi_user_name, modified_mail_data, modified_attachment_data, input_attachment_count, NULL, file_path, NULL, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_make_rfc822_file_from_mail failed [%d]", err);
 		goto FINISH_OFF;
@@ -4330,14 +4497,14 @@ static int emcore_copy_attachment_from_original_mail(char *multi_user_name, int 
 
 				EM_DEBUG_LOG("attachment_inline_content_status [%d] attachment_id[%d]", target_attach->attachment_inline_content_status, attachment_id);
 
-				if(!emcore_save_mail_file(multi_user_name, 
-                                            target_attach->account_id, 
-                                            target_attach->mail_id, 
-                                            attachment_id, 
-                                            original_mail_attachment_array[i].attachment_path, 
-                                            original_mail_attachment_array[i].attachment_name, 
-                                            output_file_path, 
-                                            virtual_file_path,                  
+				if(!emcore_save_mail_file(multi_user_name,
+                                            target_attach->account_id,
+                                            target_attach->mail_id,
+                                            attachment_id,
+                                            original_mail_attachment_array[i].attachment_path,
+                                            original_mail_attachment_array[i].attachment_name,
+                                            output_file_path,
+                                            virtual_file_path,
                                             &err)) {
 					EM_DEBUG_EXCEPTION("emcore_save_mail_file failed [%d]", err);
 					goto FINISH_OFF;

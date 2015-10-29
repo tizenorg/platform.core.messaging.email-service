@@ -383,6 +383,9 @@ INTERNAL_FUNC int emcore_insert_event(email_event_t *event_data, int *handle, in
 	int error = EMAIL_ERROR_NONE;
 	int q_length = 0;
 	int new_handle = 0;
+	char *multi_user_name = NULL;
+
+	multi_user_name = EM_SAFE_STRDUP(event_data->multi_user_name);
 
 	ENTER_RECURSIVE_CRITICAL_SECTION(_event_queue_lock);
 
@@ -443,10 +446,9 @@ INTERNAL_FUNC int emcore_insert_event(email_event_t *event_data, int *handle, in
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
 		{
 			int is_local_activity_event_inserted = false;
-			emcore_partial_body_thd_local_activity_sync (
-                                                 event_data->multi_user_name, 
-                                                 &is_local_activity_event_inserted, 
-                                                 &error);
+			emcore_partial_body_thd_local_activity_sync(multi_user_name,
+														 &is_local_activity_event_inserted, 
+														 &error);
 			if (error != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("emcore_partial_body_thd_local_activity_sync failed [%d]", error);
 			}
@@ -458,6 +460,8 @@ INTERNAL_FUNC int emcore_insert_event(email_event_t *event_data, int *handle, in
 #endif
 		break;
 	}
+
+	EM_SAFE_FREE(multi_user_name);
 
 	if (err_code) {
 		EM_DEBUG_LOG("ERR [%d]", error);
@@ -2013,7 +2017,12 @@ static int emcore_partial_body_bulk_flush(char *multi_user_name, int *error_code
 	MAILSTREAM *stream = NULL;
 	void *tmp_stream = NULL;
 
-	if (!emcore_connect_to_remote_mailbox(multi_user_name, g_partial_body_bulk_dwd_que[0].account_id, g_partial_body_bulk_dwd_que[0].mailbox_id, (void **)&tmp_stream, &error) || (NULL == tmp_stream)) {
+	if (!emcore_connect_to_remote_mailbox(multi_user_name, 
+											g_partial_body_bulk_dwd_que[0].account_id, 
+											g_partial_body_bulk_dwd_que[0].mailbox_id, 
+											true,
+											(void **)&tmp_stream, 
+											&error) || (NULL == tmp_stream)) {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", error);
 		goto FINISH_OFF;
 	}
@@ -2125,7 +2134,12 @@ INTERNAL_FUNC int emcore_mail_partial_body_download (email_event_partial_body_th
 				int k = 0;
 				int activity_count = 0;
 
-				if (!emcore_connect_to_remote_mailbox(pbd_event->multi_user_name, account_list[m], mailbox_list[i], (void **)&stream, &error)) {
+				if (!emcore_connect_to_remote_mailbox(pbd_event->multi_user_name, 
+														account_list[m], 
+														mailbox_list[i], 
+														true,
+														(void **)&stream, 
+														&error)) {
 					EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", error);
 					stream = mail_close (stream);
 					goto FINISH_OFF;

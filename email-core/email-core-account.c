@@ -229,7 +229,12 @@ INTERNAL_FUNC int emcore_validate_account_with_account_info(char *multi_user_nam
 
 	FINISH_OFF_IF_EVENT_CANCELED (err, event_handle);
 
-	if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, account, 0, (void **)&tmp_stream, &err) || !tmp_stream) {
+	if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, 
+															account, 
+															0, 
+															true,
+															(void **)&tmp_stream, 
+															&err) || !tmp_stream) {
 		EM_DEBUG_LOG("emcore_connect_to_remote_mailbox failed [%d]", err);
 		if (EMAIL_ERROR_AUTHENTICATE == err || EMAIL_ERROR_LOGIN_FAILURE == err) {	/*  wrong password or etc */
 			EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed : Login or Authentication failed - %d", err);
@@ -248,7 +253,12 @@ INTERNAL_FUNC int emcore_validate_account_with_account_info(char *multi_user_nam
 
 	FINISH_OFF_IF_EVENT_CANCELED (err, event_handle);
 
-	if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, account, EMAIL_CONNECT_FOR_SENDING, (void **)&stream, &err) || !stream) {
+	if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, 
+															account, 
+															EMAIL_CONNECT_FOR_SENDING, 
+															true,
+															(void **)&stream, 
+															&err) || !stream) {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
 		err = EMAIL_ERROR_VALIDATE_ACCOUNT_OF_SMTP;
 		goto FINISH_OFF;
@@ -260,7 +270,12 @@ INTERNAL_FUNC int emcore_validate_account_with_account_info(char *multi_user_nam
 			EM_DEBUG_LOG("Retry with TLS");
 			account->outgoing_server_secure_connection = 0x02;	/*  0x02 == TLS */
 
-			if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, account, EMAIL_CONNECT_FOR_SENDING, (void **)&stream, &err) || !stream) {
+			if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, 
+																	account, 
+																	EMAIL_CONNECT_FOR_SENDING, 
+																	true,
+																	(void **)&stream, 
+																	&err) || !stream) {
 				EM_DEBUG_LOG("emcore_connect_to_remote_mailbox failed [%d]", err);
 				err = EMAIL_ERROR_VALIDATE_ACCOUNT_OF_SMTP;
 				account->outgoing_server_secure_connection = 0x01;	/*  restore to the previous value */
@@ -512,7 +527,7 @@ INTERNAL_FUNC int emcore_delete_account(char *multi_user_name, int account_id, i
 	}
 
 	/*  delete local imap sync mailbox from imap mailbox table */
-	if (!emstorage_remove_downloaded_mail(multi_user_name, account_id, NULL, NULL, false, &err)) {
+	if (!emstorage_remove_downloaded_mail(multi_user_name, account_id, 0, NULL, NULL, false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_remove_downloaded_mail failed - %d", err);
 		goto FINISH_OFF;
 	}

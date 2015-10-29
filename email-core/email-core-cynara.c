@@ -125,7 +125,7 @@ INTERNAL_FUNC void emcore_finish_cynara()
 	EM_DEBUG_FUNC_END();
 }
 
-INTERNAL_FUNC int emcore_check_privilege(int socket_fd)
+INTERNAL_FUNC int emcore_check_privilege(unsigned int socket_fd)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int ret = CYNARA_API_SUCCESS;
