@@ -2045,10 +2045,12 @@ INTERNAL_FUNC int emstorage_open(char *multi_user_name, int *err_code)
         SNPRINTF(buf, sizeof(buf), "%s/%s", prefix_path, DB_PATH);
     }
 
-    retValue = mkdir(buf, DIRECTORY_PERMISSION);
+	if (!g_file_test(buf, G_FILE_TEST_EXISTS)) {
+	    retValue = mkdir(buf, DIRECTORY_PERMISSION);
 
-    EM_DEBUG_LOG("mkdir return- %d", retValue);
-    EM_DEBUG_LOG("emstorage_open - before sqlite3_open - pid = %d", getpid());
+		EM_DEBUG_LOG("mkdir return- %d", retValue);
+	    EM_DEBUG_LOG("emstorage_open - before sqlite3_open - pid = %d", getpid());
+	}
 
     if (emstorage_db_open(multi_user_name, &error) == NULL) {
         EM_DEBUG_EXCEPTION("emstorage_db_open failed[%d]", error);
