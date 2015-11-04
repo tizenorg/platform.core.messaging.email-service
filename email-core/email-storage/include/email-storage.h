@@ -136,7 +136,7 @@ typedef struct
 	email_digest_type                  digest_type;                              /* Sepeifies the digest algorithm*/
 
     /* Multi user and KNOX options */
-    char                              *user_name;                                /* Specifies the container name */ 
+    char                              *user_name;                                /* Specifies the container name */
 } emstorage_account_tbl_t;
 
 typedef struct
@@ -363,7 +363,7 @@ typedef struct
 
 INTERNAL_FUNC int emstorage_shm_file_init(const char *shm_file_name);
 
-
+INTERNAL_FUNC int emstorage_init_db(char *multi_user_name);
 /************** Database Management ***************/
 /*
  * em_db_open
@@ -780,12 +780,12 @@ INTERNAL_FUNC int emstorage_change_read_mail_uid(char *multi_user_name, int acco
  * arguments :
  * return  :
  */
-INTERNAL_FUNC int emstorage_remove_downloaded_mail(char *multi_user_name, 
-													int account_id, 
+INTERNAL_FUNC int emstorage_remove_downloaded_mail(char *multi_user_name,
+													int account_id,
 													int mailbox_id,
-													char *mailbox_name, 
-													char *uid, 
-													int transaction, 
+													char *mailbox_name,
+													char *uid,
+													int transaction,
 													int *err_code);
 
 INTERNAL_FUNC int emstorage_update_read_mail_uid(char *multi_user_name, int mail_id, char *new_server_uid, char *mbox_name, int *err_code);
@@ -1012,11 +1012,11 @@ INTERNAL_FUNC int emstorage_get_mails(char *multi_user_name, int account_id, int
 
 INTERNAL_FUNC int emstorage_get_searched_mail_list(char *multi_user_name, int account_id, int mailbox_id, int thread_id, int search_type, const char *search_value, int start_index, int limit_count, email_sort_type_t sorting, int transaction, email_mail_list_item_t **mail_list,  int *result_count,  int *err_code);
 
-INTERNAL_FUNC int emstorage_get_maildata_by_servermailid(char *multi_user_name, 
-															char *server_mail_id, 
-															int mailbox_id, 
-															emstorage_mail_tbl_t **mail, 
-															int transaction, 
+INTERNAL_FUNC int emstorage_get_maildata_by_servermailid(char *multi_user_name,
+															char *server_mail_id,
+															int mailbox_id,
+															emstorage_mail_tbl_t **mail,
+															int transaction,
 															int *err_code);
 
 INTERNAL_FUNC int emstorage_get_unread_mailid(char *multi_user_name, int account_id, int vip_mode, int **mail_ids, int *mail_number, int *err_code);
@@ -1036,14 +1036,14 @@ INTERNAL_FUNC int emstorage_update_save_status(char *multi_user_name, int accoun
  * @remarks N/A
  * @return This function returns 0 on success or error code on failure.
  */
-INTERNAL_FUNC int emstorage_mail_search_start(char *multi_user_name, 
-											emstorage_search_filter_t *search, 
-											int account_id, 
-											int mailbox_id, 
-											int sorting, 
-											DB_STMT *search_handle, 
-											int *searched, 
-											int transaction, 
+INTERNAL_FUNC int emstorage_mail_search_start(char *multi_user_name,
+											emstorage_search_filter_t *search,
+											int account_id,
+											int mailbox_id,
+											int sorting,
+											DB_STMT *search_handle,
+											int *searched,
+											int transaction,
 											int *err_code);
 
 /*
@@ -1055,10 +1055,10 @@ INTERNAL_FUNC int emstorage_mail_search_start(char *multi_user_name,
  *    mail  :  double pointer to hold mail
  * return  :
  */
-INTERNAL_FUNC int emstorage_mail_search_result(DB_STMT search_handle, 
-												emstorage_mail_field_type_t type, 
-												void **data, 
-												int transaction, 
+INTERNAL_FUNC int emstorage_mail_search_result(DB_STMT search_handle,
+												emstorage_mail_field_type_t type,
+												void **data,
+												int transaction,
 												int *err_code);
 
 /*
@@ -1132,10 +1132,10 @@ INTERNAL_FUNC int emstorage_change_mail(char *multi_user_name, int mail_id, emst
 
 INTERNAL_FUNC int emstorage_clean_save_status(char *multi_user_name, int save_status, int  *err_code);
 
-INTERNAL_FUNC int emstorage_update_server_uid(char *multi_user_name, 
+INTERNAL_FUNC int emstorage_update_server_uid(char *multi_user_name,
 												int mail_id,
-												char *old_server_uid, 
-												char *new_server_uid, 
+												char *old_server_uid,
+												char *new_server_uid,
 												int *err_code);
 
 INTERNAL_FUNC int emstorage_increase_mail_id(char *multi_user_name, int *mail_id, int transaction, int *err_code);
@@ -1250,7 +1250,7 @@ INTERNAL_FUNC int emstorage_get_attachment_count(char *multi_user_name, int mail
  * emstorage_get_attachment_list
  *
  * description :  get attachment list from attachment table
- * arguments : 
+ * arguments :
  *    input_mail_id           : mail id
  *    input_transaction       : transaction option
  *    attachment_list         : result attachment list
@@ -1514,16 +1514,16 @@ INTERNAL_FUNC int emstorage_get_thread_id_of_thread_mails(char *multi_user_name,
 
 INTERNAL_FUNC int emstorage_get_thread_id_by_mail_id(char *multi_user_name, int mail_id, int *thread_id, int *err_code);
 
-INTERNAL_FUNC int emstorage_update_latest_thread_mail(char *multi_user_name, 
-														int account_id, 
-														int mailbox_id, 
+INTERNAL_FUNC int emstorage_update_latest_thread_mail(char *multi_user_name,
+														int account_id,
+														int mailbox_id,
 														int mailbox_type,
-														int thread_id, 
-														int *updated_thread_id, 
-														int latest_mail_id, 
-														int thread_item_count, 
-														int noti_type, 
-														int transaction, 
+														int thread_id,
+														int *updated_thread_id,
+														int latest_mail_id,
+														int thread_item_count,
+														int noti_type,
+														int transaction,
 														int *err_code);
 
 INTERNAL_FUNC int emstorage_get_thread_id_from_mailbox(char *multi_user_name, int account_id, int mailbox_id, char *mail_subject, int *thread_id, int *thread_item_count);

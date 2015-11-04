@@ -317,7 +317,7 @@ static void callback_for_NETWORK_STATUS(connection_type_e new_conn_type, void *i
 		/* check if inbox folder sync is finished */
 		if (!emstorage_get_mailbox_by_mailbox_type (multi_user_name, account_info->account_id, EMAIL_MAILBOX_TYPE_INBOX, &local_mailbox, false, &err)) {
 			if (err == EMAIL_ERROR_MAILBOX_NOT_FOUND) {
-				int handle = 0;	
+				int handle = 0;
 				emdaemon_get_imap_mailbox_list(multi_user_name, account_info->account_id, "", &handle, &err);
 				if (err != EMAIL_ERROR_NONE) {
 					EM_DEBUG_EXCEPTION("emdaemon_get_imap_mailbox_list error [%d]", err);
@@ -511,11 +511,16 @@ INTERNAL_FUNC int emdaemon_initialize(char *multi_user_name, int* err_code)
 		EM_DEBUG_LOG("Initialization was already done. increased counter=[%d]", g_client_count);
 
 		EM_DEBUG_LOG("************* start email service build time [%s %s] ************* ", __DATE__, __TIME__);
+		err = emstorage_init_db(multi_user_name);
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("DB create failed");
+			goto FINISH_OFF;
+		}
 
         dbus_threads_init_default();
 
-#if !GLIB_CHECK_VERSION(2, 36, 0) 
-		g_type_init(); 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
+		g_type_init();
 #endif
         if ((err = _emdaemon_load_email_core()) != EMAIL_ERROR_NONE)  {
             EM_DEBUG_EXCEPTION("_emdaemon_load_email_core failed [%d]", err);
@@ -533,6 +538,7 @@ INTERNAL_FUNC int emdaemon_initialize(char *multi_user_name, int* err_code)
             vconf_notify_key_changed(VCONFKEY_MSG_SERVER_READY, callback_for_VCONFKEY_MSG_SERVER_READY, NULL);
         }
 #endif
+
     }
 
     /* open database */
@@ -541,7 +547,7 @@ INTERNAL_FUNC int emdaemon_initialize(char *multi_user_name, int* err_code)
 		goto FINISH_OFF;
 	}
 
-	if ((err = emstorage_update_db_table_schema(multi_user_name)) != EMAIL_ERROR_NONE) 
+	if ((err = emstorage_update_db_table_schema(multi_user_name)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_EXCEPTION("emstorage_update_db_table_schema failed [%d]", err);
 
 	if (!emstorage_clean_save_status(multi_user_name, EMAIL_MAIL_STATUS_SAVED, &err))
@@ -662,7 +668,7 @@ INTERNAL_FUNC int emdaemon_start_auto_polling(char *multi_user_name, int* err_co
 
 	/* get account list */
 	if (!emstorage_get_account_list(multi_user_name, &count, &account_list, false, false, &err))  {
-		EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [%d]", err);		
+		EM_DEBUG_EXCEPTION("emstorage_get_account_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
 

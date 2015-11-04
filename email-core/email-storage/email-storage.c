@@ -1751,12 +1751,16 @@ int _xsystem(const char *argv[])
 	pid = fork();
 
 	switch (pid) {
-		case -1 : 
+		case -1 :
 			perror("fork failed");
 			return -1;
 		case 0 :
-			execvp(argv[0], (char *const *)argv);
-			_exit(-1);
+			if (execvp(argv[0], (char *const *)argv) == -1) {
+				perror("execute init db script");
+				_exit(-1);
+			}
+
+			_exit(2);
 		default:
 			/* parent */
 			break;
@@ -1782,6 +1786,60 @@ int _xsystem(const char *argv[])
 
 #define SCRIPT_INIT_DB "/usr/bin/email-service_init_db.sh"
 
+INTERNAL_FUNC int emstorage_init_db(char *multi_user_name)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int err = EMAIL_ERROR_NONE;
+	char *prefix_path = NULL;
+	char *output_file_path = NULL;
+	char temp_file_path[MAX_PATH] = {0};
+
+	if (EM_SAFE_STRLEN(multi_user_name) > 0) {
+		err = emcore_get_container_path(multi_user_name, &prefix_path);
+		if (err != EMAIL_ERROR_NONE) {
+			if (err != EMAIL_ERROR_CONTAINER_NOT_INITIALIZATION) {
+				EM_DEBUG_EXCEPTION("emcore_get_container_path failed :[%d]", err);
+				goto FINISH_OFF;
+			}
+		}
+	} else {
+		prefix_path = strdup("");
+	}
+
+	if (err == EMAIL_ERROR_CONTAINER_NOT_INITIALIZATION) {
+		err = emcore_get_canonicalize_path(EMAIL_SERVICE_DB_FILE_PATH, &output_file_path);
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_get_canonicalize_path failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+
+		SNPRINTF(temp_file_path, sizeof(temp_file_path), "%s", output_file_path);
+	} else {
+		SNPRINTF(temp_file_path, sizeof(temp_file_path), "%s%s", prefix_path, EMAIL_SERVICE_DB_FILE_PATH);
+	}
+
+	EM_DEBUG_LOG("db file path : [%s]", temp_file_path);
+
+	if (!g_file_test(temp_file_path, G_FILE_TEST_EXISTS)) {
+		int ret = true;
+		const char *argv_script[] = {"/bin/sh", SCRIPT_INIT_DB, NULL};
+		ret = _xsystem(argv_script);
+
+		if (ret == -1) {
+			EM_DEBUG_EXCEPTION("_xsystem failed");
+			err = EMAIL_ERROR_SYSTEM_FAILURE;
+		}
+	}
+
+FINISH_OFF:
+
+	EM_SAFE_FREE(prefix_path);
+	EM_SAFE_FREE(output_file_path);
+
+	EM_DEBUG_FUNC_END();
+	return err;
+}
+
 INTERNAL_FUNC int em_db_open(char *db_file_path, sqlite3 **sqlite_handle, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -1796,14 +1854,6 @@ INTERNAL_FUNC int em_db_open(char *db_file_path, sqlite3 **sqlite_handle, int *e
 		if (err_code != NULL)
 			*err_code = error;
 		return true;
-	}
-
-	/* Generate db file */
-	struct stat sts;
-	ret = stat(db_file_path, &sts);
-	if (ret == -1 && errno == ENOENT) {
-		const char *argv_script[] = {"/bin/sh", SCRIPT_INIT_DB, NULL};
-		ret = _xsystem(argv_script);
 	}
 
     EM_DEBUG_LOG("DB file path : [%s]", db_file_path);
@@ -4047,7 +4097,7 @@ static int _read_password_from_secure_storage(char *file_name, char **password)
 	ret = emcore_get_password_in_key_manager(file_name, password);
 	if (ret != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_get_password_in_key_manager failed : [%d]", ret);
-		goto FINISH_OFF;	
+		goto FINISH_OFF;
 	}
 
 FINISH_OFF:
@@ -4391,17 +4441,17 @@ INTERNAL_FUNC int emstorage_update_account_password(char *multi_user_name, int i
 	}
 
 	/*  get password file name */
-	if ((err = _get_password_file_name(multi_user_name, 
-										input_account_id, 
-										recv_password_file_name, 
+	if ((err = _get_password_file_name(multi_user_name,
+										input_account_id,
+										recv_password_file_name,
 										send_password_file_name)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("_get_password_file_name failed.");
 		goto FINISH_OFF;
 	}
 
-	EM_DEBUG_LOG_SEC("recv_password_file_name [%s] input_incoming_server_password [%s]", 
+	EM_DEBUG_LOG_SEC("recv_password_file_name [%s] input_incoming_server_password [%s]",
 						recv_password_file_name, input_incoming_server_password);
-	EM_DEBUG_LOG_SEC("send_password_file_name [%s] input_outgoing_server_password [%s]", 
+	EM_DEBUG_LOG_SEC("send_password_file_name [%s] input_outgoing_server_password [%s]",
 						send_password_file_name, input_outgoing_server_password);
 
 	err = emcore_remove_password_in_key_manager(recv_password_file_name);
