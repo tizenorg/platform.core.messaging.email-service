@@ -293,7 +293,7 @@ typedef enum
     NOTI_RULE_APPLY                          = 70001,    /**< A rule is applied */
     NOTI_RULE_DELETE                         = 70002,    /**< A rule is removed in DB */
     NOTI_RULE_UPDATE                         = 70003,    /**< A rule is updated in DB */
-    
+
     /* To be added more */
 } email_noti_on_storage_event;
 
@@ -1113,7 +1113,7 @@ typedef enum {
     EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY  = 50,  /* integer type */    /**< Messages that have a header with the specified priority */
     EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  = 60,  /* string type */     /**< Messages that contain the specified string in attachment name */
 	EMAIL_SEARCH_FILTER_TYPE_CHARSET          = 61,  /* string type */     /**< Messages of encoded type */
-	EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED     = 62,  /* string type */     /**< Messages that extend and user defined string */ 
+	EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED     = 62,  /* string type */     /**< Messages that extend and user defined string */
 } email_search_filter_type;
 
 typedef enum {
@@ -1221,8 +1221,8 @@ typedef enum {
     EMAIL_MESSAGE_CLASS_NOTE_RULES_OF_TEMPLATE_MICROSOFT,                      /**< The message class is note_rule_of_template_microsoft */
     EMAIL_MESSAGE_CLASS_NOTE_SMIME,                                            /**< The message class is note_smime */
     EMAIL_MESSAGE_CLASS_NOTE_SMIME_MULTIPART_SIGNED,                           /**< The message class is note_smime_multipart_signed */
-    EMAIL_MESSAGE_CLASS_NOTIFICATION_MEETING,                                  /**< The message class is notification meeting */ 
-    EMAIL_MESSAGE_CLASS_OCTEL_VOICE,                                           /**< The message class is octel voice */ 
+    EMAIL_MESSAGE_CLASS_NOTIFICATION_MEETING,                                  /**< The message class is notification meeting */
+    EMAIL_MESSAGE_CLASS_OCTEL_VOICE,                                           /**< The message class is octel voice */
     EMAIL_MESSAGE_CLASS_SCHEDULE_MEETING_REQUEST,                              /**< The message class is meeting request */
     EMAIL_MESSAGE_CLASS_SCHEDULE_MEETING_CANCELED,                             /**< The message class is meeting canceled */
     EMAIL_MESSAGE_CLASS_SCHEDULE_MEETING_RESP_POS,                             /**< The message class is meeting resp pos */
@@ -1243,10 +1243,10 @@ typedef enum {
     EMAIL_MESSAGE_CLASS_REPORT_NON_DELIVERY_RECEIPT           = 0x04000000,    /**< The message class is report non delivery receipt */
     EMAIL_MESSAGE_CLASS_REPORT_DELIVERY_RECEIPT               = 0x08000000,    /**< The message class is report delivery receipt */
     EMAIL_MESSAGE_CLASS_CALENDAR_FORWARD                      = 0x00400000     /**< The message class is calendar forward */
-} email_message_class; 
+} email_message_class;
 
 typedef enum{
-    EMAIL_SMIME_NONE                          = 0,   /**< Not using smime : Normal mail */ 
+    EMAIL_SMIME_NONE                          = 0,   /**< Not using smime : Normal mail */
     EMAIL_SMIME_SIGNED,                              /**< Signed mail of smime */
     EMAIL_SMIME_ENCRYPTED,                           /**< Encrypted mail of smime */
     EMAIL_SMIME_SIGNED_AND_ENCRYPTED,                /**< Signed/encrypted mail of smime */
@@ -1276,7 +1276,7 @@ typedef enum {
     DIGEST_TYPE_SHA384                        = 8,    /**< SHA384 of digest type */
     DIGEST_TYPE_SHA512                        = 9,    /**< SHA512 of digest type */
     DIGEST_TYPE_SHA224                        = 10,   /**< SHA224 of digest type */
-    DIGEST_TYPE_MD4                           = 11,   /**< MD4 of digest type */                   
+    DIGEST_TYPE_MD4                           = 11,   /**< MD4 of digest type */
 } email_digest_type;
 
 typedef enum {
@@ -1337,7 +1337,7 @@ typedef struct
     int                                vibrate_status;          /**< The repetition type */
     int                                display_content_status;  /**< The display_content status. 1 = ON, 0 = OFF */
     int                                default_ringtone_status; /**< The badge status.  1 = ON, 0 = OFF */
-    char                               *alert_ringtone_path;    /**< The ringtone path */
+    char                              *alert_ringtone_path;     /**< The ringtone path */
 } email_option_t;
 
 /**
@@ -1356,8 +1356,6 @@ typedef struct
     char                           *logo_icon_path;                           /**< Account logo icon (used by account svc and email app) */
     email_roaming_option_t          roaming_option;                           /**< Roaming option */
     int                             color_label;                              /**< Account color label */
-    void                           *user_data;                                /**< Binary user data */
-    int                             user_data_length;                         /**< User data length */
 
     /* User information */
     char                           *user_display_name;                        /**< User's display */
@@ -1412,7 +1410,10 @@ typedef struct
     char                           *certificate_path;                         /**< The certificate path of private */
     email_cipher_type               cipher_type;                              /**< The encryption algorithm */
     email_digest_type               digest_type;                              /**< The digest algorithm */
-	char                           *user_name;                                /**< The user name for multi user (Since 2.4) */   
+	char                           *user_name;                                /**< The user name for multi user (Since 2.4) */
+
+    int                             user_data_length;                         /**< User data length */
+    void                           *user_data;                                /**< Binary user data */
 } email_account_t;
 
 /**
@@ -1420,7 +1421,7 @@ typedef struct
  * @since_tizen 2.3
  */
 
-typedef struct 
+typedef struct
 {
     int certificate_id;               /**< The saved certificate ID */
     int issue_year;                   /**< The issue year information of certificate */
@@ -1624,7 +1625,7 @@ typedef struct
                                              The value is a value of enumeration email_mail_status_t.*/
     unsigned int  noti             : 1; /**< The notified mail */
     unsigned int  lock             : 1; /**< The locked mail */
-    unsigned int  report           : 2; /**< The MDN/DSN mail \n 
+    unsigned int  report           : 2; /**< The MDN/DSN mail \n
                                              The value is a value of enumeration email_mail_report_t.*/
     unsigned int  drm              : 1; /**< The DRM mail */
     unsigned int  text_download_yn : 2; /**< The body download y/n */
@@ -1667,12 +1668,12 @@ typedef struct
  */
 typedef struct
 {
-    int                        mail_id;                                        /**< The mail ID of meeting request on DB <br> 
+    int                        mail_id;                                        /**< The mail ID of meeting request on DB <br>
                                                                                     This is the primary key. */
     email_meeting_response_t   meeting_response;                               /**< The meeting response */
     struct tm                  start_time;                                     /**< The meeting start time */
     struct tm                  end_time;                                       /**< The meeting end time */
-    char                      *location;                                       /**< The location of meeting <br> 
+    char                      *location;                                       /**< The location of meeting <br>
                                                                                     Maximum length of this string is 32768. */
     char                      *global_object_id;                               /**< The object ID */
     email_time_zone_t          time_zone;                                      /**< The time zone of meeting */
@@ -1685,8 +1686,8 @@ typedef struct
 typedef struct
 {
     char *address;         /**< The address of a sender */
-    char *display_name;    /**< The display name <br> 
-                                This may be one of contact name, alias in original mail and email address of sender. 
+    char *display_name;    /**< The display name <br>
+                                This may be one of contact name, alias in original mail and email address of sender.
                                 (Priority order : contact name, alias, email address) */
     int   unread_count;    /**< The number of unread mails received from sender address */
     int   total_count;     /**< The total number of  mails which are received from sender address */
@@ -1937,14 +1938,14 @@ typedef union
         int                     handle;            /**< The job handle to be canceled. This value is issued by email-service. */
         int                     account_id;        /**< The account ID for sending the mail */
         int                     mail_id;           /**< The mail ID for sending the mail */
-        char                   *multi_user_name;   /**< Speicifes the supporting for multi user (Since 2.4) */    
+        char                   *multi_user_name;   /**< Speicifes the supporting for multi user (Since 2.4) */
 	} send_mail;    /**< Noti data for sending the mail */
 
     struct _send_mail_saved
     {/*  not defined ye */
         int                     handle;            /**< The job handle to be canceled. This value is issued by email-service. */
         int                     account_id;        /**< The account ID for sending the saved mail */
-        char                   *multi_user_name;   /**< Speicifes the supporting for multi user (Since 2.4) */    
+        char                   *multi_user_name;   /**< Speicifes the supporting for multi user (Since 2.4) */
 	} send_mail_saved;    /**< Noti data for sending the saved mail */
 
     struct _send_report
@@ -2006,7 +2007,7 @@ typedef union
     } search_mail_on_server;    /**< Noti data for searching the mail on server */
 
     struct _clear_result_of_search_mail_on_server
-    { 
+    {
         int                     handle;            /**< The job handle to be canceled. This value is issued by email-service. */
         int                     account_id;        /**< The account ID for clearing the result of search mail on server */
         char                   *multi_user_name;   /**< Speicifes the supporting for multi user (Since 2.4) */

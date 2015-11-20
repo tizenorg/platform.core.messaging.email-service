@@ -677,9 +677,10 @@ static int fetch_string_from_stream(char *input_stream, int *input_output_stream
 	/* EM_DEBUG_FUNC_END("stream_offset [%d]", stream_offset); */
 	return EMAIL_ERROR_NONE;
 }
-                                    /* divide struct at binary field (void* user_data)*/
-#define EMAIL_ACCOUNT_FMT   "S(" "isiii" "isii" ")" "B" "S(" "issss"  "isiss" "iiiii" "iiiii" "isiss" "iii"\
-                                 "$(" "iiiii" "iisii" "iisi" "iiiis" ")" "iiiiiisiis" ")"
+
+/* divide struct at binary field (void* user_data)*/
+#define EMAIL_ACCOUNT_FMT	"S(" "isiii" "isiis" "sssis" "issii" "iiiii" "iiiis" "issii" "i"\
+							"$(" "iiiii" "iisii" "iisii" "iiis" ")" "iiiii" "isiis" "i" ")" "B"
 
 /* For converting fmt : to distinguish between 64bit or 32bit */
 static char *convert_format(char *fmt)
@@ -694,11 +695,20 @@ static char *convert_format(char *fmt)
 	int size = 0;
 	int string_size = 0;
 	int ret = false;
+	int nested_structure = 0;
 	char *c = NULL;
 	char *converted_fmt = NULL;
 
+	size = sizeof(time_t);
+
 	string_size = strlen(fmt);
-	converted_fmt = em_malloc(string_size + 1);
+	if (size == 4) {
+		converted_fmt = em_malloc(string_size + 1);
+	} else if (size == 8) {
+		/* 64bit nested */
+		converted_fmt = em_malloc(string_size + 1 + 1);
+	}
+
 	if (converted_fmt == NULL) {
 		EM_DEBUG_EXCEPTION("em_malloc failed");
 		return NULL;
@@ -720,14 +730,10 @@ static char *convert_format(char *fmt)
             case 'B':
             case 'A':
             case 'S':
-            case '$': /* nested structure */
-            case ')':
-            case '(':
 				strncat(converted_fmt, c, 1);
 				break;
 			case 't': /* special charater for time_t */
 			case 'T':
-				size = sizeof(time_t);
 				if (size == 4) {
 					/* 32bit */
 					strncat(converted_fmt, "i", 1);
@@ -739,6 +745,21 @@ static char *convert_format(char *fmt)
 				}
 
 				break;
+            case '$': /* nested structure */
+				/* if 64 bit inserted the dump integer type */
+				strncat(converted_fmt, c, 1);
+				nested_structure = 1;
+				break;
+            case ')':
+				strncat(converted_fmt, c, 1);
+				if (nested_structure)
+					nested_structure = 0;
+				break;
+            case '(':
+				strncat(converted_fmt, c, 1);
+				if (nested_structure && size == 8)
+					strncat(converted_fmt, "i", 1);
+				break;
             default:
                 EM_DEBUG_EXCEPTION("unsupported option %c\n", *c);
 				goto FINISH_OFF;
@@ -746,8 +767,8 @@ static char *convert_format(char *fmt)
         c++;
     }
 
-	EM_DEBUG_LOG_DEV("original fmt  : [%s]", fmt);
-	EM_DEBUG_LOG_DEV("converted_fmt : [%s]", converted_fmt);
+	EM_DEBUG_LOG("original fmt  : [%s]", fmt);
+	EM_DEBUG_LOG("converted_fmt : [%s]", converted_fmt);
 
 	ret = true;
 
@@ -799,7 +820,6 @@ INTERNAL_FUNC char* em_convert_account_to_byte_stream(email_account_t* account, 
 	EM_DEBUG_FUNC_END();
 	return (char*) buf;
 }
-
 
 INTERNAL_FUNC void em_convert_byte_stream_to_account(char *stream, int stream_len, email_account_t *account)
 {

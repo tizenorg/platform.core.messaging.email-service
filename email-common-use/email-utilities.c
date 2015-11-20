@@ -1014,7 +1014,9 @@ FINISH_OFF:
 
 INTERNAL_FUNC int em_find_pos_stripped_subject_for_thread_view(char *subject, char *stripped_subject, int stripped_subject_buffer_size)
 {
-	EM_DEBUG_FUNC_BEGIN("subject [%p] stripped_subject [%p] stripped_subject_buffer_size[%d]", subject, stripped_subject, stripped_subject_buffer_size);
+	EM_DEBUG_FUNC_BEGIN("subject [%p] stripped_subject [%p] stripped_subject_buffer_size[%d]",
+							subject, stripped_subject, stripped_subject_buffer_size);
+
 	int error_code = EMAIL_ERROR_NONE;
 	int gap;
 	char *copy_of_subject = NULL, *curpos = NULL, *result;
@@ -1032,25 +1034,10 @@ INTERNAL_FUNC int em_find_pos_stripped_subject_for_thread_view(char *subject, ch
 	em_upper_string(copy_of_subject);
 	curpos = copy_of_subject;
 
-
-
-	while ((result = g_strrstr(curpos, "RE:")) != NULL) {
-		curpos = result + 3;
-		EM_DEBUG_LOG_SEC("RE result : %s", curpos);
-	}
-
-	while ((result = g_strrstr(curpos, "FWD:")) != NULL) {
-		curpos = result + 4;
-		EM_DEBUG_LOG_SEC("FWD result : %s", curpos);
-	}
-
-	while ((result = g_strrstr(curpos, "FW:")) != NULL) {
-		curpos = result + 3;
-		EM_DEBUG_LOG_SEC("FW result : %s", curpos);
-	}
-
-	while (curpos != NULL && *curpos == ' ') {
-		curpos++;
+	result = g_strrstr(curpos, ": ");
+	if (result != NULL) {
+		curpos = result + 2;
+		EM_DEBUG_LOG("result : %s", curpos);
 	}
 
 	gap = curpos - copy_of_subject;
@@ -1058,6 +1045,7 @@ INTERNAL_FUNC int em_find_pos_stripped_subject_for_thread_view(char *subject, ch
 	EM_SAFE_STRNCPY(stripped_subject, subject + gap, stripped_subject_buffer_size);
 
 FINISH_OFF:
+
 	EM_SAFE_FREE(copy_of_subject);
 
 	EM_DEBUG_FUNC_END("error_code[%d]", error_code);

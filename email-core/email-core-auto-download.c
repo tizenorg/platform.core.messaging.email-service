@@ -568,11 +568,11 @@ CHECK_CONTINUE:
 			}
 
 			snprintf(uid_str, sizeof(uid_str), "%ld", event_data->server_mail_id);
-			if (!emstorage_get_maildata_by_servermailid(event_data->multi_user_name, 
-														uid_str, 
+			if (!emstorage_get_maildata_by_servermailid(event_data->multi_user_name,
+														uid_str,
 														event_data->mailbox_id,
-														&mail, 
-														true, 
+														&mail,
+														true,
 														&err) || !mail) {
 				EM_DEBUG_EXCEPTION("emstorage_get_mail_data_by_servermailid failed : [%d]", err);
 			}
@@ -585,8 +585,16 @@ CHECK_CONTINUE:
 							event_data->account_id, event_data->mailbox_id,
 							event_data->mail_id, event_data->server_mail_id, event_data->activity_id);
 
-					if (!emcore_gmime_download_body_sections(event_data->multi_user_name, NULL, event_data->account_id, event_data->mail_id,
-						1, NO_LIMITATION, -1, 0, 1, &err))
+					if (!emcore_gmime_download_body_sections(event_data->multi_user_name,
+																NULL,
+																event_data->account_id,
+																event_data->mail_id,
+																0,
+																NO_LIMITATION,
+																-1,
+																0,
+																1,
+																&err))
 						EM_DEBUG_EXCEPTION("emcore_gmime_download_body_sections failed - %d", err);
 				}
 
@@ -596,7 +604,11 @@ CHECK_CONTINUE:
 					int attachment_count = 0;
 					emstorage_attachment_tbl_t *attachment_list = NULL;
 
-					if ((err = emstorage_get_attachment_list(event_data->multi_user_name, event_data->mail_id, true, &attachment_list, &attachment_count)) != EMAIL_ERROR_NONE ) {
+					if ((err = emstorage_get_attachment_list(event_data->multi_user_name,
+																event_data->mail_id,
+																true,
+																&attachment_list,
+																&attachment_count)) != EMAIL_ERROR_NONE ) {
 						EM_DEBUG_EXCEPTION("emstorage_get_attachment_list failed [%d]", err);
 					} else {
 						for (i = 0; i < attachment_count; i++) {
@@ -726,7 +738,6 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END();
 	return ret;
 }
-
 
 INTERNAL_FUNC int emcore_insert_auto_download_activity(email_event_auto_download *local_activity, int *activity_id, int *err_code)
 {

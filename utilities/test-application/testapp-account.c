@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -87,7 +87,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 		testapp_print("Invalid input. ");
 
 	switch(account_type) {
-		case 4 : 
+		case 4 :
 		case 5 :
 			do {
 				testapp_print("Enter your account index [1~10] : ");
@@ -153,22 +153,22 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 	account->incoming_server_authentication_method   = 0;
 	account->logo_icon_path                          = NULL;
 	account->color_label                             = (128 << 16) | (128 << 8) | (128);
-	account->user_data                               = malloc (data_length);
-	memcpy( account->user_data, (void*) &data, data_length );
+	account->user_data                               = malloc(data_length);
+	memcpy(account->user_data, (void*) &data, data_length);
 	account->user_data_length                        = data_length;
-	account->options.priority                        = 3;
+	account->options.priority                        = EMAIL_MAIL_PRIORITY_NORMAL;
 	account->options.keep_local_copy                 = 1;
 	account->options.req_delivery_receipt            = 0;
 	account->options.req_read_receipt                = 0;
 	account->options.download_limit                  = 0;
 	account->options.block_address                   = 0;
 	account->options.block_subject                   = 0;
-	account->options.display_name_from               = NULL;
+	account->options.display_name_from               = strdup("test");
 	account->options.reply_with_body                 = 0;
 	account->options.forward_with_files              = 0;
 	account->options.add_myname_card                 = 0;
-	account->options.add_signature                   = 0;
-	account->options.signature                       = NULL;
+	account->options.add_signature                   = 1;
+	account->options.signature                       = strdup("abcdef");
 	account->options.add_my_address_to_bcc           = 0;
 	account->check_interval                          = 0;
 	account->keep_mails_on_pop_server_after_download = 1;
@@ -406,8 +406,8 @@ static gboolean testapp_test_update_account()
 	//char signature[100] = {0};
 	//char user_email_address[256] = {0,};
 	//int add_my_address_to_bcc = 0;
-	int with_validation = 0; //account_svc_id = 0, 
-	
+	int with_validation = 0; //account_svc_id = 0,
+
 	testapp_print("\n>> Enter Account ID: ");
 	if (0 >= scanf("%d",&account_id))
 		testapp_print("Invalid input. ");
@@ -421,7 +421,7 @@ static gboolean testapp_test_update_account()
 	testapp_print ("email_get_account result address - %s \n", account->user_email_address);
 	testapp_print ("email_get_account result signature - %s \n", account->options.signature);
 	testapp_print ("email_get_account result check_interval - %d \n", account->check_interval);
-	
+
 	testapp_print("\n Enter new check interval (in mins):");
 	if (0 >= scanf("%d",&(account->check_interval)))
 		testapp_print("Invalid input. ");
@@ -505,7 +505,7 @@ static gboolean testapp_test_delete_account ()
 	else {
 		testapp_print ("email_get_account result account_name - %s \n", account->account_name);
 
-		if((err = email_delete_account(account_id)) < 0) 
+		if((err = email_delete_account(account_id)) < 0)
 			testapp_print ("email_delete_account failed[%d]\n", err);
 		else
 			testapp_print ("email_delete_account successful \n");
@@ -520,7 +520,7 @@ static gboolean testapp_test_validate_account ()
 	email_account_t *account = NULL;
 	int err_code = EMAIL_ERROR_NONE;
 	int handle = 0;
-	
+
 	if(!testapp_create_account_object(&account)) {
 		testapp_print ("testapp_create_account_object error\n");
 		return FALSE;
@@ -533,7 +533,7 @@ static gboolean testapp_test_validate_account ()
 
 	if(account)
 		email_free_account(&account, 1);
-		
+
 	return FALSE;
 
 }
@@ -558,7 +558,7 @@ static gboolean testapp_test_cancel_validate_account ()
 		testapp_print("email_cancel_job Success..!handle:[%d]", account_handle);
 	else
 		testapp_print ("email_cancel_job failed err_code: %d \n",err_code);
-	
+
 	return FALSE;
 }
 
@@ -697,14 +697,14 @@ static gboolean testapp_test_get_account()
 	if(account->account_name)
 		testapp_print ("account_name : %s \n", account->account_name);
 	else
-		testapp_print ("account_name not retrieved \n");	
+		testapp_print ("account_name not retrieved \n");
 
 	if(account->user_email_address)
 		testapp_print ("user_email_address : %s \n", account->user_email_address);
 	else
-		testapp_print ("user_email_address not retrieved \n");	
+		testapp_print ("user_email_address not retrieved \n");
 	err_code = email_free_account(&account, 1);
-		
+
 	return FALSE;
 }
 
@@ -727,10 +727,10 @@ static gboolean testapp_test_get_account_list ()
 	gettimeofday(&tv_2, NULL);
 	interval = tv_2.tv_usec - tv_1.tv_usec;
 	testapp_print("\t testapp_test_get_account_list Proceed time %d us\n",interval);
-	
+
 	for(i=0;i<count;i++){
-		testapp_print("   %2d) %-15s %-30s\n",account_list[i].account_id, 
-			account_list[i].account_name, 
+		testapp_print("   %2d) %-15s %-30s\n",account_list[i].account_id,
+			account_list[i].account_name,
 			account_list[i].user_email_address);
 	}
 
@@ -962,7 +962,7 @@ static gboolean testapp_test_update_peak_schedule()
 static gboolean testapp_test_interpret_command (int selected_number)
 {
 	gboolean go_to_loop = TRUE;
-	
+
 	switch (selected_number) {
 		case 1:
 			testapp_test_add_account_with_validation();
@@ -979,7 +979,7 @@ static gboolean testapp_test_interpret_command (int selected_number)
 		case 4:
 			testapp_test_get_account();
 			break;
-		
+
 		case 5:
 			testapp_test_get_account_list();
 			break;
@@ -990,19 +990,19 @@ static gboolean testapp_test_interpret_command (int selected_number)
 
 		case 7:
 			testapp_test_validate_account();
-			break;		
+			break;
 
 		case 8:
 			testapp_test_cancel_validate_account();
-			break;	
+			break;
 
 		case 9:
 			testapp_test_backup_account();
-			break;	
+			break;
 
 		case 10:
 			testapp_test_restore_account();
-			break;	
+			break;
 
 		case 11:
 			testapp_test_get_password_length_of_account();
@@ -1051,7 +1051,7 @@ void testapp_account_main ()
 {
 	gboolean go_to_loop = TRUE;
 	int menu_number = 0;
-	
+
 	while (go_to_loop) {
 		testapp_show_menu (EMAIL_ACCOUNT_MENU);
 		testapp_show_prompt (EMAIL_ACCOUNT_MENU);
@@ -1060,6 +1060,6 @@ void testapp_account_main ()
 			testapp_print("Invalid input");
 
 		go_to_loop = testapp_test_interpret_command (menu_number);
-	}	
+	}
 }
 

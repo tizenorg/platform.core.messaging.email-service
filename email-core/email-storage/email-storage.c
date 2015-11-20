@@ -4878,8 +4878,11 @@ INTERNAL_FUNC int emstorage_add_account(char *multi_user_name, emstorage_account
 		return false;
 	}
 
+	int row_count = 0;
+	int i = 0;
 	int rc = -1, ret = false;
 	int error = EMAIL_ERROR_NONE;
+	int error_from_ssm = 0;
 	DB_STMT hStmt = NULL;
 	char sql_query_string[QUERY_SIZE] = {0, };
 	char recv_password_file_name[MAX_PW_FILE_NAME_LENGTH];
@@ -4889,17 +4892,31 @@ INTERNAL_FUNC int emstorage_add_account(char *multi_user_name, emstorage_account
 
 	EMSTORAGE_START_WRITE_TRANSACTION(multi_user_name, transaction, error);
 
-	char *sql = "SELECT max(rowid) FROM mail_account_tbl;";
+	char *sql = "SELECT rowid FROM mail_account_tbl;";
 	char **result = NULL;
 
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_get_table(local_db_handle, sql, &result, NULL, NULL, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_get_table(local_db_handle, sql, &result, &row_count, NULL, NULL), rc);
 	EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {error = EMAIL_ERROR_DB_FAILURE;sqlite3_free_table(result);goto FINISH_OFF; },
 		("SQL(%s) sqlite3_get_table fail:%d -%s", sql, rc, sqlite3_errmsg(local_db_handle)));
 
-	if (NULL==result[1]) rc = 1;
-	else rc = atoi(result[1])+1;
+	if (NULL == result[1]) rc = 1;
+	else {
+		for (i = 1; i <= row_count; i++) {
+			if (i != atoi(result[i])) {
+				break;
+			}
+		}
+
+		rc = i;
+	}
 	sqlite3_free_table(result);
 	result = NULL;
+
+	if (rc < 0 && rc > EMAIL_ACCOUNT_MAX) {
+		EM_DEBUG_EXCEPTION("OVERFLOWED THE MAX ACCOUNT");
+		error = EMAIL_ERROR_ACCOUNT_MAX_COUNT;
+		goto FINISH_OFF;
+	}
 
 	account_tbl->account_id = rc;
 
@@ -4985,7 +5002,7 @@ INTERNAL_FUNC int emstorage_add_account(char *multi_user_name, emstorage_account
 	EM_DEBUG_DB_EXEC((SQLITE_OK != rc), {error = EMAIL_ERROR_DB_FAILURE;goto FINISH_OFF; },
 		("SQL(%s) sqlite3_prepare fail:(%d) %s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
 
-	int i = 0;
+	i = 0;
 
 	_bind_stmt_field_data_int(hStmt, i++, account_tbl->account_id);
 	_bind_stmt_field_data_string(hStmt, i++, (char *)account_tbl->account_name, 0, ACCOUNT_NAME_LEN_IN_MAIL_ACCOUNT_TBL);
@@ -12907,18 +12924,25 @@ INTERNAL_FUNC int emstorage_get_thread_id_of_thread_mails(char *multi_user_name,
 						mail_tbl, thread_id, result_latest_mail_id_in_thread, thread_item_count);
 	EM_PROFILE_BEGIN(profile_emstorage_get_thread_id_of_thread_mails);
 
-	int      rc = 0, query_size = 0, query_size_account = 0;
-	int      account_id = 0;
-	int      err_code = EMAIL_ERROR_NONE;
-	int      count = 0, result_thread_id = -1, latest_mail_id_in_thread = -1;
-	time_t   latest_date_time = 0;
-	char    *subject = NULL;
-	char    *sql_query_string = NULL, *sql_account = NULL;
-	char    *sql_format = "SELECT thread_id, date_time, mail_id FROM mail_tbl WHERE subject like \'%%%q\' AND mailbox_id = %d";
-	char    *sql_format_account = " AND account_id = %d ";
-	char    *sql_format_order_by = " ORDER BY date_time DESC ";
-	char   **result = NULL;
-	char     stripped_subject[STRIPPED_SUBJECT_BUFFER_SIZE];
+	int rc = 0, query_size = 0, query_size_account = 0;
+	int i = 0;
+	int search_thread = false;
+	int account_id = 0;
+	int err_code = EMAIL_ERROR_NONE;
+	int count = 0, result_thread_id = -1, latest_mail_id_in_thread = -1;
+	time_t latest_date_time = 0;
+	char *subject = NULL;
+	char *p_subject = NULL;
+	char *sql_query_string = NULL, *sql_account = NULL;
+	int col_index = 4;
+	int temp_thread_id = -1;
+	char *sql_format = "SELECT mail_id, thread_id, date_time, subject "
+						"FROM mail_tbl WHERE subject like \'%%%q\' AND mailbox_id = %d";
+	char *sql_format_account = " AND account_id = %d ";
+	char *sql_format_order_by = " ORDER BY thread_id, date_time DESC ";
+	char **result = NULL;
+	char stripped_subject[STRIPPED_SUBJECT_BUFFER_SIZE];
+	char stripped_subject2[STRIPPED_SUBJECT_BUFFER_SIZE];
 
 	sqlite3 *local_db_handle = emstorage_get_db_connection(multi_user_name);
 
@@ -12990,7 +13014,8 @@ INTERNAL_FUNC int emstorage_get_thread_id_of_thread_mails(char *multi_user_name,
 
 	EM_DEBUG_LOG_SEC("Query : %s", sql_query_string);
 
-	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_get_table(local_db_handle, sql_query_string, &result, &count, NULL, NULL), rc);
+	EMSTORAGE_PROTECTED_FUNC_CALL(sqlite3_get_table(local_db_handle, sql_query_string, &result, &count, NULL, NULL),
+									rc);
 
 	EM_DEBUG_DB_EXEC(SQLITE_OK != rc, {err_code = EMAIL_ERROR_DB_FAILURE;sqlite3_free_table(result);goto FINISH_OFF; },
 		("SQL(%s) sqlite3_get_table fail:%d -%s", sql_query_string, rc, sqlite3_errmsg(local_db_handle)));
@@ -13000,18 +13025,51 @@ INTERNAL_FUNC int emstorage_get_thread_id_of_thread_mails(char *multi_user_name,
 	if (count == 0)
 		result_thread_id = -1;
 	else {
-		_get_table_field_data_int   (result, &result_thread_id, 3);
-		_get_table_field_data_time_t(result, &latest_date_time, 4);
-		_get_table_field_data_int   (result, &latest_mail_id_in_thread, 5);
+		for (i = 0; i < count; i++) {
+			EM_SAFE_FREE(p_subject);
 
-		if (latest_date_time < mail_tbl->date_time)
-			*result_latest_mail_id_in_thread = latest_mail_id_in_thread;
-		else
-			*result_latest_mail_id_in_thread = mail_tbl->mail_id;
-		EM_DEBUG_LOG("latest_mail_id_in_thread [%d], mail_id [%d]", latest_mail_id_in_thread, mail_tbl->mail_id);
+			_get_table_field_data_int(result, &latest_mail_id_in_thread, col_index++);
+			_get_table_field_data_int(result, &result_thread_id, col_index++);
+			_get_table_field_data_time_t(result, &latest_date_time, col_index++);
+			_get_table_field_data_string(result, &p_subject, 0, col_index++);
+
+			if (temp_thread_id == result_thread_id)
+				continue;
+
+			temp_thread_id = result_thread_id;
+
+			if (em_find_pos_stripped_subject_for_thread_view(p_subject,
+																stripped_subject2,
+																STRIPPED_SUBJECT_BUFFER_SIZE) != EMAIL_ERROR_NONE)	{
+				EM_DEBUG_EXCEPTION("em_find_pos_stripped_subject_for_thread_view is failed");
+				err_code = EMAIL_ERROR_UNKNOWN;
+				result_thread_id = -1;
+				goto FINISH_OFF;
+			}
+
+			if (g_strcmp0(stripped_subject2, stripped_subject) == 0) {
+				if (latest_date_time < mail_tbl->date_time)
+					*result_latest_mail_id_in_thread = latest_mail_id_in_thread;
+				else
+					*result_latest_mail_id_in_thread = mail_tbl->mail_id;
+
+				search_thread = true;
+				break;
+			}
+
+			if (search_thread) {
+				EM_DEBUG_LOG("latest_mail_id_in_thread [%d], mail_id [%d]",
+								latest_mail_id_in_thread, mail_tbl->mail_id);
+			} else {
+				result_thread_id = -1;
+				count = 0;
+			}
+		}
+
 	}
 
 FINISH_OFF:
+
 	*thread_id = result_thread_id;
 	*thread_item_count = count;
 
@@ -13021,6 +13079,7 @@ FINISH_OFF:
 
 	EM_SAFE_FREE(sql_account);
 	EM_SAFE_FREE(sql_query_string);
+	EM_SAFE_FREE(p_subject);
 
 	sqlite3_free_table(result);
 

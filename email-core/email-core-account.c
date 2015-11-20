@@ -152,7 +152,7 @@ INTERNAL_FUNC int emcore_get_account_reference_list(char *multi_user_name, email
     }
 
     for (i = 0; i < account_count; i++) {
-        em_convert_account_tbl_to_account(&account_list_tbl[i], &account_list[i]);    
+        em_convert_account_tbl_to_account(&account_list_tbl[i], &account_list[i]);
     }
 
 FINISH_OFF:
@@ -229,11 +229,11 @@ INTERNAL_FUNC int emcore_validate_account_with_account_info(char *multi_user_nam
 
 	FINISH_OFF_IF_EVENT_CANCELED (err, event_handle);
 
-	if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, 
-															account, 
-															0, 
+	if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name,
+															account,
+															0,
 															true,
-															(void **)&tmp_stream, 
+															(void **)&tmp_stream,
 															&err) || !tmp_stream) {
 		EM_DEBUG_LOG("emcore_connect_to_remote_mailbox failed [%d]", err);
 		if (EMAIL_ERROR_AUTHENTICATE == err || EMAIL_ERROR_LOGIN_FAILURE == err) {	/*  wrong password or etc */
@@ -253,11 +253,11 @@ INTERNAL_FUNC int emcore_validate_account_with_account_info(char *multi_user_nam
 
 	FINISH_OFF_IF_EVENT_CANCELED (err, event_handle);
 
-	if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, 
-															account, 
-															EMAIL_CONNECT_FOR_SENDING, 
+	if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name,
+															account,
+															EMAIL_CONNECT_FOR_SENDING,
 															true,
-															(void **)&stream, 
+															(void **)&stream,
 															&err) || !stream) {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
 		err = EMAIL_ERROR_VALIDATE_ACCOUNT_OF_SMTP;
@@ -270,11 +270,11 @@ INTERNAL_FUNC int emcore_validate_account_with_account_info(char *multi_user_nam
 			EM_DEBUG_LOG("Retry with TLS");
 			account->outgoing_server_secure_connection = 0x02;	/*  0x02 == TLS */
 
-			if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, 
-																	account, 
-																	EMAIL_CONNECT_FOR_SENDING, 
+			if (!emcore_connect_to_remote_mailbox_with_account_info(multi_user_name,
+																	account,
+																	EMAIL_CONNECT_FOR_SENDING,
 																	true,
-																	(void **)&stream, 
+																	(void **)&stream,
 																	&err) || !stream) {
 				EM_DEBUG_LOG("emcore_connect_to_remote_mailbox failed [%d]", err);
 				err = EMAIL_ERROR_VALIDATE_ACCOUNT_OF_SMTP;
@@ -468,7 +468,7 @@ INTERNAL_FUNC int emcore_delete_account(char *multi_user_name, int account_id, i
 					goto FINISH_OFF;
 				}
 			}
-			
+
 			error_code_from_account_svc = account_delete_from_db_by_id(account_to_be_deleted->account_svc_id);
 			EM_DEBUG_LOG("account_delete_from_db_by_id returns [%d]", error_code_from_account_svc);
 
@@ -512,7 +512,7 @@ INTERNAL_FUNC int emcore_delete_account(char *multi_user_name, int account_id, i
 	/* emcore_reset_streams(); */
 	emcore_remove_connection_info(account_id);
 #endif
-	
+
 	if ((err = emcore_delete_all_mails_of_acount(multi_user_name, account_id)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_delete_all_mails_of_acount failed [%d]", err);
 		goto FINISH_OFF;
@@ -1030,7 +1030,7 @@ INTERNAL_FUNC int emcore_backup_accounts(char *multi_user_name, const char *file
 		EM_DEBUG_LOG("target_buff_length [%d]", target_buff_length);
 
 		ssm_delete_file(file_path, SSM_FLAG_SECRET_OPERATION, NULL);
-		
+
 		if (ssm_write_buffer(target_buffer, target_buff_length, file_path, SSM_FLAG_SECRET_OPERATION, NULL) < 0) {
 			EM_DEBUG_EXCEPTION("ssm_write_buffer failed [%d]", local_error_code);
 			local_error_code = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -1038,8 +1038,8 @@ INTERNAL_FUNC int emcore_backup_accounts(char *multi_user_name, const char *file
 		}
 	}
 
-	ret_code = true;	
-FINISH_OFF: 
+	ret_code = true;
+FINISH_OFF:
 
 	EM_SAFE_CLOSE (fd);
 	EM_SAFE_FREE(target_buffer);
@@ -1136,7 +1136,12 @@ INTERNAL_FUNC int emcore_restore_accounts(char *multi_user_name, const char *fil
 				em_convert_byte_stream_to_account(account_stream, account_stream_length, &temp_account);
 				EM_SAFE_FREE(account_stream);
 
-				if ((emstorage_check_duplicated_account(multi_user_name, &temp_account, true, &err) == false) && (err = EMAIL_ERROR_ALREADY_EXISTS)) {
+
+
+				if ((emstorage_check_duplicated_account(multi_user_name,
+														&temp_account,
+														true,
+														&err) == false) && (err = EMAIL_ERROR_ALREADY_EXISTS)) {
 					EM_DEBUG_EXCEPTION("An account is duplicated. ");
 					buffer_ptr += account_stream_length;
 					account_stream_length = 0;

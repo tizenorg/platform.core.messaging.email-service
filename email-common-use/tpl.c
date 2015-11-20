@@ -306,9 +306,12 @@ char *calc_field_addr(tpl_node *parent, int type,char *struct_addr, int ordinal)
         align_sz = tpl_types[type].sz;
         break;
     }
+	EM_DEBUG_LOG("prev->addr : [%p], struct_addr : [%p]", prev->addr, struct_addr);
     offset = ((uintptr_t)prev->addr - (uintptr_t)struct_addr)
             + (tpl_types[prev->type].sz * prev->num);
+	EM_DEBUG_LOG("offset : [%d], align_sz : [%d]", offset, align_sz);
     offset = (offset + align_sz - 1) / align_sz * align_sz;
+	EM_DEBUG_LOG("Real offset : [%d]", offset);
     return struct_addr + offset;
 }
 
