@@ -299,7 +299,7 @@ INTERNAL_FUNC int emdaemon_add_mail(char *multi_user_name,
 	}
 
 #ifdef __FEATURE_SYNC_CLIENT_TO_SERVER__
-	if ( input_from_eas == 0 && ref_account->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
+	if (input_from_eas == 0 && ref_account->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
 		event_data = em_malloc(sizeof(email_event_t));
 		if (event_data == NULL) {
 			EM_DEBUG_EXCEPTION("em_malloc failed");
@@ -671,6 +671,12 @@ INTERNAL_FUNC int emdaemon_delete_mail(char *multi_user_name,
 	}
 
 	if (from_server == EMAIL_DELETE_LOCAL_AND_SERVER || from_server == EMAIL_DELETE_FROM_SERVER) {
+		if ((event_data = em_malloc(sizeof(email_event_t)) ) == NULL) {
+			EM_DEBUG_EXCEPTION("em_malloc for event_data failed...");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
 		if ((p = em_malloc(sizeof(int) * mail_ids_count)) == NULL) {
 			EM_DEBUG_EXCEPTION("em_malloc for p failed...");
 			err = EMAIL_ERROR_OUT_OF_MEMORY;
@@ -678,12 +684,6 @@ INTERNAL_FUNC int emdaemon_delete_mail(char *multi_user_name,
 		}
 
 		memcpy(p, mail_ids, sizeof(int) * mail_ids_count);
-
-		if ((event_data = em_malloc(sizeof(email_event_t)) ) == NULL) {
-			EM_DEBUG_EXCEPTION("em_malloc for event_data failed...");
-			err = EMAIL_ERROR_OUT_OF_MEMORY;
-			goto FINISH_OFF;
-		}
 
 		event_data->type                   = EMAIL_EVENT_DELETE_MAIL;
 		event_data->account_id             = account_id;
@@ -705,7 +705,6 @@ FINISH_OFF:
 				emcore_free_event(event_data);
 				EM_SAFE_FREE(event_data);
 			}
-			EM_SAFE_FREE(p);
 			goto FINISH_OFF2;
 		}
 	}
@@ -745,7 +744,6 @@ FINISH_OFF2:
 		    emcore_free_event(thread_func_event_data);
 			EM_SAFE_FREE(thread_func_event_data);
 		}
-		EM_SAFE_FREE(p2);
 	}
 
 	if (ref_account) {
@@ -849,7 +847,7 @@ int emdaemon_delete_mail_all(char *multi_user_name, int input_mailbox_id, int in
 			new_activity.dest_mbox		= NULL;
 			new_activity.account_id 	= mailbox->account_id;
 
-			if (! emcore_add_activity(&new_activity, &err))
+			if (!emcore_add_activity(&new_activity, &err))
 				EM_DEBUG_EXCEPTION(" emcore_add_activity  Failed  - %d ", err);
 
 		}
@@ -1045,7 +1043,6 @@ FINISH_OFF:
 			emcore_free_event(event_data);
 			EM_SAFE_FREE(event_data);
 		}
-        EM_SAFE_FREE(p);
 		goto FINISH_OFF2;
     }
 
@@ -1107,7 +1104,6 @@ FINISH_OFF2:
 			emcore_free_event(thread_func_event_data);
 			EM_SAFE_FREE(thread_func_event_data);
 		}
-		EM_SAFE_FREE(p2);
 	}
 
 #ifdef __FEATURE_LOCAL_ACTIVITY__
@@ -1224,7 +1220,6 @@ FINISH_OFF:
 			emcore_free_event(event_data);
 			EM_SAFE_FREE(event_data);
 		}
-		EM_SAFE_FREE(p);
 		goto FINISH_OFF2;
 	}
 
@@ -1286,7 +1281,6 @@ FINISH_OFF2:
 			emcore_free_event(thread_func_event_data);
 			EM_SAFE_FREE(thread_func_event_data);
 		}
-        EM_SAFE_FREE(p2);
     }
 
 #ifdef __FEATURE_LOCAL_ACTIVITY__
@@ -1344,6 +1338,13 @@ INTERNAL_FUNC int emdaemon_set_flags_field(char *multi_user_name, int account_id
 	}
 
 	if (onserver && account_tbl->incoming_server_type == EMAIL_SERVER_TYPE_IMAP4) {
+		event_data = em_malloc(sizeof(email_event_t));
+		if (event_data == NULL) {
+			EM_DEBUG_EXCEPTION("em_malloc failed");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
 		mail_id_array = em_malloc(sizeof(int) * num);
 		if (mail_id_array == NULL)  {
 			EM_DEBUG_EXCEPTION("em_malloc failed...");
@@ -1352,13 +1353,6 @@ INTERNAL_FUNC int emdaemon_set_flags_field(char *multi_user_name, int account_id
 		}
 
 		memcpy(mail_id_array, mail_ids, sizeof(int) * num);
-
-		event_data = em_malloc(sizeof(email_event_t));
-		if (event_data == NULL) {
-			EM_DEBUG_EXCEPTION("em_malloc failed");
-			err = EMAIL_ERROR_OUT_OF_MEMORY;
-			goto FINISH_OFF;
-		}
 
 		event_data->type               = EMAIL_EVENT_SYNC_FLAGS_FIELD_TO_SERVER;
 		event_data->account_id         = account_id;
@@ -1830,7 +1824,6 @@ INTERNAL_FUNC int emdaemon_expunge_mails_deleted_flagged(char *multi_user_name, 
 FINISH_OFF:
 
 	if (event_insert == false && event_data) {
-		EM_SAFE_FREE(event_data->multi_user_name);
 		emcore_free_event(event_data);
 		EM_SAFE_FREE(event_data);
 	}

@@ -36,6 +36,7 @@
 
 #include "email-internal-types.h"
 #include "c-client.h"
+#include "email-daemon.h"
 #include "email-core-global.h"
 #include "email-core-utils.h"
 #include "email-storage.h"
@@ -4621,21 +4622,128 @@ static int emcore_sending_alarm_cb(email_alarm_data_t *alarm_data, void *user_pa
 {
 	EM_DEBUG_FUNC_BEGIN("alarm_data [%p] user_parameter [%p]", alarm_data, user_parameter);
 	int err = EMAIL_ERROR_NONE;
-	int ret = 0;
-	char *multi_user_name = (char *)user_parameter;
 
 	if (alarm_data == NULL) {
 		EM_DEBUG_EXCEPTION("Invalid parameter");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		return err;
+	}
+
+	if (alarm_data->reference_id <= 0) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		return err;
+	}
+
+	/* Insert the sending mail event */
+	int account_id = 0;
+	int input_mail_id = alarm_data->reference_id;
+	int dst_mailbox_id = 0;
+	int result_handle = 0;
+	char *multi_user_name = alarm_data->multi_user_name;
+
+	email_event_t *event_data = NULL;
+	emstorage_mail_tbl_t *mail_data = NULL;
+	emstorage_mailbox_tbl_t *outbox_tbl = NULL;
+
+	if (!emstorage_get_mail_by_id(multi_user_name, input_mail_id, &mail_data, false, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_get_mail_by_id failed : [%d]", err);
 		goto FINISH_OFF;
 	}
 
-	/* send mail here */
-	if(!emcore_send_mail(multi_user_name, alarm_data->reference_id, &err)) {
-		EM_DEBUG_EXCEPTION("emcore_send_mail failed [%d]", ret);
+	account_id = mail_data->account_id;
+
+	if (!emnetwork_check_network_status(&err)) {
+		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed : [%d]", err);
+		goto FINISH_OFF;
+	}
+
+#ifdef __FEATURE_MOVE_TO_OUTBOX_FIRST__
+	if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name,
+												account_id,
+												EMAIL_MAILBOX_TYPE_OUTBOX,
+												&outbox_tbl,
+												false,
+												&err)) {
+		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed : [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	dst_mailbox_id = outbox_tbl->mailbox_id;
+	emstorage_free_mailbox(&outbox_tbl, 1, NULL);
+	outbox_tbl = NULL;
+
+	if (mail_data->mailbox_id != dst_mailbox_id) {
+		if (!emcore_move_mail(multi_user_name,
+								&input_mail_id,
+								1,
+								dst_mailbox_id,
+								EMAIL_MOVED_AFTER_SENDING,
+								0,
+								&err)) {
+			EM_DEBUG_EXCEPTION("emcore_move_mail failed : [%d]", err);
+			goto FINISH_OFF;
+		}
+	}
+#endif /* __FEATURE_MOVE_TO_OUTBOX_FIRST__ */
+
+	if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name,
+															account_id,
+															&input_mail_id,
+															1,
+															"save_status",
+															EMAIL_MAIL_STATUS_SEND_WAIT,
+															true,
+															&err)) {
+		EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed : [%d]", err);
+		goto FINISH_OFF;
+	}
+
+	event_data = em_malloc(sizeof(email_event_t));
+	if (event_data == NULL) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	event_data->type               = EMAIL_EVENT_SEND_MAIL;
+	event_data->account_id         = account_id;
+	event_data->event_param_data_4 = input_mail_id;
+	event_data->event_param_data_5 = mail_data->mailbox_id;
+	event_data->multi_user_name    = EM_SAFE_STRDUP(multi_user_name);
+
+	if (!emcore_insert_event_for_sending_mails(event_data, &result_handle, &err)) {
+		EM_DEBUG_EXCEPTION(" emcore_insert_event failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 FINISH_OFF:
+
+	emcore_add_transaction_info(input_mail_id, result_handle, NULL);
+
+	if (err != EMAIL_ERROR_NONE) {
+		if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name,
+															account_id,
+															&input_mail_id,
+															1,
+															"save_status",
+															EMAIL_MAIL_STATUS_SAVED,
+															true,
+															&err))
+			EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed : [%d]", err);
+
+		if (event_data) {
+			emcore_free_event(event_data);
+			EM_SAFE_FREE(event_data);
+		}
+	}
+
+	if (mail_data)
+		emstorage_free_mail(&mail_data, 1, NULL);
+
+	if (outbox_tbl)
+		emstorage_free_mailbox(&outbox_tbl, 1, NULL);
+
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
@@ -4654,20 +4762,25 @@ INTERNAL_FUNC int emcore_schedule_sending_mail(char *multi_user_name, int input_
 		goto FINISH_OFF;
 	}
 
-	/*
-	if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name, mail_data->account_id, &(mail_data->mail_id), 1, "save_status", EMAIL_MAIL_STATUS_SEND_SCHEDULED, true, &err)) {
-		EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]", err);
-		goto FINISH_OFF;
-	}
-	*/
-
-	if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name, mail_data->account_id, &(mail_data->mail_id), 1, "scheduled_sending_time", input_time_to_send, true, &err)) {
+	if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name,
+															mail_data->account_id,
+															&(mail_data->mail_id),
+															1,
+															"scheduled_sending_time",
+															input_time_to_send,
+															true,
+															&err)) {
 		EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	/* add alarm */
-	if ((err = emcore_add_alarm(multi_user_name, input_time_to_send, EMAIL_ALARM_CLASS_SCHEDULED_SENDING, input_mail_id, emcore_sending_alarm_cb, NULL)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_add_alarm(multi_user_name,
+								input_time_to_send,
+								EMAIL_ALARM_CLASS_SCHEDULED_SENDING,
+								input_mail_id,
+								emcore_sending_alarm_cb,
+								NULL)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_add_alarm failed [%d]", err);
 		goto FINISH_OFF;
 	}

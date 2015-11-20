@@ -808,6 +808,7 @@ static int default_alarm_callback(int input_timer_id, void *user_parameter)
 FINISH_OFF:
 
 	if (alarm_data) {
+		EM_SAFE_FREE(alarm_data->multi_user_name);
 		EM_SAFE_FREE(alarm_data->user_data);
 		EM_SAFE_FREE(alarm_data);
 	}

@@ -154,7 +154,13 @@ INTERNAL_FUNC int emcore_check_alarm_by_class_id(email_alarm_class_t input_class
 	return err;
 }
 
-static int emcore_add_alarm_data_to_alarm_data_list(char *multi_user_name, alarm_id_t input_alarm_id, email_alarm_class_t input_class_id, int input_reference_id, time_t input_trigger_at_time, int (*input_alarm_callback)(email_alarm_data_t*, void *), void *user_data)
+static int emcore_add_alarm_data_to_alarm_data_list(char *multi_user_name,
+													alarm_id_t input_alarm_id,
+													email_alarm_class_t input_class_id,
+													int input_reference_id,
+													time_t input_trigger_at_time,
+													int (*input_alarm_callback)(email_alarm_data_t*, void *),
+													void *user_data)
 {
 	EM_DEBUG_FUNC_BEGIN("input_alarm_id [%d] input_class_id[%d] input_reference_id[%d] input_trigger_at_time[%d] input_alarm_callback [%p] user_data[%p]", input_alarm_id, input_class_id, input_reference_id, input_trigger_at_time, input_alarm_callback, user_data);
 	int err = EMAIL_ERROR_NONE;
@@ -262,9 +268,17 @@ FINISH_OFF:
 	return err;
 }
 
-INTERNAL_FUNC int emcore_add_alarm(char *multi_user_name, time_t input_trigger_at_time, email_alarm_class_t input_class_id, int input_reference_id, int (*input_alarm_callback)(email_alarm_data_t*, void *), void *input_user_data)
+INTERNAL_FUNC int emcore_add_alarm(char *multi_user_name,
+									time_t input_trigger_at_time,
+									email_alarm_class_t input_class_id,
+									int input_reference_id,
+									int (*input_alarm_callback)(email_alarm_data_t*, void *),
+									void *input_user_data)
 {
-	EM_DEBUG_FUNC_BEGIN("input_trigger_at_time[%d] input_class_id[%d] input_reference_id[%d] input_alarm_callback[%p] input_user_data[%p]", input_trigger_at_time, input_class_id, input_reference_id, input_alarm_callback, input_user_data);
+	EM_DEBUG_FUNC_BEGIN("input_trigger_at_time[%d] input_class_id[%d] input_reference_id[%d] "
+						"input_alarm_callback[%p] input_user_data[%p]",
+						input_trigger_at_time, input_class_id, input_reference_id,
+						input_alarm_callback, input_user_data);
 
 	int err = EMAIL_ERROR_NONE;
 	int ret = 0;
@@ -278,13 +292,23 @@ INTERNAL_FUNC int emcore_add_alarm(char *multi_user_name, time_t input_trigger_a
 
 	EM_DEBUG_ALARM_LOG("alarm_interval [%d]", (int)alarm_interval);
 
-	if ((ret = alarmmgr_add_alarm(ALARM_TYPE_VOLATILE, alarm_interval, ALARM_REPEAT_MODE_ONCE, EMAIL_ALARM_DESTINATION, &alarm_id)) != ALARMMGR_RESULT_SUCCESS) {
+	if ((ret = alarmmgr_add_alarm(ALARM_TYPE_VOLATILE,
+									alarm_interval,
+									ALARM_REPEAT_MODE_ONCE,
+									EMAIL_ALARM_DESTINATION,
+									&alarm_id)) != ALARMMGR_RESULT_SUCCESS) {
 		EM_DEBUG_EXCEPTION("alarmmgr_add_alarm failed [%d]",ret);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	if ((err = emcore_add_alarm_data_to_alarm_data_list(multi_user_name, alarm_id, input_class_id, input_reference_id, input_trigger_at_time, input_alarm_callback, input_user_data)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_add_alarm_data_to_alarm_data_list(multi_user_name,
+														alarm_id,
+														input_class_id,
+														input_reference_id,
+														input_trigger_at_time,
+														input_alarm_callback,
+														input_user_data)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_add_alarm_data_to_alarm_data_list failed [%d]", err);
 		goto FINISH_OFF;
 	}

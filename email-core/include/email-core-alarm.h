@@ -42,13 +42,13 @@ extern "C"
 #define EMAIL_ALARM_DESTINATION "email-service-0"
 
 typedef struct _email_alarm_data_t {
-	alarm_id_t                  alarm_id;
-	email_alarm_class_t           class_id;
-	int                         reference_id;
-	time_t                      trigger_at_time;
-	int                       (*alarm_callback)(struct _email_alarm_data_t*, void *);
-	char                       *multi_user_name;
-	void                       *user_data;
+	alarm_id_t			alarm_id;
+	email_alarm_class_t	class_id;
+	int					reference_id;
+	time_t				trigger_at_time;
+	int					(*alarm_callback)(struct _email_alarm_data_t*, void *);
+	char				*multi_user_name;
+	void				*user_data;
 } email_alarm_data_t;
 
 

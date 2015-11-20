@@ -835,7 +835,8 @@ typedef enum
  * @since_tizen 2.3 */
 typedef enum
 {
-    EMAIL_EVENT_STATUS_UNUSED        = 0,    /**< Initial status of event */
+    EMAIL_EVENT_STATUS_UNUSED        = 0,    /**< Initial status of event : DB data(priority low) */
+    EMAIL_EVENT_STATUS_DIRECT,               /**< Direct input status : event data(priority high) */
     EMAIL_EVENT_STATUS_WAIT,                 /**< Waiting status */
     EMAIL_EVENT_STATUS_STARTED,              /**< Event handling is started */
     EMAIL_EVENT_STATUS_CANCELED,             /**< Event handling is canceled */
@@ -1337,7 +1338,7 @@ typedef struct
     int                                vibrate_status;          /**< The repetition type */
     int                                display_content_status;  /**< The display_content status. 1 = ON, 0 = OFF */
     int                                default_ringtone_status; /**< The badge status.  1 = ON, 0 = OFF */
-    char                              *alert_ringtone_path;     /**< The ringtone path */
+    char                               *alert_ringtone_path;    /**< The ringtone path */
 } email_option_t;
 
 /**

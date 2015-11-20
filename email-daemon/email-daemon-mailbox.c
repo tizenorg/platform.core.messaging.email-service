@@ -49,10 +49,10 @@
 extern int g_local_activity_run;
 #endif
 
-INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(char *multi_user_name, 
-													int account_id, 
-													char* mailbox, 
-													int *handle, 
+INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(char *multi_user_name,
+													int account_id,
+													char* mailbox,
+													int *handle,
 													int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d] mailbox[%p] err_code[%p]", account_id, mailbox, err_code);
@@ -212,11 +212,16 @@ INTERNAL_FUNC int emdaemon_add_mailbox(char *multi_user_name, email_mailbox_t* n
 	if ( ref_account->incoming_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC )
 		on_server = 0;
 
-	if ( on_server ) {	/* async */
+	if (on_server) {	/* async */
+		event_data = em_malloc(sizeof(email_event_t));
+		if (event_data == NULL) {
+			EM_DEBUG_EXCEPTION("em_malloc failed");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
 
 		mailbox = em_malloc(sizeof(email_mailbox_t));
-
-		if(mailbox == NULL) {
+		if (mailbox == NULL) {
 			EM_DEBUG_EXCEPTION("em_malloc failed");
 			err = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
@@ -236,18 +241,11 @@ INTERNAL_FUNC int emdaemon_add_mailbox(char *multi_user_name, email_mailbox_t* n
 			memcpy(mailbox->eas_data, new_mailbox->eas_data, new_mailbox->eas_data_length);
 		}
 
-		event_data = em_malloc(sizeof(email_event_t));
-		if (event_data == NULL) {
-			EM_DEBUG_EXCEPTION("em_malloc failed");
-			err = EMAIL_ERROR_OUT_OF_MEMORY;
-			goto FINISH_OFF;
-		}
-
 		event_data->type               = EMAIL_EVENT_CREATE_MAILBOX;
 		event_data->account_id         = new_mailbox->account_id;
 		event_data->event_param_data_1 = (char*)mailbox;
 		event_data->event_param_data_4 = on_server;
-		event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);                       
+		event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
 		if(!emcore_insert_event(event_data, (int*)handle, &err)) {
 			EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", err);
@@ -265,13 +263,9 @@ INTERNAL_FUNC int emdaemon_add_mailbox(char *multi_user_name, email_mailbox_t* n
 FINISH_OFF:
 
 	if (ret == false) {
-		if(event_data) {
+		if (event_data) {
 			emcore_free_event(event_data);
 			EM_SAFE_FREE(event_data);
-		}
-		if(mailbox) {
-			emcore_free_mailbox(mailbox);
-			EM_SAFE_FREE(mailbox);
 		}
 	}
 
@@ -501,7 +495,7 @@ INTERNAL_FUNC int emdaemon_sync_header(char *multi_user_name, int input_account_
 		event_data->type               = EMAIL_EVENT_SYNC_HEADER;
 		event_data->account_id         = input_account_id;
 		event_data->event_param_data_5 = input_mailbox_id;
-		event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);               
+		event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
 		/* In case of Mailbox NULL, we need to set arg as EMAIL_SYNC_ALL_MAILBOX */
 		if (input_mailbox_id == 0)
@@ -516,7 +510,7 @@ INTERNAL_FUNC int emdaemon_sync_header(char *multi_user_name, int input_account_
 		event_data->type               = EMAIL_EVENT_SYNC_HEADER;
 		event_data->account_id         = input_account_id;
 		event_data->event_param_data_5 = input_mailbox_id;
-		event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);               
+		event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
 		/* In case of Mailbox NULL, we need to set arg as EMAIL_SYNC_ALL_MAILBOX */
 		if (input_mailbox_id == 0)

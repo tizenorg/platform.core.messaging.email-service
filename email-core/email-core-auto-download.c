@@ -169,10 +169,17 @@ INTERNAL_FUNC int emcore_insert_auto_download_event(email_event_auto_download *e
 		q_length = g_queue_get_length(g_auto_download_que);
 	EM_DEBUG_LOG("Q Length : [%d]", q_length);
 
+	EM_DEBUG_LOG("event_data->status : [%d]", event_data->status);
+
 	if (q_length > AUTO_DOWNLOAD_QUEUE_MAX) {
 		EM_DEBUG_EXCEPTION("auto download que is full...");
 		error = EMAIL_ERROR_EVENT_QUEUE_FULL;
 		ret = false;
+	} else if (event_data->status == EMAIL_EVENT_STATUS_DIRECT) {
+		event_data->status = EMAIL_EVENT_STATUS_WAIT;
+		g_queue_push_head(g_auto_download_que, event_data);
+		//WAKE_CONDITION_VARIABLE(_auto_downalod_available_signal);
+		ret = true;
 	} else {
 		event_data->status = EMAIL_EVENT_STATUS_WAIT;
 		g_queue_push_tail(g_auto_download_que, event_data);
@@ -620,12 +627,29 @@ CHECK_CONTINUE:
 							if (attachment_list[i].attachment_save_status)
 								continue;
 
-							EM_DEBUG_LOG("#####AUTO DOWNLOAD ATTACHMENT[%d]: ACCOUNT_ID[%d] MAILBOX_ID[%d] MAIL_ID[%d] UID[%d] ACTIVITY[%d]#####",
-									j, event_data->account_id, event_data->mailbox_id,
-									event_data->mail_id, event_data->server_mail_id, event_data->activity_id);
+							EM_DEBUG_LOG("#####AUTO DOWNLOAD ATTACHMENT[%d]: ACCOUNT_ID[%d] "
+										"MAILBOX_ID[%d] MAIL_ID[%d] UID[%d] ACTIVITY[%d]#####",
+										j, event_data->account_id, event_data->mailbox_id,
+										event_data->mail_id, event_data->server_mail_id, event_data->activity_id);
 
-							if (!emcore_gmime_download_attachment(event_data->multi_user_name, event_data->mail_id, j, 0, -1, 1, &err))
+							if (!emcore_gmime_download_attachment(event_data->multi_user_name,
+																	event_data->mail_id,
+																	j,
+																	0,
+																	-1,
+																	1,
+																	&err)) {
 								EM_DEBUG_EXCEPTION("emcore_gmime_download_attachment failed [%d]", err);
+								EM_DEBUG_LOG("Retry again");
+								if (!emcore_gmime_download_attachment(event_data->multi_user_name,
+																		event_data->mail_id,
+																		j,
+																		0,
+																		-1,
+																		1,
+																		&err))
+									EM_DEBUG_EXCEPTION("emcore_gmime_download_attachment failed [%d]", err);
+							}
 						}
 
 						if (attachment_list)
@@ -638,7 +662,11 @@ CHECK_CONTINUE:
 			}
 
 DELETE_ACTIVITY:
-			if (!emcore_delete_auto_download_activity(event_data->multi_user_name, event_data->account_id, event_data->mail_id, event_data->activity_id, &err)) {
+			if (!emcore_delete_auto_download_activity(event_data->multi_user_name,
+														event_data->account_id,
+														event_data->mail_id,
+														event_data->activity_id,
+														&err)) {
 				EM_DEBUG_EXCEPTION("emcore_delete_auto_download_activity failed [%d]", err);
 			}
 
@@ -673,7 +701,13 @@ POP_HEAD:
 }
 
 
-INTERNAL_FUNC int emcore_insert_auto_download_job(char *multi_user_name, int account_id, int mailbox_id, int mail_id, int auto_download_on, char *uid, int *err_code)
+INTERNAL_FUNC int emcore_insert_auto_download_job(char *multi_user_name,
+													int account_id,
+													int mailbox_id,
+													int mail_id,
+													int auto_download_on,
+													char *uid,
+													int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id [%d], maibox_id[%d], mail_id[%d], uid[%p]", account_id, mailbox_id, mail_id, uid);
 
@@ -718,6 +752,8 @@ INTERNAL_FUNC int emcore_insert_auto_download_job(char *multi_user_name, int acc
 			EM_DEBUG_LOG("Activity inserted only in DB .. Queue is Full");
 		}
 		else {
+			ad_event->status = EMAIL_EVENT_STATUS_DIRECT;
+
 			if (!emcore_insert_auto_download_event(ad_event, &err)) {
 				EM_DEBUG_EXCEPTION("emcore_insert_auto_download_event is failed [%d]", err);
 				goto FINISH_OFF;

@@ -257,11 +257,11 @@ INTERNAL_FUNC MAILSTREAM** emcore_get_recv_stream (char *multi_user_name, int ac
 		goto FINISH_OFF;
 	}
 
-	if (!emcore_connect_to_remote_mailbox(multi_user_name, 
-											account_id, 
-											mailbox_id, 
+	if (!emcore_connect_to_remote_mailbox(multi_user_name,
+											account_id,
+											mailbox_id,
 											true,
-											(void **)ret, 
+											(void **)ret,
 											&err)) {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", err);
 		EM_SAFE_FREE(ret);
@@ -301,14 +301,14 @@ FINISH_OFF:
 /* description
  *    get local mailbox list
  */
-INTERNAL_FUNC int emcore_get_mailbox_list(char *multi_user_name, int account_id, email_mailbox_t **mailbox_list, 	
+INTERNAL_FUNC int emcore_get_mailbox_list(char *multi_user_name, int account_id, email_mailbox_t **mailbox_list,
 										int *p_count, int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id[%d], mailbox_list[%p], p_count[%p], err_code[%p]", 
+	EM_DEBUG_FUNC_BEGIN("account_id[%d], mailbox_list[%p], p_count[%p], err_code[%p]",
 							account_id, mailbox_list, p_count, err_code);
 
 	if (account_id <= 0 || !mailbox_list || !p_count)  {
-		EM_DEBUG_EXCEPTION("PARAM Failed account_id[%d], mailbox_list[%p], p_count[%p]", 
+		EM_DEBUG_EXCEPTION("PARAM Failed account_id[%d], mailbox_list[%p], p_count[%p]",
 							account_id, mailbox_list, p_count);
 		if (err_code != NULL)
 			*err_code = EMAIL_ERROR_INVALID_PARAM;
@@ -328,9 +328,9 @@ INTERNAL_FUNC int emcore_get_mailbox_list(char *multi_user_name, int account_id,
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_get_mailbox_list(multi_user_name, ref_account->account_id, 
-									EMAIL_MAILBOX_ALL, EMAIL_MAILBOX_SORT_BY_NAME_ASC, 
-									&count, &local_mailbox_list, true, &error))  {	
+	if (!emstorage_get_mailbox_list(multi_user_name, ref_account->account_id,
+									EMAIL_MAILBOX_ALL, EMAIL_MAILBOX_SORT_BY_NAME_ASC,
+									&count, &local_mailbox_list, true, &error))  {
 		EM_DEBUG_EXCEPTION(" emstorage_get_mailbox failed - %d", error);
 		goto FINISH_OFF;
 	}
@@ -399,9 +399,9 @@ int emcore_get_mailbox_list_to_be_sync(char *multi_user_name, int account_id, em
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_get_mailbox_list(multi_user_name, ref_account->account_id, 0, 
-									EMAIL_MAILBOX_SORT_BY_TYPE_ASC, &count, 
-									&mailbox_tbl_list, true, &error))  {	
+	if (!emstorage_get_mailbox_list(multi_user_name, ref_account->account_id, 0,
+									EMAIL_MAILBOX_SORT_BY_TYPE_ASC, &count,
+									&mailbox_tbl_list, true, &error))  {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox failed - %d", error);
 		goto FINISH_OFF;
 	}
@@ -586,11 +586,11 @@ INTERNAL_FUNC int emcore_delete_mailbox(char *multi_user_name, int input_mailbox
 #ifdef __FEATURE_DELETE_MAILBOX_RECURSIVELY__
 	if(input_recursive) {
 		/* Getting children mailbox list */
-		if(!emstorage_get_child_mailbox_list(multi_user_name, 
-											target_mailbox->account_id, 
-											target_mailbox->mailbox_name, 
-											&mailbox_count, 
-											&target_mailbox_array, 
+		if(!emstorage_get_child_mailbox_list(multi_user_name,
+											target_mailbox->account_id,
+											target_mailbox->mailbox_name,
+											&mailbox_count,
+											&target_mailbox_array,
 											false,
 											&err)) {
 			EM_DEBUG_EXCEPTION("emstorage_get_child_mailbox_list failed. [%d]", err);
@@ -618,7 +618,7 @@ INTERNAL_FUNC int emcore_delete_mailbox(char *multi_user_name, int input_mailbox
 				continue;
 			}
 		}
-		
+
 		EM_DEBUG_LOG("Deleting mailbox_id [%d]", target_mailbox_array[i].mailbox_id);
 		if (input_on_server) {
 			EM_DEBUG_LOG("Delete the mailbox in Sever >>> ");
@@ -630,11 +630,11 @@ INTERNAL_FUNC int emcore_delete_mailbox(char *multi_user_name, int input_mailbox
 				EM_DEBUG_LOG("Delete the mailbox in server : success");
 		}
 
-		if (!emcore_delete_all_mails_of_mailbox(multi_user_name, 
-												target_mailbox_array[i].account_id, 
+		if (!emcore_delete_all_mails_of_mailbox(multi_user_name,
+												target_mailbox_array[i].account_id,
 												target_mailbox_array[i].mailbox_id,
 												0,
-												false, 
+												false,
 												&err))  {
 			if (err != EMAIL_ERROR_MAIL_NOT_FOUND) {
 				EM_DEBUG_EXCEPTION("emcore_delete_all_mails_of_mailbox failed [%d]", err);
@@ -649,7 +649,7 @@ INTERNAL_FUNC int emcore_delete_mailbox(char *multi_user_name, int input_mailbox
 	}
 
 FINISH_OFF:
-	
+
 	EM_SAFE_FREE(old_mailbox_name);
 
 	if (target_mailbox)
@@ -704,12 +704,12 @@ INTERNAL_FUNC int emcore_delete_mailbox_all(char *multi_user_name, email_mailbox
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
-	
-	if (!emcore_delete_all_mails_of_mailbox(multi_user_name, 
-											mailbox->account_id, 
+
+	if (!emcore_delete_all_mails_of_mailbox(multi_user_name,
+											mailbox->account_id,
 											mailbox->mailbox_id,
 											0,
-											0, /*NULL, */ 
+											0, /*NULL, */
 											&err)) {
 		if (err != EMAIL_ERROR_MAIL_NOT_FOUND) {
 			EM_DEBUG_EXCEPTION(" emcore_delete_all_mails_of_mailbox failed - %d", err);
@@ -731,14 +731,14 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emcore_rename_mailbox(char *multi_user_name, 
-										int input_mailbox_id, 
-										char *input_new_mailbox_name, 
-										char *input_new_mailbox_alias, 
-										void *input_eas_data, 
-										int input_eas_data_length, 
-										int input_on_server, 
-										int input_recursive, 
+INTERNAL_FUNC int emcore_rename_mailbox(char *multi_user_name,
+										int input_mailbox_id,
+										char *input_new_mailbox_name,
+										char *input_new_mailbox_alias,
+										void *input_eas_data,
+										int input_eas_data_length,
+										int input_on_server,
+										int input_recursive,
 										int handle_to_be_published)
 {
 	EM_DEBUG_FUNC_BEGIN("input_mailbox_id[%d] input_new_mailbox_name[%p] input_new_mailbox_alias[%p] input_eas_data[%p] input_eas_data_length[%d] input_on_server[%d] input_recursive[%d] handle_to_be_published[%d]", input_mailbox_id, input_new_mailbox_name, input_new_mailbox_alias, input_eas_data, input_eas_data_length, input_on_server, input_recursive, handle_to_be_published);
@@ -788,11 +788,11 @@ INTERNAL_FUNC int emcore_rename_mailbox(char *multi_user_name,
 	if (input_on_server) {
 		EM_DEBUG_LOG("Rename the mailbox in Sever >>> ");
 
-		if ((err = emcore_rename_mailbox_on_imap_server(multi_user_name, 
-														target_mailbox->account_id, 
-														target_mailbox->mailbox_id, 
-														target_mailbox->mailbox_name, 
-														new_mailbox_name, 
+		if ((err = emcore_rename_mailbox_on_imap_server(multi_user_name,
+														target_mailbox->account_id,
+														target_mailbox->mailbox_id,
+														target_mailbox->mailbox_name,
+														new_mailbox_name,
 														handle_to_be_published)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_rename_mailbox_on_imap_server failed [%d]", err);
 			goto FINISH_OFF;
@@ -804,11 +804,11 @@ INTERNAL_FUNC int emcore_rename_mailbox(char *multi_user_name,
 #ifdef __FEATURE_RENAME_MAILBOX_RECURSIVELY__
 	if(account_ref->incoming_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC && input_recursive) {
 		/* Getting children mailbox list */
-		if(!emstorage_get_child_mailbox_list(multi_user_name, 
-											target_mailbox->account_id, 
-											target_mailbox->mailbox_name, 
-											&mailbox_count, 
-											&target_mailbox_array, 
+		if(!emstorage_get_child_mailbox_list(multi_user_name,
+											target_mailbox->account_id,
+											target_mailbox->mailbox_name,
+											&mailbox_count,
+											&target_mailbox_array,
 											false,
 											&err)) {
 			EM_DEBUG_EXCEPTION("emstorage_get_child_mailbox_list failed. [%d]", err);
@@ -829,8 +829,8 @@ INTERNAL_FUNC int emcore_rename_mailbox(char *multi_user_name,
 
 	/* Rename mailboxes */
 	for(i = 0; i < mailbox_count ; i++) {
-		EM_DEBUG_LOG_SEC("Rename mailbox_id [%d], mailbox_name [%s], old_mailbox_name [%s]", 
-							target_mailbox_array[i].mailbox_id, 
+		EM_DEBUG_LOG_SEC("Rename mailbox_id [%d], mailbox_name [%s], old_mailbox_name [%s]",
+							target_mailbox_array[i].mailbox_id,
 							target_mailbox_array[i].mailbox_name,
 							old_mailbox_name);
 
@@ -842,12 +842,12 @@ INTERNAL_FUNC int emcore_rename_mailbox(char *multi_user_name,
 		}
 
 		if (input_mailbox_id == target_mailbox_array[i].mailbox_id) {
-			if ((err = emstorage_rename_mailbox(multi_user_name, 
-												target_mailbox_array[i].mailbox_id, 
-												new_mailbox_name, 
-												input_new_mailbox_alias, 
-												input_eas_data, 
-												input_eas_data_length, 
+			if ((err = emstorage_rename_mailbox(multi_user_name,
+												target_mailbox_array[i].mailbox_id,
+												new_mailbox_name,
+												input_new_mailbox_alias,
+												input_eas_data,
+												input_eas_data_length,
 												true)) != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("emstorage_rename_mailbox failed [%d]", err);
 				goto FINISH_OFF;
@@ -856,21 +856,21 @@ INTERNAL_FUNC int emcore_rename_mailbox(char *multi_user_name,
 		else {
 			EM_DEBUG_LOG_SEC("target_mailbox_array[i].mailbox_name[%s] "
 							 "old_mailbox_name[%s] "
-							 "new_mailbox_name [%s]", 
-							 target_mailbox_array[i].mailbox_name, 
-							 old_mailbox_name, 
+							 "new_mailbox_name [%s]",
+							 target_mailbox_array[i].mailbox_name,
+							 old_mailbox_name,
 							 new_mailbox_name);
-			renamed_mailbox_name = em_replace_string(target_mailbox_array[i].mailbox_name, 
-													old_mailbox_name, 
+			renamed_mailbox_name = em_replace_string(target_mailbox_array[i].mailbox_name,
+													old_mailbox_name,
 													new_mailbox_name);
 			EM_DEBUG_LOG_SEC("renamed_mailbox_name[%s]", renamed_mailbox_name);
 
-			if ((err = emstorage_rename_mailbox(multi_user_name, 
-												target_mailbox_array[i].mailbox_id, 
-												renamed_mailbox_name, 
-												target_mailbox_array[i].alias, 
-												NULL, 
-												0, 
+			if ((err = emstorage_rename_mailbox(multi_user_name,
+												target_mailbox_array[i].mailbox_id,
+												renamed_mailbox_name,
+												target_mailbox_array[i].alias,
+												NULL,
+												0,
 												true)) != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("emstorage_rename_mailbox failed [%d]", err);
 				goto FINISH_OFF;
@@ -904,11 +904,11 @@ FINISH_OFF:
 extern long smtp_send(SENDSTREAM *stream, char *command, char *args);
 #endif /* __FEATURE_KEEP_CONNECTION__ */
 
-INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info(char *multi_user_name, 
-																		email_account_t *account, 
-																		int input_mailbox_id, 
+INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info(char *multi_user_name,
+																		email_account_t *account,
+																		int input_mailbox_id,
 																		int reusable,
-									/*either MAILSTREAM or SENDSTREAM*/ void **result_stream, 
+									/*either MAILSTREAM or SENDSTREAM*/ void **result_stream,
 																		int *err_code)
 {
 	EM_PROFILE_BEGIN(emCoreMailboxOpen);
@@ -961,8 +961,8 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info(char *multi
 
 	/* set current network error as EMAIL_ERROR_NONE before network operation */
 	session->error = EMAIL_ERROR_NONE;
-	emcore_set_network_error(EMAIL_ERROR_NONE);		
-	
+	emcore_set_network_error(EMAIL_ERROR_NONE);
+
 	if (input_mailbox_id == EMAIL_CONNECT_FOR_SENDING) {
 		mailbox_name = EM_SAFE_STRDUP(ENCODED_PATH_SMTP);
 	} else if (input_mailbox_id == 0) {
@@ -977,11 +977,11 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info(char *multi
 
 	if (is_connection_for == _SERVICE_THREAD_TYPE_RECEIVING) {
 		/*  open pop3/imap server */
-		if (!emcore_get_long_encoded_path_with_account_info(multi_user_name, 
-															account, 
-															mailbox_name, 
-															'/', 
-															&mbox_path, 
+		if (!emcore_get_long_encoded_path_with_account_info(multi_user_name,
+															account,
+															mailbox_name,
+															'/',
+															&mbox_path,
 															&error)) {
 			EM_DEBUG_EXCEPTION("emcore_get_long_encoded_path failed - %d", error);
 			session->error = error;
@@ -993,11 +993,11 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info(char *multi
 		session->auth = 0; /*  ref_account->receiving_auth ? 1  :  0 */
 
 		if (!(*result_stream = mail_open(*result_stream, mbox_path, IMAP_2004_LOG))) {
-			EM_DEBUG_EXCEPTION("mail_open failed. session->error[%d], session->network[%d]", 
+			EM_DEBUG_EXCEPTION("mail_open failed. session->error[%d], session->network[%d]",
 								session->error, session->network);
 			*result_stream = mail_close(*result_stream);
 
-			if (account->account_id > 0 && (session->network == EMAIL_ERROR_XOAUTH_BAD_REQUEST || 
+			if (account->account_id > 0 && (session->network == EMAIL_ERROR_XOAUTH_BAD_REQUEST ||
 				session->network == EMAIL_ERROR_XOAUTH_INVALID_UNAUTHORIZED)) {
 				error = emcore_refresh_xoauth2_access_token (multi_user_name, account->account_id);
 
@@ -1008,21 +1008,21 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info(char *multi
 
 						sleep(3); /* wait for updating access token */
 						if (!(*result_stream = mail_open(*result_stream, mbox_path, IMAP_2004_LOG))) {
-							EM_DEBUG_LOG("mail_open failed. session->error[%d], session->network[%d]", 
+							EM_DEBUG_LOG("mail_open failed. session->error[%d], session->network[%d]",
 											session->error, session->network);
 						}
 						connection_retry_count++;
 						EM_DEBUG_LOG ("connection_retry_count [%d]", connection_retry_count);
 					}
 				}
-			} else if ((session->error == EMAIL_ERROR_TLS_SSL_FAILURE || 
+			} else if ((session->error == EMAIL_ERROR_TLS_SSL_FAILURE ||
 						session->error == EMAIL_ERROR_CANNOT_NEGOTIATE_TLS)) {
 				char *replaced_mbox_path = NULL;
 				replaced_mbox_path = em_replace_string(mbox_path, "}", "/force_tls_v1_0}");
 
-				if (replaced_mbox_path != NULL && 
+				if (replaced_mbox_path != NULL &&
 					!(*result_stream = mail_open(*result_stream, replaced_mbox_path, IMAP_2004_LOG))) {
-					EM_DEBUG_EXCEPTION("retry --> mail_open failed. session->error[%d], session->network[%d]", 
+					EM_DEBUG_EXCEPTION("retry --> mail_open failed. session->error[%d], session->network[%d]",
 										session->error, session->network);
 					*result_stream = mail_close(*result_stream);
 				}
@@ -1057,11 +1057,11 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info(char *multi
 		}
 #endif
 		if (!*result_stream) {
-			if (!emcore_get_long_encoded_path_with_account_info(multi_user_name, 
-																account, 
-																mailbox_name, 
-																0, 
-																&mbox_path, 
+			if (!emcore_get_long_encoded_path_with_account_info(multi_user_name,
+																account,
+																mailbox_name,
+																0,
+																&mbox_path,
 																&error)) {
 				EM_DEBUG_EXCEPTION(" emcore_get_long_encoded_path failed - %d", error);
 				session->error = error;
@@ -1077,7 +1077,7 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox_with_account_info(char *multi
 			if (!(*result_stream = smtp_open (host_list, 1))) {
 				EM_DEBUG_EXCEPTION_SEC("smtp_open error : outgoing_server_secure_connection[%d] "
 									   "session->error[%d] session->network[%d]",
-										  account->outgoing_server_secure_connection, 
+										  account->outgoing_server_secure_connection,
 										  session->error, session->network);
 
 				if (account->account_id > 0 && (session->network == EMAIL_ERROR_XOAUTH_BAD_REQUEST ||
@@ -1163,14 +1163,14 @@ emcore_close_mailbox uses mail_close inside it.
 
 mail_close is only used in emcore_connect_to_remote_mailbox and emcore_reset_streams as an exception to above rule*/
 
-INTERNAL_FUNC int emcore_connect_to_remote_mailbox(char *multi_user_name, 
-													int account_id, 
-													char *mailbox, 
+INTERNAL_FUNC int emcore_connect_to_remote_mailbox(char *multi_user_name,
+													int account_id,
+													char *mailbox,
 													int reusable,
-													void **mail_stream, 
+													void **mail_stream,
 													int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id[%d], mailbox[%p], reusable[%d], mail_stream[%p], err_code[%p]", 
+	EM_DEBUG_FUNC_BEGIN("account_id[%d], mailbox[%p], reusable[%d], mail_stream[%p], err_code[%p]",
 						account_id, mailbox, reusable, mail_stream, err_code);
 
 	int ret = false;
@@ -1183,12 +1183,12 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox(char *multi_user_name,
 		error = EMAIL_ERROR_INVALID_ACCOUNT;
 		goto FINISH_OFF;
 	}
-	
-	ret = emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, 
-																ref_account, 
-																mailbox, 
+
+	ret = emcore_connect_to_remote_mailbox_with_account_info(multi_user_name,
+																ref_account,
+																mailbox,
 																reusable,
-																mail_stream, 
+																mail_stream,
 																&error);
 
 FINISH_OFF:
@@ -1245,14 +1245,14 @@ INTERNAL_FUNC void emcore_reset_streams()
 
 #else /*  __FEATURE_KEEP_CONNECTION__ */
 
-INTERNAL_FUNC int emcore_connect_to_remote_mailbox(char *multi_user_name, 
-													int account_id, 
-													int input_mailbox_id, 
+INTERNAL_FUNC int emcore_connect_to_remote_mailbox(char *multi_user_name,
+													int account_id,
+													int input_mailbox_id,
 													int reusable,
-													void **mail_stream, 
+													void **mail_stream,
 													int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("account_id[%d], input_mailbox_id[%d], reusable[%d], mail_stream[%p], err_code[%p]", 
+	EM_DEBUG_FUNC_BEGIN("account_id[%d], input_mailbox_id[%d], reusable[%d], mail_stream[%p], err_code[%p]",
 						account_id, input_mailbox_id, reusable, mail_stream, err_code);
 
 	int ret = false;
@@ -1284,13 +1284,13 @@ INTERNAL_FUNC int emcore_connect_to_remote_mailbox(char *multi_user_name,
 		goto FINISH_OFF; */
 	}
 
-	ret = emcore_connect_to_remote_mailbox_with_account_info(multi_user_name, 
-																ref_account, 
-																input_mailbox_id, 
+	ret = emcore_connect_to_remote_mailbox_with_account_info(multi_user_name,
+																ref_account,
+																input_mailbox_id,
 																reusable,
-																mail_stream, 
+																mail_stream,
 																&error);
-	EM_DEBUG_LOG("ret[%d] incoming_server_type[%d] input_mailbox_id[%d]", 
+	EM_DEBUG_LOG("ret[%d] incoming_server_type[%d] input_mailbox_id[%d]",
 					ret, ref_account->incoming_server_type, input_mailbox_id);
 
 	if (ret == EMAIL_ERROR_NONE && input_mailbox_id == EMAIL_CONNECT_FOR_SENDING) {
@@ -1688,6 +1688,12 @@ INTERNAL_FUNC int emcore_save_local_activity_sync(int account_id, int *err_code)
 
 	if (activity_count > 0) {
 		event_data = em_malloc(sizeof(email_event_t));
+		if (!event_data) {
+			EM_DEBUG_EXCEPTION("em_malloc failed");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
 		event_data->type = EMAIL_EVENT_LOCAL_ACTIVITY;
 		event_data->account_id  = account_id;
 		if (!emcore_insert_event_for_sending_mails(event_data, &handle, &err)) {

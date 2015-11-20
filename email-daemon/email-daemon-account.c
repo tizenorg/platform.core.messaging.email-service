@@ -178,6 +178,12 @@ INTERNAL_FUNC int emdaemon_validate_account(char *multi_user_name, int account_i
 	}
 
 	event_data = em_malloc(sizeof(email_event_t));
+	if (!event_data) {
+		EM_DEBUG_EXCEPTION("em_malloc failed");
+		err = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
 	event_data->type = EMAIL_EVENT_VALIDATE_ACCOUNT;
 	event_data->event_param_data_1 = NULL;
 	event_data->event_param_data_3 = NULL;
@@ -220,8 +226,7 @@ INTERNAL_FUNC int emdaemon_validate_account_ex(char *multi_user_name, email_acco
 	email_event_t *event_data = NULL;
 
 	event_data = em_malloc(sizeof(email_event_t));
-
-	if(!event_data) { /*prevent 53095*/
+	if (!event_data) { /*prevent 53095*/
 		EM_DEBUG_EXCEPTION("em_malloc failed");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
@@ -261,7 +266,6 @@ INTERNAL_FUNC int emdaemon_validate_account_and_create(char *multi_user_name, em
 	email_event_t *event_data = NULL;
 
 	event_data = em_malloc(sizeof(email_event_t));
-
 	if(!event_data) { /*prevent 53093*/
 		EM_DEBUG_EXCEPTION("em_malloc failed");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
