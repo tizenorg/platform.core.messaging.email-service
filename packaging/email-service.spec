@@ -11,6 +11,15 @@ Source1:    email-service.socket
 Source2:    email-service.manifest
 Source3:    email-service_init_db.sh
 Source4:    email-service.service
+
+%if "%{?tizen_profile_name}" == "wearable"
+ExcludeArch: %{arm} %ix86 x86_64
+%endif
+
+%if "%{?tizen_profile_name}" == "tv"
+ExcludeArch: %{arm} %ix86 x86_64
+%endif
+
 Requires: connman
 Requires: gmime
 Requires(post):    /sbin/ldconfig
@@ -31,12 +40,13 @@ BuildRequires:  pkgconfig(vconf-internal-keys)
 BuildRequires:  pkgconfig(vconf)
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(dbus-1)
-BuildRequires:  pkgconfig(contacts-service2)
+
 BuildRequires:  pkgconfig(uw-imap-toolkit)
 BuildRequires:  pkgconfig(openssl)
 BuildRequires:  pkgconfig(alarm-service)
 BuildRequires:  pkgconfig(key-manager)
 BuildRequires:  pkgconfig(notification)
+BuildRequires:  pkgconfig(contacts-service2)
 BuildRequires:  pkgconfig(accounts-svc)
 BuildRequires:  pkgconfig(libsystemd-daemon)
 BuildRequires:  pkgconfig(capi-base-common)
