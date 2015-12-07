@@ -12,11 +12,11 @@ Source2:    email-service.manifest
 Source3:    email-service_init_db.sh
 Source4:    email-service.service
 
-%if "%{?tizen_profile_name}" == "wearable"
+%if "%{?profile}" == "wearable"
 ExcludeArch: %{arm} %ix86 x86_64
 %endif
 
-%if "%{?tizen_profile_name}" == "tv"
+%if "%{?profile}" == "tv"
 ExcludeArch: %{arm} %ix86 x86_64
 %endif
 
