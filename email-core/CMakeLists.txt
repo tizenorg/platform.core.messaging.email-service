@@ -232,7 +232,7 @@ INCLUDE_DIRECTORIES(
 
 
 INCLUDE(FindPkgConfig)
-SET(PKG_MODULES glib-2.0 dlog dbus-1 gthread-2.0 key-manager
+SET(PKG_MODULES glib-2.0 dlog dbus-1 gthread-2.0 key-manager tpkp-curl
 			uw-imap-toolkit vconf vconf-internal-keys contacts-service2 
 			openssl accounts-svc alarm-service notification libcurl libxml-2.0 
 			cert-svc-vcore badge capi-appfw-application icu-i18n gmime-2.6 storage)

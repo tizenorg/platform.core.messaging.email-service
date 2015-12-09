@@ -38,6 +38,7 @@
 #include <vconf.h>
 #include <curl/curl.h>
 #include <sys/shm.h>
+#include <tpkp_curl.h>
 
 #include "email-convert.h"
 #include "email-types.h"
@@ -1471,6 +1472,9 @@ static int emcore_get_xoauth2_access_token(char *input_refresh_token, char **out
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void*)&result_string);
 	curl_easy_setopt(curl, CURLOPT_HEADER, true);
 
+	/* pinning */
+	curl_easy_setopt(curl, CURLOPT_SSL_CTX_FUNCTION, tpkp_curl_ssl_ctx_callback);
+
 	curl_ressult_code = curl_easy_perform(curl);
 
 	EM_DEBUG_LOG_SEC("CURLcode: %d (%s)", curl_ressult_code, curl_easy_strerror(curl_ressult_code));
@@ -1524,8 +1528,10 @@ FINISH_OFF:
 
 	EM_SAFE_FREE(result_string);
 
-	if(curl)
+	if (curl)
 		curl_easy_cleanup(curl);
+
+	tpkp_curl_cleanup();
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
