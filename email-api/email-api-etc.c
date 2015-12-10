@@ -40,7 +40,7 @@
 
 EXPORT_API int email_show_user_message(int id, email_action_t action, int error_code)
 {
-	EM_DEBUG_API_BEGIN ("id[%d] action[%d] error_code[%d]", id, action, error_code);
+	EM_DEBUG_API_BEGIN("id[%d] action[%d] error_code[%d]", id, action, error_code);
 	int err = EMAIL_ERROR_NONE;
 
 	if (id < 0 || action < 0) {
@@ -78,32 +78,32 @@ EXPORT_API int email_show_user_message(int id, email_action_t action, int error_
 	emipc_destroy_email_api(hAPI);
 	hAPI = NULL;
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
-EXPORT_API int email_parse_mime_file(char *eml_file_path, email_mail_data_t **output_mail_data, 
+EXPORT_API int email_parse_mime_file(char *eml_file_path, email_mail_data_t **output_mail_data,
 									email_attachment_data_t **output_attachment_data, int *output_attachment_count)
 {
-	EM_DEBUG_API_BEGIN ("eml_file_path[%p] output_mail_data[%p] output_attachment_data[%p]", 
+	EM_DEBUG_API_BEGIN("eml_file_path[%p] output_mail_data[%p] output_attachment_data[%p]",
 						eml_file_path, output_mail_data, output_attachment_data);
 	int err = EMAIL_ERROR_NONE;
 
 	EM_IF_NULL_RETURN_VALUE(eml_file_path, EMAIL_ERROR_INVALID_PARAM);
 
-	if (!emcore_parse_mime_file_to_mail(eml_file_path, output_mail_data, output_attachment_data, 
+	if (!emcore_parse_mime_file_to_mail(eml_file_path, output_mail_data, output_attachment_data,
 										output_attachment_count, &err) || !*output_mail_data)
 		EM_DEBUG_EXCEPTION("emcore_parse_mime_file_to_mail failed [%d]", err);
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
-EXPORT_API int email_write_mime_file(email_mail_data_t *input_mail_data, 
-									email_attachment_data_t *input_attachment_data, 
+EXPORT_API int email_write_mime_file(email_mail_data_t *input_mail_data,
+									email_attachment_data_t *input_attachment_data,
 									int input_attachment_count, char **output_file_path)
 {
-	EM_DEBUG_API_BEGIN ("input_mail_data[%p] input_attachment_data[%p] input_attachment_count[%d]", 
+	EM_DEBUG_API_BEGIN("input_mail_data[%p] input_attachment_data[%p] input_attachment_count[%d]",
 						input_mail_data, input_attachment_data, input_attachment_count);
 
 	int err = EMAIL_ERROR_NONE;
@@ -133,7 +133,7 @@ EXPORT_API int email_write_mime_file(email_mail_data_t *input_mail_data,
 		goto FINISH_OFF;
 	}
 
-	if (!emcore_make_rfc822_file(NULL, input_mail_data, input_attachment_data, input_attachment_count, false, 
+	if (!emcore_make_rfc822_file(NULL, input_mail_data, input_attachment_data, input_attachment_count, false,
 								output_file_path,  &err)) {
 		EM_DEBUG_EXCEPTION("emcore_make_rfc822_file failed : [%d]", err);
 	}
@@ -143,13 +143,13 @@ FINISH_OFF:
 	if (hAPI)
 		emipc_destroy_email_api(hAPI);
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_delete_parsed_data(email_mail_data_t *input_mail_data)
 {
-	EM_DEBUG_API_BEGIN ("mail_data[%p]", input_mail_data);
+	EM_DEBUG_API_BEGIN("mail_data[%p]", input_mail_data);
 	int err = EMAIL_ERROR_NONE;
     char *multi_user_name = NULL;
 
@@ -165,32 +165,32 @@ EXPORT_API int email_delete_parsed_data(email_mail_data_t *input_mail_data)
 
     EM_SAFE_FREE(multi_user_name);
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_get_mime_entity(char *mime_path, char **mime_entity)
 {
-	EM_DEBUG_API_BEGIN ("mime_path[%p]", mime_path);
+	EM_DEBUG_API_BEGIN("mime_path[%p]", mime_path);
 	int err = EMAIL_ERROR_NONE;
 
 	EM_IF_NULL_RETURN_VALUE(mime_path, EMAIL_ERROR_INVALID_PARAM);
 
-	if (!emcore_get_mime_entity(mime_path, mime_entity, &err)) 
+	if (!emcore_get_mime_entity(mime_path, mime_entity, &err))
 		EM_DEBUG_EXCEPTION("emcore_get_mime_entity failed [%d]", err);
 
-	EM_DEBUG_API_END ();
+	EM_DEBUG_API_END();
 	return err;
 }
 
 EXPORT_API int email_verify_email_address(char *input_email_address)
 {
-	EM_DEBUG_API_BEGIN ("input_email_address[%p]", input_email_address);
+	EM_DEBUG_API_BEGIN("input_email_address[%p]", input_email_address);
 	int err = EMAIL_ERROR_NONE;
 
 	EM_IF_NULL_RETURN_VALUE(input_email_address, EMAIL_ERROR_INVALID_PARAM);
 
-	if ((err = em_verify_email_address (input_email_address)) != EMAIL_ERROR_NONE)
+	if ((err = em_verify_email_address(input_email_address)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_EXCEPTION("em_verify_email_address failed [%d]", err);
 
 	EM_DEBUG_API_END("err [%d]", err);
@@ -199,7 +199,7 @@ EXPORT_API int email_verify_email_address(char *input_email_address)
 
 EXPORT_API int email_convert_mutf7_to_utf8(const char *mutf7_str, char **utf8_str)
 {
-	EM_DEBUG_API_BEGIN ("mutf7_str[%p]", mutf7_str);
+	EM_DEBUG_API_BEGIN("mutf7_str[%p]", mutf7_str);
 	int err = EMAIL_ERROR_NONE;
 
 	EM_IF_NULL_RETURN_VALUE(mutf7_str, EMAIL_ERROR_INVALID_PARAM);
@@ -216,6 +216,6 @@ EXPORT_API int email_convert_mutf7_to_utf8(const char *mutf7_str, char **utf8_st
 
 	emcore_gmime_shutdown();
 
-	EM_DEBUG_API_END ("ret[%d]", err);
+	EM_DEBUG_API_END("ret[%d]", err);
 	return err;
 }

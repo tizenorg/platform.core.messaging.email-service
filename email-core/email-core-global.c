@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -25,9 +25,9 @@
  * File :  email-core-global.c
  * Desc :  Mail Engine Global
  *
- * Auth :  Kyuho Jo 
+ * Auth :  Kyuho Jo
  *
- * History : 
+ * History :
  *    2010.08.25  :  created
  *****************************************************************************/
 #include <stdio.h>
@@ -42,7 +42,7 @@
 static email_account_list_t *g_unvalidated_account_list = NULL;
 static pthread_mutex_t _unvalidated_account_lock = PTHREAD_MUTEX_INITIALIZER;
 
-extern int pthread_mutexattr_settype (pthread_mutexattr_t *__attr, int __kind) __THROW __nonnull ((1));
+extern int pthread_mutexattr_settype(pthread_mutexattr_t *__attr, int __kind) __THROW __nonnull((1));
 
 INTERNAL_FUNC int emcore_get_account_from_unvalidated_account_list(int input_unvalidated_account_id, email_account_t **oupput_account)
 {
@@ -50,7 +50,7 @@ INTERNAL_FUNC int emcore_get_account_from_unvalidated_account_list(int input_unv
 	email_account_list_t *account_node = NULL;
 	int err = EMAIL_ERROR_NONE;
 
-	if(oupput_account == NULL) {
+	if (oupput_account == NULL) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		goto FINISH_OFF;
@@ -60,8 +60,8 @@ INTERNAL_FUNC int emcore_get_account_from_unvalidated_account_list(int input_unv
 
 	ENTER_CRITICAL_SECTION(_unvalidated_account_lock);
 	account_node = g_unvalidated_account_list;
-	while(account_node) {
-		if(account_node->account->account_id == input_unvalidated_account_id) {
+	while (account_node) {
+		if (account_node->account->account_id == input_unvalidated_account_id) {
 			emcore_duplicate_account(account_node->account, oupput_account, NULL);
 			break;
 		}
@@ -69,7 +69,7 @@ INTERNAL_FUNC int emcore_get_account_from_unvalidated_account_list(int input_unv
 	}
 	LEAVE_CRITICAL_SECTION(_unvalidated_account_lock);
 
-	if(*oupput_account == NULL)
+	if (*oupput_account == NULL)
 		err = EMAIL_ERROR_DATA_NOT_FOUND;
 
 FINISH_OFF:
@@ -85,7 +85,7 @@ INTERNAL_FUNC int emcore_add_account_to_unvalidated_account_list(email_account_t
 	int new_account_id = -1;
 	int err = EMAIL_ERROR_NONE;
 
-	if(input_new_account == NULL) {
+	if (input_new_account == NULL) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		goto FINISH_OFF;
@@ -93,7 +93,7 @@ INTERNAL_FUNC int emcore_add_account_to_unvalidated_account_list(email_account_t
 
 	new_account_node = em_malloc(sizeof(email_account_list_t));
 
-	if(new_account_node == NULL) {
+	if (new_account_node == NULL) {
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		goto FINISH_OFF;
@@ -105,8 +105,8 @@ INTERNAL_FUNC int emcore_add_account_to_unvalidated_account_list(email_account_t
 	ENTER_CRITICAL_SECTION(_unvalidated_account_lock);
 	account_node = &g_unvalidated_account_list;
 
-	while(*account_node) {
-		if((*account_node)->account->account_id < new_account_id) {
+	while (*account_node) {
+		if ((*account_node)->account->account_id < new_account_id) {
 			new_account_id = (*account_node)->account->account_id - 1;
 		}
 		account_node = &((*account_node)->next);
@@ -131,10 +131,10 @@ INTERNAL_FUNC int emcore_delete_account_from_unvalidated_account_list(int input_
 	ENTER_CRITICAL_SECTION(_unvalidated_account_lock);
 	account_node = g_unvalidated_account_list;
 
-	while(account_node) {
-		if(account_node->account->account_id == input_account_id) {
+	while (account_node) {
+		if (account_node->account->account_id == input_account_id) {
 			found_account = account_node->account;
-			if(prev_node)
+			if (prev_node)
 				prev_node->next = account_node->next;
 			else
 				g_unvalidated_account_list = account_node->next;
@@ -144,7 +144,7 @@ INTERNAL_FUNC int emcore_delete_account_from_unvalidated_account_list(int input_
 		account_node = account_node->next;
 	}
 
-	if(found_account) {
+	if (found_account) {
 		emcore_free_account(found_account);
 		EM_SAFE_FREE(found_account);
 		EM_SAFE_FREE(account_node);

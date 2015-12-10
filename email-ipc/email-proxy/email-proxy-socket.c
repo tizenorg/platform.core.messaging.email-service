@@ -66,7 +66,7 @@ EXPORT_API int emipc_start_proxy_socket()
 	}
 
 	thread_socket_t* cur = (thread_socket_t*) em_malloc(sizeof(thread_socket_t));
-	if(!cur) {
+	if (!cur) {
 		EM_DEBUG_EXCEPTION("em_malloc failed");
 		return false;
 	}
@@ -92,7 +92,7 @@ EXPORT_API bool emipc_end_proxy_socket()
 	ENTER_CRITICAL_SECTION(proxy_mutex);
 	GList *cur = socket_head;
 	while (cur) {
-		thread_socket_t* cur_socket = g_list_nth_data(cur,0);
+		thread_socket_t* cur_socket = g_list_nth_data(cur, 0);
 
 		/* close the socket of current thread */
 		if (tid == cur_socket->tid) {
@@ -120,11 +120,11 @@ EXPORT_API bool emipc_end_all_proxy_sockets()
 
 	ENTER_CRITICAL_SECTION(proxy_mutex);
 	GList *cur = socket_head;
-	while( cur ) {
-		thread_socket_t* cur_socket = g_list_nth_data(cur,0);
+	while (cur) {
+		thread_socket_t* cur_socket = g_list_nth_data(cur, 0);
 
 		/* close all sockets of the pid */
-		if( pid == cur_socket->pid ) {
+		if (pid == cur_socket->pid) {
 			emipc_close_email_socket(&cur_socket->socket_fd);
 			EM_SAFE_FREE(cur_socket);
 			GList *del = cur;
@@ -178,9 +178,9 @@ EXPORT_API int emipc_get_proxy_socket_id()
 	ENTER_CRITICAL_SECTION(proxy_mutex);
 	GList *cur = socket_head;
 	/* need to acquire lock */
-	for( ; cur ; cur = g_list_next(cur) ) {
-		thread_socket_t* cur_socket = g_list_nth_data(cur,0);
-		if( pthread_equal(tid, cur_socket->tid) ) {
+	for ( ; cur ; cur = g_list_next(cur)) {
+		thread_socket_t* cur_socket = g_list_nth_data(cur, 0);
+		if (pthread_equal(tid, cur_socket->tid)) {
 			socket_fd = cur_socket->socket_fd;
 			break;
 		}
@@ -196,7 +196,7 @@ EXPORT_API int emipc_get_proxy_socket_id()
 
 #define MAX_PROXY_EPOLL_EVENT 100
 
-static bool wait_for_reply (int fd)
+static bool wait_for_reply(int fd)
 {
 	if (fd < 0) {
 		EM_DEBUG_EXCEPTION("Invalid file description : [%d]", fd);
@@ -213,13 +213,12 @@ static bool wait_for_reply (int fd)
 	tv.tv_sec  = 20; /* should be tuned */
 	tv.tv_usec = 0;
 
-	EM_DEBUG_LOG_DEV ("wait for response [%d]", fd);
+	EM_DEBUG_LOG_DEV("wait for response [%d]", fd);
 	err = select(fd + 1, &fds, NULL, NULL, &tv);
 	if (err == -1) {
 		EM_DEBUG_EXCEPTION("[IPCLib] select error[%d] fd[%d]", errno, fd);
 		return false;
-	}
-	else if (err == 0) {
+	} else if (err == 0) {
 		EM_DEBUG_EXCEPTION("[IPCLib] select timeout fd[%d]", fd);
 		return false;
 	}
@@ -263,7 +262,7 @@ static bool wait_for_reply (int fd)
 			if (proxy_ev_events[i].events & EPOLLIN) {
 				EM_DEBUG_LOG("Received event to stub");
 				ret = true;
-			} 
+			}
 		}
 	}
 

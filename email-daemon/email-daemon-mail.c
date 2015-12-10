@@ -74,13 +74,13 @@ INTERNAL_FUNC int emdaemon_send_mail(char *multi_user_name, int mail_id, int *ha
 	email_account_t* ref_account = NULL;
 	int dst_mailbox_id = 0;
 
-	if(mail_id <= 0) {
+	if (mail_id <= 0) {
 		EM_DEBUG_EXCEPTION("mail_id is not valid");
-		err= EMAIL_ERROR_INVALID_PARAM;
+		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
-	if(!emstorage_get_mail_by_id(multi_user_name, mail_id, &mail_table_data, true, &err)) {
+	if (!emstorage_get_mail_by_id(multi_user_name, mail_id, &mail_table_data, true, &err)) {
 		EM_DEBUG_EXCEPTION("Failed to get mail by mail_id [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -90,7 +90,7 @@ INTERNAL_FUNC int emdaemon_send_mail(char *multi_user_name, int mail_id, int *ha
 			EM_DEBUG_EXCEPTION(" mail_table_data->mailbox_id[%d], mail_table_data->account_id[%d]", mail_table_data->mailbox_id, mail_table_data->account_id);
 		if (err_code)
 			*err_code = EMAIL_ERROR_INVALID_MAILBOX;
-		if(mail_table_data)
+		if (mail_table_data)
 			emstorage_free_mail(&mail_table_data, 1, &err);
 		return false;
 	}
@@ -129,8 +129,8 @@ INTERNAL_FUNC int emdaemon_send_mail(char *multi_user_name, int mail_id, int *ha
 		EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_SEND_START] Failed >>>> ");
 
 	/* set EMAIL_MAIL_STATUS_SEND_WAIT status */
-	if(!emstorage_set_field_of_mails_with_integer_value(multi_user_name, account_id, &mail_id, 1, "save_status", EMAIL_MAIL_STATUS_SEND_WAIT, true, &err)) {
-		EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value [%d]",err);
+	if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name, account_id, &mail_id, 1, "save_status", EMAIL_MAIL_STATUS_SEND_WAIT, true, &err)) {
+		EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value [%d]", err);
 		goto FINISH_OFF;
 	}
 
@@ -157,7 +157,7 @@ INTERNAL_FUNC int emdaemon_send_mail(char *multi_user_name, int mail_id, int *ha
 			g_save_local_activity_run = 1;
 #endif
 
-	if ( handle )
+	if (handle)
 		*handle = result_handle;
 
 	ret = true;
@@ -166,8 +166,8 @@ FINISH_OFF:
 	if (ret == false) {
 		EM_DEBUG_EXCEPTION("emdaemon_send_mail failed [%d]", err);
 
-		if(!emstorage_set_field_of_mails_with_integer_value(multi_user_name, account_id, &mail_id, 1, "save_status", EMAIL_MAIL_STATUS_SAVED, true, &err))
-			EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value [%d]",err);
+		if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name, account_id, &mail_id, 1, "save_status", EMAIL_MAIL_STATUS_SAVED, true, &err))
+			EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value [%d]", err);
 
 		if (event_data) {
 			emcore_free_event(event_data);
@@ -180,16 +180,16 @@ FINISH_OFF:
 		EM_SAFE_FREE(ref_account);
 	}
 
-	if(!emcore_add_transaction_info(mail_id , result_handle , &err_2))
+	if (!emcore_add_transaction_info(mail_id , result_handle , &err_2))
 		EM_DEBUG_EXCEPTION("emcore_add_transaction_info failed [%d]", err_2);
 
-	if(local_mailbox)
+	if (local_mailbox)
 		emstorage_free_mailbox(&local_mailbox, 1, NULL);
 
 	if (err_code != NULL)
 		*err_code = err;
 
-	if(mail_table_data)
+	if (mail_table_data)
 		emstorage_free_mail(&mail_table_data, 1, &err);
 
 	EM_DEBUG_FUNC_END();
@@ -219,7 +219,7 @@ INTERNAL_FUNC int emdaemon_send_mail_saved(char *multi_user_name, int account_id
 		goto FINISH_OFF;
 	}
 
-	if (!emstorage_get_mailbox_name_by_mailbox_type(multi_user_name, account_id,EMAIL_MAILBOX_TYPE_OUTBOX,&mailbox_name, false, &err)) {
+	if (!emstorage_get_mailbox_name_by_mailbox_type(multi_user_name, account_id, EMAIL_MAILBOX_TYPE_OUTBOX, &mailbox_name, false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_name_by_mailbox_type failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -280,7 +280,7 @@ INTERNAL_FUNC int emdaemon_add_mail(char *multi_user_name,
 	email_account_t *ref_account = NULL;
 
 	if (!input_mail_data || input_mail_data->account_id <= 0 ||
-		( ((input_mail_data->report_status & EMAIL_MAIL_REPORT_MDN) != 0) && !input_mail_data->full_address_to))  {
+		(((input_mail_data->report_status & EMAIL_MAIL_REPORT_MDN) != 0) && !input_mail_data->full_address_to))  {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -347,8 +347,8 @@ INTERNAL_FUNC int emdaemon_add_meeting_request(char *multi_user_name, int accoun
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 
-	if ( account_id <= 0 || !meeting_req || meeting_req->mail_id <= 0 )  {
-		if(meeting_req)
+	if (account_id <= 0 || !meeting_req || meeting_req->mail_id <= 0)  {
+		if (meeting_req)
 			EM_DEBUG_EXCEPTION("mail_id[%d]", meeting_req->mail_id);
 
 		err = EMAIL_ERROR_INVALID_PARAM;
@@ -671,7 +671,7 @@ INTERNAL_FUNC int emdaemon_delete_mail(char *multi_user_name,
 	}
 
 	if (from_server == EMAIL_DELETE_LOCAL_AND_SERVER || from_server == EMAIL_DELETE_FROM_SERVER) {
-		if ((event_data = em_malloc(sizeof(email_event_t)) ) == NULL) {
+		if ((event_data = em_malloc(sizeof(email_event_t))) == NULL) {
 			EM_DEBUG_EXCEPTION("em_malloc for event_data failed...");
 			err = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
@@ -814,7 +814,7 @@ int emdaemon_delete_mail_all(char *multi_user_name, int input_mailbox_id, int in
 		emstorage_activity_tbl_t new_activity;
 		int activityid = 0;
 
-		if (false == emcore_get_next_activity_id(&activityid,&err)) {
+		if (false == emcore_get_next_activity_id(&activityid, &err)) {
 			EM_DEBUG_EXCEPTION(" emcore_get_next_activity_id Failed - %d ", err);
 		}
 
@@ -1009,7 +1009,7 @@ INTERNAL_FUNC int emdaemon_move_mail_all_mails(char *multi_user_name, int src_ma
 		goto FINISH_OFF;
 	}
 
-	if ((event_data = em_malloc(sizeof(email_event_t)) ) == NULL) {
+	if ((event_data = em_malloc(sizeof(email_event_t))) == NULL) {
 		EM_DEBUG_EXCEPTION("em_malloc for event_data failed...");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
@@ -1049,10 +1049,10 @@ FINISH_OFF:
 #ifdef __FEATURE_LOCAL_ACTIVITY__
 	int i = 0, activityid = 0;
 
-	if (false == emcore_get_next_activity_id(&activityid,&err))
+	if (false == emcore_get_next_activity_id(&activityid, &err))
 		EM_DEBUG_EXCEPTION(" emcore_get_next_activity_id Failed - %d ", err);
 
-	for (i =0; i < event_data.event_param_data_4; i++) {
+	for (i = 0; i < event_data.event_param_data_4; i++) {
 		emstorage_activity_tbl_t	new_activity;
 		new_activity.activity_id = activityid;
 		new_activity.activity_type = ACTIVITY_MOVEMAIL;
@@ -1128,7 +1128,7 @@ FINISH_OFF2:
 	if (mail_list)
 		EM_SAFE_FREE(mail_list);
 
-	if (mails != NULL )
+	if (mails != NULL)
 		EM_SAFE_FREE(mails);
 
 	EM_DEBUG_FUNC_END("ret [%d]", ret);
@@ -1184,7 +1184,7 @@ INTERNAL_FUNC int emdaemon_move_mail(char *multi_user_name, int mail_ids[], int 
 
 	emstorage_free_mail(&mail_table_data, 1, NULL);
 
-	if ((event_data = em_malloc(sizeof(email_event_t)) ) == NULL) {
+	if ((event_data = em_malloc(sizeof(email_event_t))) == NULL) {
 		EM_DEBUG_EXCEPTION("em_malloc for event_data failed...");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
@@ -1226,10 +1226,10 @@ FINISH_OFF:
 #ifdef __FEATURE_LOCAL_ACTIVITY__
 	int i = 0, activityid = 0;
 
-	if (false == emcore_get_next_activity_id(&activityid,&err))
+	if (false == emcore_get_next_activity_id(&activityid, &err))
 		EM_DEBUG_EXCEPTION(" emcore_get_next_activity_id Failed - %d ", err);
 
-	for (i =0; i < event_data.event_param_data_4; i++) {
+	for (i = 0; i < event_data.event_param_data_4; i++) {
 		emstorage_activity_tbl_t	new_activity;
 		new_activity.activity_id = activityid;
 		new_activity.activity_type = ACTIVITY_MOVEMAIL;
@@ -1316,7 +1316,7 @@ INTERNAL_FUNC int emdaemon_set_flags_field(char *multi_user_name, int account_id
 	email_event_t *event_data = NULL;
 	int handle = 0;
 
-	if(account_id <= 0 || !mail_ids || num <= 0) {
+	if (account_id <= 0 || !mail_ids || num <= 0) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		goto FINISH_OFF;
@@ -1415,13 +1415,13 @@ INTERNAL_FUNC int emdaemon_update_mail(char *multi_user_name, email_mail_data_t 
 		goto FINISH_OFF;
 	}
 
-	if ( (err = emcore_update_mail(multi_user_name, input_mail_data, input_attachment_data_list, input_attachment_count, input_meeting_request, input_from_eas)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_update_mail(multi_user_name, input_mail_data, input_attachment_data_list, input_attachment_count, input_meeting_request, input_from_eas)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_update_mail failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 #ifdef __FEATURE_SYNC_CLIENT_TO_SERVER__
-/*	if ( input_from_eas == 0) {
+/*	if (input_from_eas == 0) {
 		event_data = em_malloc(sizeof(email_event_t));
 		if (event_data == NULL) {
 			EM_DEBUG_EXCEPTION("em_malloc failed");
@@ -1503,12 +1503,11 @@ INTERNAL_FUNC int emdaemon_send_mail_retry(char *multi_user_name, int mail_id, i
 	}
 
 	if (timeout_in_sec == 0) {
-		if(!emdaemon_send_mail(multi_user_name, mail_id, NULL, &err)) {
+		if (!emdaemon_send_mail(multi_user_name, mail_id, NULL, &err)) {
 			EM_DEBUG_EXCEPTION("emdaemon_send_mail failed [%d]", err);
 			goto FINISH_OFF;
 		}
-	}
-	else if (timeout_in_sec > 0) {
+	} else if (timeout_in_sec > 0) {
 		retry_info = em_malloc(sizeof(email_retry_info));
 		if (retry_info == NULL) {
 			EM_DEBUG_EXCEPTION("em_malloc failed");
@@ -1553,7 +1552,7 @@ INTERNAL_FUNC void _OnMailSendRetryTimerCB(void* data)
 		goto FINISH_OFF;
 	}
 
-	if(!emdaemon_send_mail(retry_info->multi_user_name, retry_info->mail_id, NULL, &err)) {
+	if (!emdaemon_send_mail(retry_info->multi_user_name, retry_info->mail_id, NULL, &err)) {
 		EM_DEBUG_EXCEPTION("emdaemon_send_mail failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -1597,7 +1596,7 @@ INTERNAL_FUNC int emdaemon_move_mail_thread_to_mailbox(char *multi_user_name, in
 		goto FINISH_OFF;
 	}
 
-	for(i = 0; i < result_count; i++) {
+	for (i = 0; i < result_count; i++) {
 		mail_id_list[i] = mail_list[i].mail_id;
 	}
 	account_id = mail_list[0].account_id;
@@ -1608,15 +1607,15 @@ INTERNAL_FUNC int emdaemon_move_mail_thread_to_mailbox(char *multi_user_name, in
 		goto FINISH_OFF;
 	}
 
-	for(i = 0; i < mailbox_count; i++) {
+	for (i = 0; i < mailbox_count; i++) {
 		EM_DEBUG_LOG_SEC("%s %d", target_mailbox_list[i].mailbox_name, target_mailbox_id);
-		if(target_mailbox_list[i].mailbox_id == target_mailbox_id) {
+		if (target_mailbox_list[i].mailbox_id == target_mailbox_id) {
 			target_mailbox = (target_mailbox_list + i);
 			break;
 		}
 	}
 
-	if(!target_mailbox) {
+	if (!target_mailbox) {
 		EM_DEBUG_EXCEPTION("couldn't find proper target mailbox.");
 		goto FINISH_OFF;
 	}
@@ -1679,7 +1678,7 @@ INTERNAL_FUNC int emdaemon_delete_mail_thread(char *multi_user_name, int thread_
 		goto FINISH_OFF;
 	}
 
-	for(i = 0; i < result_count; i++) {
+	for (i = 0; i < result_count; i++) {
 		mail_id_list[i] = mail_list[i].mail_id;
 	}
 
@@ -1736,7 +1735,7 @@ INTERNAL_FUNC int emdaemon_modify_seen_flag_of_thread(char *multi_user_name, int
 		goto FINISH_OFF;
 	}
 
-	for(i = 0; i < result_count; i++) {
+	for (i = 0; i < result_count; i++) {
 		mail_id_list[i] = mail_list[i].mail_id;
 	}
 
@@ -1811,8 +1810,7 @@ INTERNAL_FUNC int emdaemon_expunge_mails_deleted_flagged(char *multi_user_name, 
 			goto FINISH_OFF;
 		}
 		event_insert = true;
-	}
-	else
+	} else
 #endif
 	{
 		if ((err = emcore_expunge_mails_deleted_flagged_from_local_storage(multi_user_name,
@@ -1833,7 +1831,7 @@ FINISH_OFF:
 		EM_SAFE_FREE(ref_account);
 	}
 
-	if(mailbox_tbl)
+	if (mailbox_tbl)
 		emstorage_free_mailbox(&mailbox_tbl, 1, NULL);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);

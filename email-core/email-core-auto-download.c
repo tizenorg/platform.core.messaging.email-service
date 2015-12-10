@@ -222,7 +222,7 @@ INTERNAL_FUNC int emcore_retrieve_auto_download_event(email_event_auto_download 
 		head_event = (email_event_auto_download *)g_queue_peek_head(g_auto_download_que);
 		if (!head_event) {
 			error = EMAIL_ERROR_EVENT_QUEUE_EMPTY;
-			EM_DEBUG_LOG_DEV ("QUEUE is empty");
+			EM_DEBUG_LOG_DEV("QUEUE is empty");
 			break;
 		}
 
@@ -315,7 +315,7 @@ INTERNAL_FUNC int emcore_clear_auto_download_queue(void)
 
 	ENTER_RECURSIVE_CRITICAL_SECTION(_auto_download_queue_lock);
 
-	q_length = g_auto_download_que? g_queue_get_length (g_auto_download_que): 0;
+	q_length = g_auto_download_que ? g_queue_get_length(g_auto_download_que) : 0;
 
 	for (i = 0; i < q_length; i++) {
 		pop_elm = (email_event_auto_download *)g_queue_peek_nth(g_auto_download_que, i);
@@ -498,8 +498,7 @@ CHECK_CONTINUE:
 			SLEEP_CONDITION_VARIABLE(_auto_downalod_available_signal, *_auto_download_queue_lock);
 			EM_DEBUG_LOG("Wake up by _auto_downalod_available_signal");
 			LEAVE_RECURSIVE_CRITICAL_SECTION(_auto_download_queue_lock);
-		}
-		else {
+		} else {
 			LEAVE_RECURSIVE_CRITICAL_SECTION(_auto_download_queue_lock);
 			EM_DEBUG_LOG_DEV(">>>>>>>>>>>>>>> Got auto download event_data !!! <<<<<<<<<<<<<<<");
 			int state1 = 0, state2 = 0, state3 = 0, wifi_status = 0;
@@ -582,12 +581,10 @@ CHECK_CONTINUE:
 														true,
 														&err) || !mail) {
 				EM_DEBUG_EXCEPTION("emstorage_get_mail_data_by_servermailid failed : [%d]", err);
-			}
-			else {
+			} else {
 				if (mail->body_download_status & EMAIL_BODY_DOWNLOAD_STATUS_FULLY_DOWNLOADED) {
 					EM_DEBUG_LOG("fully downloaded mail");
-				}
-				else {
+				} else {
 					EM_DEBUG_LOG("#####AUTO DOWNLOAD BODY: ACCOUNT_ID[%d] MAILBOX_ID[%d] MAIL_ID[%d] UID[%d] ACTIVITY[%d]#####",
 							event_data->account_id, event_data->mailbox_id,
 							event_data->mail_id, event_data->server_mail_id, event_data->activity_id);
@@ -615,7 +612,7 @@ CHECK_CONTINUE:
 																event_data->mail_id,
 																true,
 																&attachment_list,
-																&attachment_count)) != EMAIL_ERROR_NONE ) {
+																&attachment_count)) != EMAIL_ERROR_NONE) {
 						EM_DEBUG_EXCEPTION("emstorage_get_attachment_list failed [%d]", err);
 					} else {
 						for (i = 0; i < attachment_count; i++) {
@@ -678,8 +675,7 @@ POP_HEAD:
 			LEAVE_RECURSIVE_CRITICAL_SECTION(_auto_download_queue_lock);
 			if (!started_event) {
 				EM_DEBUG_EXCEPTION("Failed to g_queue_pop_head");
-			}
-			else {
+			} else {
 				EM_SAFE_FREE(started_event->multi_user_name);
 				EM_SAFE_FREE(started_event);
 			}
@@ -725,7 +721,7 @@ INTERNAL_FUNC int emcore_insert_auto_download_job(char *multi_user_name,
 	ad_event = (email_event_auto_download *)em_malloc(sizeof(email_event_auto_download));
 
 	if (!ad_event) {
-		EM_DEBUG_EXCEPTION("em_malloc failed...");
+		EM_DEBUG_EXCEPTION("em_mallocfailed...");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}
@@ -740,8 +736,7 @@ INTERNAL_FUNC int emcore_insert_auto_download_job(char *multi_user_name,
 	if (!emcore_insert_auto_download_activity(ad_event, &(ad_event->activity_id), &err)) {
 		EM_DEBUG_EXCEPTION("Inserting auto download activity failed with error[%d]", err);
 		goto FINISH_OFF;
-	}
-	else {
+	} else {
 		ret = true;
 
 		if (!auto_download_on) {
@@ -750,8 +745,7 @@ INTERNAL_FUNC int emcore_insert_auto_download_job(char *multi_user_name,
 
 		if (emcore_is_auto_download_queue_full()) {
 			EM_DEBUG_LOG("Activity inserted only in DB .. Queue is Full");
-		}
-		else {
+		} else {
 			ad_event->status = EMAIL_EVENT_STATUS_DIRECT;
 
 			if (!emcore_insert_auto_download_event(ad_event, &err)) {
@@ -845,8 +839,7 @@ INTERNAL_FUNC int emcore_delete_auto_download_activity(char *multi_user_name, in
 	if (!emstorage_delete_auto_download_activity(multi_user_name, account_id, mail_id, activity_id, false, &err)) {
 		EM_DEBUG_EXCEPTION("emstorage_delete_auto_download_activity failed [%d]", err);
 		goto FINISH_OFF;
-	}
-	else if (err == EMAIL_ERROR_DATA_NOT_FOUND)
+	} else if (err == EMAIL_ERROR_DATA_NOT_FOUND)
 		err = EMAIL_ERROR_NONE;
 
 	ret = true;

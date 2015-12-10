@@ -68,7 +68,7 @@ static int emcore_initialize_async_task_handler(email_task_t *input_task)
 	EM_DEBUG_FUNC_BEGIN("input_task [%p]", input_task);
 	int err = EMAIL_ERROR_NONE;
 
-	if(input_task == NULL) {
+	if (input_task == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -81,7 +81,7 @@ static int emcore_initialize_async_task_handler(email_task_t *input_task)
 			, THREAD_SELF());
 
 	/* send notification for 'task start */
-	if( (err = emcore_send_task_status_signal(input_task->task_type, input_task->task_id, EMAIL_TASK_STATUS_STARTED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_send_task_status_signal(input_task->task_type, input_task->task_id, EMAIL_TASK_STATUS_STARTED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_send_task_status_signal failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -94,34 +94,34 @@ FINISH_OFF:
 
 static int emcore_finalize_async_task_handler(email_task_t *input_task, int input_error_code)
 {
-	EM_DEBUG_FUNC_BEGIN("input_task [%p] input_error_code [%d]",input_task ,input_error_code);
+	EM_DEBUG_FUNC_BEGIN("input_task [%p] input_error_code [%d]", input_task, input_error_code);
 	int err = EMAIL_ERROR_NONE;
 	email_task_status_type_t task_status = EMAIL_TASK_STATUS_FINISHED;
 
-	if(input_task == NULL) {
+	if (input_task == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
-	if(input_error_code != EMAIL_ERROR_NONE) {
+	if (input_error_code != EMAIL_ERROR_NONE) {
 		task_status = EMAIL_TASK_STATUS_FAILED;
 	}
 
 	/* remove task from task table */
-	if( (err = emcore_remove_task_from_task_table(NULL, input_task->task_id)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_remove_task_from_task_table(NULL, input_task->task_id)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_remove_task_from_active_task_pool failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	/* remove task id from active task id array */
-	if( (err = emcore_remove_task_from_active_task_pool(input_task->task_id)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_remove_task_from_active_task_pool(input_task->task_id)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_remove_task_from_active_task_pool failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	/* send signal for 'task finish or failure */
-	if( (err = emcore_send_task_status_signal(input_task->task_type, input_task->task_id, task_status, input_error_code, 0)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_send_task_status_signal(input_task->task_type, input_task->task_id, task_status, input_error_code, 0)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_send_task_status_signal failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -143,7 +143,7 @@ INTERNAL_FUNC void* emcore_default_async_task_handler(void *input_param)
 	email_task_handler_t *task_handler = NULL;
 	void *decoded_task_parameter = NULL;
 
-	if((err = emcore_initialize_async_task_handler(task)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_initialize_async_task_handler(task)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_initialize_async_task_handler failed. [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -151,12 +151,11 @@ INTERNAL_FUNC void* emcore_default_async_task_handler(void *input_param)
 	/* create a thread to do this task */
 	if ((err = emcore_get_task_handler_reference(task->task_type, &task_handler)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_LOG("emcore_get_task_handler_reference returns [%d]", err);
-	}
-	else {
+	} else {
 		/* Decode parameter */
-		emcore_decode_task_parameter(task->task_type, 
-									task->task_parameter, 
-									task->task_parameter_length, 
+		emcore_decode_task_parameter(task->task_type,
+									task->task_parameter,
+									task->task_parameter_length,
 									&decoded_task_parameter);
 
 		task_handler->task_handler_function(decoded_task_parameter);
@@ -184,9 +183,9 @@ INTERNAL_FUNC int emcore_default_sync_task_handler(void *intput_param)
 		EM_DEBUG_LOG("emcore_get_task_handler_reference returns [%d]", err);
 	} else {
 		/* Decode parameter */
-		emcore_decode_task_parameter(task->task_type, 
-									task->task_parameter, 
-									task->task_parameter_length, 
+		emcore_decode_task_parameter(task->task_type,
+									task->task_parameter,
+									task->task_parameter_length,
 									&decoded_task_parameter);
 
 		return_err = (int *)task_handler->task_handler_function(decoded_task_parameter);
@@ -205,14 +204,14 @@ INTERNAL_FUNC int emcore_default_sync_task_handler(void *intput_param)
 int                   _task_handler_array_size;
 email_task_handler_t **_task_handler_array;
 
-static int emcore_register_task_handler(email_task_type_t input_task_type, 
-										void* (*input_task_handler)(void *), 
-										int (*input_task_parameter_encoder)(void*,char**,int*), 
-										int (*input_task_parameter_decoder)(char*,int,void**))
+static int emcore_register_task_handler(email_task_type_t input_task_type,
+										void* (*input_task_handler)(void *),
+										int (*input_task_parameter_encoder)(void*, char**, int*),
+										int (*input_task_parameter_decoder)(char*, int, void**))
 {
 	EM_DEBUG_FUNC_BEGIN("input_task_type [%d] input_task_handler [%p] "
-						"input_task_parameter_encoder [%p] input_task_parameter_decoder [%p]", 
-						input_task_type, input_task_handler, 
+						"input_task_parameter_encoder [%p] input_task_parameter_decoder [%p]",
+						input_task_type, input_task_handler,
 						input_task_parameter_encoder, input_task_parameter_decoder);
 
 	int err = EMAIL_ERROR_NONE;
@@ -235,8 +234,7 @@ static int emcore_register_task_handler(email_task_type_t input_task_type,
 
 	if (_task_handler_array) {
 		_task_handler_array = realloc(_task_handler_array, sizeof(email_task_handler_t*) * _task_handler_array_size);
-	}
-	else {
+	} else {
 		_task_handler_array = malloc(sizeof(email_task_handler_t*) * _task_handler_array_size);
 	}
 
@@ -279,11 +277,11 @@ INTERNAL_FUNC int emcore_free_task_handler_array()
 
 	int i = 0;
 
-	for(i = 0; i < _task_handler_array_size; i++) {
-		EM_SAFE_FREE (_task_handler_array[i]);
+	for (i = 0; i < _task_handler_array_size; i++) {
+		EM_SAFE_FREE(_task_handler_array[i]);
 	}
 
-	EM_SAFE_FREE (_task_handler_array);
+	EM_SAFE_FREE(_task_handler_array);
 	_task_handler_array_size = 0;
 
 	EM_DEBUG_FUNC_END();
@@ -371,8 +369,8 @@ INTERNAL_FUNC int  emcore_decode_task_parameter(email_task_type_t input_task_typ
 
 	task_parameter_decoder = task_handler->task_parameter_decoder;
 
-	if ((err = task_parameter_decoder(input_byte_stream, 
-									input_stream_size, 
+	if ((err = task_parameter_decoder(input_byte_stream,
+									input_stream_size,
 									output_task_parameter_struct)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("task_parameter_decoder failed [%d]", err);
 		goto FINISH_OFF;
@@ -389,10 +387,10 @@ int emcore_fetch_task_from_task_pool(email_task_t **output_task)
 	int err = EMAIL_ERROR_NONE;
 	int output_task_count;
 
-	if ((err = emstorage_query_task(NULL, 
-									"WHERE task_status == 1", 
-									"ORDER BY date_time ASC, task_priority ASC LIMIT 0, 1", 
-									output_task, 
+	if ((err = emstorage_query_task(NULL,
+									"WHERE task_status == 1",
+									"ORDER BY date_time ASC, task_priority ASC LIMIT 0, 1",
+									output_task,
 									&output_task_count)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_query_task failed [%d]", err);
 		goto FINISH_OFF;
@@ -432,8 +430,8 @@ static int emcore_remove_task_from_active_task_pool(int input_task_id)
 	int i = 0;
 
 	ENTER_CRITICAL_SECTION(_active_task_pool_lock);
-	for(i = 0; i < MAX_ACTIVE_TASK; i++) {
-		if(_active_task_pool[i].task_id == input_task_id) {
+	for (i = 0; i < MAX_ACTIVE_TASK; i++) {
+		if (_active_task_pool[i].task_id == input_task_id) {
 			_active_task_pool[i].task_id    = 0;
 			_active_task_pool[i].task_type  = 0;
 			_active_task_pool[i].thread_id  = 0;
@@ -442,7 +440,7 @@ static int emcore_remove_task_from_active_task_pool(int input_task_id)
 	}
 	LEAVE_CRITICAL_SECTION(_active_task_pool_lock);
 
-	if(i >= MAX_ACTIVE_TASK) {
+	if (i >= MAX_ACTIVE_TASK) {
 		EM_DEBUG_LOG("couldn't find proper task in active task pool [%d]", input_task_id);
 		err = EMAIL_ERROR_TASK_NOT_FOUND;
 	}
@@ -463,14 +461,14 @@ INTERNAL_FUNC int emcore_get_active_task_by_thread_id(thread_t input_thread_id, 
 		goto FINISH_OFF;
 	}
 
-	for(i = 0; i < MAX_ACTIVE_TASK; i++) {
-		if(_active_task_pool[i].thread_id == input_thread_id) {
+	for (i = 0; i < MAX_ACTIVE_TASK; i++) {
+		if (_active_task_pool[i].thread_id == input_thread_id) {
 			*output_active_task = _active_task_pool + i;
 			break;
 		}
 	}
 
-	if(i >= MAX_ACTIVE_TASK) {
+	if (i >= MAX_ACTIVE_TASK) {
 		EM_DEBUG_LOG("couldn't find proper task in active task pool [%d]", input_thread_id);
 		err = EMAIL_ERROR_TASK_NOT_FOUND;
 	}
@@ -495,23 +493,22 @@ static int emcore_find_available_slot_in_active_task_pool(int *result_index)
 	}
 
 	ENTER_CRITICAL_SECTION(_active_task_pool_lock);
-	for(i = 0; i < MAX_ACTIVE_TASK; i++) {
-		if(_active_task_pool[i].task_id == 0) {
+	for (i = 0; i < MAX_ACTIVE_TASK; i++) {
+		if (_active_task_pool[i].task_id == 0) {
 			break;
 		}
 	}
 
-	if(i >= MAX_ACTIVE_TASK) {
+	if (i >= MAX_ACTIVE_TASK) {
 		EM_DEBUG_EXCEPTION("There is no available task slot");
 		err = EMAIL_NO_AVAILABLE_TASK_SLOT;
-	}
-	else {
+	} else {
 		_active_task_pool[i].task_id = -1;
 		*result_index = i;
 	}
 	LEAVE_CRITICAL_SECTION(_active_task_pool_lock);
 
-FINISH_OFF :
+FINISH_OFF:
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
 }
@@ -527,11 +524,11 @@ void* thread_func_task_manager_loop(void *arg)
 	/* while loop */
 	while (_task_manager_loop_availability) {
 		/* fetch task from DB */
-		if( ((err = emcore_fetch_task_from_task_pool(&new_task)) == EMAIL_ERROR_NONE) &&
-			((err = emcore_find_available_slot_in_active_task_pool(&available_slot_index)) == EMAIL_ERROR_NONE)	) {
+		if (((err = emcore_fetch_task_from_task_pool(&new_task)) == EMAIL_ERROR_NONE) &&
+			((err = emcore_find_available_slot_in_active_task_pool(&available_slot_index)) == EMAIL_ERROR_NONE)) {
 
 			/* update task status as STARTED */
-			if((err = emcore_update_task_status_on_task_table(NULL, new_task->task_id, EMAIL_TASK_STATUS_STARTED)) != EMAIL_ERROR_NONE) {
+			if ((err = emcore_update_task_status_on_task_table(NULL, new_task->task_id, EMAIL_TASK_STATUS_STARTED)) != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("emcore_update_task_status_on_task_table failed [%d]", err);
 			}
 			new_task->active_task_id = available_slot_index;
@@ -543,8 +540,7 @@ void* thread_func_task_manager_loop(void *arg)
 			/* new_task and task_parameter will be free in task handler. */
 			EM_SAFE_FREE(new_task->task_parameter);
 			EM_SAFE_FREE(new_task);
-		}
-		else {
+		} else {
 			/* If there is no task or no available slot, sleep until someone wake you up. */
 			/* Wake up case 1 : by emcore_add_task_to_task_table */
 			/* Wake up case 2 : when some task terminated */
@@ -584,7 +580,8 @@ INTERNAL_FUNC int emcore_start_task_manager_loop()
         goto FINISH_OFF;
     }
 
-FINISH_OFF :
+FINISH_OFF:
+
 	EM_DEBUG_FUNC_END("err [%d]", err);
     return err;
 }
@@ -620,7 +617,7 @@ INTERNAL_FUNC int emcore_stop_task_manager_loop()
 
 	/* Free _active_task_pool */
 
-	//FINISH_OFF :
+	//FINISH_OFF:
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;
@@ -631,7 +628,7 @@ INTERNAL_FUNC int emcore_add_task_to_task_table(char *multi_user_name, email_tas
 	EM_DEBUG_FUNC_BEGIN("input_task_type [%d] input_task_priority [%d] input_task_parameter [%p] input_task_parameter_length [%d] output_task_id [%p]", input_task_type, input_task_priority, input_task_parameter, input_task_parameter_length, output_task_id);
 	int err = EMAIL_ERROR_NONE;
 
-	if((err = emstorage_add_task(multi_user_name, input_task_type, input_task_priority, input_task_parameter, input_task_parameter_length, false, output_task_id)) != EMAIL_ERROR_NONE) {
+	if ((err = emstorage_add_task(multi_user_name, input_task_type, input_task_priority, input_task_parameter, input_task_parameter_length, false, output_task_id)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_add_task failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -650,7 +647,7 @@ INTERNAL_FUNC int emcore_remove_task_from_task_table(char *multi_user_name, int 
 	EM_DEBUG_FUNC_BEGIN("input_task_id [%d]", input_task_id);
 	int err = EMAIL_ERROR_NONE;
 
-	if((err = emstorage_delete_task(multi_user_name, input_task_id, true)) != EMAIL_ERROR_NONE) {
+	if ((err = emstorage_delete_task(multi_user_name, input_task_id, true)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_delete_task failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -665,7 +662,7 @@ static int emcore_update_task_status_on_task_table(char *multi_user_name, int in
 	EM_DEBUG_FUNC_BEGIN("input_task_id [%d] task_status [%d]", input_task_id, task_status);
 	int err = EMAIL_ERROR_NONE;
 
-	if((err = emstorage_update_task_status(multi_user_name, input_task_id, task_status, true)) != EMAIL_ERROR_NONE) {
+	if ((err = emstorage_update_task_status(multi_user_name, input_task_id, task_status, true)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_update_task_status failed [%d]", err);
 		goto FINISH_OFF;
 	}

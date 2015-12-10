@@ -61,7 +61,7 @@ INTERNAL_FUNC int emdaemon_get_imap_mailbox_list(char *multi_user_name,
 	int err = EMAIL_ERROR_NONE;
 	email_event_t *event_data = NULL;
 
-	if (account_id <= 0 ||!mailbox)  {
+	if (account_id <= 0 || !mailbox)  {
 		EM_DEBUG_EXCEPTION("account_id[%d], mailbox[%p]", account_id, mailbox);
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -209,7 +209,7 @@ INTERNAL_FUNC int emdaemon_add_mailbox(char *multi_user_name, email_mailbox_t* n
 	}
 
 	/*  on_server is allowed to be only 0 when server_type is EMAIL_SERVER_TYPE_ACTIVE_SYNC */
-	if ( ref_account->incoming_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC )
+	if (ref_account->incoming_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC)
 		on_server = 0;
 
 	if (on_server) {	/* async */
@@ -231,9 +231,9 @@ INTERNAL_FUNC int emdaemon_add_mailbox(char *multi_user_name, email_mailbox_t* n
 		mailbox->mailbox_name  = EM_SAFE_STRDUP(new_mailbox->mailbox_name);
 		mailbox->alias         = EM_SAFE_STRDUP(new_mailbox->alias);
 
-		if(new_mailbox->eas_data_length > 0 && new_mailbox->eas_data) {
+		if (new_mailbox->eas_data_length > 0 && new_mailbox->eas_data) {
 			mailbox->eas_data = em_malloc(new_mailbox->eas_data_length);
-			if(mailbox->eas_data == NULL) {
+			if (mailbox->eas_data == NULL) {
 				EM_DEBUG_EXCEPTION("em_malloc failed");
 				err = EMAIL_ERROR_OUT_OF_MEMORY;
 				goto FINISH_OFF;
@@ -247,7 +247,7 @@ INTERNAL_FUNC int emdaemon_add_mailbox(char *multi_user_name, email_mailbox_t* n
 		event_data->event_param_data_4 = on_server;
 		event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
-		if(!emcore_insert_event(event_data, (int*)handle, &err)) {
+		if (!emcore_insert_event(event_data, (int*)handle, &err)) {
 			EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -294,7 +294,7 @@ INTERNAL_FUNC int emdaemon_set_mailbox_type(char *multi_user_name, int input_mai
 		goto FINISH_OFF;
 	}
 
-	if ( (err = emstorage_get_mailbox_by_id(multi_user_name, input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE) {
+	if ((err = emstorage_get_mailbox_by_id(multi_user_name, input_mailbox_id, &mailbox_tbl)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_id failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -327,7 +327,7 @@ INTERNAL_FUNC int emdaemon_set_local_mailbox(char *multi_user_name, int input_ma
 		goto FINISH_OFF;
 	}
 
-	if ( (err = emstorage_set_local_mailbox(multi_user_name, input_mailbox_id, input_is_local_mailbox, true)) != EMAIL_ERROR_NONE)  {
+	if ((err = emstorage_set_local_mailbox(multi_user_name, input_mailbox_id, input_is_local_mailbox, true)) != EMAIL_ERROR_NONE)  {
 		EM_DEBUG_EXCEPTION("emstorage_set_local_mailbox failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -370,12 +370,12 @@ INTERNAL_FUNC int emdaemon_delete_mailbox(char *multi_user_name, int input_mailb
 	}
 
 	/*  on_server is allowed to be only 0 when server_type is EMAIL_SERVER_TYPE_ACTIVE_SYNC */
-	if ( ref_account->incoming_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC ) {
+	if (ref_account->incoming_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
 		on_server = 0;
 		recursive = 0;
 	}
 
-	if ( on_server ) {	/*  async */
+	if (on_server) {	/*  async */
 		event_data = em_malloc(sizeof(email_event_t));
 		if (event_data == NULL) {
 			EM_DEBUG_EXCEPTION("em_malloc failed");
@@ -390,7 +390,7 @@ INTERNAL_FUNC int emdaemon_delete_mailbox(char *multi_user_name, int input_mailb
 		event_data->event_param_data_6 = recursive;
 		event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
 
-		if(!emcore_insert_event(event_data, (int*)handle, &err)) {
+		if (!emcore_insert_event(event_data, (int*)handle, &err)) {
 			EM_DEBUG_EXCEPTION("emcore_insert_event failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -490,7 +490,7 @@ INTERNAL_FUNC int emdaemon_sync_header(char *multi_user_name, int input_account_
 		goto FINISH_OFF;
 	}
 
-	if(input_account_id == ALL_ACCOUNT) {
+	if (input_account_id == ALL_ACCOUNT) {
 		EM_DEBUG_LOG(">>>> emdaemon_sync_header for all account event_data.event_param_data_4 [%d]", event_data->event_param_data_4);
 		event_data->type               = EMAIL_EVENT_SYNC_HEADER;
 		event_data->account_id         = input_account_id;
@@ -526,7 +526,7 @@ INTERNAL_FUNC int emdaemon_sync_header(char *multi_user_name, int input_account_
 	/* Due to fast response, event noti is moved here from worker_event_queue */
 	char input_mailbox_id_str[10] = {0};
 	snprintf(input_mailbox_id_str, 10, "%d ", input_mailbox_id);
-	if (!emcore_notify_network_event(NOTI_DOWNLOAD_START, input_account_id, ((input_mailbox_id==0)? NULL:input_mailbox_id_str), *handle, 0))
+	if (!emcore_notify_network_event(NOTI_DOWNLOAD_START, input_account_id, ((input_mailbox_id == 0) ? NULL : input_mailbox_id_str), *handle, 0))
 		EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_DOWNLOAD_START] Failed >>>> ");
 
 /*	if ((err = emcore_update_sync_status_of_account(multi_user_name, input_account_id, SET_TYPE_SET, SYNC_STATUS_SYNCING)) != EMAIL_ERROR_NONE)
@@ -562,7 +562,7 @@ INTERNAL_FUNC int emdaemon_set_mail_slot_size_of_mailbox(char *multi_user_name, 
 	int err = EMAIL_ERROR_NONE;
 	email_event_t *event_data = NULL;
 
-	if(handle == NULL) {
+	if (handle == NULL) {
 		EM_DEBUG_EXCEPTION("handle is required");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -611,7 +611,7 @@ INTERNAL_FUNC int emdaemon_rename_mailbox(char *multi_user_name, int input_mailb
 	emstorage_mailbox_tbl_t *old_mailbox_data = NULL;
 	email_event_t *event_data = NULL;
 
-	if(input_mailbox_id <= 0 || output_handle == NULL) {
+	if (input_mailbox_id <= 0 || output_handle == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;

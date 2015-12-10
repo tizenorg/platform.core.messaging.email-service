@@ -181,7 +181,7 @@ static int emcore_imap_idle_insert_sync_event(char *multi_user_name,
 
 	event_data = em_malloc(sizeof(email_event_t));
 	if (event_data == NULL) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
+		EM_DEBUG_EXCEPTION("em_mallocfailed");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}
@@ -233,13 +233,13 @@ static int emcore_parse_imap_idle_response(char *multi_user_name,
 
 	imap_local = input_mailstream->local;
 
-	if (!imap_local){
+	if (!imap_local) {
 		EM_DEBUG_EXCEPTION("imap_local is NULL");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
-	while (imap_local->netstream){
+	while (imap_local->netstream) {
 		p = net_getline(imap_local->netstream);
 		if (p && !strncmp(p, "*", 1)) {
 			EM_DEBUG_LOG("p is [%s]", p);
@@ -248,25 +248,21 @@ static int emcore_parse_imap_idle_response(char *multi_user_name,
 				EM_SAFE_FREE(p);
 				err = EMAIL_ERROR_IMAP4_IDLE_FAILURE;
 				goto FINISH_OFF;
-			}
-			else  {
+			} else {
 				if (strstr(p, "EXIST") != NULL) {
 					if (!emcore_imap_idle_insert_sync_event(multi_user_name, input_account_id, input_mailbox_id, &err))
 						EM_DEBUG_EXCEPTION_SEC("Syncing mailbox[%d] failed with err_code [%d]", input_mailbox_id, err);
-				}
-				else
+				} else
 					EM_DEBUG_LOG("Skipped this message");
 				EM_SAFE_FREE(p);
 				break;
 			}
-		}
-		else if (p && (!strncmp(p, "+", 1))) {
+		} else if (p && (!strncmp(p, "+", 1))) {
 			/* Bad response from server */
 			EM_DEBUG_LOG("p is [%s]", p);
 			EM_SAFE_FREE(p);
 			break;
-		}
-		else {
+		} else {
 			EM_DEBUG_LOG("In else part");
 			break;
 		}
@@ -330,11 +326,10 @@ static int emcore_connect_and_idle_on_mailbox(char *multi_user_name,
 	net_stream = imap_local->netstream;
 
 	/* check if ssl option is enabled on this account - shasikala.p */
-	if (input_account->incoming_server_secure_connection){
+	if (input_account->incoming_server_secure_connection) {
 		SSLSTREAM *ssl_stream = net_stream->stream;
 		tcp_stream = ssl_stream->tcpstream;
-	}
-	else
+	} else
 		tcp_stream = net_stream->stream;
 
 	/* Get Socket ID */
@@ -351,7 +346,7 @@ static int emcore_connect_and_idle_on_mailbox(char *multi_user_name,
 	}
 
 	/* Get the response for IDLE command */
-	while (imap_local->netstream){
+	while (imap_local->netstream) {
 		p = net_getline(imap_local->netstream);
 
 		EM_DEBUG_LOG("p =[%s]", p);
@@ -359,12 +354,10 @@ static int emcore_connect_and_idle_on_mailbox(char *multi_user_name,
 		if (p && !strncmp(p, "+", 1)) {
 			EM_DEBUG_LOG("OK. Go.");
 			break;
-		}
-		else if (p && !strncmp(p, "*", 1)) {
+		} else if (p && !strncmp(p, "*", 1)) {
 			EM_SAFE_FREE(p);
 			continue;
-		}
-		else {
+		} else {
 			EM_DEBUG_LOG("Unsuspected response.");
 			err = EMAIL_ERROR_IMAP4_IDLE_FAILURE;
 			break;
@@ -394,9 +387,8 @@ FINISH_OFF:
 //		*output_mailstream     = mail_stream;
 		*output_socket_fd      = socket_fd;
 		*input_connection_list = imap_idle_connection_list;
-	}
-	else if (mail_stream)
-		mail_stream = mail_close (mail_stream);
+	} else if (mail_stream)
+		mail_stream = mail_close(mail_stream);
 
 	emcore_clear_session(session);
 
@@ -459,7 +451,7 @@ static int emcore_refresh_alarm_for_imap_idle(char *multi_user_name)
 									0,
 									emcore_imap_idle_cb,
 									NULL)) != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION("emcore_add_alarm failed [%d]",err);
+			EM_DEBUG_EXCEPTION("emcore_add_alarm failed [%d]", err);
 		}
 	}
 
@@ -578,7 +570,7 @@ void* emcore_imap_idle_worker(void* thread_user_data)
 					}
 				}
 
-				if(account_ref_list)
+				if (account_ref_list)
 					emcore_free_account_list(&account_ref_list, account_count, NULL);
 
 				EM_DEBUG_LOG(" Delete old an alarm and add an alarm to refresh connections every 29min");
@@ -644,7 +636,7 @@ void* emcore_imap_idle_worker(void* thread_user_data)
 						}
 					}
 
-					if(account_ref_list)
+					if (account_ref_list)
 						emcore_free_account_list(&account_ref_list, account_count, NULL);
 
 					EM_DEBUG_LOG(" Delete old an alarm and add an alarm to refresh connections every 29min");
@@ -665,7 +657,7 @@ void* emcore_imap_idle_worker(void* thread_user_data)
 		event_num = epoll_wait(epoll_fd, events, MAX_EPOLL_EVENT, -1);
 		EM_DEBUG_LOG("epoll_wait returns [%d]", event_num);
 
-		if (event_num > 0)  {
+		if (event_num > 0) {
 			EM_DEBUG_LOG(">>>> Data coming from socket or pipe ");
 			for (j = 0; j < event_num; j++) {
 				int event_fd = events[j].data.fd;
@@ -679,8 +671,7 @@ void* emcore_imap_idle_worker(void* thread_user_data)
 						refresh_connection_flag = 1;
 						continue;
 					}
-				}
-				else {
+				} else {
 					if ((err = emcore_get_connection_info_by_socket_fd(imap_idle_connection_list,
 																		event_fd,
 																		&connection_info)) != EMAIL_ERROR_NONE) {
@@ -696,7 +687,7 @@ void* emcore_imap_idle_worker(void* thread_user_data)
 															connection_info->socket_fd)) != EMAIL_ERROR_NONE) {
 						EM_DEBUG_EXCEPTION("emcore_parse_imap_idle_response failed. [%d] ", err);
 						refresh_connection_flag = 1;
-//						mail_stream = mail_close (mail_stream);
+//						mail_stream = mail_close(mail_stream);
 						continue;
 					}
 				}
@@ -754,7 +745,7 @@ INTERNAL_FUNC int emcore_refresh_imap_idle_thread()
 	int err = EMAIL_ERROR_NONE;
 	int signal = 1;
 
-	write(imap_idle_pipe_fd[1], (char*) &signal, sizeof (signal));
+	write(imap_idle_pipe_fd[1], (char *)&signal, sizeof(signal));
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
 	return err;

@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -61,15 +61,15 @@
 
 static char *passphrase = NULL;
 
-static gboolean request_passwd(GMimeCryptoContext *ctx, const char *user_id, 
-								const char *prompt_ctx, gboolean reprompt, 
+static gboolean request_passwd(GMimeCryptoContext *ctx, const char *user_id,
+								const char *prompt_ctx, gboolean reprompt,
 								GMimeStream *response, GError **err)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	EM_DEBUG_LOG("passpharse : [%s]", passphrase);
-        if (g_mime_stream_write_string (response, passphrase) == -1 ||
-            g_mime_stream_write (response, "\n", 1) == -1) {
-                g_set_error (err, GMIME_ERROR, errno, "%s", g_strerror (errno));
+        if (g_mime_stream_write_string(response, passphrase) == -1 ||
+            g_mime_stream_write(response, "\n", 1) == -1) {
+                g_set_error(err, GMIME_ERROR, errno, "%s", g_strerror(errno));
                 return false;
         }
 
@@ -127,7 +127,8 @@ static int emcore_pgp_get_gmime_digest_algo(email_digest_type digest_type)
 	return gmime_digest_algo;
 }
 
-static int get_stack_of_recipients(char *recipients, GPtrArray **output_recipients_array) {
+static int get_stack_of_recipients(char *recipients, GPtrArray **output_recipients_array)
+{
 	EM_DEBUG_FUNC_BEGIN();
 	int err                       = EMAIL_ERROR_NONE;
 	char *temp_key                = NULL;
@@ -146,9 +147,9 @@ static int get_stack_of_recipients(char *recipients, GPtrArray **output_recipien
 	keys = EM_SAFE_STRDUP(recipients);
 	strings = g_strsplit(keys, ",", -1);
 
-	for (ptr = strings; *ptr; ptr++){
+	for (ptr = strings; *ptr; ptr++) {
 	        temp_key = NULL;
-	        temp_key = g_strdup_printf("0x%s",*(ptr));
+	        temp_key = g_strdup_printf("0x%s", *(ptr));
 	        g_ptr_array_add(p_recipients_array, temp_key);
 	  }
 
@@ -157,7 +158,7 @@ FINISH_OFF:
 	EM_SAFE_FREE(keys);
 	if (err != EMAIL_ERROR_NONE)
 		g_ptr_array_free(p_recipients_array, true);
-	else 
+	else
 		*output_recipients_array = p_recipients_array;
 
 	EM_DEBUG_FUNC_END();
@@ -172,25 +173,25 @@ static GMimeSignatureStatus get_signature_status(GMimeSignatureList *signatures)
 
 	GMimeSignature *sig = NULL;
 	GMimeSignatureStatus status = GMIME_SIGNATURE_STATUS_GOOD;
- 
+
 	if (!signatures || signatures->array->len == 0)
 		return GMIME_SIGNATURE_STATUS_ERROR;
- 
+
 	for (i = 0; i < g_mime_signature_list_length(signatures); i++) {
 		sig = g_mime_signature_list_get_signature(signatures, i);
 		if (sig) status = MAX(status, sig->status);
-	}   
+	}
 
 	EM_DEBUG_FUNC_END();
 
 	return status;
 }
 
-INTERNAL_FUNC int emcore_pgp_set_signed_message(char *certificate, 
-												char *password, 
-												char *mime_entity, 
-												char *user_id, 
-												email_digest_type digest_type, 
+INTERNAL_FUNC int emcore_pgp_set_signed_message(char *certificate,
+												char *password,
+												char *mime_entity,
+												char *user_id,
+												email_digest_type digest_type,
 												char **file_path)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("Certificate path : [%s], mime_entity : [%s]", certificate, mime_entity);
@@ -239,7 +240,7 @@ INTERNAL_FUNC int emcore_pgp_set_signed_message(char *certificate,
 	}
 
 	ctx = g_mime_gpg_context_new(request_passwd, "/usr/bin/gpg");
-	g_mime_gpg_context_set_always_trust ((GMimeGpgContext *)ctx, true);
+	g_mime_gpg_context_set_always_trust((GMimeGpgContext *)ctx, true);
 
 	/* Initialized the input stream (clear text stream) */
 	EM_DEBUG_LOG("mime_entity : [%s]", mime_entity);
@@ -260,11 +261,11 @@ INTERNAL_FUNC int emcore_pgp_set_signed_message(char *certificate,
 	p_digest_type = emcore_pgp_get_gmime_digest_algo(digest_type);
 
 	/* Set the signed message */
-	if ((g_mime_crypto_context_sign(ctx, 
-									user_id, 
-									p_digest_type, 
-									clear_text, 
-									signed_text, 
+	if ((g_mime_crypto_context_sign(ctx,
+									user_id,
+									p_digest_type,
+									clear_text,
+									signed_text,
 									&g_err) < 0) && (g_err != NULL)) {
 		EM_DEBUG_EXCEPTION("g_mime_crypto_context_sign failed : [%s]", g_err->message);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -293,7 +294,7 @@ FINISH_OFF:
 	if (file_path)
 		*file_path = EM_SAFE_STRDUP(temp_pgp_filepath);
 
-	return err;	
+	return err;
 #else /* __FEATURE_SECURE_PGP__ */
 
 	return EMAIL_ERROR_NOT_SUPPORTED;
@@ -301,12 +302,12 @@ FINISH_OFF:
 #endif
 }
 
-INTERNAL_FUNC int emcore_pgp_set_encrypted_message(char *recipient_list, 
+INTERNAL_FUNC int emcore_pgp_set_encrypted_message(char *recipient_list,
 													char *certificate,
 													char *password,
-													char *mime_entity, 
-													char *user_id, 
-													email_digest_type digest_type, 
+													char *mime_entity,
+													char *user_id,
+													email_digest_type digest_type,
 													char **file_path)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("Certificate path : [%s], mime_entity : [%s]", certificate, mime_entity);
@@ -354,7 +355,7 @@ INTERNAL_FUNC int emcore_pgp_set_encrypted_message(char *recipient_list,
 	}
 
 	ctx = g_mime_gpg_context_new(request_passwd, "/usr/bin/gpg");
-	g_mime_gpg_context_set_always_trust ((GMimeGpgContext *)ctx, true);
+	g_mime_gpg_context_set_always_trust((GMimeGpgContext *)ctx, true);
 
 	/* Initialized the input stream (clear text stream) */
 	EM_DEBUG_LOG("mime_entity : [%s]", mime_entity);
@@ -381,13 +382,13 @@ INTERNAL_FUNC int emcore_pgp_set_encrypted_message(char *recipient_list,
 	}
 
 	/* Set the signed message */
-	if ((g_mime_crypto_context_encrypt(ctx, 
-										false, 
-										user_id, 
-										p_digest_type, 
-										recipients, 
-										clear_text, 
-										encrypted_text, 
+	if ((g_mime_crypto_context_encrypt(ctx,
+										false,
+										user_id,
+										p_digest_type,
+										recipients,
+										clear_text,
+										encrypted_text,
 										&g_err) < 0) && (g_err != NULL)) {
 		EM_DEBUG_EXCEPTION("NO signature : g_mime_crypto_context_encrypt failed : [%s]", g_err->message);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -418,7 +419,7 @@ FINISH_OFF:
 	if (file_path)
 		*file_path = EM_SAFE_STRDUP(temp_pgp_filepath);
 
-	return err;	
+	return err;
 #else /* __FEATURE_SECURE_PGP__ */
 
 	return EMAIL_ERROR_NOT_SUPPORTED;
@@ -427,12 +428,12 @@ FINISH_OFF:
 
 }
 
-INTERNAL_FUNC int emcore_pgp_set_signed_and_encrypted_message(char *recipient_list, 
-																char *certificate, 
-																char *password, 
-																char *mime_entity, 
-																char *user_id, 
-																email_digest_type digest_type, 
+INTERNAL_FUNC int emcore_pgp_set_signed_and_encrypted_message(char *recipient_list,
+																char *certificate,
+																char *password,
+																char *mime_entity,
+																char *user_id,
+																email_digest_type digest_type,
 																char **file_path)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("mime_entity : [%s]", mime_entity);
@@ -482,7 +483,7 @@ INTERNAL_FUNC int emcore_pgp_set_signed_and_encrypted_message(char *recipient_li
 	}
 
 	ctx = g_mime_gpg_context_new(request_passwd, "/usr/bin/gpg");
-	g_mime_gpg_context_set_always_trust ((GMimeGpgContext *)ctx, true);
+	g_mime_gpg_context_set_always_trust((GMimeGpgContext *)ctx, true);
 
 	/* Initialized the input stream (clear text stream) */
 	EM_DEBUG_LOG("mime_entity : [%s]", mime_entity);
@@ -509,13 +510,13 @@ INTERNAL_FUNC int emcore_pgp_set_signed_and_encrypted_message(char *recipient_li
 	}
 
 	/* Set the signed message */
-	if ((g_mime_crypto_context_encrypt(ctx, 
-										true, 
-										user_id, 
-										p_digest_type, 
-										recipients, 
-										clear_text, 
-										encrypted_text, 
+	if ((g_mime_crypto_context_encrypt(ctx,
+										true,
+										user_id,
+										p_digest_type,
+										recipients,
+										clear_text,
+										encrypted_text,
 										&g_err) < 0) && (g_err != NULL)) {
 		EM_DEBUG_EXCEPTION("Signature : g_mime_crypto_context_encrypt failed : [%s]", g_err->message);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -546,7 +547,7 @@ FINISH_OFF:
 	if (file_path)
 		*file_path = EM_SAFE_STRDUP(temp_pgp_filepath);
 
-	return err;	
+	return err;
 #else /* __FEATURE_SECURE_PGP__ */
 
 	return EMAIL_ERROR_NOT_SUPPORTED;
@@ -555,9 +556,9 @@ FINISH_OFF:
 
 }
 
-INTERNAL_FUNC int emcore_pgp_get_verify_signature(char *signature_path, 
-													char *mime_entity, 
-													email_digest_type digest_type, 
+INTERNAL_FUNC int emcore_pgp_get_verify_signature(char *signature_path,
+													char *mime_entity,
+													email_digest_type digest_type,
 													int *verify)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("signature path : [%s], mime_entity : [%s]", signature_path, mime_entity);
@@ -588,7 +589,7 @@ INTERNAL_FUNC int emcore_pgp_get_verify_signature(char *signature_path,
 	g_mime_init(0);
 
 	ctx = g_mime_gpg_context_new(request_passwd, "/usr/bin/gpg");
-	g_mime_gpg_context_set_always_trust ((GMimeGpgContext *)ctx, true);
+	g_mime_gpg_context_set_always_trust((GMimeGpgContext *)ctx, true);
 
 	/* Initialized the input stream (clear text stream) */
 	EM_DEBUG_LOG("mime_entity : [%s]", mime_entity);
@@ -612,7 +613,7 @@ INTERNAL_FUNC int emcore_pgp_get_verify_signature(char *signature_path,
 		EM_DEBUG_EXCEPTION("em_open failed : [%s] [%d]", signature_path, err);
 		goto FINISH_OFF;
 	}
-	
+
 	signed_text = g_mime_stream_fs_new(signed_fd);
 	if (g_mime_stream_reset(signed_text) == -1) {
 		EM_DEBUG_EXCEPTION("g_mime_stream_reset signed_text failed");
@@ -663,7 +664,7 @@ FINISH_OFF:
 	if (verify)
 		*verify = p_verify;
 
-	return err;	
+	return err;
 #else /* __FEATURE_SECURE_PGP__ */
 
 	return EMAIL_ERROR_NOT_SUPPORTED;
@@ -672,10 +673,10 @@ FINISH_OFF:
 
 }
 
-INTERNAL_FUNC int emcore_pgp_get_decrypted_message(char *encrypted_message, 
-													char *password, 
-													int sign, 
-													char **decrypted_file, 
+INTERNAL_FUNC int emcore_pgp_get_decrypted_message(char *encrypted_message,
+													char *password,
+													int sign,
+													char **decrypted_file,
 													int *verify)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("Encrypted message : [%s], password : [%s]", encrypted_message, password);
@@ -709,7 +710,7 @@ INTERNAL_FUNC int emcore_pgp_get_decrypted_message(char *encrypted_message,
 
 	/* Initialized the context */
 	ctx = g_mime_gpg_context_new(request_passwd, "/usr/bin/gpg");
-	g_mime_gpg_context_set_always_trust ((GMimeGpgContext *)ctx, true);
+	g_mime_gpg_context_set_always_trust((GMimeGpgContext *)ctx, true);
 
 	/* Initialized the input stream (clear text stream) */
 	err = em_open(encrypted_message, O_RDONLY, 0, &encrypted_fd);
@@ -783,11 +784,11 @@ FINISH_OFF:
 
 	if (verify)
 		*verify = p_verify;
-	
+
 	if (decrypted_file)
 		*decrypted_file = EM_SAFE_STRDUP(temp_decrypt_filepath);
 
-	return err;	
+	return err;
 #else /* __FEATURE_SECURE_PGP__ */
 
 	return EMAIL_ERROR_NOT_SUPPORTED;

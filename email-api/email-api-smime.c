@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -27,7 +27,7 @@
  * to interact with Email Engine.
  * @file		email-api-smime.c
  * @brief 		This file contains the data structures and interfaces of SMIME related Functionality provided by
- *			Email Engine . 
+ *			Email Engine .
  */
 
 #include "string.h"
@@ -45,11 +45,11 @@
 #include "email-core-signal.h"
 #include "email-ipc.h"
 
-EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output_mail_data, 
-										email_attachment_data_t **output_attachment_data, 
+EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output_mail_data,
+										email_attachment_data_t **output_attachment_data,
 										int *output_attachment_count, int *verify)
 {
-	EM_DEBUG_API_BEGIN ("mail_id[%d]", mail_id);
+	EM_DEBUG_API_BEGIN("mail_id[%d]", mail_id);
 	int err = EMAIL_ERROR_NONE;
 	int p_output_attachment_count = 0;
     int i = 0;
@@ -162,19 +162,19 @@ FINISH_OFF:
 
     EM_SAFE_FREE(multi_user_name);
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
-EXPORT_API int email_get_decrypt_message_ex(email_mail_data_t *input_mail_data, 
-											email_attachment_data_t *input_attachment_data, 
+EXPORT_API int email_get_decrypt_message_ex(email_mail_data_t *input_mail_data,
+											email_attachment_data_t *input_attachment_data,
 											int input_attachment_count,
-                                            email_mail_data_t **output_mail_data, 
-											email_attachment_data_t **output_attachment_data, 
+                                            email_mail_data_t **output_mail_data,
+											email_attachment_data_t **output_attachment_data,
 											int *output_attachment_count,
 											int *verify)
 {
-	EM_DEBUG_API_BEGIN ();
+	EM_DEBUG_API_BEGIN();
 	int err = EMAIL_ERROR_NONE;
     int i = 0;
 	char *decrypt_filepath = NULL;
@@ -267,13 +267,13 @@ FINISH_OFF:
 	if (p_account_tbl)
 		emstorage_free_account(&p_account_tbl, 1, NULL);
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_verify_signature(int mail_id, int *verify)
 {
-	EM_DEBUG_API_BEGIN ("mail_id[%d]", mail_id);
+	EM_DEBUG_API_BEGIN("mail_id[%d]", mail_id);
 
 	if (mail_id <= 0) {
 		EM_DEBUG_EXCEPTION("Invalid parameter");
@@ -318,13 +318,13 @@ FINISH_OFF:
 	if (verify != NULL)
 		*verify = p_verify;
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_verify_signature_ex(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data, int input_attachment_count, int *verify)
 {
-	EM_DEBUG_API_BEGIN ();
+	EM_DEBUG_API_BEGIN();
 
 	if (!input_mail_data || !input_attachment_data || input_attachment_count <= 0) {
 		EM_DEBUG_EXCEPTION("Invalid parameter");
@@ -347,11 +347,11 @@ EXPORT_API int email_verify_signature_ex(email_mail_data_t *input_mail_data, ema
 
 	if (input_mail_data->smime_type == EMAIL_SMIME_SIGNED) {
 		emcore_init_openssl_library();
-		if (!emcore_verify_signature(input_attachment_data[count].attachment_path, input_mail_data->file_path_mime_entity, verify, &err)) 
+		if (!emcore_verify_signature(input_attachment_data[count].attachment_path, input_mail_data->file_path_mime_entity, verify, &err))
 			EM_DEBUG_EXCEPTION("emcore_verify_signature failed : [%d]", err);
 
 		emcore_clean_openssl_library();
-	} else if(input_mail_data->smime_type == EMAIL_PGP_SIGNED) {
+	} else if (input_mail_data->smime_type == EMAIL_PGP_SIGNED) {
 		if ((err = emcore_pgp_get_verify_signature(input_attachment_data[count].attachment_path, input_mail_data->file_path_mime_entity, input_mail_data->digest_type, verify)) != EMAIL_ERROR_NONE)
 			EM_DEBUG_EXCEPTION("emcore_pgp_get_verify_siganture failed : [%d]", err);
 	} else {
@@ -360,7 +360,7 @@ EXPORT_API int email_verify_signature_ex(email_mail_data_t *input_mail_data, ema
 	}
 
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
@@ -375,7 +375,7 @@ EXPORT_API int email_check_ocsp_status(char *email_address, char *response_url, 
 	HIPC_API hAPI = NULL;
 
 	hAPI = emipc_create_email_api(_EMAIL_API_CHECK_OCSP_STATUS);
-	
+
 	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 
 	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, email_address, EM_SAFE_STRLEN(email_address)+1)) {
@@ -402,9 +402,9 @@ EXPORT_API int email_check_ocsp_status(char *email_address, char *response_url, 
 */
 EXPORT_API int email_validate_certificate(int account_id, char *email_address, unsigned *handle)
 {
-	EM_DEBUG_API_BEGIN ("account_id[%d]", account_id);
+	EM_DEBUG_API_BEGIN("account_id[%d]", account_id);
 	EM_DEBUG_FUNC_BEGIN_SEC("account_id[%d] email_address[%s] handle[%p]", account_id, email_address, handle);
-	
+
 	EM_IF_NULL_RETURN_VALUE(account_id, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(email_address, EMAIL_ERROR_INVALID_PARAM);
 
@@ -436,7 +436,7 @@ EXPORT_API int email_validate_certificate(int account_id, char *email_address, u
 	if (em_get_handle_for_activesync(&as_handle, &err) == false) {
 		EM_DEBUG_EXCEPTION("em_get_handle_for_activesync_failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
-		goto FINISH_OFF;		
+		goto FINISH_OFF;
 	}
 
 	as_noti_data.validate_certificate.handle = as_handle;
@@ -456,15 +456,15 @@ EXPORT_API int email_validate_certificate(int account_id, char *email_address, u
 FINISH_OFF:
 
     EM_SAFE_FREE(multi_user_name);
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_get_resolve_recipients(int account_id, char *email_address, unsigned *handle)
 {
-	EM_DEBUG_API_BEGIN ("account_id[%d]", account_id);
+	EM_DEBUG_API_BEGIN("account_id[%d]", account_id);
 	EM_DEBUG_FUNC_BEGIN_SEC("account_id[%d] email_address[%s] handle[%p]", account_id, email_address, handle);
-	
+
 	EM_IF_NULL_RETURN_VALUE(account_id, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(email_address, EMAIL_ERROR_INVALID_PARAM);
 
@@ -496,7 +496,7 @@ EXPORT_API int email_get_resolve_recipients(int account_id, char *email_address,
 	if (em_get_handle_for_activesync(&as_handle, &err) == false) {
 		EM_DEBUG_EXCEPTION("em_get_handle_for_activesync_failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
-		goto FINISH_OFF;		
+		goto FINISH_OFF;
 	}
 
 	as_noti_data.get_resolve_recipients.handle          = as_handle;
@@ -516,6 +516,6 @@ EXPORT_API int email_get_resolve_recipients(int account_id, char *email_address,
 FINISH_OFF:
 
     EM_SAFE_FREE(multi_user_name);
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }

@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -26,10 +26,10 @@
  * This file contains the data structures and interfaces needed for application,
  * to interact with email-service.
  * @file		email_api_mailbox.c
- * @brief 		This file contains the data structures and interfaces of mailbox related Functionality provided by 
- *			email-service . 
+ * @brief 		This file contains the data structures and interfaces of mailbox related Functionality provided by
+ *			email-service .
  */
- 
+
 #include "string.h"
 #include "email-convert.h"
 #include "email-storage.h"
@@ -43,7 +43,7 @@
 
 EXPORT_API int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, int *handle)
 {
-	EM_DEBUG_API_BEGIN ();
+	EM_DEBUG_API_BEGIN();
 
 	int size = 0;
 	int err = EMAIL_ERROR_NONE;
@@ -61,18 +61,18 @@ EXPORT_API int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, in
     }
 
 	memset(&as_noti_data, 0x00, sizeof(ASNotiData));
-	
+
 	/*  check account bind type and branch off  */
-	if ( em_get_account_server_type_by_account_id(multi_user_name, new_mailbox->account_id, &account_server_type, false, &err) == false ) {
+	if (em_get_account_server_type_by_account_id(multi_user_name, new_mailbox->account_id, &account_server_type, false, &err) == false) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	if ( account_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC && on_server) {
+	if (account_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC && on_server) {
 		int as_handle;
 
-		if ( em_get_handle_for_activesync(&as_handle, &err) == false ) {
+		if (em_get_handle_for_activesync(&as_handle, &err) == false) {
 			EM_DEBUG_EXCEPTION("em_get_handle_for_activesync failed[%d].", err);
 			err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
 			goto FINISH_OFF;
@@ -95,8 +95,7 @@ EXPORT_API int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, in
 
 		if (handle)
 			*handle = as_handle;
-	}
-	else {
+	} else {
 		hAPI = emipc_create_email_api(_EMAIL_API_ADD_MAILBOX);
 
 		EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
@@ -122,7 +121,7 @@ EXPORT_API int email_add_mailbox(email_mailbox_t* new_mailbox, int on_server, in
 		}
 
 		emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
-	
+
 		if (handle) {
 			emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), handle);
 			EM_DEBUG_LOG(" >>>>> Handle [%d]", *handle);
@@ -139,13 +138,13 @@ FINISH_OFF:
 	EM_SAFE_FREE(local_mailbox_stream);
     EM_SAFE_FREE(multi_user_name);
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_name, char *input_mailbox_alias, int input_on_server, int *output_handle)
 {
-	EM_DEBUG_API_BEGIN ("input_mailbox_id[%d] input_mailbox_name[%p] input_mailbox_alias[%p] input_on_server[%d] output_handle[%p]", input_mailbox_id, input_mailbox_name, input_mailbox_alias, input_on_server, output_handle);
+	EM_DEBUG_API_BEGIN("input_mailbox_id[%d] input_mailbox_name[%p] input_mailbox_alias[%p] input_on_server[%d] output_handle[%p]", input_mailbox_id, input_mailbox_name, input_mailbox_alias, input_on_server, output_handle);
 
 	int err = EMAIL_ERROR_NONE;
     char *multi_user_name = NULL;
@@ -202,31 +201,30 @@ EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_na
 
 		if (output_handle)
 			*output_handle = as_handle;
-	}
-	else {
+	} else {
 		hAPI = emipc_create_email_api(_EMAIL_API_RENAME_MAILBOX);
 
-		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &input_mailbox_id, sizeof(int))) {
+		if (!emipc_add_parameter(hAPI, ePARAMETER_IN, &input_mailbox_id, sizeof(int))) {
 			EM_DEBUG_EXCEPTION(" emipc_add_parameter for input_mailbox_id failed");
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 		}
 
-		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, input_mailbox_name, EM_SAFE_STRLEN(input_mailbox_name)+1 )) {
+		if (!emipc_add_parameter(hAPI, ePARAMETER_IN, input_mailbox_name, EM_SAFE_STRLEN(input_mailbox_name)+1)) {
 			EM_DEBUG_EXCEPTION(" emipc_add_parameter for input_mailbox_path failed");
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 		}
 
-		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, input_mailbox_alias, EM_SAFE_STRLEN(input_mailbox_alias)+1 )) {
+		if (!emipc_add_parameter(hAPI, ePARAMETER_IN, input_mailbox_alias, EM_SAFE_STRLEN(input_mailbox_alias)+1)) {
 			EM_DEBUG_EXCEPTION(" emipc_add_parameter for input_mailbox_alias failed");
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 		}
 
-		if(!emipc_add_parameter(hAPI, ePARAMETER_IN, &input_on_server, sizeof(int))) {
+		if (!emipc_add_parameter(hAPI, ePARAMETER_IN, &input_on_server, sizeof(int))) {
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 		}
 
-		if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+		if (emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
 		}
@@ -243,13 +241,13 @@ FINISH_OFF:
 		emstorage_free_mailbox(&mailbox_tbl, 1, NULL);
 
     EM_SAFE_FREE(multi_user_name);
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_rename_mailbox_ex(int input_mailbox_id, char *input_mailbox_name, char *input_mailbox_alias, void *input_eas_data, int input_eas_data_length, int input_on_server, int *output_handle)
 {
-	EM_DEBUG_API_BEGIN ("input_mailbox_id[%d] input_mailbox_name[%p] input_mailbox_alias[%p] input_eas_data[%p] input_eas_data_length[%d] input_on_server[%d] output_handle[%p]", input_mailbox_id, input_mailbox_name, input_mailbox_alias, input_eas_data, input_eas_data_length, input_on_server, output_handle);
+	EM_DEBUG_API_BEGIN("input_mailbox_id[%d] input_mailbox_name[%p] input_mailbox_alias[%p] input_eas_data[%p] input_eas_data_length[%d] input_on_server[%d] output_handle[%p]", input_mailbox_id, input_mailbox_name, input_mailbox_alias, input_eas_data, input_eas_data_length, input_on_server, output_handle);
 
 	int err = EMAIL_ERROR_NONE;
     char *multi_user_name = NULL;
@@ -306,8 +304,7 @@ EXPORT_API int email_rename_mailbox_ex(int input_mailbox_id, char *input_mailbox
 
 		if (output_handle)
 			*output_handle = as_handle;
-	}
-	else {
+	} else {
 		hAPI = emipc_create_email_api(_EMAIL_API_RENAME_MAILBOX_EX);
 
 		if (!emipc_add_parameter(hAPI, ePARAMETER_IN, &input_mailbox_id, sizeof(int))) {
@@ -315,17 +312,17 @@ EXPORT_API int email_rename_mailbox_ex(int input_mailbox_id, char *input_mailbox
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 		}
 
-		if (!emipc_add_parameter(hAPI, ePARAMETER_IN, input_mailbox_name, EM_SAFE_STRLEN(input_mailbox_name)+1 )) {
+		if (!emipc_add_parameter(hAPI, ePARAMETER_IN, input_mailbox_name, EM_SAFE_STRLEN(input_mailbox_name)+1)) {
 			EM_DEBUG_EXCEPTION(" emipc_add_parameter for input_mailbox_path failed");
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 		}
 
-		if (!emipc_add_parameter(hAPI, ePARAMETER_IN, input_mailbox_alias, EM_SAFE_STRLEN(input_mailbox_alias)+1 )) {
+		if (!emipc_add_parameter(hAPI, ePARAMETER_IN, input_mailbox_alias, EM_SAFE_STRLEN(input_mailbox_alias)+1)) {
 			EM_DEBUG_EXCEPTION(" emipc_add_parameter for input_mailbox_alias failed");
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 		}
 
-		if (!emipc_add_parameter(hAPI, ePARAMETER_IN, input_eas_data, input_eas_data_length )) {
+		if (!emipc_add_parameter(hAPI, ePARAMETER_IN, input_eas_data, input_eas_data_length)) {
 			EM_DEBUG_EXCEPTION(" emipc_add_parameter for input_eas_data failed");
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_NULL_VALUE);
 		}
@@ -352,7 +349,7 @@ FINISH_OFF:
 		emstorage_free_mailbox(&mailbox_tbl, 1, NULL);
 
     EM_SAFE_FREE(multi_user_name);
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
@@ -361,15 +358,15 @@ FINISH_OFF:
 
 EXPORT_API int email_delete_mailbox(int input_mailbox_id, int input_on_server, int *output_handle)
 {
-	EM_DEBUG_API_BEGIN ("input_mailbox_id[%d] input_on_server[%d] output_handle[%p]", input_mailbox_id, input_on_server, output_handle);
-	
+	EM_DEBUG_API_BEGIN("input_mailbox_id[%d] input_on_server[%d] output_handle[%p]", input_mailbox_id, input_on_server, output_handle);
+
 	int err = EMAIL_ERROR_NONE;
     char *multi_user_name = NULL;
 	email_account_server_t account_server_type;
 	emstorage_mailbox_tbl_t *mailbox_tbl = NULL;
 	HIPC_API hAPI = NULL;
 	ASNotiData as_noti_data;
-	
+
 	EM_IF_NULL_RETURN_VALUE(input_mailbox_id, EMAIL_ERROR_INVALID_PARAM);
 
     if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
@@ -412,8 +409,7 @@ EXPORT_API int email_delete_mailbox(int input_mailbox_id, int input_on_server, i
 
 		if (output_handle)
 			*output_handle = as_handle;
-	}
-	else {
+	} else {
 		hAPI = emipc_create_email_api(_EMAIL_API_DELETE_MAILBOX);
 
 		EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
@@ -450,17 +446,17 @@ FINISH_OFF:
 	}
 
     EM_SAFE_FREE(multi_user_name);
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
-EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_id_array, 
-										int input_mailbox_id_count, int input_on_server, 
+EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_id_array,
+										int input_mailbox_id_count, int input_on_server,
 										int *output_handle)
 {
-	EM_DEBUG_API_BEGIN ("input_account_id[%d] input_mailbox_id_array[%p] "
+	EM_DEBUG_API_BEGIN("input_account_id[%d] input_mailbox_id_array[%p] "
 						"input_mailbox_id_count[%d] input_on_server[%d] "
-						"output_handle[%p]", input_mailbox_id_array, input_mailbox_id_array, 
+						"output_handle[%p]", input_mailbox_id_array, input_mailbox_id_array,
 						input_mailbox_id_count, input_on_server, output_handle);
 
 	int err = EMAIL_ERROR_NONE;
@@ -480,10 +476,10 @@ EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_
     }
 
 	/*  check account bind type and branch off  */
-	if (em_get_account_server_type_by_account_id(multi_user_name, 
-													input_account_id, 
-													&account_server_type, 
-													false, 
+	if (em_get_account_server_type_by_account_id(multi_user_name,
+													input_account_id,
+													&account_server_type,
+													false,
 													&err) == false) {
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		err = EMAIL_ERROR_ACTIVE_SYNC_NOTI_FAILURE;
@@ -516,14 +512,13 @@ EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_
 
 		if (output_handle)
 			*output_handle = as_handle;
-	}
-	else {
+	} else {
 		task_parameter.account_id        = input_account_id;
 		task_parameter.mailbox_id_array  = input_mailbox_id_array;
 		task_parameter.mailbox_id_count  = input_mailbox_id_count;
 		task_parameter.on_server         = input_on_server;
 
-		if ((err = emipc_execute_proxy_task(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, 
+		if ((err = emipc_execute_proxy_task(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX,
 											&task_parameter)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("execute_proxy_task failed [%d]", err);
 			goto FINISH_OFF;
@@ -534,13 +529,13 @@ FINISH_OFF:
 
 	EM_SAFE_FREE(multi_user_name);
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_set_mailbox_type(int input_mailbox_id, email_mailbox_type_e input_mailbox_type)
 {
-	EM_DEBUG_API_BEGIN ("input_mailbox_id[%d] input_mailbox_type[%d]", input_mailbox_id, input_mailbox_type);
+	EM_DEBUG_API_BEGIN("input_mailbox_id[%d] input_mailbox_type[%d]", input_mailbox_id, input_mailbox_type);
 	int err = EMAIL_ERROR_NONE;
 
 	EM_IF_NULL_RETURN_VALUE(input_mailbox_id, EMAIL_ERROR_INVALID_PARAM);
@@ -569,13 +564,13 @@ EXPORT_API int email_set_mailbox_type(int input_mailbox_id, email_mailbox_type_e
 	emipc_destroy_email_api(hAPI);
 	hAPI = NULL;
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_set_local_mailbox(int input_mailbox_id, int input_is_local_mailbox)
 {
-	EM_DEBUG_API_BEGIN ("input_mailbox_id[%d] input_is_local_mailbox[%d]", input_mailbox_id, input_is_local_mailbox);
+	EM_DEBUG_API_BEGIN("input_mailbox_id[%d] input_is_local_mailbox[%d]", input_mailbox_id, input_is_local_mailbox);
 	int err = EMAIL_ERROR_NONE;
 
 	EM_IF_NULL_RETURN_VALUE(input_mailbox_id, EMAIL_ERROR_INVALID_PARAM);
@@ -604,13 +599,13 @@ EXPORT_API int email_set_local_mailbox(int input_mailbox_id, int input_is_local_
 	emipc_destroy_email_api(hAPI);
 	hAPI = NULL;
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_get_sync_mailbox_list(int account_id, email_mailbox_t** mailbox_list, int* count)
 {
-	EM_DEBUG_API_BEGIN ();
+	EM_DEBUG_API_BEGIN();
 	int mailbox_count = 0;
 	int err = EMAIL_ERROR_NONE ;
 	int i = 0;
@@ -631,41 +626,41 @@ EXPORT_API int email_get_sync_mailbox_list(int account_id, email_mailbox_t** mai
 		goto FINISH_OFF;
 	} else
 		err = EMAIL_ERROR_NONE;
-	
+
 	if (mailbox_count > 0)  {
 		if (!(*mailbox_list = em_malloc(sizeof(email_mailbox_t) * mailbox_count)))  {
 			EM_DEBUG_EXCEPTION("malloc failed...");
-			err= EMAIL_ERROR_OUT_OF_MEMORY;
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
 		}
 		for (i = 0; i < mailbox_count; i++)
 			em_convert_mailbox_tbl_to_mailbox(mailbox_tbl_list + i, (*mailbox_list) + i);
 	} else
 		*mailbox_list = NULL;
-	
+
 	*count = mailbox_count;
-	
+
 FINISH_OFF:
 
 	if (mailbox_tbl_list != NULL)
 		emstorage_free_mailbox(&mailbox_tbl_list, mailbox_count, NULL);
 
     EM_SAFE_FREE(multi_user_name);
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 
 EXPORT_API int email_get_mailbox_list(int account_id, int mailbox_sync_type, email_mailbox_t** mailbox_list, int* count)
 {
-	EM_DEBUG_API_BEGIN ();	
+	EM_DEBUG_API_BEGIN();
 
 	int mailbox_count = 0;
-	emstorage_mailbox_tbl_t* mailbox_tbl_list = NULL; 
-	int err =EMAIL_ERROR_NONE;
+	emstorage_mailbox_tbl_t* mailbox_tbl_list = NULL;
+	int err = EMAIL_ERROR_NONE;
 	int i;
     char *multi_user_name = NULL;
-	
+
 	EM_IF_NULL_RETURN_VALUE(mailbox_list, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_ACCOUNT_ID_NULL(account_id, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(count, EMAIL_ERROR_INVALID_PARAM);
@@ -680,11 +675,11 @@ EXPORT_API int email_get_mailbox_list(int account_id, int mailbox_sync_type, ema
 		goto FINISH_OFF;
 	} else
 		err = EMAIL_ERROR_NONE;
-	
+
 	if (mailbox_count > 0)  {
 		if (!(*mailbox_list = em_malloc(sizeof(email_mailbox_t) * mailbox_count)))  {
 			EM_DEBUG_EXCEPTION("malloc failed for mailbox_list");
-			err= EMAIL_ERROR_OUT_OF_MEMORY;
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
 		}
 
@@ -692,7 +687,7 @@ EXPORT_API int email_get_mailbox_list(int account_id, int mailbox_sync_type, ema
 			em_convert_mailbox_tbl_to_mailbox(mailbox_tbl_list + i, (*mailbox_list) + i);
 	} else
 		*mailbox_list = NULL;
-	
+
 	*count = mailbox_count;
 
 FINISH_OFF:
@@ -702,17 +697,17 @@ FINISH_OFF:
 
     EM_SAFE_FREE(multi_user_name);
 
-	EM_DEBUG_API_END ("err [%d]", err);
+	EM_DEBUG_API_END("err [%d]", err);
 	return err;
 }
 
 EXPORT_API int email_get_mailbox_list_ex(int account_id, int mailbox_sync_type, int with_count, email_mailbox_t** mailbox_list, int* count)
 {
-	EM_DEBUG_FUNC_BEGIN ();	
+	EM_DEBUG_FUNC_BEGIN();
 
 	int mailbox_count = 0;
-	emstorage_mailbox_tbl_t* mailbox_tbl_list = NULL; 
-	int err =EMAIL_ERROR_NONE;
+	emstorage_mailbox_tbl_t* mailbox_tbl_list = NULL;
+	int err = EMAIL_ERROR_NONE;
 	int i;
     char *multi_user_name = NULL;
 
@@ -738,17 +733,16 @@ EXPORT_API int email_get_mailbox_list_ex(int account_id, int mailbox_sync_type, 
 	if (mailbox_count > 0)  {
 		if (!(*mailbox_list = em_malloc(sizeof(email_mailbox_t) * mailbox_count)))  {
 			EM_DEBUG_EXCEPTION("malloc failed for mailbox_list");
-			err= EMAIL_ERROR_OUT_OF_MEMORY;
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
 		}
 
-		for (i = 0; i < mailbox_count; i++) 
+		for (i = 0; i < mailbox_count; i++)
 			em_convert_mailbox_tbl_to_mailbox(mailbox_tbl_list + i, (*mailbox_list) + i);
-	}
-	else
+	} else
 		*mailbox_list = NULL;
 
-	if ( count )	
+	if (count)
 		*count = mailbox_count;
 
 FINISH_OFF:
@@ -758,13 +752,13 @@ FINISH_OFF:
 
     EM_SAFE_FREE(multi_user_name);
 
-	EM_DEBUG_FUNC_END ("err[%d]", err);
+	EM_DEBUG_FUNC_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_get_mailbox_list_by_keyword(int account_id, char *keyword, email_mailbox_t** mailbox_list, int* count)
 {
-	EM_DEBUG_API_BEGIN ();
+	EM_DEBUG_API_BEGIN();
 
 	int mailbox_count = 0;
 	emstorage_mailbox_tbl_t* mailbox_tbl_list = NULL;
@@ -788,7 +782,7 @@ EXPORT_API int email_get_mailbox_list_by_keyword(int account_id, char *keyword, 
 	if (mailbox_count > 0) {
 		if (!(*mailbox_list = em_malloc(sizeof(email_mailbox_t) * mailbox_count))) {
 			EM_DEBUG_EXCEPTION("malloc failed for mailbox_list");
-			err= EMAIL_ERROR_OUT_OF_MEMORY;
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
 		}
 
@@ -807,20 +801,20 @@ FINISH_OFF:
 
     EM_SAFE_FREE(multi_user_name);
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_type_e mailbox_type,  email_mailbox_t** mailbox)
 {
-	EM_DEBUG_FUNC_BEGIN ();
-	
+	EM_DEBUG_FUNC_BEGIN();
+
 	int err = EMAIL_ERROR_NONE;
     char *multi_user_name = NULL;
 	email_mailbox_t* curr_mailbox = NULL;
 	emstorage_mailbox_tbl_t* local_mailbox = NULL;
 
-	EM_IF_NULL_RETURN_VALUE(mailbox, EMAIL_ERROR_INVALID_PARAM);	
+	EM_IF_NULL_RETURN_VALUE(mailbox, EMAIL_ERROR_INVALID_PARAM);
 	EM_IF_NULL_RETURN_VALUE(account_id, EMAIL_ERROR_INVALID_PARAM)	;
 
     if ((err = emipc_get_user_name(&multi_user_name)) != EMAIL_ERROR_NONE) {
@@ -849,7 +843,7 @@ EXPORT_API int email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_t
 		em_convert_mailbox_tbl_to_mailbox(local_mailbox, curr_mailbox);
 	}
 
-	*mailbox = curr_mailbox;	
+	*mailbox = curr_mailbox;
 
 FINISH_OFF:
 
@@ -858,13 +852,13 @@ FINISH_OFF:
 
     EM_SAFE_FREE(multi_user_name);
 
-	EM_DEBUG_FUNC_END ("err[%d]", err);
+	EM_DEBUG_FUNC_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_get_mailbox_by_mailbox_id(int input_mailbox_id, email_mailbox_t** output_mailbox)
 {
-	EM_DEBUG_API_BEGIN ();
+	EM_DEBUG_API_BEGIN();
 
 	int err = EMAIL_ERROR_NONE;
     char *multi_user_name = NULL;
@@ -903,13 +897,13 @@ FINISH_OFF:
 
     EM_SAFE_FREE(multi_user_name);
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_set_mail_slot_size(int account_id, int mailbox_id, int new_slot_size)
 {
-	EM_DEBUG_API_BEGIN ("account_id[%d] mailbox_id[%d] new_slot_size[%d]", account_id, mailbox_id, new_slot_size);
+	EM_DEBUG_API_BEGIN("account_id[%d] mailbox_id[%d] new_slot_size[%d]", account_id, mailbox_id, new_slot_size);
 
 	int err = EMAIL_ERROR_NONE;
 
@@ -917,8 +911,8 @@ EXPORT_API int email_set_mail_slot_size(int account_id, int mailbox_id, int new_
 		EM_DEBUG_EXCEPTION("new_slot_size should be greater than 0 or should be equal to 0");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
-	
-	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_SET_MAIL_SLOT_SIZE);	
+
+	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_SET_MAIL_SLOT_SIZE);
 	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
 
 	if (hAPI) {
@@ -940,26 +934,26 @@ EXPORT_API int email_set_mail_slot_size(int account_id, int mailbox_id, int new_
 		if (emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
-		} 
-	
+		}
+
 	 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
 		EM_DEBUG_LOG("email_set_mail_slot_size error VALUE [%d]", err);
 		/*prevent 23139*/
-/*		if(handle) {
+/*		if (handle) {
 			emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), handle);
 			EM_DEBUG_LOG("email_set_mail_slot_size handle VALUE [%d]", handle);
 		} */
 		emipc_destroy_email_api(hAPI);
 		hAPI = NULL;
-		
+
 	}
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_stamp_sync_time_of_mailbox(int input_mailbox_id)
 {
-	EM_DEBUG_API_BEGIN ("input_mailbox_id[%d]", input_mailbox_id);
+	EM_DEBUG_API_BEGIN("input_mailbox_id[%d]", input_mailbox_id);
 
 	int err = EMAIL_ERROR_NONE;
 
@@ -977,21 +971,21 @@ EXPORT_API int email_stamp_sync_time_of_mailbox(int input_mailbox_id)
 		if (emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
 			EM_PROXY_IF_NULL_RETURN_VALUE(0, hAPI, EMAIL_ERROR_IPC_SOCKET_FAILURE);
-		} 
-	
+		}
+
 	 	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
 		EM_DEBUG_LOG("email_stamp_sync_time_of_mailbox error VALUE [%d]", err);
 		emipc_destroy_email_api(hAPI);
 		hAPI = NULL;
 	}
 
-	EM_DEBUG_API_END ("err[%d]", err);
+	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
 
 EXPORT_API int email_free_mailbox(email_mailbox_t** mailbox_list, int count)
 {
-	EM_DEBUG_FUNC_BEGIN ("mailbox_list[%p] count[%d]", mailbox_list, count);
+	EM_DEBUG_FUNC_BEGIN("mailbox_list[%p] count[%d]", mailbox_list, count);
 	int err = EMAIL_ERROR_NONE;
 
 	if (count <= 0 || !mailbox_list || !*mailbox_list) {
@@ -1013,7 +1007,7 @@ EXPORT_API int email_free_mailbox(email_mailbox_t** mailbox_list, int count)
 	*mailbox_list = NULL;
 
 FINISH_OFF:
-	EM_DEBUG_FUNC_END ("err[%d]", err);
+	EM_DEBUG_FUNC_END("err[%d]", err);
 	return err;
 
 }

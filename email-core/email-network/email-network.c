@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -41,7 +41,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <email-storage.h> 
+#include <email-storage.h>
 #include <vconf.h>
 #include "glib.h"
 
@@ -50,7 +50,7 @@
 #include "c-client.h"
 #include "email-debug-log.h"
 #include "email-types.h"
-#include "email-core-utils.h" 
+#include "email-core-utils.h"
 #include "email-core-mailbox.h"
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
@@ -81,7 +81,7 @@ static int  _get_sim_status(int *sim_status)
 	EM_DEBUG_FUNC_BEGIN();
 	int value;
 
-	if(!sim_status) {
+	if (!sim_status) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
@@ -103,7 +103,7 @@ static int _get_flight_mode(int *flight_mode)
 	EM_DEBUG_FUNC_BEGIN();
 	int value;
 
-	if(!flight_mode) {
+	if (!flight_mode) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
@@ -128,7 +128,7 @@ INTERNAL_FUNC int emnetwork_get_wifi_status(int *wifi_status)
 
 	int value;
 
-	if(!wifi_status) {
+	if (!wifi_status) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
@@ -165,7 +165,7 @@ INTERNAL_FUNC int emnetwork_check_network_status(int *err_code)
 		if (flight_mode) {
 			EM_DEBUG_LOG("Flight mode enable");
 			err = EMAIL_ERROR_FLIGHT_MODE_ENABLE;
-			goto FINISH_OFF;			
+			goto FINISH_OFF;
 		}
 
 		if ((err = emnetwork_get_wifi_status(&wifi_status)) != EMAIL_ERROR_NONE) {
@@ -176,7 +176,7 @@ INTERNAL_FUNC int emnetwork_check_network_status(int *err_code)
 		if (wifi_status == 0) {
 			EM_DEBUG_LOG("Furthermore, WIFI is off");
 
-			if ( (err = _get_sim_status(&sim_status)) != EMAIL_ERROR_NONE) {
+			if ((err = _get_sim_status(&sim_status)) != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("_get_sim_status failed [%d]", err);
 				goto FINISH_OFF;
 			}
@@ -196,7 +196,7 @@ INTERNAL_FUNC int emnetwork_check_network_status(int *err_code)
 	EM_DEBUG_LOG("Data Network Mode is ON");
 	ret = true;
 
-FINISH_OFF: 
+FINISH_OFF:
 
 	emcore_set_network_error(err);
 
@@ -214,7 +214,7 @@ INTERNAL_FUNC int emnetwork_get_roaming_status(int *output_roaming_status)
 
 	int value;
 
-	if(!output_roaming_status) {
+	if (!output_roaming_status) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
@@ -225,7 +225,7 @@ INTERNAL_FUNC int emnetwork_get_roaming_status(int *output_roaming_status)
 	}
 
 	/* VCONFKEY_TELEPHONY_SVC_ROAM or VCONFKEY_TELEPHONY_SVC_ROAM_OFF */
-	if(value == VCONFKEY_TELEPHONY_SVC_ROAM_ON)
+	if (value == VCONFKEY_TELEPHONY_SVC_ROAM_ON)
 		*output_roaming_status = 1;
 	else
 		*output_roaming_status = 0;
@@ -267,8 +267,7 @@ INTERNAL_FUNC long tcp_getbuffer_lnx(TCPSTREAM *stream, unsigned long size, char
 		if (stream->ictr >= size) {
 			memcpy(p, stream->iptr, size);
 			copy_sz = size;
-		}
-		else {
+		} else {
 			memcpy(p, stream->iptr, stream->ictr);
 			copy_sz = stream->ictr;
 		}
@@ -281,8 +280,7 @@ INTERNAL_FUNC long tcp_getbuffer_lnx(TCPSTREAM *stream, unsigned long size, char
 			*p = '\0';
 			return 1;
 		}
-	}
-	else {
+	} else {
 		nleave = size;
 	}
 
@@ -297,8 +295,7 @@ INTERNAL_FUNC long tcp_getbuffer_lnx(TCPSTREAM *stream, unsigned long size, char
 			EM_DEBUG_EXCEPTION("select error[%d]\n", errno);
 			tcp_abort(stream);
 			return 0;
-		}
-		else if (!sret) {
+		} else if (!sret) {
 			if (max_timeout >= 5) {
 				EM_DEBUG_EXCEPTION("max select timeout %d", max_timeout);
 				emcore_set_network_error(EMAIL_ERROR_NO_RESPONSE);
@@ -353,8 +350,7 @@ INTERNAL_FUNC long tcp_sout_lnx(TCPSTREAM *stream, char *string, unsigned long s
 			EM_DEBUG_LOG("select error[%d]", errno);
 			tcp_abort(stream);
 			return 0;
-		}
-		else if (!sret) {
+		} else if (!sret) {
 			if (max_timeout >= 50) {
 				EM_DEBUG_EXCEPTION("max select timeout %d", max_timeout);
 				emcore_set_network_error(EMAIL_ERROR_NO_RESPONSE);

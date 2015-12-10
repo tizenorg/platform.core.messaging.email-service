@@ -83,7 +83,7 @@ void stb_create_account(HIPC_API a_hAPI)
 
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, 0);
 	EM_DEBUG_LOG("size [%d]", buffer_size);
-	if(buffer_size <= 0)	{
+	if (buffer_size <= 0)	{
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
@@ -96,7 +96,7 @@ void stb_create_account(HIPC_API a_hAPI)
 	EM_DEBUG_LOG_SEC("Email Address - %s", account.user_email_address);
     EM_DEBUG_LOG("Multi user name - %s", account.user_name);
 
-	if(!emdaemon_create_account(multi_user_name, &account, &err)) {
+	if (!emdaemon_create_account(multi_user_name, &account, &err)) {
 		EM_DEBUG_EXCEPTION("emdaemon_create_account fail ");
 		goto FINISH_OFF;
 	}
@@ -104,33 +104,33 @@ void stb_create_account(HIPC_API a_hAPI)
 
 #ifdef __FEATURE_AUTO_POLLING__
 	/* start auto polling, if check_interval not zero */
-	if(account.check_interval > 0 || (account.peak_days > 0 && account.peak_interval > 0)) {
-		if(!emdaemon_add_polling_alarm(multi_user_name, account.account_id))
+	if (account.check_interval > 0 || (account.peak_days > 0 && account.peak_interval > 0)) {
+		if (!emdaemon_add_polling_alarm(multi_user_name, account.account_id))
 			EM_DEBUG_EXCEPTION("emdaemon_add_polling_alarm[NOTI_ACCOUNT_ADD] : start auto poll failed >>> ");
 	}
 #ifdef __FEATURE_IMAP_IDLE__
-	else if(account.check_interval == 0 || (account.peak_days > 0 && account.peak_interval == 0))
+	else if (account.check_interval == 0 || (account.peak_days > 0 && account.peak_interval == 0))
 		emcore_refresh_imap_idle_thread();
 #endif /* __FEATURE_IMAP_IDLE__ */
 
 #endif
 
 	local_result = 1;
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	EM_DEBUG_LOG("[3] APPID[%d], APIID [%d]", emipc_get_app_id(a_hAPI), emipc_get_api_id(a_hAPI));
 	EM_DEBUG_LOG("account id[%d]", account.account_id);
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &(account.account_id), sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &(account.account_id), sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 FINISH_OFF:
 
-	if ( local_result == 0 ) {
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+	if (local_result == 0) {
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed : local_result ");
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed : err");
 	}
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -141,10 +141,10 @@ FINISH_OFF:
 	//emcore_init_account_reference();
 
 	if (local_result == 1) {
-		if (!emcore_notify_storage_event (NOTI_ACCOUNT_ADD_FINISH, account.account_id, 0, NULL, 0))
+		if (!emcore_notify_storage_event(NOTI_ACCOUNT_ADD_FINISH, account.account_id, 0, NULL, 0))
 			EM_DEBUG_EXCEPTION("emcore_notify_storage_event[NOTI_ACCOUNT_ADD] : Notification failed");
 	} else {
-		if (!emcore_notify_storage_event (NOTI_ACCOUNT_ADD_FAIL, account.account_id, 0, NULL, 0))
+		if (!emcore_notify_storage_event(NOTI_ACCOUNT_ADD_FAIL, account.account_id, 0, NULL, 0))
 			EM_DEBUG_EXCEPTION("emcore_notify_storage_event[NOTI_ACCOUNT_ADD] : Notification failed");
 	}
 
@@ -174,12 +174,12 @@ void stb_delete_account(HIPC_API a_hAPI)
 		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
 		goto FINISH_OFF;
 	}
-	
-	if(!emdaemon_delete_account(multi_user_name, account_id, &err)) {
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+
+	if (!emdaemon_delete_account(multi_user_name, account_id, &err)) {
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 			EM_DEBUG_LOG("emipc_add_parameter failed ");
 
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 		if (!emipc_execute_stub_api(a_hAPI))
@@ -189,22 +189,22 @@ void stb_delete_account(HIPC_API a_hAPI)
 
 #ifdef __FEATURE_AUTO_POLLING__
 	/* stop auto polling for this acount */
-	if(emdaemon_check_auto_polling_started(account_id)) {
-		if(!emdaemon_remove_polling_alarm(account_id))
+	if (emdaemon_check_auto_polling_started(account_id)) {
+		if (!emdaemon_remove_polling_alarm(account_id))
 			EM_DEBUG_EXCEPTION("emdaemon_remove_polling_alarm[ NOTI_ACCOUNT_DELETE] : remove auto poll failed >>> ");
 	}
 #endif
 	local_result = 1;
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
 	/* if file is not deleted, main thread kills the thread */
-	emcore_send_signal_for_del_account (EMAIL_SIGNAL_DB_DELETED);
-	EM_DEBUG_LOG ("publish db of account deleted");
+	emcore_send_signal_for_del_account(EMAIL_SIGNAL_DB_DELETED);
+	EM_DEBUG_LOG("publish db of account deleted");
 
 FINISH_OFF:
 
@@ -250,14 +250,13 @@ void stb_update_account(HIPC_API a_hAPI)
 		goto FINISH_OFF;
 	}
 
-	if(with_validation) {
-		if(!emdaemon_validate_account_and_update(multi_user_name, account_id, &new_account_info, &handle, &err)){
+	if (with_validation) {
+		if (!emdaemon_validate_account_and_update(multi_user_name, account_id, &new_account_info, &handle, &err)) {
 			EM_DEBUG_EXCEPTION("emdaemon_validate_account_and_update failed [%d]", err);
 			goto FINISH_OFF;
 		}
-	}
-	else {
-		if(!emdaemon_update_account(multi_user_name, account_id, &new_account_info, &err)) {
+	} else {
+		if (!emdaemon_update_account(multi_user_name, account_id, &new_account_info, &err)) {
 			EM_DEBUG_EXCEPTION("emdaemon_update_account failed [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -266,7 +265,7 @@ void stb_update_account(HIPC_API a_hAPI)
 
 FINISH_OFF:
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -298,13 +297,13 @@ void stb_validate_account(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 	local_result = emdaemon_validate_account(multi_user_name, account_id, &handle, &err_code);
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 		EM_DEBUG_LOG("emipc_add_parameter failed ");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err_code, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err_code, sizeof(int)))
         EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter result failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -320,7 +319,7 @@ void stb_get_account_list(HIPC_API a_hAPI)
 	EM_DEBUG_FUNC_BEGIN();
 
 	int local_result = 0;
-	int i= 0;
+	int i = 0;
 	char* local_stream = NULL;
 	email_account_t* account_list;
 	int count;
@@ -334,28 +333,28 @@ void stb_get_account_list(HIPC_API a_hAPI)
         multi_user_name = NULL;
     }
 
-	if(emdaemon_get_account_list(multi_user_name, &account_list, &count, &err)) {
+	if (emdaemon_get_account_list(multi_user_name, &account_list, &count, &err)) {
 		EM_DEBUG_LOG("emdaemon_get_account_list success");
 		local_result = 1;
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
 
 		EM_DEBUG_LOG("Count [%d]", count);
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &count, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &count, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter count failed ");
 
-		for(i=0; i<count; i++) {
+		for (i = 0; i < count; i++) {
 			EM_DEBUG_LOG_SEC("Name - %s", account_list[i].account_name);
 
 			local_stream = em_convert_account_to_byte_stream(account_list+i, &size);
 
 			if (!local_stream) {
-				EM_DEBUG_EXCEPTION ("INVALID PARAM: local_stream NULL ");
+				EM_DEBUG_EXCEPTION("INVALID PARAM: local_stream NULL ");
 				emcore_free_account_list(&account_list, count, NULL);
 				return;
 			}
 
-			if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, local_stream, size))
+			if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, local_stream, size))
 				EM_DEBUG_EXCEPTION("Add  Param mailbox failed  ");
 
 			size = 0;
@@ -369,9 +368,9 @@ void stb_get_account_list(HIPC_API a_hAPI)
 
 	else {
 		EM_DEBUG_LOG("emdaemon_get_account_list failed");
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed : err");
 		if (!emipc_execute_stub_api(a_hAPI))
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
@@ -403,13 +402,13 @@ void stb_sync_header(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &maibox_id);
 	EM_DEBUG_LOG("account_id [%d] maibox_id [%d]", account_id, maibox_id);
 
-	if(!emdaemon_sync_header(multi_user_name, account_id, maibox_id, &handle, &err)) {
-		EM_DEBUG_EXCEPTION ("emdaemon_sync_header failed [%d]", err);
+	if (!emdaemon_sync_header(multi_user_name, account_id, maibox_id, &handle, &err)) {
+		EM_DEBUG_EXCEPTION("emdaemon_sync_header failed [%d]", err);
 	}
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
@@ -453,10 +452,10 @@ void stb_download_body(HIPC_API a_hAPI)
 
 FINISH_OFF:
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 	    EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -489,7 +488,7 @@ void stb_create_mailbox(HIPC_API a_hAPI)
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, 0);
 	EM_DEBUG_LOG("size [%d]", buffer_size);
 
-	if(buffer_size <= 0) {
+	if (buffer_size <= 0) {
 		EM_DEBUG_EXCEPTION("buffer_size(%d) should be greater than 0", buffer_size);
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -511,11 +510,11 @@ FINISH_OFF:
 	emcore_free_mailbox(&mailbox);
     EM_SAFE_FREE(multi_user_name);
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed 1");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed 2");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &mailbox.mailbox_id, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &mailbox.mailbox_id, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed 3");
 
 	if (!emipc_execute_stub_api(a_hAPI)) {
@@ -553,12 +552,12 @@ void stb_delete_mailbox(HIPC_API a_hAPI)
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &on_server);
 
-	if(emdaemon_delete_mailbox(multi_user_name, input_mailbox_id, on_server, &handle, &err))
+	if (emdaemon_delete_mailbox(multi_user_name, input_mailbox_id, on_server, &handle, &err))
 		err = EMAIL_ERROR_NONE;
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -588,10 +587,10 @@ void stb_set_mailbox_type(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &mailbox_type);
 	EM_DEBUG_LOG("mailbox_type[%d]", mailbox_type);
 
-	if( (err = emdaemon_set_mailbox_type(multi_user_name, mailbox_id, mailbox_type)) != EMAIL_ERROR_NONE)
+	if ((err = emdaemon_set_mailbox_type(multi_user_name, mailbox_id, mailbox_type)) != EMAIL_ERROR_NONE)
 		err = EMAIL_ERROR_NONE;
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed 1");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -621,10 +620,10 @@ void stb_set_local_mailbox(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &is_local_mailbox);
 	EM_DEBUG_LOG("is_local_mailbox[%d]", is_local_mailbox);
 
-	if( (err = emdaemon_set_local_mailbox(multi_user_name, mailbox_id, is_local_mailbox)) != EMAIL_ERROR_NONE)
+	if ((err = emdaemon_set_local_mailbox(multi_user_name, mailbox_id, is_local_mailbox)) != EMAIL_ERROR_NONE)
 		err = EMAIL_ERROR_NONE;
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed 1");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -652,7 +651,7 @@ void stb_stamp_sync_time_of_mailbox(HIPC_API a_hAPI)
 
 	err = emstorage_stamp_last_sync_time_of_mailbox(multi_user_name, mailbox_id, 1);
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed 1");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -687,12 +686,12 @@ void stb_set_mail_slot_size_of_mailbox(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, sizeof(int), &mail_slot_size);
 	EM_DEBUG_LOG("mail_slot_size[%d]", mail_slot_size);
 
-	if(emdaemon_set_mail_slot_size_of_mailbox(multi_user_name, account_id, mailbox_id, mail_slot_size, &handle, &err))
+	if (emdaemon_set_mail_slot_size_of_mailbox(multi_user_name, account_id, mailbox_id, mail_slot_size, &handle, &err))
 		err = EMAIL_ERROR_NONE;
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed 1");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed 2");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -725,7 +724,7 @@ void stb_rename_mailbox(HIPC_API a_hAPI)
 
 	buffer_size = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 1);
 	EM_DEBUG_LOG("mailbox_path string size[%d]", buffer_size);
-	if(buffer_size > 0)	  {
+	if (buffer_size > 0)	  {
 		mailbox_path = (char*)em_malloc(buffer_size);
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, buffer_size, mailbox_path);
 		EM_DEBUG_LOG_SEC("mailbox_path [%s]", mailbox_path);
@@ -733,7 +732,7 @@ void stb_rename_mailbox(HIPC_API a_hAPI)
 
 	buffer_size = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 2);
 	EM_DEBUG_LOG("mailbox_alias string size[%d]", buffer_size);
-	if(buffer_size > 0)	  {
+	if (buffer_size > 0)	  {
 		mailbox_alias = (char*)em_malloc(buffer_size);
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, buffer_size, mailbox_alias);
 		EM_DEBUG_LOG_SEC("mailbox_alias [%s]", mailbox_alias);
@@ -746,10 +745,10 @@ void stb_rename_mailbox(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("emdaemon_rename_mailbox failed [%d]", err);
 	}
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed 1");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed 2");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -787,7 +786,7 @@ void stb_rename_mailbox_ex(HIPC_API a_hAPI)
 
 	buffer_size = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 1);
 	EM_DEBUG_LOG("mailbox_path string size[%d]", buffer_size);
-	if(buffer_size > 0)	  {
+	if (buffer_size > 0)	  {
 		mailbox_path = (char*)em_malloc(buffer_size);
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, buffer_size, mailbox_path);
 		EM_DEBUG_LOG_SEC("mailbox_path [%s]", mailbox_path);
@@ -795,7 +794,7 @@ void stb_rename_mailbox_ex(HIPC_API a_hAPI)
 
 	buffer_size = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 2);
 	EM_DEBUG_LOG("mailbox_alias string size[%d]", buffer_size);
-	if(buffer_size > 0)	  {
+	if (buffer_size > 0)	  {
 		mailbox_alias = (char*)em_malloc(buffer_size);
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, buffer_size, mailbox_alias);
 		EM_DEBUG_LOG_SEC("mailbox_alias [%s]", mailbox_alias);
@@ -803,7 +802,7 @@ void stb_rename_mailbox_ex(HIPC_API a_hAPI)
 
 	eas_data_length = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 3);
 	EM_DEBUG_LOG("eas_data_length  size[%d]", eas_data_length);
-	if(eas_data_length > 0)	  {
+	if (eas_data_length > 0)	  {
 		eas_data = (char*)em_malloc(eas_data_length);
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 3, eas_data_length, eas_data);
 	}
@@ -815,10 +814,10 @@ void stb_rename_mailbox_ex(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("emdaemon_rename_mailbox failed [%d]", err);
 	}
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed 1");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed 2");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -851,17 +850,16 @@ void stb_send_mail(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &mail_id);
 	EM_DEBUG_LOG("mail_id [%d]", mail_id);
 
-	if(emdaemon_send_mail(multi_user_name, mail_id, &handle, &err)) {
+	if (emdaemon_send_mail(multi_user_name, mail_id, &handle, &err)) {
 		err = EMAIL_ERROR_NONE;
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter result failed ");
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter result failed ");
 		if (!emipc_execute_stub_api(a_hAPI))
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
-	}
-	else {
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	} else {
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 		if (!emipc_execute_stub_api(a_hAPI))
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
@@ -892,16 +890,16 @@ void stb_query_smtp_mail_size_limit(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 	EM_DEBUG_LOG("account_id [%d]", account_id);
 
-	if(emdaemon_query_smtp_mail_size_limit(multi_user_name, account_id, &handle, &err)) {
+	if (emdaemon_query_smtp_mail_size_limit(multi_user_name, account_id, &handle, &err)) {
 		err = EMAIL_ERROR_NONE;
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter result failed ");
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter result failed ");
 		if (!emipc_execute_stub_api(a_hAPI))
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 	} else {
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 		if (!emipc_execute_stub_api(a_hAPI))
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
@@ -932,29 +930,29 @@ void stb_get_mailbox_list(HIPC_API a_hAPI)
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 
-	if(emdaemon_get_mailbox_list(multi_user_name, account_id, &mailbox_list, &count, &err))
+	if (emdaemon_get_mailbox_list(multi_user_name, account_id, &mailbox_list, &count, &err))
 		EM_DEBUG_LOG("emdaemon_get_mailbox_list - success");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
-	if(EMAIL_ERROR_NONE == err) {
+	if (EMAIL_ERROR_NONE == err) {
 		EM_DEBUG_LOG("Count [%d]", count);
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &count, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &count, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
-		for(counter=0; counter<count; counter++) {
+		for (counter = 0; counter < count; counter++) {
 			EM_DEBUG_LOG_SEC("Name - %s", mailbox_list[counter].mailbox_name);
 
 			local_stream = em_convert_mailbox_to_byte_stream(mailbox_list+counter, &size);
 
 			if (!local_stream) {
-				EM_DEBUG_EXCEPTION ("INVALID PARAM: local_stream NULL ");
+				EM_DEBUG_EXCEPTION("INVALID PARAM: local_stream NULL ");
 				emcore_free_mailbox_list(&mailbox_list, count);
 				return;
 			}
 
-			if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, local_stream, size))
+			if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, local_stream, size))
 				EM_DEBUG_EXCEPTION("Add  Param mailbox failed  ");
 
 			EM_SAFE_FREE(local_stream);
@@ -993,7 +991,7 @@ void stb_delete_all_mails(HIPC_API a_hAPI)
 
 	emdaemon_delete_mail_all(multi_user_name, mailbox_id, from_server, NULL, &err);
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
@@ -1040,7 +1038,7 @@ void stb_delete_mail(HIPC_API a_hAPI)
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, num * sizeof(int), mail_ids);
 
-	for(counter = 0; counter < num; counter++)
+	for (counter = 0; counter < num; counter++)
 		EM_DEBUG_LOG("mail_ids [%d]", mail_ids[counter]);
 
 	/* from_server */
@@ -1053,18 +1051,18 @@ void stb_delete_mail(HIPC_API a_hAPI)
 		goto FINISH_OFF;
 	}
 
-	emdaemon_delete_mail(multi_user_name, 
-							mailbox_tbl->account_id, 
-							mailbox_id, 
-							mail_ids, 
-							num, 
-							from_server, 
-							NULL, 
+	emdaemon_delete_mail(multi_user_name,
+							mailbox_tbl->account_id,
+							mailbox_id,
+							mail_ids,
+							num,
+							from_server,
+							NULL,
 							&err);
 
 FINISH_OFF:
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -1079,7 +1077,7 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END();
 }
 
-void stb_clear_mail_data (HIPC_API a_hAPI)
+void stb_clear_mail_data(HIPC_API a_hAPI)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
@@ -1092,12 +1090,12 @@ void stb_clear_mail_data (HIPC_API a_hAPI)
         multi_user_name = NULL;
     }
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed : err");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
-	if(emdaemon_clear_all_mail_data(multi_user_name, &err)) {
+	if (emdaemon_clear_all_mail_data(multi_user_name, &err)) {
 		EM_DEBUG_LOG(">>> stb_clear_mail_data Success [ %d]  >> ", err);
 	}
 
@@ -1121,13 +1119,13 @@ void stb_add_rule(HIPC_API a_hAPI)
     }
 
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, 0);
-	if(buffer_size <= 0) {
+	if (buffer_size <= 0) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
 	local_rule_stream = (char*)	emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0);
-	if(!local_rule_stream) {
+	if (!local_rule_stream) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
@@ -1139,7 +1137,7 @@ void stb_add_rule(HIPC_API a_hAPI)
 
 FINISH_OFF:
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &rule.filter_id, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
@@ -1160,7 +1158,7 @@ void stb_get_rule(HIPC_API a_hAPI)
 	int err = EMAIL_ERROR_NONE;
 	int filter_id = 0;
 	email_rule_t* rule = NULL;
-	int size =0;
+	int size = 0;
 	char* local_rule_stream = NULL;
     int nAPPID = emipc_get_app_id(a_hAPI);
     char *multi_user_name = NULL;
@@ -1208,7 +1206,7 @@ FINISH_OFF:
 		free(rule);
 	}
 
-	EM_SAFE_FREE(local_rule_stream);	
+	EM_SAFE_FREE(local_rule_stream);
     EM_SAFE_FREE(multi_user_name);
 
 	EM_DEBUG_FUNC_END();
@@ -1234,23 +1232,23 @@ void stb_get_rule_list(HIPC_API a_hAPI)
 
 	emdaemon_get_filter_list(multi_user_name, &filtering_list, &count, &err);
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	/* insert rules if there exist rules*/
-	if( count > 0 ) {
+	if (count > 0) {
 		EM_DEBUG_LOG("num of rules [%d]", count);
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &count, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &count, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
-		for(i=0; i<count; i++) {
+		for (i = 0; i < count; i++) {
 			EM_DEBUG_LOG("Value - %s", filtering_list[i].value);
 
 			local_stream = em_convert_rule_to_byte_stream(filtering_list+i, &size);
 
-			if(!local_stream) break;
+			if (!local_stream) break;
 
-			if(!emipc_add_dynamic_parameter(a_hAPI, ePARAMETER_OUT, local_stream, size))
+			if (!emipc_add_dynamic_parameter(a_hAPI, ePARAMETER_OUT, local_stream, size))
 				EM_DEBUG_EXCEPTION("emipc_add_dynamic_parameter failed  ");
 
 			size = 0;
@@ -1282,7 +1280,7 @@ void stb_find_rule(HIPC_API a_hAPI)
     }
 
 	buffer_size = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 0);
-	if(buffer_size > 0)	 {
+	if (buffer_size > 0)	 {
 		local_rule_stream = (char*)em_malloc(buffer_size);
 		if (local_rule_stream == NULL) {
 			EM_DEBUG_EXCEPTION("Out of memory");
@@ -1304,7 +1302,7 @@ void stb_find_rule(HIPC_API a_hAPI)
 
 FINISH_OFF:
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -1343,12 +1341,12 @@ void stb_update_rule(HIPC_API a_hAPI)
 	/* get rule */
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, 1);
 	EM_DEBUG_LOG("size [%d]", buffer_size);
-	if(buffer_size <= 0)  {
+	if (buffer_size <= 0)  {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 	rule_stream	= (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 1);
-	if(!rule_stream) {
+	if (!rule_stream) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
@@ -1358,7 +1356,7 @@ void stb_update_rule(HIPC_API a_hAPI)
 	emdaemon_update_filter(multi_user_name, filter_id, &rule, &err);
 
 FINISH_OFF:
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -1401,10 +1399,10 @@ void stb_move_all_mails(HIPC_API a_hAPI)
 	else
 		EM_DEBUG_LOG("dst_mailbox_id == 0");
 
-	if(emdaemon_move_mail_all_mails(multi_user_name, src_mailbox_id, dst_mailbox_id, &err))
+	if (emdaemon_move_mail_all_mails(multi_user_name, src_mailbox_id, dst_mailbox_id, &err))
 		EM_DEBUG_LOG("emdaemon_move_mail_all_mails:Success");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 	}
 
@@ -1446,7 +1444,7 @@ void stb_set_flags_field(HIPC_API a_hAPI)
 	/* mail_id */
 	mail_ids = em_malloc(sizeof(int) * num);
 
-	if(!mail_ids) {
+	if (!mail_ids) {
 		EM_DEBUG_EXCEPTION("em_malloc failed ");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
@@ -1454,7 +1452,7 @@ void stb_set_flags_field(HIPC_API a_hAPI)
 
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, num * sizeof(int), mail_ids);
 
-	for(counter=0; counter < num; counter++)
+	for (counter = 0; counter < num; counter++)
 		EM_DEBUG_LOG("mailids [%d]", mail_ids[counter]);
 
 	/* field type */
@@ -1469,12 +1467,12 @@ void stb_set_flags_field(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 5, sizeof(int), &onserver);
 	EM_DEBUG_LOG("onserver [%d]", onserver);
 
-	if(emdaemon_set_flags_field(multi_user_name, account_id, mail_ids, num, field_type, value, onserver, &err))
+	if (emdaemon_set_flags_field(multi_user_name, account_id, mail_ids, num, field_type, value, onserver, &err))
 		EM_DEBUG_LOG("emdaemon_set_flags_field - success");
 
 FINISH_OFF:
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -1517,7 +1515,7 @@ void stb_add_mail(HIPC_API a_hAPI)
 	EM_DEBUG_LOG("email_mail_data_t buffer_size[%d]", buffer_size);
 
 	/* mail_data */
-	if(buffer_size > 0)	 {
+	if (buffer_size > 0)	 {
 		char *stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
 		em_convert_byte_stream_to_mail_data(stream, buffer_size, &result_mail_data);
 	}
@@ -1577,7 +1575,7 @@ void stb_add_mail(HIPC_API a_hAPI)
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
 	EM_DEBUG_LOG("email_attachment_data_t buffer_size[%d]", buffer_size);
 
-	if(buffer_size > 0)	 {
+	if (buffer_size > 0)	 {
 		char *stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index);
 		em_convert_byte_stream_to_attachment_data(stream, buffer_size, &result_attachment_data, &result_attachment_data_count);
 
@@ -1585,7 +1583,7 @@ void stb_add_mail(HIPC_API a_hAPI)
 		if (!result_attachment_data_count) {
 			EM_DEBUG_LOG("Not include attachment data");
 		} else {
-			if(!result_attachment_data) {
+			if (!result_attachment_data) {
 				EM_DEBUG_EXCEPTION("em_convert_byte_stream_to_attachment_data failed");
 				err = EMAIL_ERROR_ON_PARSING;
 				goto FINISH_OFF;
@@ -1610,12 +1608,12 @@ void stb_add_mail(HIPC_API a_hAPI)
 
 	/* meeting request */
 	EM_DEBUG_LOG("email_meeting_request_t");
-	if ( result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_REQUEST
+	if (result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_REQUEST
 		|| result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_RESPONSE
 		|| result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_ORIGINATINGREQUEST) {
 		buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
 
-		if(buffer_size > 0) {
+		if (buffer_size > 0) {
 			char* stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
 			em_convert_byte_stream_to_meeting_req(stream, buffer_size, &result_meeting_request);
 		}
@@ -1624,24 +1622,24 @@ void stb_add_mail(HIPC_API a_hAPI)
 	EM_DEBUG_LOG("sync_server");
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, param_index++, sizeof(int), &sync_server);
 
-	if( (err = emdaemon_add_mail(multi_user_name, &result_mail_data, result_attachment_data, result_attachment_data_count, &result_meeting_request, sync_server)) != EMAIL_ERROR_NONE) {
+	if ((err = emdaemon_add_mail(multi_user_name, &result_mail_data, result_attachment_data, result_attachment_data_count, &result_meeting_request, sync_server)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emdaemon_add_mail failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	local_result = 1;
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.mail_id, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.mail_id, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.thread_id, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.thread_id, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
 FINISH_OFF:
-	if ( local_result == 0 ) {
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (local_result == 0) {
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 		if (!emipc_execute_stub_api(a_hAPI))
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
@@ -1651,7 +1649,7 @@ FINISH_OFF:
 
 	emcore_free_mail_data(&result_mail_data);
 
-	if(result_attachment_data)
+	if (result_attachment_data)
 		emcore_free_attachment_data(&result_attachment_data, result_attachment_data_count, NULL);
 
 	emstorage_free_meeting_request(&result_meeting_request);
@@ -1689,7 +1687,7 @@ void stb_update_mail(HIPC_API a_hAPI)
 	EM_DEBUG_LOG("email_mail_data_t");
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
 
-	if(buffer_size > 0)	 {
+	if (buffer_size > 0)	 {
 		char* stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
 		em_convert_byte_stream_to_mail_data(stream, buffer_size, &result_mail_data);
 	}
@@ -1740,7 +1738,7 @@ void stb_update_mail(HIPC_API a_hAPI)
 	}
 	/* check smack rule - END */
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
-	if(buffer_size > 0)	 {
+	if (buffer_size > 0)	 {
 		char *stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index);
 		em_convert_byte_stream_to_attachment_data(stream, buffer_size, &result_attachment_data, &result_attachment_data_count);
 
@@ -1748,7 +1746,7 @@ void stb_update_mail(HIPC_API a_hAPI)
 		if (!result_attachment_data_count) {
 			EM_DEBUG_LOG("Not include attachment data");
 		} else {
-			if(!result_attachment_data) {
+			if (!result_attachment_data) {
 				EM_DEBUG_EXCEPTION("em_convert_byte_stream_to_attachment_data failed");
 				err = EMAIL_ERROR_ON_PARSING;
 				goto FINISH_OFF;
@@ -1772,12 +1770,12 @@ void stb_update_mail(HIPC_API a_hAPI)
 	}
 
 	EM_DEBUG_LOG("email_meeting_request_t");
-	if ( result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_REQUEST
+	if (result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_REQUEST
 		|| result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_RESPONSE
 		|| result_mail_data.meeting_request_status == EMAIL_MAIL_TYPE_MEETING_ORIGINATINGREQUEST) {
 		buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
 
-		if(buffer_size > 0) {
+		if (buffer_size > 0) {
 			char* stream = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
 			em_convert_byte_stream_to_meeting_req(stream, buffer_size, &result_meeting_request);
 		}
@@ -1787,7 +1785,7 @@ void stb_update_mail(HIPC_API a_hAPI)
 
 	temp_buffer = emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
 
-	if(!temp_buffer) {
+	if (!temp_buffer) {
 		EM_DEBUG_EXCEPTION("emipc_get_nth_parameter_data[%d] failed", param_index - 1);
 		err = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
 		goto FINISH_OFF;
@@ -1795,25 +1793,25 @@ void stb_update_mail(HIPC_API a_hAPI)
 
 	sync_server = *temp_buffer;
 
-	if( (err = emdaemon_update_mail(multi_user_name, &result_mail_data, result_attachment_data,
+	if ((err = emdaemon_update_mail(multi_user_name, &result_mail_data, result_attachment_data,
 			result_attachment_data_count, &result_meeting_request, sync_server)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emdaemon_update_mail failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	local_result = 1;
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.mail_id, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.mail_id, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.thread_id, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result_mail_data.thread_id, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
 FINISH_OFF:
-	if ( local_result == 0 ) {
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (local_result == 0) {
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 		if (!emipc_execute_stub_api(a_hAPI))
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
@@ -1823,7 +1821,7 @@ FINISH_OFF:
 
 	EM_SAFE_FREE(prefix_path);
 
-	if(result_attachment_data)
+	if (result_attachment_data)
 		emcore_free_attachment_data(&result_attachment_data, result_attachment_data_count, NULL);
 
 	emstorage_free_meeting_request(&result_meeting_request);
@@ -1856,10 +1854,10 @@ void stb_move_thread_to_mailbox(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, sizeof(int), &move_always_flag);
 	EM_DEBUG_LOG("move_always_flag [%d]", move_always_flag);
 
-	if(emdaemon_move_mail_thread_to_mailbox(multi_user_name, thread_id, mailbox_id, move_always_flag, &err))
+	if (emdaemon_move_mail_thread_to_mailbox(multi_user_name, thread_id, mailbox_id, move_always_flag, &err))
 		EM_DEBUG_LOG("emdaemon_move_mail_thread_to_mailbox success");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter fail");
 		EM_SAFE_FREE(target_mailbox_name);
 		EM_SAFE_FREE(multi_user_name);
@@ -1899,10 +1897,10 @@ void stb_delete_thread(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &delete_always_flag);
 	EM_DEBUG_LOG("delete_always_flag [%d]", delete_always_flag);
 
-	if(emdaemon_delete_mail_thread(multi_user_name, thread_id, delete_always_flag, &handle, &err))
+	if (emdaemon_delete_mail_thread(multi_user_name, thread_id, delete_always_flag, &handle, &err))
 		EM_DEBUG_LOG("emdaemon_delete_mail_thread success");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter fail");
 		EM_SAFE_FREE(multi_user_name);
 		return;
@@ -1942,10 +1940,10 @@ void stb_modify_seen_flag_of_thread(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, sizeof(int), &on_server);
 	EM_DEBUG_LOG("on_server [%d]", on_server);
 
-	if(emdaemon_modify_seen_flag_of_thread(multi_user_name, thread_id, seen_flag, on_server, &handle, &err))
+	if (emdaemon_modify_seen_flag_of_thread(multi_user_name, thread_id, seen_flag, on_server, &handle, &err))
 		EM_DEBUG_LOG("emdaemon_modify_seen_flag_of_thread success");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter fail");
 		EM_SAFE_FREE(multi_user_name);
 		return;
@@ -1982,9 +1980,9 @@ void stb_expunge_mails_deleted_flagged(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), (void*)&on_server);
 	EM_DEBUG_LOG("on_server [%d]", on_server);
 
-	if ((err = emdaemon_expunge_mails_deleted_flagged(multi_user_name, 
-														mailbox_id, 
-														on_server, 
+	if ((err = emdaemon_expunge_mails_deleted_flagged(multi_user_name,
+														mailbox_id,
+														on_server,
 														&handle)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_LOG("emdaemon_expunge_mails_deleted_flagged success");
 
@@ -2024,7 +2022,7 @@ void stb_move_mail(HIPC_API a_hAPI)
 	int mail_ids[num];
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, num * sizeof(int), mail_ids);
 
-	for(counter = 0; counter < num; counter++)
+	for (counter = 0; counter < num; counter++)
 		EM_DEBUG_LOG("mailids [%d]", mail_ids[counter]);
 
 	/* target_mailbox_id */
@@ -2036,10 +2034,10 @@ void stb_move_mail(HIPC_API a_hAPI)
 	else
 		EM_DEBUG_LOG("mailbox_id == 0");
 
-	if(emdaemon_move_mail(multi_user_name, mail_ids, num, mailbox_id, EMAIL_MOVED_BY_COMMAND, 0, &err))
+	if (emdaemon_move_mail(multi_user_name, mail_ids, num, mailbox_id, EMAIL_MOVED_BY_COMMAND, 0, &err))
 		EM_DEBUG_LOG("emdaemon_move_mail success");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter fail");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -2066,10 +2064,10 @@ void stb_delete_rule(HIPC_API a_hAPI)
 	/* filter_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &filter_id);
 
-	if(emdaemon_delete_filter(multi_user_name, filter_id, &err))
+	if (emdaemon_delete_filter(multi_user_name, filter_id, &err))
 		err = EMAIL_ERROR_NONE;
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -2096,10 +2094,10 @@ void stb_apply_rule(HIPC_API a_hAPI)
 	/* filter_id */
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &filter_id);
 
-	if(emdaemon_apply_filter(multi_user_name, filter_id, &err))
+	if (emdaemon_apply_filter(multi_user_name, filter_id, &err))
 		err = EMAIL_ERROR_NONE;
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -2136,7 +2134,7 @@ void stb_add_attachment(HIPC_API a_hAPI)
 	/* attachment */
 	buffer_size = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 1);
 
-	if(buffer_size > 0)	 {
+	if (buffer_size > 0)	 {
 		attachment_stream = (char*)em_malloc(buffer_size);
 		if (attachment_stream == NULL) {
 			EM_DEBUG_EXCEPTION("em_malloc failed");
@@ -2184,12 +2182,12 @@ void stb_add_attachment(HIPC_API a_hAPI)
 
 FINISH_OFF:
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
-	if(EMAIL_ERROR_NONE == err) {
+	if (EMAIL_ERROR_NONE == err) {
 		EM_DEBUG_LOG("emdaemon_add_attachment -Success");
 
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &(attachment->attachment_id), sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &(attachment->attachment_id), sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter attachment_id failed ");
 	}
 		if (!emipc_execute_stub_api(a_hAPI))
@@ -2223,21 +2221,21 @@ void stb_get_attachment(HIPC_API a_hAPI)
 
 	emdaemon_get_attachment(multi_user_name, attachment_id, &attachment, &err);
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
 
-	if(EMAIL_ERROR_NONE == err) {
+	if (EMAIL_ERROR_NONE == err) {
 		EM_DEBUG_LOG("emdaemon_get_attachment - Success");
 		/* attachment */
 		attachment_stream = em_convert_attachment_data_to_byte_stream(attachment, 1, &size);
-		if(!attachment_stream) { /*prevent 26263*/
+		if (!attachment_stream) { /*prevent 26263*/
 			emcore_free_attachment_data(&attachment, 1, &err);
 			EM_SAFE_FREE(multi_user_name);
 			return;
 		}
 		EM_NULL_CHECK_FOR_VOID(attachment_stream);
 
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, attachment_stream, size))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, attachment_stream, size))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed  ");
 	}
 
@@ -2270,12 +2268,12 @@ void stb_get_imap_mailbox_list(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 
 	/* need to check: why err value is changed? */
-	if(emdaemon_get_imap_mailbox_list(multi_user_name, account_id, "", &handle, &err))
+	if (emdaemon_get_imap_mailbox_list(multi_user_name, account_id, "", &handle, &err))
 		err = EMAIL_ERROR_NONE;
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_LOG("ipcAPI_AddParameter local_result failed ");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_LOG("ipcAPI_AddParameter local_result failed ");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_LOG("emipc_execute_stub_api failed  ");
@@ -2302,7 +2300,7 @@ void stb_delete_attachment(HIPC_API a_hAPI)
 
 	emdaemon_delete_mail_attachment(multi_user_name, attachment_id, &err);
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
@@ -2337,23 +2335,22 @@ void stb_download_attachment(HIPC_API a_hAPI)
 	EM_DEBUG_LOG("nth");
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, sizeof(int), &nth);
 
-	if(emdaemon_download_attachment(multi_user_name, account_id, mail_id, nth, &handle, &err)) {
+	if (emdaemon_download_attachment(multi_user_name, account_id, mail_id, nth, &handle, &err)) {
 		err = EMAIL_ERROR_NONE;
 
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 		EM_DEBUG_LOG(">>>>>>>>>> HANDLE = %d", handle);
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter handle failed ");
 		if (!emipc_execute_stub_api(a_hAPI))
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
-	}
-	else {
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	} else {
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 		/* Download handle - 17-Apr-09 */
 		EM_DEBUG_LOG(">>>>>>>>>> HANDLE = %d", handle);
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter handle failed ");
 		if (!emipc_execute_stub_api(a_hAPI))
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
@@ -2380,10 +2377,10 @@ void stb_mail_send_saved(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 
 	EM_DEBUG_LOG("calling emdaemon_send_mail_saved");
-	if(emdaemon_send_mail_saved(multi_user_name, account_id, NULL, &err))
+	if (emdaemon_send_mail_saved(multi_user_name, account_id, NULL, &err))
 		err = EMAIL_ERROR_NONE;
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter result failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -2393,7 +2390,8 @@ void stb_mail_send_saved(HIPC_API a_hAPI)
 	EM_DEBUG_FUNC_END();
 }
 
-void stb_add_read_receipt(HIPC_API a_hAPI){
+void stb_add_read_receipt(HIPC_API a_hAPI)
+{
 	EM_DEBUG_FUNC_BEGIN();
 	int read_mail_id = 0;
 	int receipt_mail_id = 0;
@@ -2410,14 +2408,14 @@ void stb_add_read_receipt(HIPC_API a_hAPI){
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &read_mail_id);
 	EM_DEBUG_LOG("read_mail_id [%d]", read_mail_id);
 
-	if( (err = emcore_add_read_receipt(multi_user_name, read_mail_id, &receipt_mail_id)) != EMAIL_ERROR_NONE )
+	if ((err = emcore_add_read_receipt(multi_user_name, read_mail_id, &receipt_mail_id)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_EXCEPTION("emcore_add_read_receipt failed [%d]", err);
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if (err == EMAIL_ERROR_NONE) {
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &receipt_mail_id, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &receipt_mail_id, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 	}
 
@@ -2451,10 +2449,10 @@ void stb_retry_sending_mail(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &timeout_in_sec);
 	EM_DEBUG_LOG("timeout_in_sec [%d]", timeout_in_sec);
 
-	if(emdaemon_send_mail_retry(multi_user_name, mail_id, timeout_in_sec,&err))
+	if (emdaemon_send_mail_retry(multi_user_name, mail_id, timeout_in_sec, &err))
 		EM_DEBUG_LOG("emdaemon_get_mailbox_list - success");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
     if (!emipc_execute_stub_api(a_hAPI))
@@ -2482,10 +2480,10 @@ void stb_cancel_job(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &handle);
 	EM_DEBUG_LOG("account_id [%d] handle [%d]", account_id, handle);
 
-	if(emdaemon_cancel_job(account_id, handle, &err))
+	if (emdaemon_cancel_job(account_id, handle, &err))
 		err = EMAIL_ERROR_NONE;
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter local_result failed ");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
@@ -2516,10 +2514,10 @@ void stb_cancel_send_mail_job(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &mail_id);
 	EM_DEBUG_LOG("mail_id [%d]", mail_id);
 
-	if(emdaemon_cancel_sending_mail_job(account_id,mail_id,&err))
+	if (emdaemon_cancel_sending_mail_job(account_id, mail_id, &err))
 		EM_DEBUG_LOG("success");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -2559,7 +2557,7 @@ void stb_search_mail_on_server(HIPC_API a_hAPI)
 	/* search_filter_list */
 	buffer_size = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 2);
 
-	if(buffer_size > 0)	 {
+	if (buffer_size > 0)	 {
 		stream_for_search_filter_list = (char*)em_malloc(buffer_size);
 		if (stream_for_search_filter_list == NULL) {
 			EM_DEBUG_EXCEPTION("out of memory");
@@ -2568,16 +2566,16 @@ void stb_search_mail_on_server(HIPC_API a_hAPI)
 		}
 
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, buffer_size, stream_for_search_filter_list);
-		em_convert_byte_stream_to_search_filter(stream_for_search_filter_list, 
-												&search_filter_list, 
+		em_convert_byte_stream_to_search_filter(stream_for_search_filter_list,
+												&search_filter_list,
 												&search_filter_count);
 		EM_SAFE_FREE(stream_for_search_filter_list);
 	}
 
-	if (!emdaemon_search_mail_on_server(multi_user_name, account_id ,mailbox_id, 
-										search_filter_list, 
-										search_filter_count, 
-										&job_handle, 
+	if (!emdaemon_search_mail_on_server(multi_user_name, account_id, mailbox_id,
+										search_filter_list,
+										search_filter_count,
+										&job_handle,
 										&err))
 		EM_DEBUG_LOG("success");
 
@@ -2619,12 +2617,12 @@ void stb_clear_result_of_search_mail_on_server(HIPC_API a_hAPI)
 
 	EM_DEBUG_LOG("account_id [%d]", account_id);
 
-	if (!emstorage_get_mailbox_by_name(multi_user_name, 
-										account_id, 
-										-1, 
-										EMAIL_SEARCH_RESULT_MAILBOX_NAME, 
-										&mailbox_tbl, 
-										false, 
+	if (!emstorage_get_mailbox_by_name(multi_user_name,
+										account_id,
+										-1,
+										EMAIL_SEARCH_RESULT_MAILBOX_NAME,
+										&mailbox_tbl,
+										false,
 										&err)) {
 		EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_name failed [%d]", err);
 		goto FINISH_OFF;
@@ -2646,12 +2644,12 @@ void stb_clear_result_of_search_mail_on_server(HIPC_API a_hAPI)
 	}
 
 	/* Remove the searched mails */
-	if (!emdaemon_delete_mail(multi_user_name, 
-								account_id, 
+	if (!emdaemon_delete_mail(multi_user_name,
+								account_id,
 								0,
-								mail_id_list, 
-								mail_id_count, 
-								EMAIL_DELETE_LOCALLY, 
+								mail_id_list,
+								mail_id_count,
+								EMAIL_DELETE_LOCALLY,
 								&handle,
 								&err)) {
 		EM_DEBUG_EXCEPTION("emdaemon_delete_mail failed : [%d]", err);
@@ -2669,7 +2667,7 @@ FINISH_OFF:
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
-	if (mailbox_tbl) 
+	if (mailbox_tbl)
 		emstorage_free_mailbox(&mailbox_tbl, 1, NULL);
 
 	EM_SAFE_FREE(mail_id_list);
@@ -2703,13 +2701,13 @@ void stb_add_account_with_validation(HIPC_API a_hAPI)
 	/* get account info */
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, 0);
 	EM_DEBUG_LOG("size [%d]", buffer_size);
-	if(buffer_size <= 0) {
+	if (buffer_size <= 0) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
-	stream =(char*)	emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0);
-	if(!stream) {
+	stream = (char *)emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0);
+	if (!stream) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
@@ -2745,7 +2743,7 @@ void stb_add_account_with_validation(HIPC_API a_hAPI)
 #ifdef __FEATURE_AUTO_POLLING__
 	/*  start auto polling, if check_interval not zero */
 	if (ref_check_interval > 0 || (ref_account->peak_days > 0 && ref_account->peak_interval > 0)) {
-		if(!emdaemon_add_polling_alarm(multi_user_name, ref_account_id))
+		if (!emdaemon_add_polling_alarm(multi_user_name, ref_account_id))
 			EM_DEBUG_EXCEPTION("emdaemon_add_polling_alarm[NOTI_ACCOUNT_ADD] : start auto poll failed >>> ");
 	}
 #ifdef __FEATURE_IMAP_IDLE__
@@ -2765,10 +2763,10 @@ void stb_add_account_with_validation(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
 FINISH_OFF:
-	if ( local_result == 0 ) { /* there is an error */
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+	if (local_result == 0) { /* there is an error */
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed : local_result ");
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed : err");
 		if (!emipc_execute_stub_api(a_hAPI))
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
@@ -2798,7 +2796,7 @@ void stb_backup_account(HIPC_API a_hAPI)
 
 	/* file_path_length */
 	file_path_length = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 0);
-	if(file_path_length > 0) {
+	if (file_path_length > 0) {
 		EM_DEBUG_LOG("file_path_length [%d]", file_path_length);
 		file_path = em_malloc(file_path_length);
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, file_path_length, file_path);
@@ -2806,10 +2804,10 @@ void stb_backup_account(HIPC_API a_hAPI)
 		local_result = emcore_backup_accounts(multi_user_name, (const char*)file_path, &err_code);
 	}
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 		EM_DEBUG_LOG("emipc_add_parameter failed ");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err_code, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err_code, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -2837,7 +2835,7 @@ void stb_restore_account(HIPC_API a_hAPI)
 
 	/* file_path_length */
 	file_path_length = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 0);
-	if(file_path_length > 0)  {
+	if (file_path_length > 0)  {
 		EM_DEBUG_LOG("file_path_length [%d]", file_path_length);
 		file_path = em_malloc(file_path_length);
 		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, file_path_length, file_path);
@@ -2847,12 +2845,12 @@ void stb_restore_account(HIPC_API a_hAPI)
 	/* file_path could be NULL */
 	err_code = emcore_restore_accounts(multi_user_name, (const char*)file_path);
 
-	result = (err_code == EMAIL_ERROR_NONE)?1:0;
+	result = (err_code == EMAIL_ERROR_NONE) ? 1 : 0;
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &result, sizeof(int)))
 		EM_DEBUG_LOG("emipc_add_parameter failed ");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err_code, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err_code, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -2885,17 +2883,17 @@ void stb_get_password_length(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 1, sizeof(int), &password_type);
 
-	local_result = emstorage_get_password_length_of_account(multi_user_name, account_id, password_type, &password_length,&err_code);
+	local_result = emstorage_get_password_length_of_account(multi_user_name, account_id, password_type, &password_length, &err_code);
 
 	EM_DEBUG_LOG("password_length [%d]", password_length);
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 		EM_DEBUG_LOG("emipc_add_parameter failed ");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err_code, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err_code, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &password_length, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &password_length, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter result failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -2930,7 +2928,7 @@ void stb_get_task_information(HIPC_API a_hAPI)
 	if (task_information_count) {
 		task_information_stream = em_convert_task_information_to_byte_stream(task_information, task_information_count, &stream_length);
 
-		if((stream_length > 0) && !emipc_add_dynamic_parameter(a_hAPI, ePARAMETER_OUT, task_information_stream, stream_length)) {
+		if ((stream_length > 0) && !emipc_add_dynamic_parameter(a_hAPI, ePARAMETER_OUT, task_information_stream, stream_length)) {
 			EM_DEBUG_EXCEPTION("emipc_add_dynamic_parameter failed");
 			err = EMAIL_ERROR_OUT_OF_MEMORY;
 		}
@@ -2939,7 +2937,7 @@ void stb_get_task_information(HIPC_API a_hAPI)
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
-	if(task_information) {
+	if (task_information) {
 		EM_SAFE_FREE(task_information);
 	}
 
@@ -3036,7 +3034,7 @@ void stb_ping_service(HIPC_API a_hAPI)
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -3075,11 +3073,11 @@ void stb_update_notification_bar_for_unread_mail(HIPC_API a_hAPI)
 
 	emcore_display_unread_in_badge(multi_user_name);
 
-	if(!emdaemon_finalize_sync(multi_user_name, account_id, total_mail_count, unread_mail_count, 0, 0, input_from_eas, &err)) {
+	if (!emdaemon_finalize_sync(multi_user_name, account_id, total_mail_count, unread_mail_count, 0, 0, input_from_eas, &err)) {
 		EM_DEBUG_EXCEPTION("emdaemon_finalize_sync failed [%d]", err);
 	}
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -3105,10 +3103,10 @@ void stb_clear_notification_bar(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, sizeof(int), &account_id);
 	EM_DEBUG_LOG("account_id [%d]", account_id);
 
-	if((err = emcore_clear_notifications(multi_user_name, account_id)) != EMAIL_ERROR_NONE) 
+	if ((err = emcore_clear_notifications(multi_user_name, account_id)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_EXCEPTION("emdaemon_finalize_sync failed [%d]", err);
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -3145,11 +3143,11 @@ void stb_show_user_message(HIPC_API a_hAPI)
 	emipc_get_parameter(a_hAPI, ePARAMETER_IN, 2, sizeof(int), &param_error);
 	EM_DEBUG_LOG("param_error [%d]", param_error);
 
-	if(!emcore_show_user_message(multi_user_name, param_id, param_action, param_error)) {
+	if (!emcore_show_user_message(multi_user_name, param_id, param_action, param_error)) {
 		EM_DEBUG_EXCEPTION("emcore_show_user_message failed");
 	}
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -3164,7 +3162,7 @@ void stb_write_mime_file(HIPC_API a_hAPI)
 	EM_DEBUG_FUNC_BEGIN();
 	int err = EMAIL_ERROR_NONE;
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -3195,20 +3193,20 @@ void stb_validate_account_ex(HIPC_API a_hAPI)
 	/* get account info */
 	buffer_size = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, 0);
 	EM_DEBUG_LOG("size [%d]", buffer_size);
-	if(buffer_size <= 0) {
+	if (buffer_size <= 0) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
-	stream =(char*)	emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0);
-	if(!stream) {
+	stream = (char *)emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, 0);
+	if (!stream) {
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
 	account = em_malloc(sizeof(email_account_t));
 
-	if(account == NULL) {
+	if (account == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
@@ -3217,7 +3215,7 @@ void stb_validate_account_ex(HIPC_API a_hAPI)
 	em_convert_byte_stream_to_account(stream, buffer_size, account);
     account->user_name = EM_SAFE_STRDUP(multi_user_name);
 
-	if((err = emcore_add_account_to_unvalidated_account_list(account)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_add_account_to_unvalidated_account_list(account)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_add_account_to_unvalidated_account_list failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -3230,24 +3228,24 @@ void stb_validate_account_ex(HIPC_API a_hAPI)
 	}
 
 	/* ref_account will be removed by worker_event_queue() */
-	if((err = emdaemon_validate_account_ex(multi_user_name, ref_account, &handle)) != EMAIL_ERROR_NONE) {
+	if ((err = emdaemon_validate_account_ex(multi_user_name, ref_account, &handle)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emdaemon_validate_account_ex fail [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	local_result = 1;
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &handle, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed ");
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
 
 FINISH_OFF:
-	if ( local_result == 0 ) { /* there is an error */
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
+	if (local_result == 0) { /* there is an error */
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &local_result, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed : local_result ");
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed : err");
 		if (!emipc_execute_stub_api(a_hAPI))
 			EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
@@ -3261,7 +3259,7 @@ void stb_handle_task(int task_type, HIPC_API a_hAPI)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int param_index = 0;
-	int is_async_task = (task_type > EMAIL_ASYNC_TASK_BOUNDARY_START)?1:0;
+	int is_async_task = (task_type > EMAIL_ASYNC_TASK_BOUNDARY_START) ? 1 : 0;
 	int err = EMAIL_ERROR_NONE;
 	int task_id = 0;
 	int task_parameter_length = 0;
@@ -3272,23 +3270,22 @@ void stb_handle_task(int task_type, HIPC_API a_hAPI)
 	EM_DEBUG_LOG("task_parameter_length [%d]", task_parameter_length);
 
 	/* task_parameter */
-	if(task_parameter_length > 0)	 {
+	if (task_parameter_length > 0)	 {
 		task_parameter = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
 	}
 
-	if(is_async_task) {
+	if (is_async_task) {
 		/* add async task */
-		if((err = emcore_add_task_to_task_table(NULL, 
-												task_type, 
-												EMAIL_TASK_PRIORITY_MID, 
-												task_parameter, 
-												task_parameter_length, 
+		if ((err = emcore_add_task_to_task_table(NULL,
+												task_type,
+												EMAIL_TASK_PRIORITY_MID,
+												task_parameter,
+												task_parameter_length,
 												&task_id)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_add_task_to_task_pool failed [%d]", err);
 			goto FINISH_OFF;
 		}
-	}
-	else {
+	} else {
 		/* do sync task */
 		email_task_t sync_task;
 
@@ -3298,18 +3295,18 @@ void stb_handle_task(int task_type, HIPC_API a_hAPI)
 		sync_task.task_parameter        = task_parameter;
 		sync_task.task_parameter_length = task_parameter_length;
 
-		if((err = emcore_default_sync_task_handler(&sync_task)) != EMAIL_ERROR_NONE) {
+		if ((err = emcore_default_sync_task_handler(&sync_task)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_default_sync_task_handler failed [%d]", err);
 			goto FINISH_OFF;
 		}
 	}
 
 FINISH_OFF:
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
-	if(is_async_task) {
-		if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &task_id, sizeof(int)))
+	if (is_async_task) {
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &task_id, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 	}
 
@@ -3329,28 +3326,27 @@ void* thread_func_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT(void
 	task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT *task_param = input_param;
 
 	/* Send start signal */
-	if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT, task_id, EMAIL_TASK_STATUS_STARTED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
+	if ((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT, task_id, EMAIL_TASK_STATUS_STARTED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
 
-	for(i = 0; i < task_param->mail_id_count; i++) {
-		if((err = emcore_move_mail_to_another_account(task_param->multi_user_name, task_param->mail_id_array[i], task_param->source_mailbox_id, task_param->target_mailbox_id, task_id)) != EMAIL_ERROR_NONE) {
+	for (i = 0; i < task_param->mail_id_count; i++) {
+		if ((err = emcore_move_mail_to_another_account(task_param->multi_user_name, task_param->mail_id_array[i], task_param->source_mailbox_id, task_param->target_mailbox_id, task_id)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_move_mail_to_another_account failed [%d]", err);
 			goto FINISH_OFF;
 		}
 
 		/* Send progress signal */
-		if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT, task_id, EMAIL_TASK_STATUS_IN_PROGRESS, i, task_param->mail_id_count)) != EMAIL_ERROR_NONE)
+		if ((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT, task_id, EMAIL_TASK_STATUS_IN_PROGRESS, i, task_param->mail_id_count)) != EMAIL_ERROR_NONE)
 			EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
 	}
 
 FINISH_OFF:
 	/* Send finish signal */
-	if(err == EMAIL_ERROR_NONE) {
-		if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT, task_id, EMAIL_TASK_STATUS_FINISHED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
+	if (err == EMAIL_ERROR_NONE) {
+		if ((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT, task_id, EMAIL_TASK_STATUS_FINISHED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
 			EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
-	}
-	else {
-		if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT, task_id, EMAIL_TASK_STATUS_FAILED, err, 0)) != EMAIL_ERROR_NONE)
+	} else {
+		if ((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT, task_id, EMAIL_TASK_STATUS_FAILED, err, 0)) != EMAIL_ERROR_NONE)
 			EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
 	}
 
@@ -3386,7 +3382,7 @@ void stb_move_mails_to_mailbox_of_another_account(HIPC_API a_hAPI)
 	/* task_parameter_length */;
 	task_parameter_length = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
 
-	if(task_parameter_length <= 0) {
+	if (task_parameter_length <= 0) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM : task_parameter_length [%d]", task_parameter_length);
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -3395,7 +3391,7 @@ void stb_move_mails_to_mailbox_of_another_account(HIPC_API a_hAPI)
 	/* task_parameter */
 	task_parameter = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
 
-	if((err = email_decode_task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT(task_parameter, task_parameter_length, (void**)&decoded_parameter)) != EMAIL_ERROR_NONE) {
+	if ((err = email_decode_task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT(task_parameter, task_parameter_length, (void**)&decoded_parameter)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("email_decode_task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT failed[%d]", err);
 		goto FINISH_OFF;
 	}
@@ -3404,7 +3400,7 @@ void stb_move_mails_to_mailbox_of_another_account(HIPC_API a_hAPI)
 
 	THREAD_CREATE(task_id, thread_func_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT, (void*)decoded_parameter, thread_error);
 
-	if(thread_error != 0) {
+	if (thread_error != 0) {
 		EM_DEBUG_EXCEPTION("THREAD_CREATE failed [%d]", thread_error);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
@@ -3413,10 +3409,10 @@ void stb_move_mails_to_mailbox_of_another_account(HIPC_API a_hAPI)
 	THREAD_DETACH(task_id);
 
 FINISH_OFF:
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &task_id, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &task_id, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -3445,27 +3441,26 @@ void* thread_func_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX(void *input_param)
 	}
 
 	/*  on_server is allowed to be only 0 when server_type is EMAIL_SERVER_TYPE_ACTIVE_SYNC */
-	if ( ref_account->incoming_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC ) {
+	if (ref_account->incoming_server_type == EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
 		recursive = 0;
 	}
 
 	/* Send start signal */
-	if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, task_id, EMAIL_TASK_STATUS_STARTED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
+	if ((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, task_id, EMAIL_TASK_STATUS_STARTED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
 
-	if((err = emcore_delete_mailbox_ex(task_param->multi_user_name, task_param->account_id, task_param->mailbox_id_array, task_param->mailbox_id_count, task_param->on_server, recursive)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_delete_mailbox_ex(task_param->multi_user_name, task_param->account_id, task_param->mailbox_id_array, task_param->mailbox_id_count, task_param->on_server, recursive)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_delete_mailbox_ex failed[%d]", err);
 		goto FINISH_OFF;
 	}
 
 FINISH_OFF:
 	/* Send finish signal */
-	if(err == EMAIL_ERROR_NONE) {
-		if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, task_id, EMAIL_TASK_STATUS_FINISHED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
+	if (err == EMAIL_ERROR_NONE) {
+		if ((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, task_id, EMAIL_TASK_STATUS_FINISHED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
 			EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
-	}
-	else {
-		if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, task_id, EMAIL_TASK_STATUS_FAILED, err, 0)) != EMAIL_ERROR_NONE)
+	} else {
+		if ((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, task_id, EMAIL_TASK_STATUS_FAILED, err, 0)) != EMAIL_ERROR_NONE)
 			EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
 	}
 
@@ -3504,7 +3499,7 @@ void stb_delete_mailbox_ex(HIPC_API a_hAPI)
 	/* task_parameter_length */;
 	task_parameter_length = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
 
-	if(task_parameter_length <= 0) {
+	if (task_parameter_length <= 0) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM : task_parameter_length [%d]", task_parameter_length);
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -3513,7 +3508,7 @@ void stb_delete_mailbox_ex(HIPC_API a_hAPI)
 	/* task_parameter */
 	task_parameter = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
 
-	if((err = email_decode_task_parameter_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX(task_parameter, task_parameter_length, (void**)&decoded_parameter)) != EMAIL_ERROR_NONE) {
+	if ((err = email_decode_task_parameter_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX(task_parameter, task_parameter_length, (void**)&decoded_parameter)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("email_decode_task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT failed[%d]", err);
 		goto FINISH_OFF;
 	}
@@ -3522,7 +3517,7 @@ void stb_delete_mailbox_ex(HIPC_API a_hAPI)
 
 	THREAD_CREATE(task_id, thread_func_EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX, (void*)decoded_parameter, thread_error);
 
-	if(thread_error != 0) {
+	if (thread_error != 0) {
 		EM_DEBUG_EXCEPTION("THREAD_CREATE failed [%d]", thread_error);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
@@ -3531,10 +3526,10 @@ void stb_delete_mailbox_ex(HIPC_API a_hAPI)
 	THREAD_DETACH(task_id);
 
 FINISH_OFF:
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &task_id, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &task_id, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -3553,22 +3548,21 @@ void* thread_func_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIG
 	task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL *task_param = input_param;
 
 	/* Send start signal */
-	if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, task_id, EMAIL_TASK_STATUS_STARTED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
+	if ((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, task_id, EMAIL_TASK_STATUS_STARTED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
 		EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
 
-	if((err = emcore_send_mail_with_downloading_attachment_of_original_mail(task_param->multi_user_name, task_param->mail_id)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_send_mail_with_downloading_attachment_of_original_mail(task_param->multi_user_name, task_param->mail_id)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_send_mail_with_downloading_attachment_of_original_mail failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 FINISH_OFF:
 	/* Send finish signal */
-	if(err == EMAIL_ERROR_NONE) {
-		if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, task_id, EMAIL_TASK_STATUS_FINISHED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
+	if (err == EMAIL_ERROR_NONE) {
+		if ((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, task_id, EMAIL_TASK_STATUS_FINISHED, EMAIL_ERROR_NONE, 0)) != EMAIL_ERROR_NONE)
 			EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
-	}
-	else {
-		if((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, task_id, EMAIL_TASK_STATUS_FAILED, err, 0)) != EMAIL_ERROR_NONE)
+	} else {
+		if ((err_for_signal = emcore_send_task_status_signal(EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, task_id, EMAIL_TASK_STATUS_FAILED, err, 0)) != EMAIL_ERROR_NONE)
 			EM_DEBUG_LOG("emcore_send_task_status_signal failed [%d]", err_for_signal);
 	}
 
@@ -3601,7 +3595,7 @@ void stb_send_mail_with_downloading_attachment_of_original_mail(HIPC_API a_hAPI)
 	/* task_parameter_length */;
 	task_parameter_length = emipc_get_nth_parameter_length(a_hAPI, ePARAMETER_IN, param_index);
 
-	if(task_parameter_length <= 0) {
+	if (task_parameter_length <= 0) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM : task_parameter_length [%d]", task_parameter_length);
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -3610,7 +3604,7 @@ void stb_send_mail_with_downloading_attachment_of_original_mail(HIPC_API a_hAPI)
 	/* task_parameter */
 	task_parameter = (char*) emipc_get_nth_parameter_data(a_hAPI, ePARAMETER_IN, param_index++);
 
-	if((err = email_decode_task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL(task_parameter, task_parameter_length, (void**)&decoded_parameter)) != EMAIL_ERROR_NONE) {
+	if ((err = email_decode_task_parameter_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL(task_parameter, task_parameter_length, (void**)&decoded_parameter)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("email_decode_task_parameter_EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT failed[%d]", err);
 		goto FINISH_OFF;
 	}
@@ -3619,7 +3613,7 @@ void stb_send_mail_with_downloading_attachment_of_original_mail(HIPC_API a_hAPI)
 
 	THREAD_CREATE(task_id, thread_func_EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL, (void*)decoded_parameter, thread_error);
 
-	if(thread_error != 0) {
+	if (thread_error != 0) {
 		EM_DEBUG_EXCEPTION("THREAD_CREATE failed [%d]", thread_error);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
@@ -3628,10 +3622,10 @@ void stb_send_mail_with_downloading_attachment_of_original_mail(HIPC_API a_hAPI)
 	THREAD_DETACH(task_id);
 
 FINISH_OFF:
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
-	if(!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &task_id, sizeof(int)))
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &task_id, sizeof(int)))
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 	if (!emipc_execute_stub_api(a_hAPI))
@@ -3687,7 +3681,7 @@ void stb_load_default_account_id(HIPC_API a_hAPI)
 	}
 
 	err = emcore_load_default_account_id(multi_user_name, &account_id);
-	if (err != EMAIL_ERROR_NONE) { 
+	if (err != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_save_default_account_id failed [%d]", err);
 	}
 
@@ -3695,7 +3689,7 @@ void stb_load_default_account_id(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 	if (err == EMAIL_ERROR_NONE) {
-		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &account_id, sizeof(int))) 
+		if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &account_id, sizeof(int)))
 			EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 	}
 
@@ -3719,16 +3713,16 @@ void stb_get_user_name(HIPC_API a_hAPI)
     EM_DEBUG_LOG("Peer PID : [%d]", pid);
 
     if (pid > 0) {
-        if ((err = emcore_get_user_name(pid, &user_name)) != EMAIL_ERROR_NONE) 
+        if ((err = emcore_get_user_name(pid, &user_name)) != EMAIL_ERROR_NONE)
             EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err);
 
         EM_DEBUG_LOG("Domain name : [%s]", user_name);
 
-        if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int))) 
+        if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
                 EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 
 		if (user_name) {
-			if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, user_name, EM_SAFE_STRLEN(user_name) + 1)) 
+			if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, user_name, EM_SAFE_STRLEN(user_name) + 1))
 				EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 		}
     }
@@ -3761,7 +3755,7 @@ void stb_API_mapper(HIPC_API a_hAPI)
 		return;
 	}
 
-	switch(nAPIID) {
+	switch (nAPIID) {
 		case _EMAIL_API_ADD_ACCOUNT:
 			stb_create_account(a_hAPI);
 			break;
@@ -3819,7 +3813,7 @@ void stb_API_mapper(HIPC_API a_hAPI)
 			break;
 
 		case _EMAIL_API_CLEAR_DATA:
-			stb_clear_mail_data (a_hAPI);
+			stb_clear_mail_data(a_hAPI);
 			break;
 
 		case _EMAIL_API_DELETE_ALL_MAIL:
@@ -3942,23 +3936,23 @@ void stb_API_mapper(HIPC_API a_hAPI)
 			stb_retry_sending_mail(a_hAPI);
 			break;
 
-		case _EMAIL_API_VALIDATE_ACCOUNT :
+		case _EMAIL_API_VALIDATE_ACCOUNT:
 			stb_validate_account(a_hAPI);
 			break;
 
-		case _EMAIL_API_SEND_MAIL_CANCEL_JOB :
+		case _EMAIL_API_SEND_MAIL_CANCEL_JOB:
 			stb_cancel_send_mail_job(a_hAPI);
 			break;
 
-		case _EMAIL_API_SEARCH_MAIL_ON_SERVER :
+		case _EMAIL_API_SEARCH_MAIL_ON_SERVER:
 			stb_search_mail_on_server(a_hAPI);
 			break;
 
-		case _EMAIL_API_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER :
+		case _EMAIL_API_CLEAR_RESULT_OF_SEARCH_MAIL_ON_SERVER:
 			stb_clear_result_of_search_mail_on_server(a_hAPI);
 			break;
 
-		case _EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION :
+		case _EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION:
 			stb_add_account_with_validation(a_hAPI);
 			break;
 
@@ -3982,56 +3976,56 @@ void stb_API_mapper(HIPC_API a_hAPI)
 			stb_verify_signature(a_hAPI);
 			break;
 
-		case _EMAIL_API_PING_SERVICE :
+		case _EMAIL_API_PING_SERVICE:
 			stb_ping_service(a_hAPI);
 			break;
 
-		case _EMAIL_API_UPDATE_NOTIFICATION_BAR_FOR_UNREAD_MAIL :
+		case _EMAIL_API_UPDATE_NOTIFICATION_BAR_FOR_UNREAD_MAIL:
 			stb_update_notification_bar_for_unread_mail(a_hAPI);
 			break;
 
-		case _EMAIL_API_CLEAR_NOTIFICATION_BAR :
+		case _EMAIL_API_CLEAR_NOTIFICATION_BAR:
 			stb_clear_notification_bar(a_hAPI);
 			break;
 
-		case _EMAIL_API_SHOW_USER_MESSAGE :
+		case _EMAIL_API_SHOW_USER_MESSAGE:
 			stb_show_user_message(a_hAPI);
 			break;
 
-		case _EMAIL_API_WRITE_MIME_FILE :
+		case _EMAIL_API_WRITE_MIME_FILE:
 			stb_write_mime_file(a_hAPI);
 			break;
 
-		case _EMAIL_API_VALIDATE_ACCOUNT_EX :
+		case _EMAIL_API_VALIDATE_ACCOUNT_EX:
 			stb_validate_account_ex(a_hAPI);
 			break;
 
-		case EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT :
+		case EMAIL_ASYNC_TASK_MOVE_MAILS_TO_MAILBOX_OF_ANOTHER_ACCOUNT:
 			stb_move_mails_to_mailbox_of_another_account(a_hAPI);
 			break;
 
-		case EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX :
+		case EMAIL_ASYNC_TASK_DELETE_MAILBOX_EX:
 			stb_delete_mailbox_ex(a_hAPI);
 			break;
 
-		case EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL :
+		case EMAIL_ASYNC_TASK_SEND_MAIL_WITH_DOWNLOADING_ATTACHMENT_OF_ORIGINAL_MAIL:
 			stb_send_mail_with_downloading_attachment_of_original_mail(a_hAPI);
 			break;
 
-        case _EMAIL_API_GET_USER_NAME :
+        case _EMAIL_API_GET_USER_NAME:
             stb_get_user_name(a_hAPI);
             break;
 
-		case _EMAIL_API_SAVE_DEFAULT_ACCOUNT_ID :
+		case _EMAIL_API_SAVE_DEFAULT_ACCOUNT_ID:
 			stb_save_default_account_id(a_hAPI);
 			break;
 
-		case _EMAIL_API_LOAD_DEFAULT_ACCOUNT_ID :
+		case _EMAIL_API_LOAD_DEFAULT_ACCOUNT_ID:
 			stb_load_default_account_id(a_hAPI);
 			break;
 
-		default :
-			if(EMAIL_SYNC_TASK_BOUNDARY_START < nAPIID && nAPIID < EMAIL_ASYNC_TASK_BOUNDARY_END)
+		default:
+			if (EMAIL_SYNC_TASK_BOUNDARY_START < nAPIID && nAPIID < EMAIL_ASYNC_TASK_BOUNDARY_END)
 				stb_handle_task(nAPIID, a_hAPI);
 			break;
 	}
@@ -4095,7 +4089,7 @@ INTERNAL_FUNC int kill_daemon_if_no_account()
 
 	if (total_account_count == 0) {
 		EM_DEBUG_LOG("email-service is going to shutdown");
-		g_main_loop_quit (g_mainloop);
+		g_main_loop_quit(g_mainloop);
 	}
 
 FINISH_OFF:
@@ -4128,21 +4122,20 @@ gboolean callback_for_shutdown(gpointer user_data)
 	return FALSE;
 }
 
-gboolean callback_for_del_account (GIOChannel *ch, GIOCondition cond, gpointer data)
+gboolean callback_for_del_account(GIOChannel *ch, GIOCondition cond, gpointer data)
 {
 	static int file_del = 0;
 	static int db_del = 0;
 	int event = 0;
 	gsize len = 0;
-	g_io_channel_read_chars (ch, (gchar*) &event, sizeof (event), &len, NULL);
+	g_io_channel_read_chars(ch, (gchar*) &event, sizeof(event), &len, NULL);
 
-	if (event==EMAIL_SIGNAL_DB_DELETED) {
+	if (event == EMAIL_SIGNAL_DB_DELETED) {
 		db_del = 1;
-	}
-	else if (event==EMAIL_SIGNAL_FILE_DELETED) {
+	} else if (event == EMAIL_SIGNAL_FILE_DELETED) {
 		file_del = 1;
 	}
-	EM_DEBUG_LOG ("callback_for_del_account called file_del[%d] db_del[%d]", file_del, db_del);
+	EM_DEBUG_LOG("callback_for_del_account called file_del[%d] db_del[%d]", file_del, db_del);
 
 	/* if called twice, process termination begins.
 	   two threads should complete the delete task */
@@ -4157,62 +4150,56 @@ gboolean callback_for_del_account (GIOChannel *ch, GIOCondition cond, gpointer d
 static GDBusNodeInfo *introspection_data = NULL;
 extern gchar introspection_xml[];
 
-static void
-handle_method_call (GDBusConnection         *connection,
-                      const gchar           *sender,
-                      const gchar           *object_path,
-                      const gchar           *interface_name,
-                      const gchar           *method_name,
-                      GVariant              *parameters,
-                      GDBusMethodInvocation *invocation,
-                      gpointer               user_data)
+static void handle_method_call(GDBusConnection         *connection,
+								  const gchar           *sender,
+								  const gchar           *object_path,
+								  const gchar           *interface_name,
+								  const gchar           *method_name,
+								  GVariant              *parameters,
+								  GDBusMethodInvocation *invocation,
+								  gpointer               user_data)
 {
 	/* called by emipc_launch_email_service */
-	if (g_strcmp0 (method_name, "Launch") == 0) {
+	if (g_strcmp0(method_name, "Launch") == 0) {
 		int caller_pid = 0;
-		g_variant_get (parameters, "(i)", &caller_pid);
-
+		g_variant_get(parameters, "(i)", &caller_pid);
 		launch_pid = caller_pid;
-		g_dbus_method_invocation_return_value (invocation, g_variant_new ("(i)", EMAIL_ERROR_NONE));
-		EM_DEBUG_LOG ("email-service launched by pid [%d]", caller_pid);
+		g_dbus_method_invocation_return_value(invocation, g_variant_new("(i)", EMAIL_ERROR_NONE));
+		EM_DEBUG_LOG("email-service launched by pid [%d]", caller_pid);
+	} else if (g_strcmp0(method_name, "GetDisplayName") == 0) {
+		GVariant* ret = em_gdbus_get_display_name(parameters);
+		g_dbus_method_invocation_return_value(invocation, ret);
+	} else if (g_strcmp0(method_name, "CheckBlockingMode") == 0) {
+		GVariant* ret = em_gdbus_check_blocking_mode(parameters);
+		g_dbus_method_invocation_return_value(invocation, ret);
 	}
 /*
-	else if (g_strcmp0 (method_name, "SetContactsLog") == 0) {
+	else if (g_strcmp0(method_name, "SetContactsLog") == 0) {
 		GVariant* ret = em_gdbus_set_contact_log(parameters);
-		g_dbus_method_invocation_return_value (invocation, ret);
+		g_dbus_method_invocation_return_value(invocation, ret);
 	}
-	else if (g_strcmp0 (method_name, "DeleteContactsLog") == 0) {
+	else if (g_strcmp0(method_name, "DeleteContactsLog") == 0) {
 		GVariant* ret = em_gdbus_delete_contact_log(parameters);
-		g_dbus_method_invocation_return_value (invocation, ret);
+		g_dbus_method_invocation_return_value(invocation, ret);
 	}
 */
-	else if (g_strcmp0 (method_name, "GetDisplayName") == 0) {
-		GVariant* ret = em_gdbus_get_display_name(parameters);
-		g_dbus_method_invocation_return_value (invocation, ret);
-	}
-	else if (g_strcmp0 (method_name, "CheckBlockingMode") == 0) {
-		GVariant* ret = em_gdbus_check_blocking_mode(parameters);
-		g_dbus_method_invocation_return_value (invocation, ret);
-	}
+
 }
 
-static const
-GDBusInterfaceVTable interface_vtable =
-{
+static const GDBusInterfaceVTable interface_vtable = {
 	handle_method_call,
 	NULL,
 	NULL
 };
 
-static void
-on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer user_data)
+static void on_bus_acquired(GDBusConnection *connection, const gchar *name, gpointer user_data)
 {
-	EM_DEBUG_LOG ("on_bus_acquired begin");
+	EM_DEBUG_LOG("on_bus_acquired begin");
 
 	guint reg_id;
 	GError *error = NULL;
 
-	reg_id = g_dbus_connection_register_object (connection,
+	reg_id = g_dbus_connection_register_object(connection,
                                              EMAIL_SERVICE_PATH,
                                              introspection_data->interfaces[0],
                                              &interface_vtable,
@@ -4220,24 +4207,24 @@ on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer user_d
                                              NULL,  /* user_data_free_func */
                                              &error); /* GError** */
 	if (reg_id == 0) {
-		EM_DEBUG_EXCEPTION ("g_dbus_connection_register_object error[%s]",error->message);
-		g_error_free (error);
+		EM_DEBUG_EXCEPTION("g_dbus_connection_register_object error[%s]", error->message);
+		g_error_free(error);
 	}
-	EM_DEBUG_LOG ("on_bus_acquired end [%d]", reg_id);
+	EM_DEBUG_LOG("on_bus_acquired end [%d]", reg_id);
 }
 
-static void on_name_acquired (GDBusConnection *connection,
+static void on_name_acquired(GDBusConnection *connection,
                                const gchar *name,
                                gpointer     user_data)
 {
-	EM_DEBUG_LOG ("on_name_acquired [%s]", name);
+	EM_DEBUG_LOG("on_name_acquired [%s]", name);
 }
 
-static void on_name_lost (GDBusConnection *connection,
+static void on_name_lost(GDBusConnection *connection,
                            const gchar *name,
                            gpointer     user_data)
 {
-	EM_DEBUG_EXCEPTION ("on_name_lost [%p] [%s]", connection, name);
+	EM_DEBUG_EXCEPTION("on_name_lost [%p] [%s]", connection, name);
 }
 
 INTERNAL_FUNC int main(int argc, char *argv[])
@@ -4251,8 +4238,8 @@ INTERNAL_FUNC int main(int argc, char *argv[])
     GList *node = NULL;
     GList *zone_name_list = NULL;
 
-#if !GLIB_CHECK_VERSION(2, 36, 0) 
-	g_type_init(); 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
+	g_type_init();
 #endif
 
     /* Init container for daemon */
@@ -4262,7 +4249,7 @@ INTERNAL_FUNC int main(int argc, char *argv[])
 
 	ret = emipc_initialize_stub(stb_API_mapper);
 
-	if(ret == true)
+	if (ret == true)
 		EM_DEBUG_LOG("ipcEmailStub_Initialize Success");
 	else
 		EM_DEBUG_EXCEPTION("ipcEmailStub_Initialize failed");
@@ -4302,27 +4289,27 @@ INTERNAL_FUNC int main(int argc, char *argv[])
 	g_timeout_add(5000, callback_for_shutdown, NULL);
 
 	/* pipe between main and del account thread */
-	int *pipefd = emcore_init_pipe_for_del_account ();
+	int *pipefd = emcore_init_pipe_for_del_account();
 	/* main loop uses IO channel for listening an event */
 	if (pipefd) {
-		GIOChannel *ch = g_io_channel_unix_new (pipefd[0]);
-		EM_DEBUG_LOG ("main pipe[%d][%d]", pipefd[0], pipefd[1]);
+		GIOChannel *ch = g_io_channel_unix_new(pipefd[0]);
+		EM_DEBUG_LOG("main pipe[%d][%d]", pipefd[0], pipefd[1]);
 		/* non-blocking mode */
-		g_io_channel_set_flags (ch, g_io_channel_get_flags (ch) | G_IO_FLAG_NONBLOCK, NULL);
+		g_io_channel_set_flags(ch, g_io_channel_get_flags(ch) | G_IO_FLAG_NONBLOCK, NULL);
 		/* main loop watches the IO, and call the cb when data is ready */
-		g_io_add_watch (ch, G_IO_IN, &callback_for_del_account, NULL);
+		g_io_add_watch(ch, G_IO_IN, &callback_for_del_account, NULL);
 	}
 
 	/* gdbus setup */
 	GError *error = NULL;
-	introspection_data = g_dbus_node_info_new_for_xml (introspection_xml, &error);
+	introspection_data = g_dbus_node_info_new_for_xml(introspection_xml, &error);
 	if (!introspection_data) {
 		/* introspection_xml may be invalid */
-		EM_DEBUG_EXCEPTION ("g_dbus_node_info_new_for_xml error [%s]", error->message);
-		g_error_free (error);
+		EM_DEBUG_EXCEPTION("g_dbus_node_info_new_for_xml error [%s]", error->message);
+		g_error_free(error);
 	}
 
-	owner_id = g_bus_own_name (G_BUS_TYPE_SESSION,
+	owner_id = g_bus_own_name(G_BUS_TYPE_SESSION,
                                 EMAIL_SERVICE_NAME,
                                 G_BUS_NAME_OWNER_FLAGS_NONE,
                                 on_bus_acquired,
@@ -4331,9 +4318,9 @@ INTERNAL_FUNC int main(int argc, char *argv[])
                                 NULL,
                                 NULL);
 	if (!owner_id) {
-		EM_DEBUG_EXCEPTION ("g_bus_own_name error");
+		EM_DEBUG_EXCEPTION("g_bus_own_name error");
 	}
-	EM_DEBUG_LOG ("owner_id [%d]", owner_id);
+	EM_DEBUG_LOG("owner_id [%d]", owner_id);
 
 	mainloop = g_main_loop_new(NULL, 0);
 	g_mainloop = mainloop;
@@ -4341,7 +4328,7 @@ INTERNAL_FUNC int main(int argc, char *argv[])
 	g_main_loop_run(mainloop);
 
 	/* Clean up resources */
-	g_bus_unown_name (owner_id);
+	g_bus_unown_name(owner_id);
 	g_main_loop_unref(mainloop);
 	g_mainloop = NULL;
 
@@ -4351,7 +4338,7 @@ FINISH_OFF:
 	emdaemon_finalize(NULL);
 	emcore_gmime_shutdown();
 
-	EM_DEBUG_LOG ("Goodbye, world");
+	EM_DEBUG_LOG("Goodbye, world");
 	EM_DEBUG_FUNC_END();
 	exit(44); /* exit with exit code 44 to prevent restarting */
 	return 0;

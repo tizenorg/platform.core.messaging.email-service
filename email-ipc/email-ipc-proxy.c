@@ -34,7 +34,7 @@
 #include "email-storage.h"
 #include "email-core-task-manager.h"
 
-EXPORT_API int emipc_initialize_proxy ()
+EXPORT_API int emipc_initialize_proxy()
 {
 	EM_DEBUG_FUNC_BEGIN();
 
@@ -68,17 +68,17 @@ EXPORT_API int emipc_execute_proxy_api(HIPC_API api)
 	int err = EMAIL_ERROR_NONE;
 	emipc_email_api_info *api_info = (emipc_email_api_info *)api;
 
-	EM_DEBUG_LOG_DEV ("API [%p]", api_info);
+	EM_DEBUG_LOG_DEV("API [%p]", api_info);
 
-	if(api_info == NULL) {
+	if (api_info == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
 	EM_DEBUG_LOG_SEC("Request: API_ID[%s][0x%x] RES_ID[%d] APP_ID[%d]",\
-                                          EM_APIID_TO_STR(api_info->api_id), 
+                                          EM_APIID_TO_STR(api_info->api_id),
                                           api_info->api_id,
-                                          api_info->response_id, 
+                                          api_info->response_id,
                                           api_info->app_id);
 
 	ret = emipc_execute_api_of_proxy_main(api_info);
@@ -89,8 +89,8 @@ EXPORT_API int emipc_execute_proxy_api(HIPC_API api)
 		EM_DEBUG_LOG("Launch email-service daemon");
 		err = emipc_initialize_proxy();
 		if (err != EMAIL_ERROR_NONE) {
-			EM_DEBUG_EXCEPTION ("emipc_initialize_proxy [%d]", err);
-			goto FINISH_OFF;			
+			EM_DEBUG_EXCEPTION("emipc_initialize_proxy [%d]", err);
+			goto FINISH_OFF;
 		}
 
 		err = emipc_execute_api_of_proxy_main(api_info);

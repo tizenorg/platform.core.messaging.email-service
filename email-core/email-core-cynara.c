@@ -57,7 +57,7 @@ INTERNAL_FUNC int emcore_init_cynara()
 	ENTER_CRITICAL_SECTION(cynara_mutex);
 	cynara_info = (cynara_info_t *)em_malloc(sizeof(cynara_info));
 	if (cynara_info == NULL) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
+		EM_DEBUG_EXCEPTION("em_mallocfailed");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}

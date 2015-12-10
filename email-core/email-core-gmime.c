@@ -117,7 +117,7 @@ INTERNAL_FUNC int emcore_gmime_imap_parse_mime_partial(char *rfc822header_str, c
 
 	EM_SAFE_FREE(fulltext);
 
-	if (message) g_object_unref (message);
+	if (message) g_object_unref(message);
 
 	EM_DEBUG_FUNC_END();
 	return true;
@@ -167,9 +167,9 @@ INTERNAL_FUNC int emcore_gmime_pop3_parse_mime(char *eml_path, struct _m_content
 
 	g_mime_message_foreach(message, emcore_gmime_pop3_parse_foreach_cb, (gpointer)cnt_info);
 
-	EM_SAFE_CLOSE (fd);
+	EM_SAFE_CLOSE(fd);
 
-	if (message) g_object_unref (message);
+	if (message) g_object_unref(message);
 
 	EM_DEBUG_FUNC_END();
 	return true;
@@ -222,9 +222,9 @@ INTERNAL_FUNC int emcore_gmime_eml_parse_mime(char *eml_path,
 
 	g_mime_message_foreach(message, emcore_gmime_eml_parse_foreach_cb, (gpointer)cnt_info);
 
-	EM_SAFE_CLOSE (fd);
+	EM_SAFE_CLOSE(fd);
 
-	if (message) g_object_unref (message);
+	if (message) g_object_unref(message);
 
 	EM_DEBUG_FUNC_END();
 	return true;
@@ -324,7 +324,7 @@ static void emcore_gmime_pop3_parse_foreach_cb(GMimeObject *parent, GMimeObject 
 
 			file = em_malloc(sizeof(struct attachment_info));
 			if (file == NULL) {
-				EM_DEBUG_EXCEPTION("em_malloc failed...");
+				EM_DEBUG_EXCEPTION("em_mallocfailed...");
 				goto FINISH_OFF;
 			}
 
@@ -347,7 +347,7 @@ static void emcore_gmime_pop3_parse_foreach_cb(GMimeObject *parent, GMimeObject 
 			}
 			EM_SAFE_FREE(utf8_text);
 
-			if(msg_ctype_type && msg_ctype_subtype) {
+			if (msg_ctype_type && msg_ctype_subtype) {
 				char mime_type_buffer[128] = {0,};
 				snprintf(mime_type_buffer, sizeof(mime_type_buffer), "%s/%s", msg_ctype_type, msg_ctype_subtype);
 				file->attachment_mime_type = g_strdup(mime_type_buffer);
@@ -457,7 +457,7 @@ static void emcore_gmime_pop3_parse_foreach_cb(GMimeObject *parent, GMimeObject 
 
 
 		GMimeContentEncoding enc = g_mime_part_get_content_encoding(leaf_part);
-		switch(enc) {
+		switch (enc) {
 		case GMIME_CONTENT_ENCODING_DEFAULT:
 			EM_DEBUG_LOG("Encoding:ENCODING_DEFAULT");
 			break;
@@ -587,19 +587,17 @@ static void emcore_gmime_pop3_parse_foreach_cb(GMimeObject *parent, GMimeObject 
 			if (content_disposition_type == ATTACHMENT) {
 				EM_DEBUG_LOG("ATTACHMENT");
 				temp_file = cnt_info->file;
-			}
-			else if (content_disposition_type == INLINE_ATTACHMENT) {
+			} else if (content_disposition_type == INLINE_ATTACHMENT) {
 				EM_DEBUG_LOG("INLINE ATTACHMENT");
 				temp_file = cnt_info->inline_file;
-			}
-			else {
+			} else {
 				EM_DEBUG_EXCEPTION("Invalid content_disposition_type");
 				goto FINISH_OFF;
 			}
 
 			file = em_malloc(sizeof(struct attachment_info));
 			if (file == NULL) {
-				EM_DEBUG_EXCEPTION("em_malloc failed...");
+				EM_DEBUG_EXCEPTION("em_mallocfailed...");
 				goto FINISH_OFF;
 			}
 
@@ -657,7 +655,7 @@ static void emcore_gmime_pop3_parse_foreach_cb(GMimeObject *parent, GMimeObject 
 				g_free(file_content); /* prevent 39110 */
 			}
 
-			if(ctype_type && ctype_subtype) {
+			if (ctype_type && ctype_subtype) {
 				char mime_type_buffer[128] = {0,};
 				snprintf(mime_type_buffer, sizeof(mime_type_buffer), "%s/%s", ctype_type, ctype_subtype);
 				file->attachment_mime_type = g_strdup(mime_type_buffer);
@@ -684,8 +682,7 @@ static void emcore_gmime_pop3_parse_foreach_cb(GMimeObject *parent, GMimeObject 
 				} else {
 					cnt_info->inline_file = file;
 				}
-			}
-			else
+			} else
 				temp_file->next = file;
 		}
 
@@ -853,7 +850,7 @@ static void emcore_gmime_eml_parse_foreach_cb(GMimeObject *parent, GMimeObject *
 
 		file = em_malloc(sizeof(struct attachment_info));
 		if (file == NULL) {
-			EM_DEBUG_EXCEPTION("em_malloc failed...");
+			EM_DEBUG_EXCEPTION("em_mallocfailed...");
 			goto FINISH_OFF;
 		}
 
@@ -876,7 +873,7 @@ static void emcore_gmime_eml_parse_foreach_cb(GMimeObject *parent, GMimeObject *
 		}
 		EM_SAFE_FREE(utf8_text);
 
-		if(msg_ctype_type && msg_ctype_subtype) {
+		if (msg_ctype_type && msg_ctype_subtype) {
 			char mime_type_buffer[128] = {0,};
 			snprintf(mime_type_buffer, sizeof(mime_type_buffer), "%s/%s", msg_ctype_type, msg_ctype_subtype);
 			file->attachment_mime_type = g_strdup(mime_type_buffer);
@@ -900,7 +897,7 @@ static void emcore_gmime_eml_parse_foreach_cb(GMimeObject *parent, GMimeObject *
 
 		temp_cnt_info = (struct _m_content_info *)em_malloc(sizeof(struct _m_content_info));
 		if (temp_cnt_info == NULL) {
-			EM_DEBUG_EXCEPTION("em_malloc failed...");
+			EM_DEBUG_EXCEPTION("em_mallocfailed...");
 			err = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
 		}
@@ -1020,7 +1017,7 @@ static void emcore_gmime_eml_parse_foreach_cb(GMimeObject *parent, GMimeObject *
 
 
 		GMimeContentEncoding enc = g_mime_part_get_content_encoding(leaf_part);
-		switch(enc) {
+		switch (enc) {
 		case GMIME_CONTENT_ENCODING_DEFAULT:
 			EM_DEBUG_LOG("Encoding:ENCODING_DEFAULT");
 			break;
@@ -1180,19 +1177,17 @@ static void emcore_gmime_eml_parse_foreach_cb(GMimeObject *parent, GMimeObject *
 			if (content_disposition_type == ATTACHMENT) {
 				EM_DEBUG_LOG("ATTACHMENT");
 				temp_file = cnt_info->file;
-			}
-			else if (content_disposition_type == INLINE_ATTACHMENT) {
+			} else if (content_disposition_type == INLINE_ATTACHMENT) {
 				EM_DEBUG_LOG("INLINE ATTACHMENT");
 				temp_file = cnt_info->inline_file;
-			}
-			else {
+			} else {
 				EM_DEBUG_EXCEPTION("Invalid content_disposition_type");
 				goto FINISH_OFF;
 			}
 
 			file = em_malloc(sizeof(struct attachment_info));
 			if (file == NULL) {
-				EM_DEBUG_EXCEPTION("em_malloc failed...");
+				EM_DEBUG_EXCEPTION("em_mallocfailed...");
 				goto FINISH_OFF;
 			}
 
@@ -1219,7 +1214,7 @@ static void emcore_gmime_eml_parse_foreach_cb(GMimeObject *parent, GMimeObject *
 			/* check inline name duplication */
 			if (content_disposition_type == INLINE_ATTACHMENT) {
 				if (emcore_gmime_check_filename_duplication(file->name, cnt_info)) {
-					char *modified_name= NULL;
+					char *modified_name = NULL;
 					modified_name = emcore_gmime_get_modified_filename_in_duplication(file->name);
 					EM_SAFE_FREE(file->name);
 					file->name = modified_name;
@@ -1267,7 +1262,7 @@ static void emcore_gmime_eml_parse_foreach_cb(GMimeObject *parent, GMimeObject *
 				g_free(encoding_file_name);
 			}
 
-			if(ctype_type && ctype_subtype) {
+			if (ctype_type && ctype_subtype) {
 				char mime_type_buffer[128] = {0,};
 				snprintf(mime_type_buffer, sizeof(mime_type_buffer), "%s/%s", ctype_type, ctype_subtype);
 				file->attachment_mime_type = g_strdup(mime_type_buffer);
@@ -1295,8 +1290,7 @@ static void emcore_gmime_eml_parse_foreach_cb(GMimeObject *parent, GMimeObject *
 				} else {
 					cnt_info->inline_file = file;
 				}
-			}
-			else
+			} else
 				temp_file->next = file;
 		}
 
@@ -1377,7 +1371,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_foreach_cb(GMimeObject *parent, GMime
 
 			file = em_malloc(sizeof(struct attachment_info));
 			if (file == NULL) {
-				EM_DEBUG_EXCEPTION("em_malloc failed...");
+				EM_DEBUG_EXCEPTION("em_mallocfailed...");
 				goto FINISH_OFF;
 			}
 
@@ -1400,7 +1394,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_foreach_cb(GMimeObject *parent, GMime
 			}
 			EM_SAFE_FREE(utf8_text);
 
-			if(msg_ctype_type && msg_ctype_subtype) {
+			if (msg_ctype_type && msg_ctype_subtype) {
 				char mime_type_buffer[128] = {0,};
 				snprintf(mime_type_buffer, sizeof(mime_type_buffer), "%s/%s", msg_ctype_type, msg_ctype_subtype);
 				file->attachment_mime_type = g_strdup(mime_type_buffer);
@@ -1562,7 +1556,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_foreach_cb(GMimeObject *parent, GMime
 		if (content_disposition_type != ATTACHMENT) {
 			/*Content*/
 			GMimeContentEncoding enc = g_mime_part_get_content_encoding(leaf_part);
-			switch(enc) {
+			switch (enc) {
 			case GMIME_CONTENT_ENCODING_DEFAULT:
 				EM_DEBUG_LOG("Encoding:ENCODING_DEFAULT");
 				break;
@@ -1672,7 +1666,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_foreach_cb(GMimeObject *parent, GMime
 
 			file = em_malloc(sizeof(struct attachment_info));
 			if (file == NULL) {
-				EM_DEBUG_EXCEPTION("em_malloc failed...");
+				EM_DEBUG_EXCEPTION("em_mallocfailed...");
 				goto FINISH_OFF;
 			}
 
@@ -1686,7 +1680,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_foreach_cb(GMimeObject *parent, GMime
 				char *tmp_ptr = file->name;
 				int tmp_len = EM_SAFE_STRLEN(file->name);
 				int tmpi = 0;
-				for (tmpi=0; tmpi<tmp_len; tmpi++) {
+				for (tmpi = 0; tmpi < tmp_len; tmpi++) {
 					if (*(tmp_ptr+tmpi) == '/') {
 						*(tmp_ptr+tmpi) = '_';
 					}
@@ -1735,7 +1729,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_foreach_cb(GMimeObject *parent, GMime
 			}
 			g_free(file_content); /* prevent 39110 */
 
-			if(ctype_type && ctype_subtype) {
+			if (ctype_type && ctype_subtype) {
 				char mime_type_buffer[128] = {0,};
 				snprintf(mime_type_buffer, sizeof(mime_type_buffer), "%s/%s", ctype_type, ctype_subtype);
 				file->attachment_mime_type = g_strdup(mime_type_buffer);
@@ -1746,8 +1740,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_foreach_cb(GMimeObject *parent, GMime
 			if (download_status == EMAIL_PART_DOWNLOAD_STATUS_FULLY_DOWNLOADED) {
 				file->save_status = 1;
 				file->size = real_size;
-			}
-			else
+			} else
 				file->save_status = 0;
 
 			while (temp_file && temp_file->next)
@@ -1766,7 +1759,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_foreach_cb(GMimeObject *parent, GMime
 
 			file = em_malloc(sizeof(struct attachment_info));
 			if (file == NULL) {
-				EM_DEBUG_EXCEPTION("em_malloc failed...");
+				EM_DEBUG_EXCEPTION("em_mallocfailed...");
 				goto FINISH_OFF;
 			}
 
@@ -1789,7 +1782,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_foreach_cb(GMimeObject *parent, GMime
 			}
 			EM_SAFE_FREE(utf8_text);
 
-			if(ctype_type && ctype_subtype) {
+			if (ctype_type && ctype_subtype) {
 				char mime_type_buffer[128] = {0,};
 				snprintf(mime_type_buffer, sizeof(mime_type_buffer), "%s/%s", ctype_type, ctype_subtype);
 				file->attachment_mime_type = g_strdup(mime_type_buffer);
@@ -1896,7 +1889,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 
 			file = em_malloc(sizeof(struct attachment_info));
 			if (file == NULL) {
-				EM_DEBUG_EXCEPTION("em_malloc failed...");
+				EM_DEBUG_EXCEPTION("em_mallocfailed...");
 				goto FINISH_OFF;
 			}
 
@@ -1919,7 +1912,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 			}
 			EM_SAFE_FREE(utf8_text);
 
-			if(msg_ctype_type && msg_ctype_subtype) {
+			if (msg_ctype_type && msg_ctype_subtype) {
 				char mime_type_buffer[128] = {0,};
 				snprintf(mime_type_buffer, sizeof(mime_type_buffer), "%s/%s", msg_ctype_type, msg_ctype_subtype);
 				file->attachment_mime_type = g_strdup(mime_type_buffer);
@@ -2061,7 +2054,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 		EM_DEBUG_LOG_SEC("Temporary Content Path[%s]", content_path);
 
 		GMimeContentEncoding enc = g_mime_part_get_content_encoding(leaf_part);
-		switch(enc) {
+		switch (enc) {
 		case GMIME_CONTENT_ENCODING_DEFAULT:
 			EM_DEBUG_LOG("Encoding:ENCODING_DEFAULT");
 			break;
@@ -2112,9 +2105,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 			g_mime_data_wrapper_write_to_stream(data, out_stream);
 			if (out_stream) g_object_unref(out_stream);
 			emcore_get_file_size(content_path, &real_size, NULL);
-		}
-		else
-		{
+		} else {
 			int fd = 0;
 			fd = open(content_path, O_WRONLY|O_CREAT, 0644);
 			if (fd < 0) {
@@ -2186,7 +2177,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 
 			file = em_malloc(sizeof(struct attachment_info));
 			if (file == NULL) {
-				EM_DEBUG_EXCEPTION("em_malloc failed...");
+				EM_DEBUG_EXCEPTION("em_mallocfailed...");
 				goto FINISH_OFF;
 			}
 
@@ -2200,7 +2191,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 				char *tmp_ptr = file->name;
 				int tmp_len = EM_SAFE_STRLEN(file->name);
 				int tmpi = 0;
-				for (tmpi=0; tmpi<tmp_len; tmpi++) {
+				for (tmpi = 0; tmpi < tmp_len; tmpi++) {
 					if (*(tmp_ptr+tmpi) == '/') {
 						*(tmp_ptr+tmpi) = '_';
 					}
@@ -2220,7 +2211,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 			EM_SAFE_FREE(utf8_text);
 
 			/* check inline name duplication */
-			char *modified_name= NULL;
+			char *modified_name = NULL;
 			if (emcore_gmime_check_filename_duplication(file->name, cnt_info)) {
 				modified_name = emcore_gmime_get_modified_filename_in_duplication(file->name);
 				EM_SAFE_FREE(file->name);
@@ -2250,7 +2241,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 			}
 			g_free(file_content); /* prevent 39110 */
 
-			if(ctype_type && ctype_subtype) {
+			if (ctype_type && ctype_subtype) {
 				char mime_type_buffer[128] = {0,};
 				snprintf(mime_type_buffer, sizeof(mime_type_buffer), "%s/%s", ctype_type, ctype_subtype);
 				file->attachment_mime_type = g_strdup(mime_type_buffer);
@@ -2276,7 +2267,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 
 			file = em_malloc(sizeof(struct attachment_info));
 			if (file == NULL) {
-				EM_DEBUG_EXCEPTION("em_malloc failed...");
+				EM_DEBUG_EXCEPTION("em_mallocfailed...");
 				goto FINISH_OFF;
 			}
 
@@ -2299,7 +2290,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_full_foreach_cb(GMimeObject *parent, 
 			}
 			EM_SAFE_FREE(utf8_text);
 
-			if(ctype_type && ctype_subtype) {
+			if (ctype_type && ctype_subtype) {
 				char mime_type_buffer[128] = {0,};
 				snprintf(mime_type_buffer, sizeof(mime_type_buffer), "%s/%s", ctype_type, ctype_subtype);
 				file->attachment_mime_type = g_strdup(mime_type_buffer);
@@ -2559,8 +2550,7 @@ INTERNAL_FUNC void emcore_gmime_imap_parse_bodystructure_foreach_cb(GMimeObject 
 					EM_DEBUG_LOG("TEXT/PLAIN");
 					cnt_info->text.plain_charset = g_strdup(ctype_charset);
 					cnt_info->text.plain = tmp_file;
-				}
-				else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "html") == 0) {
+				} else if (ctype_subtype && g_ascii_strcasecmp(ctype_subtype, "html") == 0) {
 					EM_DEBUG_LOG("TEXT/HTML");
 					cnt_info->text.html_charset = g_strdup(ctype_charset);
 					cnt_info->text.html = tmp_file;
@@ -2637,8 +2627,7 @@ INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent
 				EM_SAFE_FREE(cnt_info->sections);
 				cnt_info->sections = tmp_str;
 			}
-		}
-		else {
+		} else {
 			cnt_info->sections = EM_SAFE_STRDUP(sections);
 		}
 
@@ -2781,8 +2770,7 @@ INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent
 
 			if (cnt_info->grab_type != (GRAB_TYPE_TEXT|GRAB_TYPE_ATTACHMENT))
 				goto FINISH_OFF;
-		}
-		else {
+		} else {
 			snprintf(sections, sizeof(sections), "BODY.PEEK[%s.MIME] BODY.PEEK[%s]", ctype_section, ctype_section);
 
 			if (cnt_info->sections) {
@@ -2798,8 +2786,7 @@ INTERNAL_FUNC void emcore_gmime_get_body_sections_foreach_cb(GMimeObject *parent
 					EM_SAFE_FREE(cnt_info->sections);
 					cnt_info->sections = tmp_str;
 				}
-			}
-			else {
+			} else {
 				cnt_info->sections = EM_SAFE_STRDUP(sections);
 			}
 
@@ -3101,7 +3088,7 @@ INTERNAL_FUNC void emcore_gmime_get_mime_entity_cb(GMimeObject *parent, GMimeObj
 	EM_DEBUG_FUNC_END();
 }
 
-INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
+INTERNAL_FUNC void emcore_gmime_construct_multipart(GMimeMultipart *multipart,
 													BODY *body,
 													const char *spec,
 													int *total_mail_size)
@@ -3123,7 +3110,7 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
 		return;
 	}
 
-	subspec = g_alloca (strlen(spec) + 14);
+	subspec = g_alloca(strlen(spec) + 14);
 	id = g_stpcpy(subspec, spec);
 	*id++ = '.';
 
@@ -3133,7 +3120,7 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
 	/* checkout boundary */
 	if (body->parameter) {
 		PARAMETER *param = body->parameter;
-		while(param) {
+		while (param) {
 			EM_DEBUG_LOG("Content-Type Parameter: attribute[%s], value[%s]", param->attribute, param->value);
 			param = param->next;
 		}
@@ -3142,7 +3129,7 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
 	part = body->nested.part;
 
 	while (part != NULL) {
-		sprintf (id, "%d", i++);
+		sprintf(id, "%d", i++);
 
 		if (EM_SAFE_STRLEN(subspec) > 2)
 			section = EM_SAFE_STRDUP(subspec+2);
@@ -3202,7 +3189,7 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
 			if (part->body.encoding <= 5) {
 				EM_DEBUG_LOG("Content Encoding: %s", body_encodings[part->body.encoding]);
 				GMimeContentEncoding encoding = GMIME_CONTENT_ENCODING_DEFAULT;
-				switch(part->body.encoding) {
+				switch (part->body.encoding) {
 				case ENC7BIT:
 					encoding = GMIME_CONTENT_ENCODING_7BIT;
 					break;
@@ -3256,7 +3243,7 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
 		/* content type */
 		if (part->body.parameter) {
 			PARAMETER *param = part->body.parameter;
-			while(param) {
+			while (param) {
 			    EM_DEBUG_LOG("Content-Type Parameter: attribute[%s], value[%s]", param->attribute, param->value);
 				if (param->attribute || param->value)
 					g_mime_object_set_content_type_parameter(subpart, param->attribute, param->value);
@@ -3275,7 +3262,7 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
 
 		if (part->body.disposition.parameter) {
 			PARAMETER *param = part->body.disposition.parameter;
-			while(param) {
+			while (param) {
 			    EM_DEBUG_LOG_SEC("Content-Disposition Parameter: attribute[%s], value[%s]", param->attribute, param->value);
 				if (param->attribute || param->value)
 					g_mime_object_set_content_disposition_parameter(subpart, param->attribute, param->value);
@@ -3302,10 +3289,10 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
 			EM_SAFE_FREE(cid);
 		}
 
-		g_mime_multipart_add (multipart, subpart);
+		g_mime_multipart_add(multipart, subpart);
 
 		if (subpart) {
-			g_object_unref (subpart);
+			g_object_unref(subpart);
 			subpart = NULL;
 		}
 
@@ -3317,7 +3304,7 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart (GMimeMultipart *multipart,
 	EM_DEBUG_FUNC_END();
 }
 
-INTERNAL_FUNC void emcore_gmime_construct_part (GMimePart *part,
+INTERNAL_FUNC void emcore_gmime_construct_part(GMimePart *part,
 												BODY *body,
 												const char *spec,
 												int *total_mail_size)
@@ -3364,7 +3351,7 @@ INTERNAL_FUNC void emcore_gmime_construct_part (GMimePart *part,
 	if (body->encoding <= 5) {
 		EM_DEBUG_LOG("Content Encoding: %s", body_encodings[body->encoding]);
 		GMimeContentEncoding encoding = GMIME_CONTENT_ENCODING_DEFAULT;
-		switch(body->encoding) {
+		switch (body->encoding) {
 		case ENC7BIT:
 			encoding = GMIME_CONTENT_ENCODING_7BIT;
 			break;
@@ -3411,7 +3398,7 @@ INTERNAL_FUNC void emcore_gmime_construct_part (GMimePart *part,
 	/* content type */
 	if (body->parameter) {
 		PARAMETER *param = body->parameter;
-		while(param) {
+		while (param) {
 			EM_DEBUG_LOG("Content-Type Parameter: attribute[%s], value[%s]", param->attribute, param->value);
 			if (param->attribute || param->value)
 				g_mime_object_set_content_type_parameter(part_object, param->attribute, param->value);
@@ -3445,7 +3432,7 @@ INTERNAL_FUNC void emcore_gmime_construct_part (GMimePart *part,
 
 	if (body->disposition.parameter) {
 		PARAMETER *param = body->disposition.parameter;
-		while(param) {
+		while (param) {
 			EM_DEBUG_LOG("Content-Disposition Parameter: attribute[%s], value[%s]", param->attribute, param->value);
 			if (param->attribute || param->value)
 				g_mime_object_set_content_disposition_parameter(part_object, param->attribute, param->value);
@@ -3502,7 +3489,7 @@ INTERNAL_FUNC int emcore_gmime_construct_mime_part_with_bodystructure(BODY *mbod
 		int boundary_ok = 0;
 		if (mbody->parameter) {
 			PARAMETER *param = mbody->parameter;
-			while(param) {
+			while (param) {
 				if (g_ascii_strcasecmp(param->attribute, "boundary") == 0 && param->value)
 					boundary_ok = 1;
 				param = param->next;
@@ -3530,15 +3517,14 @@ INTERNAL_FUNC int emcore_gmime_construct_mime_part_with_bodystructure(BODY *mbod
 
 		if (mbody->parameter) {
 			PARAMETER *param = mbody->parameter;
-			while(param) {
+			while (param) {
 				EM_DEBUG_LOG("Content-Type Parameter: attribute[%s], value[%s]", param->attribute, param->value);
 				if (param->attribute || param->value)
 					g_mime_object_set_content_type_parameter(mime_part, param->attribute, param->value);
 				param = param->next;
 			}
 		}
-	}
-	else {
+	} else {
 		char *type = g_ascii_strdown(body_types[mbody->type], -1);
 		char *subtype = g_ascii_strdown(mbody->subtype, -1);
 		singlepart = g_mime_part_new_with_type(type, subtype);
@@ -3609,13 +3595,11 @@ INTERNAL_FUNC int emcore_gmime_get_body_sections_from_message(GMimeMessage *mess
 				snprintf(t, sizeof(t), "BODY.PEEK[%s] ", part_path);
 				if (EM_SAFE_STRLEN(sections) + EM_SAFE_STRLEN(t) < sizeof(sections) - 1) {
 					strcat(sections, t);
-				}
-				else {
+				} else {
 					EM_DEBUG_EXCEPTION("Too many body parts. IMAP command may cross 2000bytes.");
 					goto FINISH_OFF;
 				}
-			}
-			else if (cnt_info->grab_type == GRAB_TYPE_TEXT) {
+			} else if (cnt_info->grab_type == GRAB_TYPE_TEXT) {
 				if (disposition_str && g_ascii_strcasecmp(disposition_str, GMIME_DISPOSITION_ATTACHMENT) == 0) {
 					EM_DEBUG_LOG("ATTACHMENT");
 				} else {
@@ -3623,8 +3607,7 @@ INTERNAL_FUNC int emcore_gmime_get_body_sections_from_message(GMimeMessage *mess
 					snprintf(t, sizeof(t), "BODY.PEEK[%s] ", part_path);
 					if (EM_SAFE_STRLEN(sections) + EM_SAFE_STRLEN(t) < sizeof(sections) - 1) {
 						strcat(sections, t);
-					}
-					else {
+					} else {
 						EM_DEBUG_EXCEPTION("Too many body parts. IMAP command may cross 2000bytes.");
 						goto FINISH_OFF;
 					}
@@ -3719,8 +3702,7 @@ INTERNAL_FUNC int emcore_gmime_get_attachment_section_from_message(GMimeMessage 
 					snprintf(t, sizeof(t), "%s", part_path);
 					if (EM_SAFE_STRLEN(sections) + EM_SAFE_STRLEN(t) < sizeof(sections) - 1) {
 						strcat(sections, t);
-					}
-					else {
+					} else {
 						EM_DEBUG_EXCEPTION("Too many body parts. IMAP command may cross 2000bytes.");
 						goto FINISH_OFF;
 					}
@@ -3958,7 +3940,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 			}
 
 			if (!(search_info = em_malloc(sizeof(search_section)))) { /* prevent */
-				EM_DEBUG_EXCEPTION("em_malloc failed...");
+				EM_DEBUG_EXCEPTION("em_mallocfailed...");
 				err = EMAIL_ERROR_OUT_OF_MEMORY;
 				goto FINISH_OFF;
 			}
@@ -4002,7 +3984,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 				g_mime_object_set_content_type_parameter(mime_object, "tmp_content_path", buf);
 
 				if (event_handle > 0)
-					FINISH_OFF_IF_EVENT_CANCELED (err, event_handle);
+					FINISH_OFF_IF_EVENT_CANCELED(err, event_handle);
 
 				if (cnt_info->grab_type == GRAB_TYPE_TEXT) {
 					if (cnt_info->total_body_size > body_size) {
@@ -4013,16 +3995,15 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 															buf,
 															cnt_info->total_body_size,
 															0))
-								EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
+								EM_DEBUG_EXCEPTION(" emcore_notify_network_event[ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 						}
 
 						download_interval =  cnt_info->total_body_size * DOWNLOAD_NOTI_INTERVAL_PERCENT / 100;
 						download_total_size = cnt_info->total_body_size;
-					}
-					else {
+					} else {
 						if (!auto_download) {
 							if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, buf, body_size, 0))
-								EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
+								EM_DEBUG_EXCEPTION(" emcore_notify_network_event[ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 						}
 
 						download_interval =  body_size * DOWNLOAD_NOTI_INTERVAL_PERCENT / 100;
@@ -4037,7 +4018,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 														buf,
 														cnt_info->total_mail_size,
 														0))
-							EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
+							EM_DEBUG_EXCEPTION(" emcore_notify_network_event[ NOTI_DOWNLOAD_BODY_START] Failed >>>> ");
 					}
 
 					download_interval =  cnt_info->total_mail_size * DOWNLOAD_NOTI_INTERVAL_PERCENT / 100;
@@ -4063,17 +4044,15 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 
 						entity_part = g_mime_parser_construct_part(entity_parser);
 						if (entity_parser) g_object_unref(entity_parser);
-					}
-					else if (GMIME_IS_PART(mime_object) && mime_part) {
+					} else if (GMIME_IS_PART(mime_object) && mime_part) {
 						content_stream = g_mime_stream_mem_new_with_buffer((const char *)encoded,
 																			EM_SAFE_STRLEN(encoded));
 						//parser = g_mime_parser_new_with_stream(content_stream);
 						content = g_mime_data_wrapper_new_with_stream(content_stream, mime_part->encoding);
-						if (content_stream) g_object_unref (content_stream);
+						if (content_stream) g_object_unref(content_stream);
 						g_mime_part_set_content_object(mime_part, content);
 						if (content) g_object_unref(content);
-					}
-					else if (GMIME_IS_MESSAGE_PART(mime_object) && mime_message_part) {
+					} else if (GMIME_IS_MESSAGE_PART(mime_object) && mime_message_part) {
 						FILE *fp = NULL;
 						int encoded_len = EM_SAFE_STRLEN((char *)encoded);
 
@@ -4110,11 +4089,10 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 					if (cnt_info->grab_type == GRAB_TYPE_TEXT && !auto_download) {
 						if (cnt_info->total_body_size > body_size) {
 							if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, buf, download_total_size, downloaded_size))
-								EM_DEBUG_EXCEPTION(" emcore_notify_network_event [NOTI_DOWNLOAD_MULTIPART_BODY] Failed >>>>");
-						}
-						else {
+								EM_DEBUG_EXCEPTION(" emcore_notify_network_event[NOTI_DOWNLOAD_MULTIPART_BODY] Failed >>>>");
+						} else {
 							if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, buf, download_total_size, downloaded_size))
-								EM_DEBUG_EXCEPTION(" emcore_notify_network_event [NOTI_DOWNLOAD_BODY_START] Failed >>>>");
+								EM_DEBUG_EXCEPTION(" emcore_notify_network_event[NOTI_DOWNLOAD_BODY_START] Failed >>>>");
 						}
 					}
 				} else {
@@ -4130,13 +4108,13 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 						x = sizeof(encoded)-1;
 
 					memset(test_buffer, 0x00, sizeof(test_buffer));
-					while (remain_body_size && (total <body_size)) {
+					while (remain_body_size && (total < body_size)) {
 
 						memset(test_buffer, 0x00, sizeof(test_buffer));
 						while ((total != body_size) && remain_body_size && ((EM_SAFE_STRLEN((char *)test_buffer) + x) < sizeof(test_buffer))) {
 							memset(encoded, 0x00, sizeof(encoded));
 
-							if (net_getbuffer (imaplocal->netstream, (long)x, (char *)encoded) <= 0) {
+							if (net_getbuffer(imaplocal->netstream, (long)x, (char *)encoded) <= 0) {
 								EM_DEBUG_EXCEPTION("net_getbuffer failed...");
 								err = EMAIL_ERROR_NO_RESPONSE;
 								goto FINISH_OFF;
@@ -4176,10 +4154,10 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 								if (!auto_download) {
 									if (cnt_info->total_body_size > body_size) {
 										if (!emcore_notify_network_event(NOTI_DOWNLOAD_MULTIPART_BODY, mail_id, buf, download_total_size, downloaded_size))
-											EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_DOWNLOAD_MULTIPART_BODY] Failed >>>>");
+											EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_DOWNLOAD_MULTIPART_BODY] Failed >>>>");
 									} else {
 										if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_START, mail_id, buf, download_total_size, downloaded_size))
-											EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_DOWNLOAD_BODY_START] Failed >>>>");
+											EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_DOWNLOAD_BODY_START] Failed >>>>");
 									}
 								}
 							}
@@ -4198,7 +4176,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 							if (encoded_len > 0 && fwrite(test_buffer, encoded_len, 1, fp) == 0) {
 								EM_DEBUG_EXCEPTION("Error Occured while writing. fwrite(\"%s\") failed", test_buffer);
 								err = EMAIL_ERROR_SYSTEM_FAILURE;
-								fclose (fp); /* prevent */
+								fclose(fp); /* prevent */
 								goto FINISH_OFF;
 							}
 
@@ -4219,7 +4197,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 							if (encoded_len > 0 && fwrite(test_buffer, encoded_len, 1, fp) == 0) {
 								EM_DEBUG_EXCEPTION("Error Occured while writing. fwrite(\"%s\") failed", test_buffer);
 								err = EMAIL_ERROR_SYSTEM_FAILURE;
-								fclose (fp); /* prevent */
+								fclose(fp); /* prevent */
 								goto FINISH_OFF;
 							}
 
@@ -4243,8 +4221,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 
 						entity_part = g_mime_parser_construct_part(entity_parser);
 						if (entity_parser) g_object_unref(entity_parser);
-					}
-					else if (GMIME_IS_PART(mime_object) && mime_part) {
+					} else if (GMIME_IS_PART(mime_object) && mime_part) {
 						err = em_open(buf, O_RDONLY, 0, &fd);
 						if (err != EMAIL_ERROR_NONE) {
 							EM_DEBUG_EXCEPTION("holder open failed : holder is a filename that will be saved.");
@@ -4254,7 +4231,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 						content_stream = g_mime_stream_fs_new(fd);
 						//parser = g_mime_parser_new_with_stream(content_stream);
 						content = g_mime_data_wrapper_new_with_stream(content_stream, mime_part->encoding);
-						if (content_stream) g_object_unref (content_stream);
+						if (content_stream) g_object_unref(content_stream);
 						g_mime_part_set_content_object(mime_part, content);
 						if (content) g_object_unref(content);
 					}
@@ -4310,21 +4287,18 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 
 			if (buf) g_remove(buf);
 			EM_SAFE_FREE(buf);
-		}
-		else if ((tag_position = g_strrstr(response, tag))) /*  end of response */ {
+		} else if ((tag_position = g_strrstr(response, tag))) /*  end of response */ {
 			if (!strncmp(tag_position + EM_SAFE_STRLEN(tag) + 1, "OK", 2)) {
 				EM_SAFE_FREE(response);
-			}
-			else {		/* 'NO' or 'BAD */
+			} else {		/* 'NO' or 'BAD */
 				err = EMAIL_ERROR_IMAP4_FETCH_UID_FAILURE;
 				goto FINISH_OFF;
 			}
 			break;
-		}
-		else if (!strcmp(response, ")")) {
+		} else if (!strcmp(response, ")")) {
 		}
 
-		EM_SAFE_FREE (response);
+		EM_SAFE_FREE(response);
 	}
 
 	if (signed_message) {
@@ -4597,7 +4571,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_attachment_section(MAILSTREAM *stream,
 			}
 
 			if (!(search_info = em_malloc(sizeof(search_section)))) { /* prevent */
-				EM_DEBUG_EXCEPTION("em_malloc failed...");
+				EM_DEBUG_EXCEPTION("em_mallocfailed...");
 				err = EMAIL_ERROR_OUT_OF_MEMORY;
 				goto FINISH_OFF;
 			}
@@ -4632,7 +4606,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_attachment_section(MAILSTREAM *stream,
 			EM_DEBUG_LOG("Attachment number [%d]", nth);
 			if (!auto_download) {
 				if (!emcore_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, tmp_file, nth, 0))
-					EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>>");
+					EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_DOWNLOAD_ATTACH_START] Failed >>>>");
 			}
 
 			download_noti_interval = body_size * DOWNLOAD_NOTI_INTERVAL_PERCENT / 100;
@@ -4661,7 +4635,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_attachment_section(MAILSTREAM *stream,
 					EM_SAFE_FREE(response);
 					break;
 				}
-			} while(1);
+			} while (1);
 
 			preline_len = EM_SAFE_STRLEN(new_response);
 			EM_DEBUG_LOG("preline_len : %d", preline_len);
@@ -4680,12 +4654,11 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_attachment_section(MAILSTREAM *stream,
 					content_stream = g_mime_stream_mem_new_with_buffer((const char *)tmp_str, EM_SAFE_STRLEN(tmp_str));
 					//parser = g_mime_parser_new_with_stream(content_stream);
 					content = g_mime_data_wrapper_new_with_stream(content_stream, mime_part->encoding);
-					if (content_stream) g_object_unref (content_stream);
+					if (content_stream) g_object_unref(content_stream);
 					g_mime_part_set_content_object(mime_part, content);
 					if (content) g_object_unref(content);
 					EM_SAFE_FREE(tmp_str);
-				}
-				else if (GMIME_IS_MESSAGE_PART(mime_object) && mime_message_part) {
+				} else if (GMIME_IS_MESSAGE_PART(mime_object) && mime_message_part) {
 					FILE *fp = NULL;
 					int response_len = 0;
 					char *tmp_str = NULL;
@@ -4736,11 +4709,10 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_attachment_section(MAILSTREAM *stream,
 
 					if (!auto_download) {
 						if (download_total_size && !emcore_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, tmp_file, nth, download_progress))
-							EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>>");
+							EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_DOWNLOAD_ATTACH_START] Failed >>>>");
 					}
 				}
-			}
-			else if ((body_size < DOWNLOAD_MAX_BUFFER_SIZE) && (body_size - preline_len - nskip*2 < DOWNLOAD_MAX_BUFFER_SIZE)) {
+			} else if ((body_size < DOWNLOAD_MAX_BUFFER_SIZE) && (body_size - preline_len - nskip*2 < DOWNLOAD_MAX_BUFFER_SIZE)) {
 				memset(encoded, 0x00, sizeof(encoded));
 				if (net_getbuffer(imaplocal->netstream, body_size - preline_len - nskip*2, (char *)encoded) <= 0) {
 					EM_DEBUG_EXCEPTION("net_getbuffer failed...");
@@ -4758,11 +4730,10 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_attachment_section(MAILSTREAM *stream,
 					content_stream = g_mime_stream_mem_new_with_buffer((const char *)encoded, EM_SAFE_STRLEN(encoded));
 					//parser = g_mime_parser_new_with_stream(content_stream);
 					content = g_mime_data_wrapper_new_with_stream(content_stream, mime_part->encoding);
-					if (content_stream) g_object_unref (content_stream);
+					if (content_stream) g_object_unref(content_stream);
 					g_mime_part_set_content_object(mime_part, content);
 					if (content) g_object_unref(content);
-				}
-				else if (GMIME_IS_MESSAGE_PART(mime_object) && mime_message_part) {
+				} else if (GMIME_IS_MESSAGE_PART(mime_object) && mime_message_part) {
 					FILE *fp = NULL;
 					int encoded_len = EM_SAFE_STRLEN((char *)encoded);
 
@@ -4801,11 +4772,10 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_attachment_section(MAILSTREAM *stream,
 
 					if (!auto_download) {
 						if (download_total_size && !emcore_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, tmp_file, nth, download_progress))
-							EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>>");
+							EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_DOWNLOAD_ATTACH_START] Failed >>>>");
 					}
 				}
-			}
-			else {
+			} else {
 				int remain_body_size = body_size - preline_len - nskip*2;
 				int x = 0;
 				int nsize = 0;
@@ -4833,7 +4803,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_attachment_section(MAILSTREAM *stream,
 
 					while (remain_body_size > 0 && (total < body_size) && ((EM_SAFE_STRLEN((char *)test_buffer) + x) < sizeof(test_buffer))) {
 						if (event_handle > 0)
-							FINISH_OFF_IF_EVENT_CANCELED (err, event_handle);
+							FINISH_OFF_IF_EVENT_CANCELED(err, event_handle);
 
 						memset(encoded, 0x00, sizeof(encoded));
 
@@ -4870,7 +4840,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_attachment_section(MAILSTREAM *stream,
 
 							if (!auto_download) {
 								if (download_total_size && !emcore_notify_network_event(NOTI_DOWNLOAD_ATTACH_START, mail_id, tmp_file, nth, download_progress))
-									EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_DOWNLOAD_ATTACH_START] Failed >>>>");
+									EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_DOWNLOAD_ATTACH_START] Failed >>>>");
 							}
 						}
 					}
@@ -4931,15 +4901,14 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_attachment_section(MAILSTREAM *stream,
 					content_stream = g_mime_stream_fs_new(fd);
 					//parser = g_mime_parser_new_with_stream(content_stream);
 					content = g_mime_data_wrapper_new_with_stream(content_stream, mime_part->encoding);
-					if (content_stream) g_object_unref (content_stream);
+					if (content_stream) g_object_unref(content_stream);
 					g_mime_part_set_content_object(mime_part, content);
 					if (content) g_object_unref(content);
 				}
 			}
 
 			EM_SAFE_FREE(tmp_file);
-		}
-		else if ((tag_position = g_strrstr(response, tag))) /*  end of response */ {
+		} else if ((tag_position = g_strrstr(response, tag))) /*  end of response */ {
 			if (!strncmp(tag_position + EM_SAFE_STRLEN(tag) + 1, "OK", 2)) {
 				EM_SAFE_FREE(response);
 			} else  {		/* 'NO' or 'BAD */
@@ -4947,8 +4916,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_attachment_section(MAILSTREAM *stream,
 				goto FINISH_OFF;
 			}
 			break;
-		}
-		else if (!strcmp(response, ")")) {
+		} else if (!strcmp(response, ")")) {
 			/*  The end of response which contains body information */
 		}
 	}	/*  while (imaplocal->netstream)  */
@@ -4959,7 +4927,7 @@ FINISH_OFF:
 
 	EM_SAFE_FREE(tmp_file);
 	EM_SAFE_FREE(response);
-	EM_SAFE_FREE (new_response);
+	EM_SAFE_FREE(new_response);
 
 	if (search_info) {
 		EM_SAFE_FREE(search_info->section);
@@ -4995,7 +4963,7 @@ INTERNAL_FUNC int emcore_gmime_check_filename_duplication(char *source_filename,
 
 	while (cur_attachment_info) {
 
-		if(g_strcmp0(source_filename, cur_attachment_info->name) == 0) {
+		if (g_strcmp0(source_filename, cur_attachment_info->name) == 0) {
 			ret = TRUE;
 			break;
 		}

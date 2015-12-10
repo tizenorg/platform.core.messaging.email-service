@@ -121,7 +121,7 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 	}
 
 	/* convert directory delimiter to '/' */
-	for (s = enc_path;*s;s++)
+	for (s = enc_path; *s; s++)
 		if (*s == (char)delimiter)
 			*s = '/';
 
@@ -129,26 +129,26 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 	memset(p + count, 0x00, sizeof(email_internal_mailbox_t));
 
 #ifdef __FEATURE_XLIST_SUPPORT__
-	if(attributes & LATT_XLIST_INBOX)
+	if (attributes & LATT_XLIST_INBOX)
 		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_INBOX;
-	else if(attributes & LATT_XLIST_ALL)
+	else if (attributes & LATT_XLIST_ALL)
 		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_ALL_EMAILS;
-	else if(attributes & LATT_XLIST_DRAFTS)
+	else if (attributes & LATT_XLIST_DRAFTS)
 		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_DRAFT;
-	else if(attributes & LATT_XLIST_SENT)
+	else if (attributes & LATT_XLIST_SENT)
 		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_SENTBOX;
-	else if(attributes & LATT_XLIST_JUNK)
+	else if (attributes & LATT_XLIST_JUNK)
 		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_SPAMBOX;
-	else if(attributes & LATT_XLIST_FLAGGED)
+	else if (attributes & LATT_XLIST_FLAGGED)
 		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_USER_DEFINED; 		//EMAIL_MAILBOX_TYPE_FLAGGED; P141122-00523 sync starred folder as Inbox sync
-	else if(attributes & LATT_XLIST_TRASH)
+	else if (attributes & LATT_XLIST_TRASH)
 		p[count].mailbox_type = EMAIL_MAILBOX_TYPE_TRASH;
 #endif /* __FEATURE_XLIST_SUPPORT__ */
 
-	if(attributes & LATT_NOSELECT)
+	if (attributes & LATT_NOSELECT)
 		p[count].no_select    = true;
 
-	if(p[count].mailbox_type == EMAIL_MAILBOX_TYPE_INBOX) /* For exception handling of Gmail inbox*/
+	if (p[count].mailbox_type == EMAIL_MAILBOX_TYPE_INBOX) /* For exception handling of Gmail inbox*/
 		p[count].mailbox_name  = cpystr("INBOX");
 	else
 		p[count].mailbox_name  = cpystr(enc_path);
@@ -167,7 +167,7 @@ INTERNAL_FUNC void mm_list(MAILSTREAM *stream, int delimiter, char *mailbox, lon
 		tmp = tmp+5;
 		for (s = tmp; *s != '/' &&  *s != '}' && *s != '\0'; s++);
 		*s = '\0';
-		if(strlen(tmp) > 0)
+		if (strlen(tmp) > 0)
 			p[count].account_id = atoi(tmp);
 	}
 	EM_DEBUG_LOG("mm_list account_id %d ", p[count].account_id);
@@ -249,20 +249,18 @@ INTERNAL_FUNC void mm_login(NETMBX *mb, char *user, char *pwd, long trial)
 
 	EM_DEBUG_LOG("incoming_server_authentication_method [%d]", ref_account->incoming_server_authentication_method);
 
-	if(ref_account->incoming_server_authentication_method == EMAIL_AUTHENTICATION_METHOD_XOAUTH2) {
+	if (ref_account->incoming_server_authentication_method == EMAIL_AUTHENTICATION_METHOD_XOAUTH2) {
 		token = strtok_r(ref_account->incoming_server_password, "\001", &save_ptr);
 		EM_DEBUG_LOG_SEC("token [%s]", token);
 		password = EM_SAFE_STRDUP(token);
-	}
-	else {
+	} else {
 		password = EM_SAFE_STRDUP(ref_account->incoming_server_password);
 	}
 
-	if(EM_SAFE_STRLEN(username) > 0 && EM_SAFE_STRLEN(password) > 0) {
+	if (EM_SAFE_STRLEN(username) > 0 && EM_SAFE_STRLEN(password) > 0) {
 		strcpy(user, username);
 		strcpy(pwd, password);
-	}
-	else
+	} else
 		EM_DEBUG_EXCEPTION("User Information is NULL || EM_SAFE_STRLEN is 0 ");
 
 FINISH_OFF:
@@ -297,7 +295,7 @@ INTERNAL_FUNC void mm_log(char *string, long errflg)
 			break;
 
 		case WARN:
-			EM_DEBUG_EXCEPTION ("IMAP_TOOLKIT_LOG WARN [%s]", string);
+			EM_DEBUG_EXCEPTION("IMAP_TOOLKIT_LOG WARN [%s]", string);
 			break;
 
 		case PARSE:
@@ -461,7 +459,7 @@ INTERNAL_FUNC void mm_get_error(char *string, int *err_code)
 }
 
 #ifdef __FEATURE_SUPPORT_IMAP_ID__
-INTERNAL_FUNC void mm_imap_id (char **id_string)
+INTERNAL_FUNC void mm_imap_id(char **id_string)
 {
 	EM_DEBUG_FUNC_BEGIN("id_string [%p]", id_string);
 
@@ -482,7 +480,7 @@ INTERNAL_FUNC void mm_imap_id (char **id_string)
 	tag_length = EM_SAFE_STRLEN(tag_string);
 	result_string = EM_SAFE_STRDUP(tag_string);
 
-	if(result_string == NULL) {
+	if (result_string == NULL) {
 		EM_DEBUG_EXCEPTION("malloc failed");
 		goto FINISH_OFF;
 	}

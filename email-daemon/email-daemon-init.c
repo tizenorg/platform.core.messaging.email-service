@@ -119,7 +119,7 @@ static int _emdaemon_load_email_core()
 
 #ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
 	if (emdaemon_start_thread_for_downloading_partial_body(&err) < 0) {
-		EM_DEBUG_EXCEPTION("emcore_start_thread_for_downloading_partial_body failed [%d]",err);
+		EM_DEBUG_EXCEPTION("emcore_start_thread_for_downloading_partial_body failed [%d]", err);
 		goto FINISH_OFF;
 	}
 #endif
@@ -180,32 +180,31 @@ static void callback_for_SYNC_ALL_STATUS_from_account_svc(keynode_t *input_node,
 		goto FINISH_OFF;
 	}
 
-	if(input_node)
+	if (input_node)
 		sync_start_toggle = vconf_keynode_get_int(input_node);
 
-	for(i = 0; i < account_count; i++) {
-		if(sync_start_toggle == 1) {
-			if(!emstorage_get_mailbox_by_mailbox_type(NULL, account_list[i].account_id, EMAIL_MAILBOX_TYPE_INBOX, &mailbox_tbl_data, true, &err)) {
+	for (i = 0; i < account_count; i++) {
+		if (sync_start_toggle == 1) {
+			if (!emstorage_get_mailbox_by_mailbox_type(NULL, account_list[i].account_id, EMAIL_MAILBOX_TYPE_INBOX, &mailbox_tbl_data, true, &err)) {
 				EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type for [%d] failed [%d]", account_list[i].account_id, err);
 				continue;
 			}
 
-			if(!emdaemon_sync_header(NULL, account_list[i].account_id, mailbox_tbl_data->mailbox_id, &handle, &err)) {
+			if (!emdaemon_sync_header(NULL, account_list[i].account_id, mailbox_tbl_data->mailbox_id, &handle, &err)) {
 				EM_DEBUG_EXCEPTION("emdaemon_sync_header for [%d] failed [%d]", account_list[i].account_id, err);
 			}
 
 			emstorage_free_mailbox(&mailbox_tbl_data, 1, NULL); /* prevent 27459: remove unnecessary if clause */
 			mailbox_tbl_data = NULL;
-		}
-		else {
+		} else {
 			emcore_cancel_all_threads_of_an_account(NULL, account_list[i].account_id);
 		}
 	}
 
 FINISH_OFF:
-	if(account_list)
+	if (account_list)
 		emdaemon_free_account(&account_list, account_count, NULL);
-	if(mailbox_tbl_data)
+	if (mailbox_tbl_data)
 		emstorage_free_mailbox(&mailbox_tbl_data, 1, NULL);
 
 	EM_DEBUG_FUNC_END();
@@ -226,31 +225,30 @@ static void callback_for_AUTO_SYNC_STATUS_from_account_svc(keynode_t *input_node
 		goto FINISH_OFF;
 	}
 
-	if(input_node)
+	if (input_node)
 		auto_sync_toggle = vconf_keynode_get_int(input_node);
 
-	for(i = 0; i < account_count; i++) {
+	for (i = 0; i < account_count; i++) {
 		account_info = account_list + i;
 
-		if(auto_sync_toggle == 1) { /* on */
+		if (auto_sync_toggle == 1) { /* on */
 			/* start sync */
-			if(account_info->check_interval < 0)
+			if (account_info->check_interval < 0)
 				account_info->check_interval = ~account_info->check_interval + 1;
-		}
-		else { /* off */
+		} else { /* off */
 			/* terminate sync */
-			if(account_info->check_interval > 0)
+			if (account_info->check_interval > 0)
 				account_info->check_interval = ~account_info->check_interval + 1;
 		}
 
-		if(!emdaemon_update_account(NULL, account_info->account_id, account_info, &err)) {
+		if (!emdaemon_update_account(NULL, account_info->account_id, account_info, &err)) {
 			EM_DEBUG_EXCEPTION("emdaemon_update_account failed [%d]", err);
 			goto FINISH_OFF;
 		}
 	}
 
 FINISH_OFF:
-	if(account_list)
+	if (account_list)
 		emdaemon_free_account(&account_list, account_count, NULL);
 
 	EM_DEBUG_FUNC_END();
@@ -279,7 +277,7 @@ static void callback_for_NETWORK_STATUS(connection_type_e new_conn_type, void *i
 	switch (new_conn_type) {
 		case CONNECTION_TYPE_WIFI:
 		case CONNECTION_TYPE_CELLULAR:
-			if(conn_type != new_conn_type) {
+			if (conn_type != new_conn_type) {
 				EM_DEBUG_LOG("Network type changed from [%d] to [%d]", conn_type, new_conn_type);
 				emnetwork_set_network_status(new_conn_type);
 			}
@@ -315,7 +313,7 @@ static void callback_for_NETWORK_STATUS(connection_type_e new_conn_type, void *i
 	for (i = 0; i < account_count ; i++) {
 		account_info = account_list + i;
 		/* check if inbox folder sync is finished */
-		if (!emstorage_get_mailbox_by_mailbox_type (multi_user_name, account_info->account_id, EMAIL_MAILBOX_TYPE_INBOX, &local_mailbox, false, &err)) {
+		if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name, account_info->account_id, EMAIL_MAILBOX_TYPE_INBOX, &local_mailbox, false, &err)) {
 			if (err == EMAIL_ERROR_MAILBOX_NOT_FOUND) {
 				int handle = 0;
 				emdaemon_get_imap_mailbox_list(multi_user_name, account_info->account_id, "", &handle, &err);
@@ -385,8 +383,8 @@ static void callback_for_VCONFKEY_MSG_SERVER_READY(keynode_t *input_node, void *
 
 	msg_server_ready = vconf_keynode_get_bool(input_node);
 
-	if(msg_server_ready) {
-		if(emdaemon_initialize_emn() != EMAIL_ERROR_NONE) {
+	if (msg_server_ready) {
+		if (emdaemon_initialize_emn() != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emdaemon_initialize_emn failed");
 		}
 	}
@@ -534,7 +532,7 @@ INTERNAL_FUNC int emdaemon_initialize(char *multi_user_name, int* err_code)
 		}
 
 #ifdef __FEATURE_OMA_EMN__
-        if(emdaemon_initialize_emn() != EMAIL_ERROR_NONE) {
+        if (emdaemon_initialize_emn() != EMAIL_ERROR_NONE) {
             vconf_notify_key_changed(VCONFKEY_MSG_SERVER_READY, callback_for_VCONFKEY_MSG_SERVER_READY, NULL);
         }
 #endif
@@ -551,12 +549,12 @@ INTERNAL_FUNC int emdaemon_initialize(char *multi_user_name, int* err_code)
 		EM_DEBUG_EXCEPTION("emstorage_update_db_table_schema failed [%d]", err);
 
 	if (!emstorage_clean_save_status(multi_user_name, EMAIL_MAIL_STATUS_SAVED, &err))
-		EM_DEBUG_EXCEPTION("emstorage_check_mail_status Failed [%d]", err );
+		EM_DEBUG_EXCEPTION("emstorage_check_mail_status Failed [%d]", err);
 
 #ifdef __FEATURE_AUTO_RETRY_SEND__
-	if ((err = emcore_create_alarm_for_auto_resend (multi_user_name, AUTO_RESEND_INTERVAL)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_create_alarm_for_auto_resend(multi_user_name, AUTO_RESEND_INTERVAL)) != EMAIL_ERROR_NONE) {
 		if (err == EMAIL_ERROR_MAIL_NOT_FOUND)
-			EM_DEBUG_LOG ("no mail found");
+			EM_DEBUG_LOG("no mail found");
 		else
 			EM_DEBUG_EXCEPTION("emcore_create_alarm_for_auto_resend failed [%d]", err);
 	}
@@ -590,8 +588,7 @@ INTERNAL_FUNC int emdaemon_initialize(char *multi_user_name, int* err_code)
 
 		if (connection_set_type_changed_cb(conn, callback_for_NETWORK_STATUS, NULL) != CONNECTION_ERROR_NONE)
 			EM_DEBUG_EXCEPTION("connection_set_type_changed_cb failed");
-	}
-	else {
+	} else {
 		EM_DEBUG_EXCEPTION("connection_create failed[%d]", error_from_connection);
 	}
 
@@ -628,7 +625,7 @@ INTERNAL_FUNC int emdaemon_finalize(int* err_code)
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
 
-	if ( (err = _emdaemon_unload_email_core()) != EMAIL_ERROR_NONE) {
+	if ((err = _emdaemon_unload_email_core()) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("_emdaemon_unload_email_core failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -662,7 +659,7 @@ INTERNAL_FUNC int emdaemon_start_auto_polling(char *multi_user_name, int* err_co
 	EM_DEBUG_FUNC_BEGIN();
 
 	/*  default variable */
-	int ret = false, count = 0, i= 0;
+	int ret = false, count = 0, i = 0;
 	int err = EMAIL_ERROR_NONE;
 	emstorage_account_tbl_t* account_list = NULL;
 
@@ -674,8 +671,8 @@ INTERNAL_FUNC int emdaemon_start_auto_polling(char *multi_user_name, int* err_co
 
 	for (i = 0; i < count; i++)  {
 		/* start auto polling, if check_interval not zero */
-		if(account_list[i].check_interval > 0 || ((account_list[i].peak_days > 0) && account_list[i].peak_interval > 0)) {
-			if(!emdaemon_add_polling_alarm(multi_user_name, account_list[i].account_id))
+		if (account_list[i].check_interval > 0 || ((account_list[i].peak_days > 0) && account_list[i].peak_interval > 0)) {
+			if (!emdaemon_add_polling_alarm(multi_user_name, account_list[i].account_id))
 				EM_DEBUG_EXCEPTION("emdaemon_add_polling_alarm failed");
 		}
 	}
@@ -766,7 +763,7 @@ INTERNAL_FUNC int emdaemon_init_alarm_data_list()
 	alarm_data_list = NULL;
 
 	if ((ret = alarmmgr_init(EMAIL_ALARM_DESTINATION)) != ALARMMGR_RESULT_SUCCESS) {
-		EM_DEBUG_EXCEPTION("alarmmgr_init failed [%d]",ret);
+		EM_DEBUG_EXCEPTION("alarmmgr_init failed [%d]", ret);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}

@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -64,10 +64,10 @@ EXPORT_API bool emipc_finalize_stub_main()
 		emipc_end_stub_socket();
 		stub_socket = false;
 	}
-	
+
 	if (this_fn_api_mapper)
 		this_fn_api_mapper = NULL;
-		
+
 	EM_DEBUG_FUNC_END();
 	return true;
 }
@@ -79,7 +79,7 @@ EXPORT_API bool emipc_execute_api_proxy_to_stub(emipc_email_api_info *api_info)
 		EM_DEBUG_EXCEPTION("Invalid Param");
 		return false;
 	}
-	
+
 	if (this_fn_api_mapper) {
 		this_fn_api_mapper(api_info);
 	}
@@ -92,20 +92,20 @@ EXPORT_API bool emipc_execute_api_stub_to_proxy(emipc_email_api_info *api_info)
 {
 	EM_DEBUG_FUNC_BEGIN("api_info [%p]", api_info);
 	EM_IF_NULL_RETURN_VALUE(api_info, false);
-	EM_DEBUG_LOG_SEC ("Response: API_ID [%s][0x%x], RES_ID [%d], APP_ID [%d]",\
-                                            EM_APIID_TO_STR(api_info->api_id), 
-                                            api_info->api_id, 
-                                            api_info->response_id, 
+	EM_DEBUG_LOG_SEC("Response: API_ID [%s][0x%x], RES_ID [%d], APP_ID [%d]",\
+                                            EM_APIID_TO_STR(api_info->api_id),
+                                            api_info->api_id,
+                                            api_info->response_id,
                                             api_info->app_id);
-	
+
 	unsigned char *stream = NULL;
 	int stream_length = 0;
-	
+
 	stream = emipc_serialize_api_info(api_info, ePARAMETER_OUT, &stream_length);
 	EM_DEBUG_LOG("Stub => Proxy Sending %dB", stream_length);
 
 	emipc_send_stub_socket(api_info->response_id, stream, stream_length);
-	
+
 #ifdef IPCLIB_STREAM_TRACE_ON
 	int index = 0;
 	for (index = 0; index < stream_length; index++)

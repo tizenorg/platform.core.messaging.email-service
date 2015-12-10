@@ -63,7 +63,7 @@ EXPORT_API bool emipc_init_email_socket(int *fd)
 EXPORT_API void emipc_close_email_socket(int* fd)
 {
 	EM_DEBUG_LOG("fd %d removal done", *fd);
-	EM_SAFE_CLOSE (*fd);
+	EM_SAFE_CLOSE(*fd);
 }
 
 /* returns positive write length,
@@ -77,7 +77,7 @@ static int emipc_writen(int fd, const char *buf, int len)
 	while (length > 0) {
 		passed_len = send(fd, (const void *)buf, length, MSG_NOSIGNAL);
 		if (passed_len == -1) {
-			EM_DEBUG_EXCEPTION ("send error [%d]", errno);
+			EM_DEBUG_EXCEPTION("send error [%d]", errno);
 			if (errno == EINTR) continue;
 			else if (errno == EPIPE) return 0; /* connection closed */
 			else return passed_len; /* -1 */
@@ -106,7 +106,7 @@ EXPORT_API int emipc_send_email_socket(int fd, unsigned char *buf, int len)
 
 	int write_len = emipc_writen(fd, (char*) buf, len);
 	if (write_len == 0) /* connection closed */
-		return 0; 
+		return 0;
 	if (write_len != len) {
 		EM_DEBUG_LOG("WARNING: buf_size [%d] != write_len[%d]", len, write_len);
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
@@ -153,7 +153,7 @@ EXPORT_API int emipc_recv_email_socket(int fd, char **buf)
 	int read_len = 0;
 	/* read the size of message. note that ioctl is non-blocking */
 	if (ioctl(fd, FIONREAD, &read_len)) {
-		EM_DEBUG_EXCEPTION ("ioctl failed: %s", EM_STRERROR(errno_buf));
+		EM_DEBUG_EXCEPTION("ioctl failed: %s", EM_STRERROR(errno_buf));
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 	/* when server or client closed socket */
@@ -172,7 +172,7 @@ EXPORT_API int emipc_recv_email_socket(int fd, char **buf)
 	EM_DEBUG_LOG_DEV("[IPC Socket] Receiving [%d] bytes", read_len);
 	int len = emipc_readn(fd, *buf, read_len);
 	if (len == 0) /* connection closed */
-		return 0; 
+		return 0;
 	if (read_len != len) {
 		EM_SAFE_FREE(*buf);
 		EM_DEBUG_LOG("WARNING: buf_size [%d] != read_len[%d]", read_len, len);
@@ -190,7 +190,7 @@ EXPORT_API int emipc_accept_email_socket(int fd)
 	char errno_buf[ERRNO_BUF_SIZE] = {0};
 
 	if (fd == -1) {
-		EM_DEBUG_EXCEPTION ("Server_socket is not yet initialized");
+		EM_DEBUG_EXCEPTION("Server_socket is not yet initialized");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
@@ -198,7 +198,7 @@ EXPORT_API int emipc_accept_email_socket(int fd)
 	int remote_len = sizeof(remote);
 	int client_fd = accept(fd, (struct sockaddr *)&remote, (socklen_t*) &remote_len);
 	if (client_fd == -1) {
-		EM_DEBUG_EXCEPTION ("accept failed [%s][%d]", EM_STRERROR(errno_buf), errno);
+		EM_DEBUG_EXCEPTION("accept failed [%s][%d]", EM_STRERROR(errno_buf), errno);
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
@@ -222,7 +222,7 @@ EXPORT_API int emipc_open_email_socket(int fd, const char *path)
 	if (strcmp(path, ipc_socket_path) == 0 &&
 		sd_listen_fds(1) == 1 &&
 		sd_is_socket_unix(SD_LISTEN_FDS_START, SOCK_SEQPACKET, -1, ipc_socket_path, 0) > 0) {
-		EM_SAFE_CLOSE (fd);
+		EM_SAFE_CLOSE(fd);
 		sock_fd = SD_LISTEN_FDS_START + 0;
 		EM_SAFE_FREE(ipc_socket_path);
 		return sock_fd;
@@ -231,12 +231,12 @@ EXPORT_API int emipc_open_email_socket(int fd, const char *path)
 	EM_SAFE_FREE(ipc_socket_path);
 
 	if (!path || EM_SAFE_STRLEN(path) > 108) {
-		EM_DEBUG_EXCEPTION ("Path is null");
+		EM_DEBUG_EXCEPTION("Path is null");
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
 	if (fd <= 0) {
-		EM_DEBUG_EXCEPTION ("Socket not created %d", fd);
+		EM_DEBUG_EXCEPTION("Socket not created %d", fd);
 		return EMAIL_ERROR_IPC_SOCKET_FAILURE;
 	}
 
@@ -297,18 +297,18 @@ EXPORT_API int emipc_connect_email_socket(int fd)
 	memset(&server, 0, sizeof(server));
 	server.sun_family = AF_UNIX;
 	strcpy(server.sun_path, ipc_socket_path);
-	
+
 	EM_SAFE_FREE(ipc_socket_path);
 
 	if (connect(fd, (struct sockaddr *)&server, sizeof(server)) < 0) {
-		EM_DEBUG_EXCEPTION ("connect failed: [%s][errno=%d][fd=%d]", EM_STRERROR(errno_buf), errno, fd);
+		EM_DEBUG_EXCEPTION("connect failed: [%s][errno=%d][fd=%d]", EM_STRERROR(errno_buf), errno, fd);
 
 		p_errno = errno;
-		if (p_errno == EACCES || p_errno == EPERM) 
+		if (p_errno == EACCES || p_errno == EPERM)
 			err = EMAIL_ERROR_PERMISSION_DENIED;
-		else 
+		else
 			err = EMAIL_ERROR_SYSTEM_FAILURE;
-		
+
 		return err;
 	}
 

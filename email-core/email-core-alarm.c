@@ -69,16 +69,16 @@ INTERNAL_FUNC int emcore_get_alarm_data_by_alarm_id(alarm_id_t input_alarm_id, e
 
 	ENTER_CRITICAL_SECTION(alarm_data_lock);
 	index = g_list_first(alarm_data_list);
-	while(index) {
+	while (index) {
 		alarm_data = index->data;
-		if(alarm_data->alarm_id == input_alarm_id) {
+		if (alarm_data->alarm_id == input_alarm_id) {
 			break;
 		}
 		index = g_list_next(index);
 	}
 	LEAVE_CRITICAL_SECTION(alarm_data_lock);
 
-	if(alarm_data)
+	if (alarm_data)
 		*output_alarm_data = alarm_data;
 	else
 		err = EMAIL_ERROR_ALARM_DATA_NOT_FOUND;
@@ -106,9 +106,9 @@ INTERNAL_FUNC int emcore_get_alarm_data_by_reference_id(email_alarm_class_t inpu
 
 	index = g_list_first(alarm_data_list);
 
-	while(index) {
+	while (index) {
 		alarm_data = index->data;
-		if(alarm_data->class_id == input_class_id && alarm_data->reference_id == input_reference_id) {
+		if (alarm_data->class_id == input_class_id && alarm_data->reference_id == input_reference_id) {
 			EM_DEBUG_LOG("found");
 			break;
 		}
@@ -117,7 +117,7 @@ INTERNAL_FUNC int emcore_get_alarm_data_by_reference_id(email_alarm_class_t inpu
 
 	LEAVE_CRITICAL_SECTION(alarm_data_lock);
 
-	if(index)
+	if (index)
 		*output_alarm_data = alarm_data;
 	else
 		err = EMAIL_ERROR_ALARM_DATA_NOT_FOUND;
@@ -137,9 +137,9 @@ INTERNAL_FUNC int emcore_check_alarm_by_class_id(email_alarm_class_t input_class
 
 	ENTER_CRITICAL_SECTION(alarm_data_lock);
 	index = g_list_first(alarm_data_list);
-	while(index) {
+	while (index) {
 		alarm_data = index->data;
-		if(alarm_data->class_id == input_class_id) {
+		if (alarm_data->class_id == input_class_id) {
 			EM_DEBUG_LOG("found");
 			break;
 		}
@@ -147,7 +147,7 @@ INTERNAL_FUNC int emcore_check_alarm_by_class_id(email_alarm_class_t input_class
 	}
 	LEAVE_CRITICAL_SECTION(alarm_data_lock);
 
-	if(!index)
+	if (!index)
 		err = EMAIL_ERROR_ALARM_DATA_NOT_FOUND;
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
@@ -174,7 +174,7 @@ static int emcore_add_alarm_data_to_alarm_data_list(char *multi_user_name,
 
 	alarm_data = em_malloc(sizeof(email_alarm_data_t));
 
-	if(alarm_data == NULL) {
+	if (alarm_data == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
@@ -208,7 +208,7 @@ static int emcore_remove_alarm(email_alarm_data_t *input_alarm_data)
 	ENTER_CRITICAL_SECTION(alarm_data_lock);
 	EM_DEBUG_LOG("alarm_id [%d]", input_alarm_data->alarm_id);
 	if ((ret = alarmmgr_remove_alarm(input_alarm_data->alarm_id)) != ALARMMGR_RESULT_SUCCESS) {
-		EM_DEBUG_EXCEPTION ("alarmmgr_remove_alarm failed [%d]", ret);
+		EM_DEBUG_EXCEPTION("alarmmgr_remove_alarm failed [%d]", ret);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 	}
 	EM_SAFE_FREE(input_alarm_data->multi_user_name);
@@ -223,21 +223,21 @@ INTERNAL_FUNC int emcore_delete_alram_data_from_alarm_data_list(email_alarm_data
 	EM_DEBUG_FUNC_BEGIN("input_alarm_data [%p]", input_alarm_data);
 	int err = EMAIL_ERROR_NONE;
 
-	if (input_alarm_data == NULL ) {
-		EM_DEBUG_EXCEPTION ("EMAIL_ERROR_INVALID_PARAM");
+	if (input_alarm_data == NULL) {
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
 	if ((err = emcore_remove_alarm(input_alarm_data)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION ("emcore_remove_alarm failed [%d]", err);
+		EM_DEBUG_EXCEPTION("emcore_remove_alarm failed [%d]", err);
 	}
 
 	ENTER_CRITICAL_SECTION(alarm_data_lock);
 	alarm_data_list = g_list_remove_all(alarm_data_list, input_alarm_data);
 
 	if (g_list_length(alarm_data_list) == 0) {
-		g_list_free (alarm_data_list);
+		g_list_free(alarm_data_list);
 		alarm_data_list = NULL;
 	}
 	LEAVE_CRITICAL_SECTION(alarm_data_lock);
@@ -255,12 +255,12 @@ INTERNAL_FUNC int emcore_delete_alram_data_by_reference_id(email_alarm_class_t i
 	email_alarm_data_t *alarm_data = NULL;
 
 	if ((err = emcore_get_alarm_data_by_reference_id(input_class_id, input_reference_id, &alarm_data)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_LOG ("emcore_get_alarm_data_by_reference_id return [%d]", err);
+		EM_DEBUG_LOG("emcore_get_alarm_data_by_reference_id return [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	if ((err = emcore_delete_alram_data_from_alarm_data_list(alarm_data)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_LOG ("emcore_delete_alram_data_from_alarm_data_list return [%d]", err);
+		EM_DEBUG_LOG("emcore_delete_alram_data_from_alarm_data_list return [%d]", err);
 	}
 
 FINISH_OFF:
@@ -297,7 +297,7 @@ INTERNAL_FUNC int emcore_add_alarm(char *multi_user_name,
 									ALARM_REPEAT_MODE_ONCE,
 									EMAIL_ALARM_DESTINATION,
 									&alarm_id)) != ALARMMGR_RESULT_SUCCESS) {
-		EM_DEBUG_EXCEPTION("alarmmgr_add_alarm failed [%d]",ret);
+		EM_DEBUG_EXCEPTION("alarmmgr_add_alarm failed [%d]", ret);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}

@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -45,18 +45,18 @@ EXPORT_API int emipc_initialize_proxy_main()
 		EM_DEBUG_LOG("Socket already initialized");
 		return err;
 	}
-	
+
 	if ((err = emipc_start_proxy_socket()) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("Socket start failed");
 		if (err == EMAIL_ERROR_PERMISSION_DENIED)
 			return err;
-		
+
 		return EMAIL_ERROR_IPC_CONNECTION_FAILURE;
 	}
-	
+
 	EM_DEBUG_LOG("Socket ID : %d", emipc_get_proxy_socket_id());
 	EM_DEBUG_FUNC_END();
-	return err; 
+	return err;
 }
 
 EXPORT_API int emipc_finalize_proxy_main()
@@ -74,7 +74,7 @@ EXPORT_API int emipc_finalize_proxy_main()
 EXPORT_API bool emipc_execute_api_of_proxy_main(emipc_email_api_info *api_info)
 {
 	EM_DEBUG_FUNC_BEGIN("api_info [%p]", api_info);
-	
+
 	int ret;
 	unsigned char *in_stream = NULL;
 	int length = 0;
@@ -88,7 +88,7 @@ EXPORT_API bool emipc_execute_api_of_proxy_main(emipc_email_api_info *api_info)
 
 	in_stream = emipc_serialize_api_info(api_info, ePARAMETER_IN, &length);
 
-	if( !in_stream ) {
+	if (!in_stream) {
 		EM_DEBUG_EXCEPTION("NULL stream");
 		return false;
 	}
@@ -100,23 +100,23 @@ EXPORT_API bool emipc_execute_api_of_proxy_main(emipc_email_api_info *api_info)
 	if (sending_bytes > 0) {
 #ifdef IPCLIB_STREAM_TRACE_ON
 		int index = 0;
-		for (index=0;index<length;index++) 
+		for (index = 0; index < length; index++)
 			EM_DEBUG_LOG("in_stream[index] : [%x]", in_stream[index]);
 #endif
 		char *ipc_buf = NULL;
 
 		ret = emipc_recv_proxy_socket(&ipc_buf);
-	
+
 		EM_DEBUG_LOG("Recv length : %d", ret);
 
 		if (ret > 0)
 			result = emipc_deserialize_api_info(api_info, ePARAMETER_OUT, ipc_buf);
 		else
-			result = false;	
+			result = false;
 
 		EM_SAFE_FREE(ipc_buf);
 	}
-	
+
 	EM_DEBUG_FUNC_END("result [%d]", result);
-	return result;		
+	return result;
 }

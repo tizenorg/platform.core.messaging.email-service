@@ -113,8 +113,7 @@ INTERNAL_FUNC email_event_t *sync_failed_event_data = NULL;
 /*-----------------------------------------------------------------------------
  * Unused
  *---------------------------------------------------------------------------*/
-typedef struct EVENT_CALLBACK_ELEM
-{
+typedef struct EVENT_CALLBACK_ELEM {
 	email_event_callback callback;
 	void *event_data;
 	struct EVENT_CALLBACK_ELEM *next;
@@ -147,7 +146,7 @@ static void fail_status_notify(email_event_t *event_data, int error)
 	EM_DEBUG_FUNC_BEGIN();
 	int account_id, mail_id;
 
-	if(!event_data) {
+	if (!event_data) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return;
 	}
@@ -290,7 +289,8 @@ int emcore_register_event_callback(email_action_t action, email_event_callback c
 
 	ret = true;
 
-EXIT :
+EXIT:
+
 	LEAVE_RECURSIVE_CRITICAL_SECTION(_event_callback_table_lock);
 	EM_DEBUG_FUNC_END();
 	return ret;
@@ -407,8 +407,7 @@ INTERNAL_FUNC int emcore_insert_event(email_event_t *event_data, int *handle, in
 			g_queue_push_tail(g_event_que, event_data);
 			WAKE_CONDITION_VARIABLE(_event_available_signal);
 			ret = true;
-		}
-		else {
+		} else {
 			EM_DEBUG_EXCEPTION("event queue is full...");
 			error = EMAIL_ERROR_EVENT_QUEUE_FULL;
 			ret = false;
@@ -447,14 +446,13 @@ INTERNAL_FUNC int emcore_insert_event(email_event_t *event_data, int *handle, in
 		{
 			int is_local_activity_event_inserted = false;
 			emcore_partial_body_thd_local_activity_sync(multi_user_name,
-														 &is_local_activity_event_inserted, 
+														 &is_local_activity_event_inserted,
 														 &error);
 			if (error != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("emcore_partial_body_thd_local_activity_sync failed [%d]", error);
-			}
-			else {
+			} else {
 				if (true == is_local_activity_event_inserted)
-					emcore_pb_thd_set_local_activity_continue (false);
+					emcore_pb_thd_set_local_activity_continue(false);
 			}
 		}
 #endif
@@ -497,7 +495,7 @@ INTERNAL_FUNC int emcore_retrieve_event(email_event_t **event_data, int *err_cod
 		head_event = (email_event_t *)g_queue_peek_head(g_event_que);
 		if (!head_event) {
 			error = EMAIL_ERROR_EVENT_QUEUE_EMPTY;
-			EM_DEBUG_LOG_DEV ("QUEUE is empty");
+			EM_DEBUG_LOG_DEV("QUEUE is empty");
 			break;
 		}
 		if (head_event->status != EMAIL_EVENT_STATUS_WAIT) {
@@ -546,8 +544,7 @@ INTERNAL_FUNC int emcore_is_event_queue_empty(void)
 	EM_DEBUG_LOG("Q Length : [%d]", q_length);
 	if (q_length > 0) {
 		ret = false;
-	}
-	else {
+	} else {
 		EM_DEBUG_LOG("event que is empty");
 		ret = true;
 	}
@@ -568,8 +565,7 @@ INTERNAL_FUNC int emcore_is_send_event_queue_empty(void)
 	EM_DEBUG_LOG("Q Length : [%d]", q_length);
 	if (q_length > 0) {
 		ret = false;
-	}
-	else {
+	} else {
 		EM_DEBUG_LOG("send event que is empty");
 		ret = true;
 	}
@@ -579,7 +575,7 @@ INTERNAL_FUNC int emcore_is_send_event_queue_empty(void)
 }
 
 
-INTERNAL_FUNC void emcore_get_sync_fail_event_data(email_event_t **event_data) 
+INTERNAL_FUNC void emcore_get_sync_fail_event_data(email_event_t **event_data)
 {
 	if (!sync_failed_event_data) {
 		EM_DEBUG_EXCEPTION("sync_failed_event_data is NULL");
@@ -590,7 +586,7 @@ INTERNAL_FUNC void emcore_get_sync_fail_event_data(email_event_t **event_data)
 
 	new_event = em_malloc(sizeof(email_event_t));
 	if (new_event == NULL) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
+		EM_DEBUG_EXCEPTION("em_mallocfailed");
 		return;
 	}
 
@@ -678,17 +674,17 @@ INTERNAL_FUNC int emcore_retrieve_send_event(email_event_t **event_data, int *er
 	email_event_t *head_event = NULL;
 
 	/* g_queue_get_length is aborted when param is null */
-	q_length = g_send_event_que? g_queue_get_length (g_send_event_que): 0; /*prevent 35141*/
+	q_length = g_send_event_que ? g_queue_get_length(g_send_event_que) : 0; /*prevent 35141*/
 
 	EM_DEBUG_LOG("SEND Q Length : [%d]", q_length);
 
 	if (!q_length) {
 		error = EMAIL_ERROR_EVENT_QUEUE_EMPTY;
-		EM_DEBUG_LOG_DEV("SEND QUEUE is empty"); 
+		EM_DEBUG_LOG_DEV("SEND QUEUE is empty");
 		goto FINISH_OFF;
 	}
 
-	while(1) {
+	while (1) {
 		head_event = (email_event_t *)g_queue_peek_head(g_send_event_que);
 		if (!head_event) {
 			error = EMAIL_ERROR_EVENT_QUEUE_EMPTY;
@@ -904,19 +900,19 @@ INTERNAL_FUNC int emcore_cancel_thread(int handle, void *arg, int *err_code)
 				case EMAIL_EVENT_SEND_MAIL_SAVED:
 					EM_DEBUG_LOG("EMAIL_EVENT_SEND_MAIL or EMAIL_EVENT_SEND_MAIL_SAVED");
 					if (!emcore_notify_network_event(NOTI_SEND_CANCEL, found_elm->account_id, NULL , found_elm->event_param_data_4, err))
-						EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_SEND_CANCEL] Failed >>>>");
+						EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_SEND_CANCEL] Failed >>>>");
 					break;
 
 				case EMAIL_EVENT_DOWNLOAD_BODY:
 					EM_DEBUG_LOG("EMAIL_EVENT_DOWNLOAD_BODY");
 					if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_CANCEL, found_elm->account_id, NULL , found_elm->event_param_data_4, err))
-						EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_DOWNLOAD_BODY_CANCEL] Failed >>>>");
+						EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_DOWNLOAD_BODY_CANCEL] Failed >>>>");
 					break;
 
 				case EMAIL_EVENT_DOWNLOAD_ATTACHMENT:
 					EM_DEBUG_LOG("EMAIL_EVENT_DOWNLOAD_ATTACHMENT");
 					if (!emcore_notify_network_event(NOTI_DOWNLOAD_ATTACH_CANCEL, found_elm->event_param_data_4, NULL , found_elm->event_param_data_5, err))
-						EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_DOWNLOAD_ATTACH_CANCEL] Failed >>>>");
+						EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_DOWNLOAD_ATTACH_CANCEL] Failed >>>>");
 					break;
 
 				case EMAIL_EVENT_SYNC_HEADER:
@@ -929,7 +925,7 @@ INTERNAL_FUNC int emcore_cancel_thread(int handle, void *arg, int *err_code)
 				case EMAIL_EVENT_VALIDATE_ACCOUNT:
 					EM_DEBUG_LOG("validate account waiting: cancel account id[%d]", found_elm->account_id);
 					if (!emcore_notify_network_event(NOTI_VALIDATE_ACCOUNT_CANCEL, found_elm->account_id, NULL , found_elm->event_param_data_4, err))
-						EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_CANCEL] Failed >>>>");
+						EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_VALIDATE_ACCOUNT_CANCEL] Failed >>>>");
 					break;
 
 				case EMAIL_EVENT_DELETE_MAIL:
@@ -957,14 +953,12 @@ INTERNAL_FUNC int emcore_cancel_thread(int handle, void *arg, int *err_code)
 			} else {
 				EM_DEBUG_LOG("Failed to g_queue_pop_nth [%d] element", i);
 			}
-		}
-		else {
+		} else {
 			switch (found_elm->type) {
-
 				case EMAIL_EVENT_SYNC_HEADER:
 					EM_DEBUG_LOG("EMAIL_EVENT_SYNC_HEADER");
 					if (!emcore_notify_network_event(NOTI_DOWNLOAD_CANCEL, found_elm->account_id, NULL , found_elm->event_param_data_4, err))
-						EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_DOWNLOAD_CANCEL] Failed >>>>");
+						EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_DOWNLOAD_CANCEL] Failed >>>>");
 					if ((err = emcore_update_sync_status_of_account(found_elm->multi_user_name, found_elm->account_id, SET_TYPE_MINUS, SYNC_STATUS_SYNCING)) != EMAIL_ERROR_NONE)
 						EM_DEBUG_EXCEPTION("emcore_update_sync_status_of_account failed [%d]", err);
 					break;
@@ -972,7 +966,7 @@ INTERNAL_FUNC int emcore_cancel_thread(int handle, void *arg, int *err_code)
 				case EMAIL_EVENT_DOWNLOAD_ATTACHMENT:
 					EM_DEBUG_LOG("EMAIL_EVENT_DOWNLOAD_ATTACHMENT");
 					if (!emcore_notify_network_event(NOTI_DOWNLOAD_ATTACH_CANCEL, found_elm->event_param_data_4, NULL , found_elm->event_param_data_5, err))
-						EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_DOWNLOAD_ATTACH_CANCEL] Failed >>>>");
+						EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_DOWNLOAD_ATTACH_CANCEL] Failed >>>>");
 					break;
 
 				default:
@@ -1006,7 +1000,7 @@ INTERNAL_FUNC int emcore_cancel_all_thread(int *err_code)
 	ENTER_RECURSIVE_CRITICAL_SECTION(_event_queue_lock);
 
 	/* g_queue_get_length is aborted when param is null */
-	q_length = g_event_que? g_queue_get_length (g_event_que): 0; /*prevent 35142 */
+	q_length = g_event_que ? g_queue_get_length(g_event_que) : 0; /*prevent 35142 */
 
 	for (i = 0; i < q_length; i++) {
 		pop_elm = (email_event_t *)g_queue_peek_nth(g_event_que, i);
@@ -1021,13 +1015,13 @@ INTERNAL_FUNC int emcore_cancel_all_thread(int *err_code)
 				case EMAIL_EVENT_SEND_MAIL_SAVED:
 					EM_DEBUG_LOG("EMAIL_EVENT_SEND_MAIL or EMAIL_EVENT_SEND_MAIL_SAVED");
 					if (!emcore_notify_network_event(NOTI_SEND_CANCEL, pop_elm->account_id, NULL , pop_elm->event_param_data_4, err))
-						EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_SEND_CANCEL] Failed >>>>");
+						EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_SEND_CANCEL] Failed >>>>");
 					break;
 
 				case EMAIL_EVENT_DOWNLOAD_BODY:
 					EM_DEBUG_LOG("EMAIL_EVENT_DOWNLOAD_BODY");
 					if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_CANCEL, pop_elm->account_id, NULL , pop_elm->event_param_data_4, err))
-						EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_SEND_CANCEL] Failed >>>>");
+						EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_SEND_CANCEL] Failed >>>>");
 					break;
 
 				case EMAIL_EVENT_SYNC_HEADER:
@@ -1041,7 +1035,7 @@ INTERNAL_FUNC int emcore_cancel_all_thread(int *err_code)
 				case EMAIL_EVENT_VALIDATE_ACCOUNT:
 					EM_DEBUG_LOG("validate account waiting: cancel account id[%d]", pop_elm->account_id);
 					if (!emcore_notify_network_event(NOTI_VALIDATE_ACCOUNT_CANCEL, pop_elm->account_id, NULL , pop_elm->event_param_data_4, err))
-						EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_CANCEL] Failed >>>>");
+						EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_VALIDATE_ACCOUNT_CANCEL] Failed >>>>");
 					break;
 
 				case EMAIL_EVENT_DELETE_MAIL:
@@ -1071,8 +1065,7 @@ INTERNAL_FUNC int emcore_cancel_all_thread(int *err_code)
 			if (g_event_que)
 				q_length = g_queue_get_length(g_event_que);
 
-		}
-		else {
+		} else {
 			if (pop_elm) pop_elm->status = EMAIL_EVENT_STATUS_CANCELED;
 		}
 	}
@@ -1136,7 +1129,7 @@ INTERNAL_FUNC int emcore_cancel_all_threads_of_an_account(char *multi_user_name,
 
 	for (i = 0; i < q_length; i++) {
 		found_elm = (email_event_t *)g_queue_peek_nth(g_event_que, i);
-		if (found_elm && (found_elm->account_id == account_id || found_elm->account_id == ALL_ACCOUNT) && 
+		if (found_elm && (found_elm->account_id == account_id || found_elm->account_id == ALL_ACCOUNT) &&
 			((!found_elm->multi_user_name && !multi_user_name) || (
 				(multi_user_name) && !EM_SAFE_STRCASECMP(found_elm->multi_user_name, multi_user_name)))) {
 			EM_DEBUG_LOG("Found Queue element[%d]", i);
@@ -1149,16 +1142,16 @@ INTERNAL_FUNC int emcore_cancel_all_threads_of_an_account(char *multi_user_name,
 					case EMAIL_EVENT_SEND_MAIL:
 					case EMAIL_EVENT_SEND_MAIL_SAVED:
 						EM_DEBUG_LOG("EMAIL_EVENT_SEND_MAIL or EMAIL_EVENT_SEND_MAIL_SAVED");
-						if (!emcore_notify_network_event(NOTI_SEND_CANCEL, found_elm->account_id, NULL , 
+						if (!emcore_notify_network_event(NOTI_SEND_CANCEL, found_elm->account_id, NULL ,
 														found_elm->event_param_data_4, error_code))
-							EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_SEND_CANCEL] Failed >>>>");
+							EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_SEND_CANCEL] Failed >>>>");
 						break;
 
 					case EMAIL_EVENT_DOWNLOAD_BODY:
 						EM_DEBUG_LOG("EMAIL_EVENT_DOWNLOAD_BODY");
-						if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_CANCEL, found_elm->account_id, NULL, 
+						if (!emcore_notify_network_event(NOTI_DOWNLOAD_BODY_CANCEL, found_elm->account_id, NULL,
 														found_elm->event_param_data_4, error_code))
-							EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_SEND_CANCEL] Failed >>>>");
+							EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_SEND_CANCEL] Failed >>>>");
 						break;
 
 					case EMAIL_EVENT_SYNC_HEADER:
@@ -1172,7 +1165,7 @@ INTERNAL_FUNC int emcore_cancel_all_threads_of_an_account(char *multi_user_name,
 					case EMAIL_EVENT_VALIDATE_ACCOUNT:
 						EM_DEBUG_LOG("validate account waiting: cancel account id[%d]", found_elm->account_id);
 						if (!emcore_notify_network_event(NOTI_VALIDATE_ACCOUNT_CANCEL, found_elm->account_id, NULL , found_elm->event_param_data_4, error_code))
-							EM_DEBUG_EXCEPTION("emcore_notify_network_event [ NOTI_VALIDATE_ACCOUNT_CANCEL] Failed >>>>");
+							EM_DEBUG_EXCEPTION("emcore_notify_network_event[ NOTI_VALIDATE_ACCOUNT_CANCEL] Failed >>>>");
 						break;
 
 					case EMAIL_EVENT_DELETE_MAIL:
@@ -1204,8 +1197,7 @@ INTERNAL_FUNC int emcore_cancel_all_threads_of_an_account(char *multi_user_name,
 				if (g_event_que)
 					q_length = g_queue_get_length(g_event_que);
 
-			}
-			else {
+			} else {
 				found_elm->status = EMAIL_EVENT_STATUS_CANCELED;
 			}
 		}
@@ -1254,7 +1246,7 @@ INTERNAL_FUNC int emcore_cancel_send_mail_thread(int handle, void *arg, int *err
 				case EMAIL_EVENT_SEND_MAIL_SAVED:
 					found_elm->status = EMAIL_EVENT_STATUS_CANCELED;
 					if (!emcore_notify_network_event(NOTI_SEND_CANCEL, found_elm->account_id, NULL, found_elm->event_param_data_4, err))
-						EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEND_CANCEL] Failed >>>>");
+						EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_SEND_CANCEL] Failed >>>>");
 					break;
 				default:
 					break;
@@ -1310,7 +1302,7 @@ INTERNAL_FUNC int emcore_cancel_all_send_mail_thread(int *err_code)
 				case EMAIL_EVENT_SEND_MAIL_SAVED:
 					pop_elm->status = EMAIL_EVENT_STATUS_CANCELED;
 					if (!emcore_notify_network_event(NOTI_SEND_CANCEL, pop_elm->account_id, NULL, pop_elm->event_param_data_4, err))
-						EM_DEBUG_EXCEPTION("emcore_notify_network_event [NOTI_SEND_CANCEL] Failed >>>>");
+						EM_DEBUG_EXCEPTION("emcore_notify_network_event[NOTI_SEND_CANCEL] Failed >>>>");
 					break;
 				default:
 					break;
@@ -1394,10 +1386,10 @@ FINISH_OFF:
 INTERNAL_FUNC int emcore_free_event(email_event_t *event_data)
 {
 	EM_DEBUG_FUNC_BEGIN("event_data [%p]", event_data);
-	if(!event_data) 
+	if (!event_data)
 		return EMAIL_ERROR_INVALID_PARAM;
 
-	switch(event_data->type) {
+	switch (event_data->type) {
 		case EMAIL_EVENT_SYNC_IMAP_MAILBOX:
 			EM_SAFE_FREE(event_data->event_param_data_3);
 			break;
@@ -1472,7 +1464,7 @@ INTERNAL_FUNC int emcore_free_event(email_event_t *event_data)
 				int input_attachment_count = event_data->event_param_data_4;
 				emcore_free_mail_data_list(&input_mail_data, 1);
 				emcore_free_attachment_data(&input_attachment_data_list, input_attachment_count, NULL);
-				emstorage_free_meeting_request(input_meeting_request);				
+				emstorage_free_meeting_request(input_meeting_request);
 			}
 			break;
 
@@ -1493,20 +1485,20 @@ INTERNAL_FUNC int emcore_free_event(email_event_t *event_data)
 				email_search_filter_t *search_filter = (email_search_filter_t *)event_data->event_param_data_1;
 
 				if (event_data->event_param_data_1) {
-					for(i = 0; i < search_filter_count; i++) {
-						switch(search_filter[i].search_filter_type) {
-						case EMAIL_SEARCH_FILTER_TYPE_BCC              :
-						case EMAIL_SEARCH_FILTER_TYPE_BODY             :
-						case EMAIL_SEARCH_FILTER_TYPE_CC               :
-						case EMAIL_SEARCH_FILTER_TYPE_FROM             :
-						case EMAIL_SEARCH_FILTER_TYPE_KEYWORD          :
-						case EMAIL_SEARCH_FILTER_TYPE_TEXT             :
-						case EMAIL_SEARCH_FILTER_TYPE_SUBJECT          :
-						case EMAIL_SEARCH_FILTER_TYPE_TO               :
-						case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
-						case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  :
-						case EMAIL_SEARCH_FILTER_TYPE_CHARSET          :
-						case EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED     :
+					for (i = 0; i < search_filter_count; i++) {
+						switch (search_filter[i].search_filter_type) {
+						case EMAIL_SEARCH_FILTER_TYPE_BCC:
+						case EMAIL_SEARCH_FILTER_TYPE_BODY:
+						case EMAIL_SEARCH_FILTER_TYPE_CC:
+						case EMAIL_SEARCH_FILTER_TYPE_FROM:
+						case EMAIL_SEARCH_FILTER_TYPE_KEYWORD:
+						case EMAIL_SEARCH_FILTER_TYPE_TEXT:
+						case EMAIL_SEARCH_FILTER_TYPE_SUBJECT:
+						case EMAIL_SEARCH_FILTER_TYPE_TO:
+						case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID:
+						case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME:
+						case EMAIL_SEARCH_FILTER_TYPE_CHARSET:
+						case EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED:
 							EM_SAFE_FREE(search_filter[i].search_filter_key_value.string_type_key_value);
 							break;
 						default:
@@ -1540,8 +1532,8 @@ INTERNAL_FUNC int emcore_free_event(email_event_t *event_data)
 		break;
 #endif /* __FEATURE_LOCAL_ACTIVITY__ */
 
-		default : /*free function is not implemented*/
-			EM_DEBUG_EXCEPTION("event %d is NOT freed, possibly memory leaks", event_data->type);	
+		default: /*free function is not implemented*/
+			EM_DEBUG_EXCEPTION("event %d is NOT freed, possibly memory leaks", event_data->type);
 	}
 
 	EM_SAFE_FREE(event_data->multi_user_name);
@@ -1569,10 +1561,9 @@ static int emcore_get_new_handle(void)
 	if (i < EVENT_QUEUE_MAX) {
 		ret_handle = i+1;
 		EM_DEBUG_LOG("New handle [%d]", ret_handle);
-	}
-	else {
+	} else {
 		ret_handle = 0;
-		EM_DEBUG_EXCEPTION ("there is no available handle");
+		EM_DEBUG_EXCEPTION("there is no available handle");
 	}
 
 	EM_DEBUG_FUNC_END();
@@ -1598,8 +1589,7 @@ static int emcore_get_new_send_handle(void)
 	if (i < EVENT_QUEUE_MAX) {
 		ret_handle = i+1;
 		EM_DEBUG_LOG("New send handle [%d]", ret_handle);
-	}
-	else {
+	} else {
 		ret_handle = 0;
 		EM_DEBUG_LOG("there is no available send handle");
 	}
@@ -1747,8 +1737,7 @@ INTERNAL_FUNC int emcore_clear_partial_body_thd_event_que(int *err_code)
 
 	if (true == g_partial_body_thd_queue_empty) {
 		EM_DEBUG_LOG(" Partial Body Thread Event Queue Already empty ");
-	}
-	else {
+	} else {
 		for (i = 0; i < TOTAL_PARTIAL_BODY_EVENTS; ++i) {
 			if (g_partial_body_thd_event_que[i].event_type) {
 				if (false == emcore_free_partial_body_thd_event(g_partial_body_thd_event_que + i, &error))					 {
@@ -1834,7 +1823,7 @@ static int emcore_copy_partial_body_thd_event(email_event_partial_body_thd *src,
 	dest->activity_type = src->activity_type;
 	dest->event_type = src->event_type;
 	dest->multi_user_name = EM_SAFE_STRDUP(src->multi_user_name);
-	
+
 
 	ret = true;
 
@@ -1879,8 +1868,8 @@ INTERNAL_FUNC int emcore_free_partial_body_thd_event(email_event_partial_body_th
 	return true;
 }
 
-INTERNAL_FUNC int emcore_insert_partial_body_thread_event (
-                              email_event_partial_body_thd *partial_body_thd_event, 
+INTERNAL_FUNC int emcore_insert_partial_body_thread_event(
+                              email_event_partial_body_thd *partial_body_thd_event,
                               int                          *error_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -1906,7 +1895,7 @@ INTERNAL_FUNC int emcore_insert_partial_body_thread_event (
 	index = g_partial_body_thd_next_event_idx;
 	for (count = 0; count < TOTAL_PARTIAL_BODY_EVENTS; count++) {
 		/*Found empty Cell*/
-		if (g_partial_body_thd_event_que[index].event_type == EMAIL_EVENT_NONE) {		
+		if (g_partial_body_thd_event_que[index].event_type == EMAIL_EVENT_NONE) {
 			empty_cell_index = index;
 			break;
 		}
@@ -1915,13 +1904,12 @@ INTERNAL_FUNC int emcore_insert_partial_body_thread_event (
 	}
 
 	if (empty_cell_index != -1) {
-		emcore_copy_partial_body_thd_event (partial_body_thd_event, 
-                                 g_partial_body_thd_event_que + empty_cell_index, 
+		emcore_copy_partial_body_thd_event(partial_body_thd_event,
+                                 g_partial_body_thd_event_que + empty_cell_index,
                                  &error);
 		if (error != EMAIL_ERROR_NONE) {
 			EM_DEBUG_LOG("emcore_copy_partial_body_thd_event failed [%d]", error);
-		}
-		else {
+		} else {
 			g_partial_body_thd_queue_empty = false;
 			if (count == (TOTAL_PARTIAL_BODY_EVENTS - 1)) {
 				/*This is the last event_data inserted in queue after its insertion, queue is full */
@@ -1930,8 +1918,7 @@ INTERNAL_FUNC int emcore_insert_partial_body_thread_event (
 			WAKE_CONDITION_VARIABLE(_partial_body_thd_cond);
 			ret = true;
 		}
-	}
-	else {
+	} else {
 		EM_DEBUG_LOG("partial body thread event_data queue is full ");
 		error = EMAIL_ERROR_EVENT_QUEUE_FULL;
 
@@ -1969,8 +1956,7 @@ INTERNAL_FUNC int emcore_retrieve_partial_body_thread_event(email_event_partial_
 		error = EMAIL_ERROR_EVENT_QUEUE_EMPTY;
 		g_partial_body_thd_queue_empty = true;
 		g_partial_body_thd_queue_full = false;
-	}
-	else {
+	} else {
 		/*Copy the event_data from queue to return it and free the event_data in queue */
 		if (false == emcore_copy_partial_body_thd_event(g_partial_body_thd_event_que + index, partial_body_thd_event, &error))
 			EM_DEBUG_EXCEPTION("emcore_copy_partial_body_thd_event failed [%d]", error);
@@ -2017,11 +2003,11 @@ static int emcore_partial_body_bulk_flush(char *multi_user_name, int *error_code
 	MAILSTREAM *stream = NULL;
 	void *tmp_stream = NULL;
 
-	if (!emcore_connect_to_remote_mailbox(multi_user_name, 
-											g_partial_body_bulk_dwd_que[0].account_id, 
-											g_partial_body_bulk_dwd_que[0].mailbox_id, 
+	if (!emcore_connect_to_remote_mailbox(multi_user_name,
+											g_partial_body_bulk_dwd_que[0].account_id,
+											g_partial_body_bulk_dwd_que[0].mailbox_id,
 											true,
-											(void **)&tmp_stream, 
+											(void **)&tmp_stream,
 											&error) || (NULL == tmp_stream)) {
 		EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", error);
 		goto FINISH_OFF;
@@ -2029,7 +2015,7 @@ static int emcore_partial_body_bulk_flush(char *multi_user_name, int *error_code
 	stream = (MAILSTREAM *)tmp_stream;
 
 	/*  Call bulk download here */
-	if (false == emcore_download_bulk_partial_mail_body (stream, g_partial_body_bulk_dwd_que, g_partial_body_bulk_dwd_next_event_idx, &error)) {
+	if (false == emcore_download_bulk_partial_mail_body(stream, g_partial_body_bulk_dwd_que, g_partial_body_bulk_dwd_next_event_idx, &error)) {
 		EM_DEBUG_EXCEPTION(" emcore_download_bulk_partial_mail_body failed.. [%d]", error);
 		goto FINISH_OFF;
 	}
@@ -2037,7 +2023,7 @@ static int emcore_partial_body_bulk_flush(char *multi_user_name, int *error_code
 	ret = true;
 FINISH_OFF:
 
-	stream = mail_close (stream);
+	stream = mail_close(stream);
 
 	g_partial_body_bulk_dwd_next_event_idx = 0;
 	g_partial_body_bulk_dwd_queue_empty = true;
@@ -2054,7 +2040,7 @@ FINISH_OFF:
 
 
 /* Function to pass UID list and Data for bulk partial body download [santosh.br@samsung.com]/[h.gahlaut@samsung.com] */
-INTERNAL_FUNC int emcore_mail_partial_body_download (email_event_partial_body_thd *pbd_event, int *error_code)
+INTERNAL_FUNC int emcore_mail_partial_body_download(email_event_partial_body_thd *pbd_event, int *error_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
 	int error = EMAIL_ERROR_NONE;
@@ -2088,8 +2074,7 @@ INTERNAL_FUNC int emcore_mail_partial_body_download (email_event_partial_body_th
 					goto FINISH_OFF;
 				}
 			}
-		}
-		else  {
+		} else  {
 			EM_DEBUG_LOG("Event is not for the same mailbox and same account as the already present events in download que");
 			EM_DEBUG_LOG("Flush the current que if not empty");
 			EM_DEBUG_LOG("g_partial_body_bulk_dwd_queue_empty [%d]", g_partial_body_bulk_dwd_queue_empty);
@@ -2101,7 +2086,7 @@ INTERNAL_FUNC int emcore_mail_partial_body_download (email_event_partial_body_th
 			}
 		}
 		/*Add the event_data to the download que array */
-		if (false == emcore_copy_partial_body_thd_event (pbd_event, 
+		if (false == emcore_copy_partial_body_thd_event(pbd_event,
                                  g_partial_body_bulk_dwd_que+(g_partial_body_bulk_dwd_next_event_idx), &error))
 			EM_DEBUG_EXCEPTION("\t Partial Body thread emcore_copy_partial_body_thd_event failed - %d", error);
 		else {
@@ -2109,9 +2094,7 @@ INTERNAL_FUNC int emcore_mail_partial_body_download (email_event_partial_body_th
 			g_partial_body_bulk_dwd_next_event_idx++;
 			EM_DEBUG_LOG("g_partial_body_bulk_dwd_next_event_idx [%d]", g_partial_body_bulk_dwd_next_event_idx);
 		}
-	}
-	else if (pbd_event->activity_type) {
-
+	} else if (pbd_event->activity_type) {
 		int account_count = 0;
 
 		EM_DEBUG_LOG("Event is coming from local activity.");
@@ -2134,14 +2117,14 @@ INTERNAL_FUNC int emcore_mail_partial_body_download (email_event_partial_body_th
 				int k = 0;
 				int activity_count = 0;
 
-				if (!emcore_connect_to_remote_mailbox(pbd_event->multi_user_name, 
-														account_list[m], 
-														mailbox_list[i], 
+				if (!emcore_connect_to_remote_mailbox(pbd_event->multi_user_name,
+														account_list[m],
+														mailbox_list[i],
 														true,
-														(void **)&stream, 
+														(void **)&stream,
 														&error)) {
 					EM_DEBUG_EXCEPTION("emcore_connect_to_remote_mailbox failed [%d]", error);
-					stream = mail_close (stream);
+					stream = mail_close(stream);
 					goto FINISH_OFF;
 				}
 
@@ -2154,7 +2137,7 @@ INTERNAL_FUNC int emcore_mail_partial_body_download (email_event_partial_body_th
 					continue;
 				}
 				*/
-				if (activity_count>0 && activity_data_list) {
+				if (activity_count > 0 && activity_data_list) {
 					int temp_error = EMAIL_ERROR_NONE;
 					int j = 0;
 					int iter = 0;
@@ -2203,7 +2186,7 @@ INTERNAL_FUNC int emcore_mail_partial_body_download (email_event_partial_body_th
 						goto FINISH_OFF;		/* Stop Local Activity Sync */
 					}
 				}
-				stream = mail_close (stream);
+				stream = mail_close(stream);
 			}
 		}
 
@@ -2211,8 +2194,7 @@ INTERNAL_FUNC int emcore_mail_partial_body_download (email_event_partial_body_th
 		local activity continue variable should be set to false. */
 
 		emcore_pb_thd_set_local_activity_continue(false);
-	}
-	else /* Event-type is 0 which means Event is to flush the que when no more events are present in g_partial_body_thd_event_que */ {
+	} else /* Event-type is 0 which means Event is to flush the que when no more events are present in g_partial_body_thd_event_que */ {
 		/*Check if events have arrived in g_partial_body_thd_event_que */
 		if (false == emcore_is_partial_body_thd_que_empty()) {
 			EM_DEBUG_LOG("emcore_is_partial_body_thd_que_empty retured true");
@@ -2232,7 +2214,7 @@ FINISH_OFF:
 
 	EM_SAFE_FREE(mailbox_list);
 	EM_SAFE_FREE(account_list);
-	stream = mail_close (stream);
+	stream = mail_close(stream);
 
 	if (error_code)
 		*error_code = error;

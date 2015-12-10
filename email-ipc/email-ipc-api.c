@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -46,7 +46,7 @@ EXPORT_API HIPC_API emipc_create_email_api(long api_id)
 	EM_DEBUG_FUNC_BEGIN();
 
 	emipc_email_api_info *api_info = (emipc_email_api_info *)calloc(1, sizeof(emipc_email_api_info));
-	if(api_info == NULL) {
+	if (api_info == NULL) {
 		EM_DEBUG_EXCEPTION("calloc failed");
 		return NULL;
 	}
@@ -111,7 +111,7 @@ EXPORT_API bool emipc_add_parameter(HIPC_API api, EPARAMETER_DIRECTION direction
 EXPORT_API bool emipc_add_dynamic_parameter(HIPC_API api, EPARAMETER_DIRECTION direction, void *data, int data_length)
 {
 	EM_DEBUG_FUNC_BEGIN("data_length[%d]", data_length);
-	
+
 	emipc_param_list *parameters = emipc_get_api_parameters(api, direction);
 	if (!parameters) {
 		EM_DEBUG_EXCEPTION("emipc_get_api_parameters failed");
@@ -216,32 +216,32 @@ EXPORT_API int emipc_execute_proxy_task(email_task_type_t input_task_type, void 
 	char *task_parameter_stream = NULL;
 	HIPC_API hAPI = NULL;
 
-	if(input_task_parameter == NULL) {
+	if (input_task_parameter == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
 	}
 
-	if((err = emcore_encode_task_parameter(input_task_type, input_task_parameter, &task_parameter_stream, &task_parameter_length)) != EMAIL_ERROR_NONE) {
+	if ((err = emcore_encode_task_parameter(input_task_type, input_task_parameter, &task_parameter_stream, &task_parameter_length)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_encode_task_parameter failed [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	hAPI = emipc_create_email_api(input_task_type);
 
-	if(!hAPI) {
+	if (!hAPI) {
 		EM_DEBUG_EXCEPTION("emipc_create_email_api failed");
 		err = EMAIL_ERROR_NULL_VALUE;
 		goto FINISH_OFF;
 	}
 
-	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)task_parameter_stream, task_parameter_length)) {
+	if (!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)task_parameter_stream, task_parameter_length)) {
 		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}
 
-	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+	if (emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
 		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
 		goto FINISH_OFF;
@@ -278,14 +278,14 @@ EXPORT_API int emipc_get_user_name(char **output_user_name)
     char *user_name = NULL;
 
     HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_GET_USER_NAME);
-    if(!emipc_execute_proxy_api(hAPI))  {
+    if (!emipc_execute_proxy_api(hAPI))  {
         EM_DEBUG_LOG("ipcProxy_ExecuteAsyncAPI failed");
         err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
         goto FINISH_OFF;
     }
 
     emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
-    if (err != EMAIL_ERROR_NONE) 
+    if (err != EMAIL_ERROR_NONE)
         goto FINISH_OFF;
 
     buffer_size = emipc_get_parameter_length(hAPI, ePARAMETER_OUT, 1);
@@ -301,7 +301,7 @@ FINISH_OFF:
 
     EM_SAFE_FREE(user_name);
 
-    if (hAPI) 
+    if (hAPI)
         emipc_destroy_email_api(hAPI);
 
 #endif /* __FEATURE_CONTAINER_ENABLE__ */

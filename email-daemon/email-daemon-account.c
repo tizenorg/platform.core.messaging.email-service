@@ -116,7 +116,7 @@ INTERNAL_FUNC int emdaemon_delete_account(char *multi_user_name, int account_id,
 
 static email_account_t* duplicate_account(email_account_t *src)
 {
-	if(!src) {
+	if (!src) {
 		EM_DEBUG_EXCEPTION("INVALID_PARAM");
 		return NULL;
 	}
@@ -144,7 +144,7 @@ static email_account_t* duplicate_account(email_account_t *src)
 	dst->options.display_name_from = EM_SAFE_STRDUP(src->options.display_name_from);
 	dst->options.signature 	       = EM_SAFE_STRDUP(src->options.signature);
 	dst->user_data                = (void*) em_malloc(src->user_data_length);
-	if( !dst->user_data ) {
+	if (!dst->user_data) {
 		EM_DEBUG_EXCEPTION("em_malloc failed");
 		emcore_free_account(dst);
 		EM_SAFE_FREE(dst);
@@ -266,7 +266,7 @@ INTERNAL_FUNC int emdaemon_validate_account_and_create(char *multi_user_name, em
 	email_event_t *event_data = NULL;
 
 	event_data = em_malloc(sizeof(email_event_t));
-	if(!event_data) { /*prevent 53093*/
+	if (!event_data) { /*prevent 53093*/
 		EM_DEBUG_EXCEPTION("em_malloc failed");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
@@ -317,13 +317,13 @@ INTERNAL_FUNC int emdaemon_update_account(char *multi_user_name, int account_id,
 		goto FINISH_OFF;
 	}
 
-	if((old_account_info = emcore_get_account_reference(multi_user_name, account_id, true)) == NULL) {
+	if ((old_account_info = emcore_get_account_reference(multi_user_name, account_id, true)) == NULL) {
 		EM_DEBUG_EXCEPTION("emcore_get_account_reference failed ");
 		goto FINISH_OFF;
 	}
 
-	if(new_account->user_email_address) {
-		if ((err = em_verify_email_address (new_account->user_email_address)) != EMAIL_ERROR_NONE) {
+	if (new_account->user_email_address) {
+		if ((err = em_verify_email_address(new_account->user_email_address)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("em_verify_email_address error [%d]", err);
 			goto FINISH_OFF;
 		}
@@ -338,7 +338,7 @@ INTERNAL_FUNC int emdaemon_update_account(char *multi_user_name, int account_id,
 	}
 
 	new_account_tbl = em_malloc(sizeof(emstorage_account_tbl_t));
-	if(!new_account_tbl) {
+	if (!new_account_tbl) {
 		EM_DEBUG_EXCEPTION("allocation failed [%d]", err);
 		goto FINISH_OFF;
 	}
@@ -363,11 +363,11 @@ INTERNAL_FUNC int emdaemon_update_account(char *multi_user_name, int account_id,
 
 
 #ifdef __FEATURE_AUTO_POLLING__
-	if(change_in_auto_polling_option) {
-		if(!emdaemon_remove_polling_alarm(account_id))
+	if (change_in_auto_polling_option) {
+		if (!emdaemon_remove_polling_alarm(account_id))
 			EM_DEBUG_LOG("emdaemon_remove_polling_alarm failed");
 
-		if(!emdaemon_add_polling_alarm(multi_user_name, account_id))
+		if (!emdaemon_add_polling_alarm(multi_user_name, account_id))
 			EM_DEBUG_EXCEPTION("emdaemon_add_polling_alarm failed");
 
 #ifdef __FEATURE_IMAP_IDLE__
@@ -380,7 +380,7 @@ INTERNAL_FUNC int emdaemon_update_account(char *multi_user_name, int account_id,
 
 FINISH_OFF:
 
-	if(new_account_tbl)
+	if (new_account_tbl)
 		emstorage_free_account(&new_account_tbl, 1, NULL);
 
 	if (old_account_info) {
@@ -395,7 +395,7 @@ FINISH_OFF:
 	return ret;
 }
 
-INTERNAL_FUNC int emdaemon_validate_account_and_update(char *multi_user_name, int old_account_id, email_account_t* new_account_info, int *handle,int *err_code)
+INTERNAL_FUNC int emdaemon_validate_account_and_update(char *multi_user_name, int old_account_id, email_account_t *new_account_info, int *handle, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account[%d], new_account_info[%p], handle[%p], err_code[%p]", old_account_id, new_account_info, handle, err_code);
 
@@ -492,7 +492,7 @@ INTERNAL_FUNC int emdaemon_get_account(char *multi_user_name, int account_id, in
 	ret = true;
 
 FINISH_OFF:
-	if(account_tbl)
+	if (account_tbl)
 		emstorage_free_account(&account_tbl, 1, NULL);
 	if (err_code)
 		*err_code = err;
@@ -519,21 +519,21 @@ INTERNAL_FUNC int emdaemon_get_account_list(char *multi_user_name, email_account
 		goto FINISH_OFF;
 	}
 
-	if(account_tbl_array && (*count) > 0) {
+	if (account_tbl_array && (*count) > 0) {
 		*account_list = (email_account_t*)em_malloc(sizeof(email_account_t) * (*count));
-		if(!*account_list) {
+		if (!*account_list) {
 			EM_DEBUG_EXCEPTION("allocation failed [%d]", err);
 			goto FINISH_OFF;
 		}
 
-		for(i = 0 ; i < (*count); i++)
+		for (i = 0 ; i < (*count); i++)
 			em_convert_account_tbl_to_account(account_tbl_array + i, (*account_list) + i);
 	}
 
 	ret = true;
 
 FINISH_OFF:
-	if(account_tbl_array)
+	if (account_tbl_array)
 		emstorage_free_account(&account_tbl_array, (*count), NULL);
 
 	if (err_code != NULL)
@@ -819,7 +819,7 @@ INTERNAL_FUNC int emdaemon_insert_accountinfo_to_contact(email_account_t* accoun
 {
 	EM_DEBUG_FUNC_BEGIN();
 
-	if(!account)
+	if (!account)
 		return false;
 
 	int ret = false;
@@ -831,7 +831,7 @@ INTERNAL_FUNC int emdaemon_update_accountinfo_to_contact(email_account_t* old_ac
 {
 	EM_DEBUG_FUNC_BEGIN();
 
-	if(!old_account || !new_account)
+	if (!old_account || !new_account)
 		return false;
 
 	int ret = false;

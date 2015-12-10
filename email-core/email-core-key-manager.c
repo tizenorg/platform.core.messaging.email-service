@@ -65,7 +65,7 @@ INTERNAL_FUNC int emcore_add_password_in_key_manager(char *data_name, char *stor
 		err = EMAIL_ERROR_INVALID_PARAM;
 		return err;
 	}
-	
+
 //	alias = add_shared_owner_prefix(data_name);
 	alias = g_strdup(data_name);
 	EM_DEBUG_LOG("alias : [%s]", alias);
@@ -108,7 +108,7 @@ INTERNAL_FUNC int emcore_get_password_in_key_manager(char *data_name, char **sto
 		return err;
 	}
 
-//	alias = add_shared_owner_prefix(data_name); 
+//	alias = add_shared_owner_prefix(data_name);
 	alias = g_strdup(data_name);
 	EM_DEBUG_LOG("alias : [%s]", alias);
 
@@ -119,8 +119,8 @@ INTERNAL_FUNC int emcore_get_password_in_key_manager(char *data_name, char **sto
 		goto FINISH_OFF;
 	}
 
-//	EM_DEBUG_LOG("stored_data : [%s]", email_data->data);
-//	EM_DEBUG_LOG("stored_data length : [%d]", email_data->size);
+	EM_DEBUG_LOG_DEV("stored_data : [%s]", email_data->data);
+	EM_DEBUG_LOG_DEV("stored_data length : [%d]", email_data->size);
 
 FINISH_OFF:
 
@@ -151,7 +151,7 @@ INTERNAL_FUNC int emcore_remove_password_in_key_manager(char *data_name)
 		return err;
 	}
 
-//	alias = add_shared_owner_prefix(data_name);  
+//	alias = add_shared_owner_prefix(data_name);
 	alias = g_strdup(data_name);
 	EM_DEBUG_LOG("alias : [%s]", alias);
 
@@ -169,8 +169,8 @@ FINISH_OFF:
 	return err;
 }
 
-INTERNAL_FUNC int emcore_get_certificate_in_key_manager(char *alias, char *password, 
-														const unsigned char **cert_data, 
+INTERNAL_FUNC int emcore_get_certificate_in_key_manager(char *alias, char *password,
+														const unsigned char **cert_data,
 														int *cert_size)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -199,7 +199,7 @@ INTERNAL_FUNC int emcore_get_certificate_in_key_manager(char *alias, char *passw
 
 	p_cert_data = em_malloc(output_cert->cert_size + 1);
 	if (p_cert_data == NULL) {
-		EM_DEBUG_EXCEPTION("em_malloc failed");
+		EM_DEBUG_EXCEPTION("em_mallocfailed");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}

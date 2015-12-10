@@ -74,7 +74,7 @@ static gboolean on_timer_proxy_new(gpointer userdata)
 	GCancellable *proxy_cancel = (GCancellable *)userdata;
 
 	if (proxy_cancel) {
-		if (!g_cancellable_is_cancelled (proxy_cancel))
+		if (!g_cancellable_is_cancelled(proxy_cancel))
 			g_cancellable_cancel(proxy_cancel);
 	}
 
@@ -89,113 +89,113 @@ EXPORT_API int emipc_launch_email_service()
 	int ret = EMAIL_ERROR_NONE;
 	guint timer_tag = 0;
 
-#if !GLIB_CHECK_VERSION(2, 36, 0) 
-	g_type_init(); 
+#if !GLIB_CHECK_VERSION(2, 36, 0)
+	g_type_init();
 #endif
 
 	GCancellable *proxy_cancel = g_cancellable_new();
 	timer_tag = g_timeout_add(5000, on_timer_proxy_new, proxy_cancel);
-	GDBusProxy* bproxy = g_dbus_proxy_new_for_bus_sync (G_BUS_TYPE_SESSION, 
-	                            G_DBUS_PROXY_FLAGS_NONE, 
-	                            NULL, 
+	GDBusProxy* bproxy = g_dbus_proxy_new_for_bus_sync(G_BUS_TYPE_SESSION,
+	                            G_DBUS_PROXY_FLAGS_NONE,
+	                            NULL,
 	                            EMAIL_SERVICE_NAME,
 	                            EMAIL_SERVICE_PATH,
-	                            EMAIL_SERVICE_NAME, 
+	                            EMAIL_SERVICE_NAME,
 	                            proxy_cancel,
 	                            &gerror);
 
 	g_source_remove(timer_tag);
 
 	if (!bproxy) {
-		EM_DEBUG_EXCEPTION ("g_dbus_proxy_new_for_bus_sync error [%s]", 
+		EM_DEBUG_EXCEPTION("g_dbus_proxy_new_for_bus_sync error [%s]",
                                  gerror->message);
 		ret = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	GVariant *result = g_dbus_proxy_call_sync (bproxy, 
-                        "Launch", 
-                        g_variant_new ("(i)", getpid()), 
-                        G_DBUS_CALL_FLAGS_NONE, 
+	GVariant *result = g_dbus_proxy_call_sync(bproxy,
+                        "Launch",
+                        g_variant_new("(i)", getpid()),
+                        G_DBUS_CALL_FLAGS_NONE,
                         5000,  /* msec, 5s*/
-                        NULL, 
+                        NULL,
                         &gerror);
 
 
 	if (!result) {
-		EM_DEBUG_EXCEPTION ("g_dbus_proxy_call_sync 'Launch' error [%s]", 
+		EM_DEBUG_EXCEPTION("g_dbus_proxy_call_sync 'Launch' error [%s]",
                                  gerror->message);
 		ret = EMAIL_ERROR_IPC_PROTOCOL_FAILURE;
 		goto FINISH_OFF;
 	}
 
-	g_variant_get (result, "(i)", &ret);
+	g_variant_get(result, "(i)", &ret);
 
 FINISH_OFF:
-	EM_DEBUG_LOG ("ret [%d]\n", ret);
+	EM_DEBUG_LOG("ret [%d]\n", ret);
 	if (bproxy)
-		g_object_unref (bproxy);
+		g_object_unref(bproxy);
 
 	if (proxy_cancel)
 		g_object_unref(proxy_cancel);
 
 	if (gerror)
-		g_error_free (gerror);
+		g_error_free(gerror);
 
 	return ret;
 }
 
-void cancellable_connect_cb ()
+void cancellable_connect_cb()
 {
-	EM_DEBUG_LOG ("Cancellable is now canceled");
+	EM_DEBUG_LOG("Cancellable is now canceled");
 }
 
 EXPORT_API GCancellable *cancel = NULL;
 
-GVariant* em_gdbus_get_display_name (GVariant *parameters)
+GVariant* em_gdbus_get_display_name(GVariant *parameters)
 {
 	char *email_address        = NULL;
 	char *multi_user_name      = NULL;
 	char *contact_display_name = NULL;
 
-	g_variant_get (parameters, "(ss)", &email_address, &multi_user_name);
+	g_variant_get(parameters, "(ss)", &email_address, &multi_user_name);
 
 	/* replace "" to NULL */
-	if (!g_strcmp0(email_address,""))
-		EM_SAFE_FREE (email_address);
+	if (!g_strcmp0(email_address, ""))
+		EM_SAFE_FREE(email_address);
 
-	int err = emcore_get_mail_display_name_internal (multi_user_name, email_address, &contact_display_name);
+	int err = emcore_get_mail_display_name_internal(multi_user_name, email_address, &contact_display_name);
 
 	/* make return_val */
 	if (!contact_display_name) {
 		contact_display_name = strdup("");
 	}
-	GVariant* ret = g_variant_new ("(si)", contact_display_name, err);
+	GVariant* ret = g_variant_new("(si)", contact_display_name, err);
 
 	/* clean-up */
-	EM_SAFE_FREE (email_address);
-	EM_SAFE_FREE (contact_display_name);
+	EM_SAFE_FREE(email_address);
+	EM_SAFE_FREE(contact_display_name);
 
 	return ret;
 }
 
-GVariant* em_gdbus_check_blocking_mode (GVariant *parameters)
+GVariant* em_gdbus_check_blocking_mode(GVariant *parameters)
 {
 	char *sender_address = NULL;
 	char *multi_user_name = NULL;
 	int blocking_mode = 0;
 	int err = EMAIL_ERROR_NONE;
 
-	g_variant_get (parameters, "(ss)", &sender_address, &multi_user_name);
+	g_variant_get(parameters, "(ss)", &sender_address, &multi_user_name);
 #ifdef __FEATURE_BLOCKING_MODE__
-	err = emcore_check_blocking_mode_internal (multi_user_name, sender_address, &blocking_mode);
+	err = emcore_check_blocking_mode_internal(multi_user_name, sender_address, &blocking_mode);
 #endif /* __FEATURE_BLOCKING_MODE__ */
 	/* make return_val */
-	GVariant* ret = g_variant_new ("(ii)", blocking_mode, err);
+	GVariant* ret = g_variant_new("(ii)", blocking_mode, err);
 
 	/* clean-up string */
-	EM_SAFE_FREE (sender_address);
-	EM_SAFE_FREE (multi_user_name);
+	EM_SAFE_FREE(sender_address);
+	EM_SAFE_FREE(multi_user_name);
 
 	return ret;
 }

@@ -129,11 +129,11 @@ EXPORT_API unsigned char *emipc_serialize_param_list(emipc_param_list *param_lis
 	EM_DEBUG_FUNC_BEGIN("param_list [%p] stream_length [%p]", param_list, stream_length);
 
 	if (!param_list) {
-		EM_DEBUG_LOG ("no data to be serialized");
+		EM_DEBUG_LOG("no data to be serialized");
 		return NULL;
 	}
 
-	EM_SAFE_FREE (param_list->byte_stream);
+	EM_SAFE_FREE(param_list->byte_stream);
 
 	int stream_len = emipc_sum_param_list_length(param_list);
 	if (stream_len <= 0) {
@@ -148,7 +148,7 @@ EXPORT_API unsigned char *emipc_serialize_param_list(emipc_param_list *param_lis
 	}
 
 	int pos = sizeof(int) * eSTREAM_COUNT;
-	if (pos + (int)sizeof(param_list->param_count) > stream_len ) {
+	if (pos + (int)sizeof(param_list->param_count) > stream_len) {
 		EM_DEBUG_EXCEPTION("%d > stream_len", pos + sizeof(param_list->param_count));
 		EM_SAFE_FREE(param_list->byte_stream);
 		goto FINISH_OFF;
@@ -163,7 +163,7 @@ EXPORT_API unsigned char *emipc_serialize_param_list(emipc_param_list *param_lis
 	/* stream format */
 	/* | param1 length | (param1 data) | param2 length | (param2 data) | ... |*/
 	/* if param is 0 long, the param data is omitted */
-	for(index=0; index<param_list->param_count; index++) {
+	for (index = 0; index < param_list->param_count; index++) {
 		length = emipc_get_length(param_list->params[index]);
 		if (length < 0) {
 		 	EM_DEBUG_EXCEPTION("index = %d, length = %d", index, length);

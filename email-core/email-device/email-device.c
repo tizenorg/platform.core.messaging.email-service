@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -41,7 +41,7 @@ INTERNAL_FUNC int emdevice_set_sleep_on_off(email_stay_awake_flag_owner_t input_
 
 	stay_awake_flag[input_flag_owner] = !input_allow_to_sleep;
 
-	if(input_allow_to_sleep == 1) {
+	if (input_allow_to_sleep == 1) {
 		int i = 0;
 		int allowed_to_sleep = 1;
 
@@ -56,12 +56,10 @@ INTERNAL_FUNC int emdevice_set_sleep_on_off(email_stay_awake_flag_owner_t input_
 			/* allowed to sleep */
 			result_from_pm_api = device_power_release_lock(POWER_LOCK_CPU);
 			EM_DEBUG_LOG("display_unlock_state() returns [%d]", result_from_pm_api);
-		}
-		else {
+		} else {
 			EM_DEBUG_LOG("other worker[%d] is working on", i);
 		}
-	}
-	else {
+	} else {
 		/* Stay awake */
 		result_from_pm_api = device_power_request_lock(POWER_LOCK_CPU, 0);
 		EM_DEBUG_LOG("display_lock_state() returns [%d]", result_from_pm_api);

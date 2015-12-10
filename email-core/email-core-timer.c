@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -34,12 +34,11 @@
 #include "email-debug-log.h"
 
 
-typedef struct
-{
+typedef struct {
 	EMAIL_TIMER_CALLBACK user_callback_function;
 	void *callback_user_data;
 	int time_id;
-}em_timer_callback_data;
+} em_timer_callback_data;
 
 
 INTERNAL_FUNC int emcore_timer_ex_callback(void *a_pData)
@@ -52,8 +51,7 @@ INTERNAL_FUNC int emcore_timer_ex_callback(void *a_pData)
 #endif
 
 	em_timer_callback_data *pTimerData = (em_timer_callback_data *)a_pData;
-	if (pTimerData != NULL)
-	{
+	if (pTimerData != NULL) {
 		EMAIL_TIMER_CALLBACK pfn_UserCB = pTimerData->user_callback_function;
 		pUserData = pTimerData->callback_user_data;
 		if (pUserData)

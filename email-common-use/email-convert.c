@@ -12,7 +12,7 @@
 * http://www.apache.org/licenses/LICENSE-2.0
 *
 * Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
+* distributed under the License is distributed on an "AS IS" BASIS, 
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 * See the License for the specific language governing permissions and
 * limitations under the License.
@@ -219,7 +219,7 @@ INTERNAL_FUNC int em_convert_mailbox_to_mailbox_tbl(email_mailbox_t *mailbox, em
 	mailbox_tbl->deleted_flag               = mailbox->deleted_flag;
 	mailbox_tbl->eas_data_length            = mailbox->eas_data_length;
 
-	if ((mailbox->eas_data_length>0) && mailbox->eas_data) {
+	if ((mailbox->eas_data_length > 0) && mailbox->eas_data) {
 		if ((mailbox_tbl->eas_data = em_malloc(mailbox->eas_data_length)) == NULL) {
 			EM_DEBUG_EXCEPTION("em_malloc failed");
 			return 0; /*prevent 53448*/
@@ -251,7 +251,7 @@ INTERNAL_FUNC int em_convert_mailbox_tbl_to_mailbox(emstorage_mailbox_tbl_t *mai
 	mailbox->deleted_flag               = mailbox_tbl->deleted_flag;
 	mailbox->eas_data_length            = mailbox_tbl->eas_data_length;
 
-	if ((mailbox_tbl->eas_data_length >0) && mailbox_tbl->eas_data) {
+	if ((mailbox_tbl->eas_data_length > 0) && mailbox_tbl->eas_data) {
 		if ((mailbox->eas_data = em_malloc(mailbox_tbl->eas_data_length)) == NULL) {
 			EM_DEBUG_EXCEPTION("em_malloc failed");
 			return 0; /*prevent 53445*/
@@ -278,13 +278,13 @@ INTERNAL_FUNC int em_convert_mail_tbl_to_mail_data(emstorage_mail_tbl_t *mail_ta
 
 	temp_mail_data = em_malloc(sizeof(email_mail_data_t) * item_count);
 
-	if(!temp_mail_data) {
+	if (!temp_mail_data) {
 		EM_DEBUG_EXCEPTION("em_malloc failed");
 		err_code = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}
 
-	for(i = 0; i < item_count; i++) {
+	for (i = 0; i < item_count; i++) {
 		temp_mail_data[i].mail_id                 = mail_table_data[i].mail_id;
 		temp_mail_data[i].account_id              = mail_table_data[i].account_id;
 		temp_mail_data[i].mailbox_id              = mail_table_data[i].mailbox_id;
@@ -338,8 +338,8 @@ INTERNAL_FUNC int em_convert_mail_tbl_to_mail_data(emstorage_mail_tbl_t *mail_ta
 		temp_mail_data[i].replied_time            = mail_table_data[i].replied_time;
 		temp_mail_data[i].forwarded_time          = mail_table_data[i].forwarded_time;
 		temp_mail_data[i].eas_data_length         = mail_table_data[i].eas_data_length;
-		if(mail_table_data[i].eas_data_length && mail_table_data[i].eas_data) {
-			if((temp_mail_data[i].eas_data = em_malloc(mail_table_data[i].eas_data_length)) == NULL) {
+		if (mail_table_data[i].eas_data_length && mail_table_data[i].eas_data) {
+			if ((temp_mail_data[i].eas_data = em_malloc(mail_table_data[i].eas_data_length)) == NULL) {
 				EM_DEBUG_EXCEPTION("em_malloc failed");
 				err_code = EMAIL_ERROR_OUT_OF_MEMORY;
 				goto FINISH_OFF;
@@ -355,11 +355,11 @@ INTERNAL_FUNC int em_convert_mail_tbl_to_mail_data(emstorage_mail_tbl_t *mail_ta
 	ret = true;
 FINISH_OFF:
 
-	if(ret == false && temp_mail_data) {
+	if (ret == false && temp_mail_data) {
 		emcore_free_mail_data_list(&temp_mail_data, item_count);
 	}
 
-	if(error)
+	if (error)
 		*error = err_code;
 
 	EM_DEBUG_FUNC_END();
@@ -380,13 +380,13 @@ INTERNAL_FUNC int   em_convert_mail_data_to_mail_tbl(email_mail_data_t *mail_dat
 
 	temp_mail_tbl = em_malloc(sizeof(emstorage_mail_tbl_t) * item_count);
 
-	if(!temp_mail_tbl) {
+	if (!temp_mail_tbl) {
 		EM_DEBUG_EXCEPTION("em_malloc failed");
 		err_code = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}
 
-	for(i = 0; i < item_count; i++) {
+	for (i = 0; i < item_count; i++) {
 		temp_mail_tbl[i].mail_id                 = mail_data[i].mail_id;
 		temp_mail_tbl[i].account_id              = mail_data[i].account_id;
 		temp_mail_tbl[i].mailbox_id              = mail_data[i].mailbox_id;
@@ -440,8 +440,8 @@ INTERNAL_FUNC int   em_convert_mail_data_to_mail_tbl(email_mail_data_t *mail_dat
 		temp_mail_tbl[i].replied_time            = mail_data[i].replied_time;
 		temp_mail_tbl[i].forwarded_time          = mail_data[i].forwarded_time;
 		temp_mail_tbl[i].eas_data_length         = mail_data[i].eas_data_length;
-		if(mail_data[i].eas_data_length && mail_data[i].eas_data) {
-			if((temp_mail_tbl[i].eas_data = em_malloc(mail_data[i].eas_data_length)) == NULL) {
+		if (mail_data[i].eas_data_length && mail_data[i].eas_data) {
+			if ((temp_mail_tbl[i].eas_data = em_malloc(mail_data[i].eas_data_length)) == NULL) {
 				EM_DEBUG_EXCEPTION("em_malloc failed");
 				err_code = EMAIL_ERROR_OUT_OF_MEMORY;
 				/*prevent 44357*/
@@ -462,7 +462,7 @@ INTERNAL_FUNC int   em_convert_mail_data_to_mail_tbl(email_mail_data_t *mail_dat
 	ret = true;
 FINISH_OFF:
 
-	if(error)
+	if (error)
 		*error = err_code;
 
 	EM_DEBUG_FUNC_END();
@@ -529,11 +529,11 @@ INTERNAL_FUNC int em_convert_time_t_to_string(time_t *input_time, char **output_
 
 	temp_time_info = localtime(input_time);
 
-	if(!temp_time_info) {
+	if (!temp_time_info) {
 		EM_DEBUG_EXCEPTION("localtime failed.");
 		return EMAIL_ERROR_SYSTEM_FAILURE;
 	}
-	SNPRINTF(temp_buffer, sizeof(temp_buffer), "%04d%02d%02d%02d%02d%02d",
+	SNPRINTF(temp_buffer, sizeof(temp_buffer), "%04d%02d%02d%02d%02d%02d", 
 		temp_time_info->tm_year + 1970, temp_time_info->tm_mon, temp_time_info->tm_mday, temp_time_info->tm_hour, temp_time_info->tm_min, temp_time_info->tm_sec);
 
 	*output_datetime_string = EM_SAFE_STRDUP(temp_buffer);
@@ -547,8 +547,8 @@ static char* append_sized_data_to_stream(char *stream, int *stream_len, char *sr
 	/* EM_DEBUG_FUNC_BEGIN("input_stream [%p], input_output_stream_length [%p], input_sized_data [%p], input_data_size [%d]", input_stream, input_output_stream_length, input_sized_data, input_data_size); */
 	char *new_stream = NULL;
 
-	if( !stream_len || src_len == 0 || src == NULL || (stream != NULL && *stream_len == 0) ||
-			(stream == NULL && *stream_len != 0) ) {
+	if (!stream_len || src_len == 0 || src == NULL || (stream != NULL && *stream_len == 0) ||
+			(stream == NULL && *stream_len != 0)) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return NULL;
 	}
@@ -558,12 +558,12 @@ static char* append_sized_data_to_stream(char *stream, int *stream_len, char *sr
 	/*TODO: don't increase stream buffer incrementally when appending new data */
 	new_stream = (char*)em_malloc(old_stream_len + src_len);
 
-	if(!new_stream) {
+	if (!new_stream) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		return NULL;
 	}
 
-	if(stream != NULL)
+	if (stream != NULL)
 		memcpy(new_stream, stream, old_stream_len);
 
 	memcpy(new_stream + old_stream_len, src, src_len);
@@ -582,8 +582,8 @@ static char* append_string_to_stream(char *input_stream, int *input_output_strea
 	char *new_stream = NULL;
 	int   data_length = 0;
 
-	if( !input_output_stream_length || (input_stream != NULL && *input_output_stream_length == 0) ||
-		(input_stream == NULL && *input_output_stream_length != 0) ) {
+	if (!input_output_stream_length || (input_stream != NULL && *input_output_stream_length == 0) ||
+		(input_stream == NULL && *input_output_stream_length != 0)) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return NULL;
 	}
@@ -594,19 +594,19 @@ static char* append_string_to_stream(char *input_stream, int *input_output_strea
 
 	new_stream = (char*)em_malloc(source_stream_length + data_length + sizeof(int));
 
-	if(!new_stream) {
+	if (!new_stream) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_OUT_OF_MEMORY");
 		return NULL;
 	}
 
-	if(input_stream != NULL)
+	if (input_stream != NULL)
 		memcpy(new_stream, input_stream, source_stream_length);
 
 	/* write string length */
 	memcpy(new_stream + source_stream_length, (char*)&data_length, sizeof(int));
 
 	/* write string */
-	if(input_source_string)
+	if (input_source_string)
 		memcpy(new_stream + source_stream_length + sizeof(int), input_source_string, data_length);
 
 	/* for example, "abc" is written to stream buffer with "3abc" */
@@ -622,7 +622,7 @@ static int fetch_sized_data_from_stream(char *input_stream, int *input_output_st
 	/* EM_DEBUG_FUNC_BEGIN("input_stream [%p], input_output_stream_offset [%p] input_data_size [%d], output_data[%p]", input_stream, input_output_stream_offset, input_data_size, output_data); */
 	int stream_offset = 0;
 
-	if( !input_stream || !input_output_stream_offset || !input_data_size || !output_data) {
+	if (!input_stream || !input_output_stream_offset || !input_data_size || !output_data) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
@@ -646,7 +646,7 @@ static int fetch_string_from_stream(char *input_stream, int *input_output_stream
 	int stream_offset = 0;
 	char *result_string = NULL;
 
-	if( !input_stream || !input_output_stream_offset || !output_string) {
+	if (!input_stream || !input_output_stream_offset || !output_string) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
@@ -659,15 +659,15 @@ static int fetch_string_from_stream(char *input_stream, int *input_output_stream
 
 	/*	EM_DEBUG_LOG("string_length [%d]", string_length);	*/
 
-	if(string_length != 0) {
+	if (string_length != 0) {
 		result_string = (char*)em_malloc(string_length + 1);
-		if(result_string) {
+		if (result_string) {
 			memcpy(result_string, input_stream + stream_offset, string_length);
 			stream_offset += string_length;
 		}
 	}
 	/*
-	if(result_string)
+	if (result_string)
 		EM_DEBUG_LOG("result_string [%s]", result_string);
 	*/
 
@@ -682,7 +682,7 @@ static int fetch_string_from_stream(char *input_stream, int *input_output_stream
 #define EMAIL_ACCOUNT_FMT	"S(" "isiii" "isiis" "sssis" "issii" "iiiii" "iiiis" "issii" "i"\
 							"$(" "iiiii" "iisii" "iisii" "iiis" ")" "iiiii" "isiis" "i" ")" "B"
 
-/* For converting fmt : to distinguish between 64bit or 32bit */
+/* For converting fmt: to distinguish between 64bit or 32bit */
 static char *convert_format(char *fmt)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -741,7 +741,7 @@ static char *convert_format(char *fmt)
 					/* 64bit */
 					strncat(converted_fmt, "I", 1);
 				} else {
-					EM_DEBUG_LOG("size : [%d]", size);
+					EM_DEBUG_LOG("size: [%d]", size);
 				}
 
 				break;
@@ -767,8 +767,8 @@ static char *convert_format(char *fmt)
         c++;
     }
 
-	EM_DEBUG_LOG("original fmt  : [%s]", fmt);
-	EM_DEBUG_LOG("converted_fmt : [%s]", converted_fmt);
+	EM_DEBUG_LOG("original fmt: [%s]", fmt);
+	EM_DEBUG_LOG("converted_fmt: [%s]", converted_fmt);
 
 	ret = true;
 
@@ -916,7 +916,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_mail_data(char *stream, int stream_
 	}
 
 	tn = tpl_map(converted_fmt, mail_data, &tb);
-	if(!tn) {
+	if (!tn) {
 		EM_SAFE_FREE(converted_fmt);
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return;
@@ -926,15 +926,14 @@ INTERNAL_FUNC void em_convert_byte_stream_to_mail_data(char *stream, int stream_
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
 
-	if(mail_data->eas_data_length <= 0 || tb.addr == NULL) {
+	if (mail_data->eas_data_length <= 0 || tb.addr == NULL) {
 		EM_DEBUG_LOG("No eas data. eas_data_length[%d] addr[%p]", mail_data->eas_data_length, tb.addr);
-	}
-	else {
+	} else {
 		EM_DEBUG_LOG("eas_data_length[%d] addr[%p]", mail_data->eas_data_length, tb.addr);
 		mail_data->eas_data = tb.addr;
 	}
 
-	if(tn)
+	if (tn)
 		tpl_free(tn);
 
 	EM_DEBUG_FUNC_END();
@@ -969,8 +968,8 @@ INTERNAL_FUNC char* em_convert_attachment_data_to_byte_stream(email_attachment_d
 	EM_SAFE_FREE(converted_fmt);
 
 	/* if attachment_count is zero, for loop is skipped */
-	int i=0;
-	for( ; (i < attachment_count) && (attachment+i) ; i++ ) {
+	int i = 0;
+	for (; (i < attachment_count) && (attachment+i) ; i++) {
 		memcpy(&cur, attachment + i, sizeof(email_attachment_data_t));
 		tpl_pack(tn, 1);
 	}
@@ -1020,7 +1019,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int s
 	/* so, make list and get list count in the first phase, */
 	/* and then copy list to var array after allocating memory */
 
-	int num_element = tpl_Alen (tn, 1);
+	int num_element = tpl_Alen(tn, 1);
 	email_attachment_data_t *attached = NULL;
 	if (num_element > 0)
 		attached = (email_attachment_data_t*) em_malloc(sizeof(email_attachment_data_t)*num_element);
@@ -1028,16 +1027,16 @@ INTERNAL_FUNC void em_convert_byte_stream_to_attachment_data(char *stream, int s
 	int i = 0;
 	while (tpl_unpack(tn, 1) > 0) {
 		if (!(attached+i)) {
-			EM_DEBUG_EXCEPTION ("num element mismatched [%d] vs [%d]", num_element, i);
+			EM_DEBUG_EXCEPTION("num element mismatched [%d] vs [%d]", num_element, i);
 			num_element = i;
 			break;
 		}
 		email_attachment_data_t* pdata = attached+i;
 		memcpy(pdata, &cur, sizeof(email_attachment_data_t)); /* copy unpacked data to list item */
-		pdata->attachment_name 		= EM_SAFE_STRDUP(cur.attachment_name);
-		pdata->attachment_path 		= EM_SAFE_STRDUP(cur.attachment_path);
+		pdata->attachment_name 		 = EM_SAFE_STRDUP(cur.attachment_name);
+		pdata->attachment_path 		 = EM_SAFE_STRDUP(cur.attachment_path);
 		pdata->content_id               = EM_SAFE_STRDUP(cur.content_id);
-		pdata->attachment_mime_type 	= EM_SAFE_STRDUP(cur.attachment_mime_type);
+		pdata->attachment_mime_type 	 = EM_SAFE_STRDUP(cur.attachment_mime_type);
 		EM_SAFE_FREE(cur.attachment_name);
 		EM_SAFE_FREE(cur.attachment_path);
 		EM_SAFE_FREE(cur.content_id);
@@ -1090,7 +1089,7 @@ INTERNAL_FUNC char* em_convert_mailbox_to_byte_stream(email_mailbox_t *mailbox_d
 	size_t len = 0;
 	tpl_dump(tn, TPL_MEM, &buf, &len);
 
-	if(tn)
+	if (tn)
 		tpl_free(tn);
 
 	*stream_len = len;
@@ -1126,15 +1125,14 @@ INTERNAL_FUNC void em_convert_byte_stream_to_mailbox(char *stream, int stream_le
 	tpl_load(tn, TPL_MEM, stream, stream_len);
 	tpl_unpack(tn, 0);
 
-	if(mailbox_data->eas_data_length <= 0 || tb.addr == NULL) {
+	if (mailbox_data->eas_data_length <= 0 || tb.addr == NULL) {
 		EM_DEBUG_LOG("No eas data. eas_data_length[%d] addr[%p]", mailbox_data->eas_data_length, tb.addr);
-	}
-	else {
+	} else {
 		EM_DEBUG_LOG("eas_data_length[%d] addr[%p]", mailbox_data->eas_data_length, tb.addr);
 		mailbox_data->eas_data = tb.addr;
 	}
 
-	if(tn)
+	if (tn)
 		tpl_free(tn);
 
 	EM_DEBUG_FUNC_END("deserialized len %d", stream_len);
@@ -1293,19 +1291,19 @@ INTERNAL_FUNC char* em_convert_meeting_req_to_byte_stream(email_meeting_request_
 		return NULL;
 	}
 
-	tn = tpl_map(converted_fmt,
-						&meeting_req->mail_id,
-						&meeting_req->meeting_response,
-						&tb[0],
-						&tb[1],
-						&meeting_req->location,
-						&meeting_req->global_object_id,
-						&meeting_req->time_zone.offset_from_GMT,
-						meeting_req->time_zone.standard_name, 32,
-						&tb[2],
-						&meeting_req->time_zone.standard_bias,
-						meeting_req->time_zone.daylight_name, 32,
-						&tb[3],
+	tn = tpl_map(converted_fmt, 
+						&meeting_req->mail_id, 
+						&meeting_req->meeting_response, 
+						&tb[0], 
+						&tb[1], 
+						&meeting_req->location, 
+						&meeting_req->global_object_id, 
+						&meeting_req->time_zone.offset_from_GMT, 
+						meeting_req->time_zone.standard_name, 32, 
+						&tb[2], 
+						&meeting_req->time_zone.standard_bias, 
+						meeting_req->time_zone.daylight_name, 32, 
+						&tb[3], 
 						&meeting_req->time_zone.daylight_bias
 				);
 	if (!tn) {
@@ -1351,19 +1349,19 @@ INTERNAL_FUNC void em_convert_byte_stream_to_meeting_req(char *stream, int strea
 		return;
 	}
 
-	tn = tpl_map(converted_fmt,
-						&meeting_req->mail_id,
-						&meeting_req->meeting_response,
-						&tb[0],
-						&tb[1],
-						&meeting_req->location,
-						&meeting_req->global_object_id,
-						&meeting_req->time_zone.offset_from_GMT,
-						meeting_req->time_zone.standard_name, 32,
-						&tb[2],
-						&meeting_req->time_zone.standard_bias,
-						meeting_req->time_zone.daylight_name, 32,
-						&tb[3],
+	tn = tpl_map(converted_fmt, 
+						&meeting_req->mail_id, 
+						&meeting_req->meeting_response, 
+						&tb[0], 
+						&tb[1], 
+						&meeting_req->location, 
+						&meeting_req->global_object_id, 
+						&meeting_req->time_zone.offset_from_GMT, 
+						meeting_req->time_zone.standard_name, 32, 
+						&tb[2], 
+						&meeting_req->time_zone.standard_bias, 
+						meeting_req->time_zone.daylight_name, 32, 
+						&tb[3], 
 						&meeting_req->time_zone.daylight_bias
 				);
 	if (!tn) {
@@ -1382,14 +1380,14 @@ INTERNAL_FUNC void em_convert_byte_stream_to_meeting_req(char *stream, int strea
 	memcpy(&meeting_req->time_zone.standard_time_start_date, tb[2].addr, sizeof(struct tm));
 	memcpy(&meeting_req->time_zone.daylight_time_start_date, tb[3].addr, sizeof(struct tm));
 
-	int i=0;
-	for(i=0; i< 4 ; i++)
+	int i = 0;
+	for (i = 0; i < 4; i++)
 		EM_SAFE_FREE(tb[i].addr);
 
 	EM_DEBUG_FUNC_END();
 }
 
-INTERNAL_FUNC char* em_convert_search_filter_to_byte_stream(email_search_filter_t *input_search_filter_list,
+INTERNAL_FUNC char* em_convert_search_filter_to_byte_stream(email_search_filter_t *input_search_filter_list, 
 									int input_search_filter_count, int *output_stream_size)
 {
 	EM_DEBUG_FUNC_BEGIN("input_search_filter_list [%p] input_search_filter_count [%d]", input_search_filter_list, input_search_filter_count);
@@ -1402,47 +1400,47 @@ INTERNAL_FUNC char* em_convert_search_filter_to_byte_stream(email_search_filter_
 
 	result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_search_filter_count), sizeof(int));
 
-	for( i = 0; i < input_search_filter_count; i++) {
+	for (i = 0; i < input_search_filter_count; i++) {
 		result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_search_filter_list[i].search_filter_type), sizeof(int));
-		switch(input_search_filter_list[i].search_filter_type) {
-			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO       :
-			case EMAIL_SEARCH_FILTER_TYPE_UID              :
-			case EMAIL_SEARCH_FILTER_TYPE_ALL              :
-			case EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER      :
-			case EMAIL_SEARCH_FILTER_TYPE_SIZE_SMALLER     :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED   :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_NEW        :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED    :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_OLD        :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT      :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED     :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT     :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN       :
-			case EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY  :
+		switch (input_search_filter_list[i].search_filter_type) {
+			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO:
+			case EMAIL_SEARCH_FILTER_TYPE_UID:
+			case EMAIL_SEARCH_FILTER_TYPE_ALL:
+			case EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER:
+			case EMAIL_SEARCH_FILTER_TYPE_SIZE_SMALLER:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_NEW:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_OLD:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN:
+			case EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY:
 				result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_search_filter_list[i].search_filter_key_value.integer_type_key_value), sizeof(int));
 				break;
 
-			case EMAIL_SEARCH_FILTER_TYPE_BCC              :
-			case EMAIL_SEARCH_FILTER_TYPE_BODY             :
-			case EMAIL_SEARCH_FILTER_TYPE_CC               :
-			case EMAIL_SEARCH_FILTER_TYPE_FROM             :
-			case EMAIL_SEARCH_FILTER_TYPE_KEYWORD          :
-			case EMAIL_SEARCH_FILTER_TYPE_TEXT             :
-			case EMAIL_SEARCH_FILTER_TYPE_SUBJECT          :
-			case EMAIL_SEARCH_FILTER_TYPE_TO               :
-			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
-			case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  :
-			case EMAIL_SEARCH_FILTER_TYPE_CHARSET          :
-			case EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED     :
+			case EMAIL_SEARCH_FILTER_TYPE_BCC:
+			case EMAIL_SEARCH_FILTER_TYPE_BODY:
+			case EMAIL_SEARCH_FILTER_TYPE_CC:
+			case EMAIL_SEARCH_FILTER_TYPE_FROM:
+			case EMAIL_SEARCH_FILTER_TYPE_KEYWORD:
+			case EMAIL_SEARCH_FILTER_TYPE_TEXT:
+			case EMAIL_SEARCH_FILTER_TYPE_SUBJECT:
+			case EMAIL_SEARCH_FILTER_TYPE_TO:
+			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID:
+			case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME:
+			case EMAIL_SEARCH_FILTER_TYPE_CHARSET:
+			case EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED:
 				result_stream = append_string_to_stream(result_stream, &stream_size, input_search_filter_list[i].search_filter_key_value.string_type_key_value);
 				break;
 
-			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :
-			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON     :
-			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE  :
+			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE:
+			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON:
+			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE:
 				result_stream = append_sized_data_to_stream(result_stream, &stream_size, (char*)&(input_search_filter_list[i].search_filter_key_value.time_type_key_value), sizeof(time_t));
 				break;
-			default :
+			default:
 				EM_DEBUG_EXCEPTION("Invalid filter type [%d]", input_search_filter_list[i].search_filter_type);
 				break;
 		}
@@ -1454,7 +1452,7 @@ INTERNAL_FUNC char* em_convert_search_filter_to_byte_stream(email_search_filter_
 	return result_stream;
 }
 
-INTERNAL_FUNC void em_convert_byte_stream_to_search_filter(char *input_stream,
+INTERNAL_FUNC void em_convert_byte_stream_to_search_filter(char *input_stream, 
 				email_search_filter_t **output_search_filter_list, int *output_search_filter_count)
 {
 	EM_DEBUG_FUNC_BEGIN("input_stream [%p] output_search_filter_list [%p] output_search_filter_count [%p]", input_stream, output_search_filter_list, output_search_filter_count);
@@ -1470,61 +1468,61 @@ INTERNAL_FUNC void em_convert_byte_stream_to_search_filter(char *input_stream,
 
 	fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(local_search_filter_count));
 
-	if(local_search_filter_count == 0) {
+	if (local_search_filter_count == 0) {
 		EM_DEBUG_EXCEPTION("local_search_filter_count is 0.");
 		goto FINISH_OFF;
 	}
 
 	local_search_filter = em_malloc(sizeof(email_search_filter_t) * local_search_filter_count);
 
-	if(local_search_filter == NULL) {
+	if (local_search_filter == NULL) {
 		EM_DEBUG_EXCEPTION("em_malloc for local_search_filter failed");
 		goto FINISH_OFF;
 	}
 
 	*output_search_filter_count = local_search_filter_count;
 
-	for( i = 0; i < local_search_filter_count; i++) {
+	for (i = 0; i < local_search_filter_count; i++) {
 		fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(local_search_filter[i].search_filter_type));
-		switch(local_search_filter[i].search_filter_type) {
-			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO       :
-			case EMAIL_SEARCH_FILTER_TYPE_UID              :
-			case EMAIL_SEARCH_FILTER_TYPE_ALL              :
-			case EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER      :
-			case EMAIL_SEARCH_FILTER_TYPE_SIZE_SMALLER     :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED   :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_NEW        :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED    :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_OLD        :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT      :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED     :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT     :
-			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN       :
-			case EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY  :
+		switch (local_search_filter[i].search_filter_type) {
+			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_NO:
+			case EMAIL_SEARCH_FILTER_TYPE_UID:
+			case EMAIL_SEARCH_FILTER_TYPE_ALL:
+			case EMAIL_SEARCH_FILTER_TYPE_SIZE_LARSER:
+			case EMAIL_SEARCH_FILTER_TYPE_SIZE_SMALLER:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_ANSWERED:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_NEW:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DELETED:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_OLD:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_DRAFT:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_FLAGED:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_RECENT:
+			case EMAIL_SEARCH_FILTER_TYPE_FLAGS_SEEN:
+			case EMAIL_SEARCH_FILTER_TYPE_HEADER_PRIORITY:
 				fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(int), (char*)&(local_search_filter[i].search_filter_key_value.integer_type_key_value));
 				break;
 
-			case EMAIL_SEARCH_FILTER_TYPE_BCC              :
-			case EMAIL_SEARCH_FILTER_TYPE_BODY             :
-			case EMAIL_SEARCH_FILTER_TYPE_CC               :
-			case EMAIL_SEARCH_FILTER_TYPE_FROM             :
-			case EMAIL_SEARCH_FILTER_TYPE_KEYWORD          :
-			case EMAIL_SEARCH_FILTER_TYPE_TEXT             :
-			case EMAIL_SEARCH_FILTER_TYPE_SUBJECT          :
-			case EMAIL_SEARCH_FILTER_TYPE_TO               :
-			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID       :
-			case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME  :
-			case EMAIL_SEARCH_FILTER_TYPE_CHARSET          :
-			case EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED     :
+			case EMAIL_SEARCH_FILTER_TYPE_BCC:
+			case EMAIL_SEARCH_FILTER_TYPE_BODY:
+			case EMAIL_SEARCH_FILTER_TYPE_CC:
+			case EMAIL_SEARCH_FILTER_TYPE_FROM:
+			case EMAIL_SEARCH_FILTER_TYPE_KEYWORD:
+			case EMAIL_SEARCH_FILTER_TYPE_TEXT:
+			case EMAIL_SEARCH_FILTER_TYPE_SUBJECT:
+			case EMAIL_SEARCH_FILTER_TYPE_TO:
+			case EMAIL_SEARCH_FILTER_TYPE_MESSAGE_ID:
+			case EMAIL_SEARCH_FILTER_TYPE_ATTACHMENT_NAME:
+			case EMAIL_SEARCH_FILTER_TYPE_CHARSET:
+			case EMAIL_SEARCH_FILTER_TYPE_USER_DEFINED:
 				fetch_string_from_stream(input_stream, &stream_offset, &(local_search_filter[i].search_filter_key_value.string_type_key_value));
 				break;
 
-			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE :
-			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON     :
-			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE  :
+			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_BEFORE:
+			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_ON:
+			case EMAIL_SEARCH_FILTER_TYPE_SENT_DATE_SINCE:
 				fetch_sized_data_from_stream(input_stream, &stream_offset, sizeof(time_t), (char*)&(local_search_filter[i].search_filter_key_value.time_type_key_value));
 				break;
-			default :
+			default:
 				EM_DEBUG_EXCEPTION("Invalid filter type [%d]", local_search_filter[i].search_filter_type);
 				break;
 		}
@@ -1556,7 +1554,7 @@ INTERNAL_FUNC char* em_convert_task_information_to_byte_stream(email_task_inform
 		return NULL;
 	}
 
-	for( ; i < input_task_information_count ; i++ ) {
+	for (; i < input_task_information_count ; i++) {
 		memcpy(&cur, input_task_information + i, sizeof(email_task_information_t));
 		tpl_pack(tn, 1);
 	}
@@ -1589,14 +1587,14 @@ INTERNAL_FUNC void em_convert_byte_stream_to_task_information(char *input_stream
 		return;
 	}
 	tpl_load(tn, TPL_MEM, input_stream, input_stream_len);
-	int num_element = tpl_Alen (tn, 1);
+	int num_element = tpl_Alen(tn, 1);
 	email_task_information_t* deserialized = NULL;
 	if (num_element > 0)
 		deserialized = (email_task_information_t*) em_malloc(sizeof(email_task_information_t)*num_element);
 
-	while( tpl_unpack(tn, 1) > 0) {
+	while (tpl_unpack(tn, 1) > 0) {
 		if (!(deserialized+i)) {
-			EM_DEBUG_EXCEPTION ("num element mismatched [%d] vs [%d]", num_element, i);
+			EM_DEBUG_EXCEPTION("num element mismatched [%d] vs [%d]", num_element, i);
 			num_element = i;
 			break;
 		}

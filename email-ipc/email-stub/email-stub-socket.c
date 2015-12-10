@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -79,7 +79,7 @@ EXPORT_API bool emipc_start_stub_socket_thread()
 	EM_DEBUG_LOG("[IPCLib] emipc_email_stub_socket_thread start");
 	if (stub_socket_thread)
 		return true;
-		
+
 	pthread_attr_t thread_attr;
 	pthread_attr_init(&thread_attr);
 	pthread_attr_setdetachstate(&thread_attr, PTHREAD_CREATE_DETACHED);
@@ -124,7 +124,7 @@ EXPORT_API void emipc_wait_for_ipc_request()
 	EM_DEBUG_LOG("ipc_socket_path : [%s]", ipc_socket_path);
 
 	emipc_open_email_socket(stub_socket, ipc_socket_path);
-	
+
 	EM_SAFE_FREE(ipc_socket_path);
 
 	epfd = epoll_create(MAX_EPOLL_EVENT);
@@ -136,35 +136,34 @@ EXPORT_API void emipc_wait_for_ipc_request()
 
 	ev.events = EPOLLIN;
 	ev.data.fd = stub_socket;
-	
+
 	if (epoll_ctl(epfd, EPOLL_CTL_ADD, stub_socket, &ev) == -1) {
 		EM_DEBUG_EXCEPTION("epoll_ctl error [%d]", errno);
-		EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl error [%d]", errno); 	
+		EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl error [%d]", errno);
 	}
 	while (!stop_thread) {
 		int i = 0;
 
 		event_num = epoll_wait(epfd, events, MAX_EPOLL_EVENT, -1);
-		
+
 		if (stop_thread) {
-			EM_DEBUG_LOG ("IPC hanlder thread is going to be shut down");
+			EM_DEBUG_LOG("IPC hanlder thread is going to be shut down");
 			break;
 		}
 
 		if (event_num == -1) {
-			if (errno != EINTR ) {
+			if (errno != EINTR) {
 				EM_DEBUG_EXCEPTION("epoll_wait error [%d]", errno);
 				EM_DEBUG_CRITICAL_EXCEPTION("epoll_wait error [%d]", errno);
 			}
-		}
-		else {
+		} else {
 			for (i = 0; i < event_num; i++) {
 				int event_fd = events[i].data.fd;
 
 				if (event_fd == stub_socket) { /*  if it is socket connection request */
-					int cfd = emipc_accept_email_socket (stub_socket);
+					int cfd = emipc_accept_email_socket(stub_socket);
 					if (cfd < 0) {
-						EM_DEBUG_EXCEPTION ("emipc_accept_email_socket error [%d]", cfd);
+						EM_DEBUG_EXCEPTION("emipc_accept_email_socket error [%d]", cfd);
 						/* EM_DEBUG_CRITICAL_EXCEPTION ("accept failed: %s[%d]", EM_STRERROR(errno_buf), errno);*/
 						continue;
 					}
@@ -175,14 +174,13 @@ EXPORT_API void emipc_wait_for_ipc_request()
 						/*EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl failed:%s[%d]", EM_STRERROR(errno_buf), errno);*/
 						continue;
 					}
-				} 
-				else {
+				} else {
 					int recv_len;
 					char *sz_buf = NULL;
-					
+
 					recv_len = emipc_recv_email_socket(event_fd, &sz_buf);
-					
-					if(recv_len > 0) {
+
+					if (recv_len > 0) {
 						EM_DEBUG_LOG("[IPCLib]Stub Socket Recv [Socket ID = %d], [recv_len = %d]", event_fd, recv_len);
 
 						/* IPC request stream is at least 16byte */
@@ -194,52 +192,49 @@ EXPORT_API void emipc_wait_for_ipc_request()
 									EM_DEBUG_EXCEPTION("epoll_ctl error [%d]", errno);
 									EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl error [%d]", errno);
 								}
-								EM_SAFE_CLOSE (event_fd);
+								EM_SAFE_CLOSE(event_fd);
 							}
-						} 
-						else
+						} else
 							EM_DEBUG_LOG("[IPCLib] Stream size is less than default size");
-					} 
-					else if( recv_len == 0 ) { /* client shut down connection */
+					} else if (recv_len == 0) { /* client shut down connection */
 						EM_DEBUG_LOG("[IPCLib] Client closed connection [%d]", event_fd);
 						if (epoll_ctl(epfd, EPOLL_CTL_DEL, event_fd, events) == -1) {
 							EM_DEBUG_EXCEPTION("epoll_ctl error [%d]", errno);
 							EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl error [%d]", errno);
 						}
-						emipc_close_fd_in_task_queue (event_fd);
-						EM_SAFE_CLOSE (event_fd);
-					} 
-					else { /* read errs */
-						EM_DEBUG_EXCEPTION ("[IPCLib] read err[%d] fd[%d]", recv_len, event_fd);
+						emipc_close_fd_in_task_queue(event_fd);
+						EM_SAFE_CLOSE(event_fd);
+					} else { /* read errs */
+						EM_DEBUG_EXCEPTION("[IPCLib] read err[%d] fd[%d]", recv_len, event_fd);
 						if (epoll_ctl(epfd, EPOLL_CTL_DEL, event_fd, events) == -1) {
 							EM_DEBUG_EXCEPTION("epoll_ctl error [%d]", errno);
 							EM_DEBUG_CRITICAL_EXCEPTION("epoll_ctl error [%d]", errno);
 						}
-						emipc_close_fd_in_task_queue (event_fd);
-						EM_SAFE_CLOSE (event_fd);
+						emipc_close_fd_in_task_queue(event_fd);
+						EM_SAFE_CLOSE(event_fd);
 					}
 					EM_SAFE_FREE(sz_buf);
 				}
 			}
 		}
-	}	
-	emipc_end_all_proxy_sockets ();
+	}
+	emipc_end_all_proxy_sockets();
 	emipc_close_email_socket(&stub_socket);
-	EM_DEBUG_LOG ("IPC hanlder thread is shut down");
+	EM_DEBUG_LOG("IPC hanlder thread is shut down");
 }
 
 EXPORT_API bool emipc_end_stub_socket()
 {
-	EM_DEBUG_FUNC_BEGIN ();
-	
+	EM_DEBUG_FUNC_BEGIN();
+
 	/* stop IPC handler thread */
 	emipc_stop_stub_socket_thread();
 	stub_socket_thread = 0;
 
 	/* stop task thread */
-	emipc_stop_task_thread ();
+	emipc_stop_task_thread();
 
-	EM_DEBUG_FUNC_END ();		
+	EM_DEBUG_FUNC_END();
 	return true;
 }
 
@@ -253,7 +248,7 @@ EXPORT_API int emipc_send_stub_socket(int sock_fd, void *data, int len)
 	}
 
 	if (sending_bytes <= 0) {
-		EM_DEBUG_EXCEPTION ("emipc_send_email_socket error [%d] fd [%d]", sending_bytes, sock_fd);
+		EM_DEBUG_EXCEPTION("emipc_send_email_socket error [%d] fd [%d]", sending_bytes, sock_fd);
 	}
 
 	EM_DEBUG_FUNC_END("sending_bytes = %d", sending_bytes);

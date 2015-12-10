@@ -107,8 +107,7 @@ static void _cb_parser_start_element(void* ctx, WBXMLTag* element, WBXMLAttribut
 	if (empty) {
 		EM_DEBUG_LOG_SEC("/>");
 		strcat((char *)p, "/>");
-	}
-	else {
+	} else {
 		EM_DEBUG_LOG_SEC(">");
 		strcat((char *)p, ">");
 	}
@@ -129,7 +128,7 @@ static void _cb_parser_characters(void* ctx, WB_UTINY* ch, WB_ULONG start, WB_UL
 	EM_DEBUG_FUNC_END();
 }
 
-static int _get_addr_from_element(unsigned char* elm,int* type, unsigned char** incoming_server_user_name, unsigned char** host_addr, unsigned char** mbox_name, unsigned char** auth_type)
+static int _get_addr_from_element(unsigned char *elm, int *type, unsigned char **incoming_server_user_name, unsigned char **host_addr, unsigned char **mbox_name, unsigned char **auth_type)
 {
 	EM_DEBUG_FUNC_BEGIN();
 
@@ -178,8 +177,7 @@ static int _get_addr_from_element(unsigned char* elm,int* type, unsigned char** 
 			*s = '\0';
 			if (user || *(p - 3) == '/') {
 				if (strncmp((char *)p, "AUTH=", 5) == 0) auth = (unsigned char*)EM_SAFE_STRDUP((char *)p + 5);
-			}
-			else
+			} else
 				user = (unsigned char*)EM_SAFE_STRDUP((char *)p);
 			p = s + 1;
 		}
@@ -204,8 +202,7 @@ static int _get_addr_from_element(unsigned char* elm,int* type, unsigned char** 
 			*s = '\0';
 			if (user || *(p - 3) == '/') {
 				if (strncmp((char *)p, "AUTH=", 5) == 0) auth = (unsigned char*)EM_SAFE_STRDUP((char *)p + 5);
-			}
-			else
+			} else
 				user = (unsigned char*)EM_SAFE_STRDUP((char *)p);
 			p = s + 1;
 		}
@@ -226,7 +223,7 @@ static int _get_addr_from_element(unsigned char* elm,int* type, unsigned char** 
 			*(s - 1) = '\0';
 
 		if (EM_SAFE_STRLEN((char *)p))
-			mailbox =(unsigned char*) EM_SAFE_STRDUP((char *)p);
+			mailbox = (unsigned char *)EM_SAFE_STRDUP((char *)p);
 		break;
 
 	case 'h': /*  not supported */
@@ -390,8 +387,7 @@ static int _get_emn_account(unsigned char *input_wbxml, int input_wbxml_length, 
 		EM_DEBUG_EXCEPTION("Parsing failed at %u - Token %x - %s", err_idx, wbxml[err_idx], wbxml_errors_string(ret));
 		err = EMAIL_ERROR_XML_PARSER_FAILURE;
 		goto FINISH_OFF;
-	}
-	else {
+	} else {
 		EM_DEBUG_LOG("Parsing OK !");
 	}
 
@@ -421,9 +417,9 @@ static int _get_emn_account(unsigned char *input_wbxml, int input_wbxml_length, 
 	EM_DEBUG_LOG("host_addr = [%s]", (char *)host_addr ? (char*)host_addr : "NIL");
 	EM_DEBUG_LOG_SEC("mbox_name = [%s]", (char *)mbox_name ? (char*)mbox_name : "NIL");
 	EM_DEBUG_LOG("auth_type = [%s]", (char *)auth_type ? (char*)auth_type : "NIL");
-	EM_DEBUG_LOG("time_stamp= [%s]", (char *)time_stamp? (char*)time_stamp: "NIL");
+	EM_DEBUG_LOG("time_stamp= [%s]", (char *)time_stamp ? (char*)time_stamp : "NIL");
 
-	if(incoming_server_user_name && host_addr)
+	if (incoming_server_user_name && host_addr)
 		SNPRINTF((char*)email_address, MAX_EMAIL_ADDRESS_LENGTH, "%s@%s", incoming_server_user_name, host_addr);
 
 	if (!emdaemon_get_account_list(NULL, &accounts, &count, &err)) {
@@ -436,7 +432,7 @@ static int _get_emn_account(unsigned char *input_wbxml, int input_wbxml_length, 
 		char* temp_account_name = NULL;
 		char *s = NULL;
 		/*	EM_DEBUG_LOG(">>>> Account Information UserName [ %s ] Email Addr [ %s], Account ID [ %d] >>> ",accounts[i].incoming_server_user_name,accounts[i].user_email_address, accounts[i].account_id); */
-		temp_account_name =(char*) EM_SAFE_STRDUP((char *)accounts[i].incoming_server_user_name);
+		temp_account_name = (char *)EM_SAFE_STRDUP((char *)accounts[i].incoming_server_user_name);
 
 		if ((s = (char*)strchr((char *)temp_account_name, '@')))  {
 			*s = '\0';
@@ -528,8 +524,7 @@ static int emdaemon_handle_emn_notification(unsigned char* wbxml_b64, int input_
 			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_name failed [%d", err);
 			goto FINISH_OFF;
 		}
-	}
-	else {
+	} else {
 		if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name, account.account_id, EMAIL_MAILBOX_TYPE_INBOX, &mailbox_tbl, false, &err))  {
 			EM_DEBUG_EXCEPTION("emstorage_get_mailbox_by_mailbox_type failed [%d", err);
 			goto FINISH_OFF;
@@ -560,7 +555,7 @@ void oma_emn_push_cb(msg_handle_t input_handle, const char *input_push_header, c
 	EM_DEBUG_LOG("input_push_body [%s]", input_push_body);
 	EM_DEBUG_LOG("input_push_body_lenth [%d]", input_push_body_lenth);
 
-	if((err = emdaemon_handle_emn_notification((unsigned char*)input_push_body, input_push_body_lenth)) != EMAIL_ERROR_NONE) {
+	if ((err = emdaemon_handle_emn_notification((unsigned char*)input_push_body, input_push_body_lenth)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emdaemon_handle_emn_notification failed [%d]", err);
 	}
 
@@ -577,7 +572,7 @@ static int emdaemon_register_wap_push_callback(msg_handle_t *input_msg_handle, c
 	char *pkg_name = "org.tizen.email";
 	bool bLaunch = false;
 
-	if(input_msg_handle == NULL || input_app_id == NULL) {
+	if (input_msg_handle == NULL || input_app_id == NULL) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		goto FINISH_OFF;
@@ -585,7 +580,7 @@ static int emdaemon_register_wap_push_callback(msg_handle_t *input_msg_handle, c
 
 	msg_struct = msg_create_struct(MSG_STRUCT_PUSH_CONFIG_INFO);
 
-	if(msg_struct == NULL) {
+	if (msg_struct == NULL) {
 		EM_DEBUG_EXCEPTION("msg_create_struct() failed [%d]", msg_err);
 		err = EMAIL_ERROR_INPROPER_RESPONSE_FROM_MSG_SERVICE;
 		goto FINISH_OFF;
@@ -606,7 +601,7 @@ static int emdaemon_register_wap_push_callback(msg_handle_t *input_msg_handle, c
 
  FINISH_OFF:
 
-	if(msg_struct)
+	if (msg_struct)
 		msg_release_struct(&msg_struct);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);

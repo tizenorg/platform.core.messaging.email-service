@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -72,18 +72,18 @@ int emdaemon_unregister_event_callback(email_action_t action, email_event_callba
 INTERNAL_FUNC int emdaemon_cancel_job(int account_id, int handle, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], handle[%d], err_code[%p]", account_id, handle, err_code);
-	
+
 	int ret = false;
 	int err = EMAIL_ERROR_NONE;
-	
-	
+
+
 	if (!emcore_cancel_thread(handle, NULL, &err))  {
 		EM_DEBUG_EXCEPTION("emcore_cancel_thread failed [%d]", err);
 		goto FINISH_OFF;
 	}
-	
+
 	ret = true;
-	
+
 FINISH_OFF:
 	if (err_code != NULL)
 		*err_code = err;
@@ -95,11 +95,11 @@ FINISH_OFF:
 INTERNAL_FUNC int emdaemon_cancel_sending_mail_job(int account_id, int mail_id, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], mail_id[%d], err_code[%p]", account_id, mail_id, err_code);
-	
+
 	int ret = false;
-	int err = EMAIL_ERROR_NONE;	
+	int err = EMAIL_ERROR_NONE;
 	int handle = 0;
-	
+
 	if (account_id <= 0)  {
 		EM_DEBUG_EXCEPTION("account_id[%d], mail_id[%d]", account_id, mail_id);
 		err = EMAIL_ERROR_INVALID_PARAM;
@@ -111,10 +111,10 @@ INTERNAL_FUNC int emdaemon_cancel_sending_mail_job(int account_id, int mail_id, 
 	/* Removed below code, as it is causing struck in composer */
 #if 0
 	/*	h.gahlaut@samsung.com: Moved this code from email_cancel_sending_mail API to email-service engine
-		since this code has update DB operation which is failing in context of email application process 
+		since this code has update DB operation which is failing in context of email application process
 		with an sqlite error -> sqlite3_step fail:8 */
-		
-	/* 	which means #define SQLITE_READONLY   8 */  /* Attempt to write a readonly database */ 
+
+	/* 	which means #define SQLITE_READONLY   8 */  /* Attempt to write a readonly database */
 	emstorage_mail_tbl_t *mail_tbl_data = NULL;
 
 	if (!emstorage_get_mail_by_id(mail_id, &mail_tbl_data, false, &err))  {
@@ -126,12 +126,11 @@ INTERNAL_FUNC int emdaemon_cancel_sending_mail_job(int account_id, int mail_id, 
 		if (mail_tbl_data->save_status == EMAIL_MAIL_STATUS_SEND_CANCELED) {
 			EM_DEBUG_EXCEPTION(">>>> EMAIL_MAIL_STATUS_SEND_CANCELED Already set for Mail ID [ %d ]", mail_id);
 			goto FINISH_OFF;
-		}
-		else {			
+		} else {
 			mail_tbl_data->save_status = EMAIL_MAIL_STATUS_SEND_CANCELED;
 
-			if(!emstorage_set_field_of_mails_with_integer_value(multi_user_name, mail_tbl_data->account_id, &mail_id, 1, "save_status", EMAIL_MAIL_STATUS_SEND_CANCELED, true, &err)) {
-				EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]",err);
+			if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name, mail_tbl_data->account_id, &mail_id, 1, "save_status", EMAIL_MAIL_STATUS_SEND_CANCELED, true, &err)) {
+				EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]", err);
 				goto FINISH_OFF;
 			}
 		}
@@ -141,12 +140,12 @@ INTERNAL_FUNC int emdaemon_cancel_sending_mail_job(int account_id, int mail_id, 
 #endif
 
 	if ((err = emcore_delete_alram_data_by_reference_id(EMAIL_ALARM_CLASS_SCHEDULED_SENDING, mail_id)) != EMAIL_ERROR_NONE) {
-		EM_DEBUG_LOG("emcore_delete_alram_data_by_reference_id failed [%d]",err);
+		EM_DEBUG_LOG("emcore_delete_alram_data_by_reference_id failed [%d]", err);
 	}
 
 #endif
 
-	if(!emcore_get_handle_by_mailId_from_transaction_info(mail_id , &handle)) {
+	if (!emcore_get_handle_by_mailId_from_transaction_info(mail_id , &handle)) {
 		EM_DEBUG_EXCEPTION("emcore_get_handle_by_mailId_from_transaction_info failed for mail_id[%d]", mail_id);
 		ret = true;
 		goto FINISH_OFF;
@@ -155,41 +154,41 @@ INTERNAL_FUNC int emdaemon_cancel_sending_mail_job(int account_id, int mail_id, 
 	if (!emcore_cancel_send_mail_thread(handle, NULL, &err)) {
 		EM_DEBUG_EXCEPTION("emcore_cancel_send_mail_thread failed [%d]", err);
 	}
-	
-	if(!emcore_delete_transaction_info_by_mailId(mail_id))
+
+	if (!emcore_delete_transaction_info_by_mailId(mail_id))
 		EM_DEBUG_EXCEPTION("emcore_delete_transaction_info_by_mailId failed for mail_id[%d]", mail_id);
-	
+
 	ret = true;
-	
+
 FINISH_OFF:
-	if(err_code != NULL)
+	if (err_code != NULL)
 		*err_code = err;
 #if 0
 #ifdef __FEATURE_PROGRESS_IN_OUTBOX__
-	if(!emstorage_free_mail(&mail_tbl_data, 1, &err))
-		EM_DEBUG_EXCEPTION("emcore_free_mail Failed [%d ]", err);	
+	if (!emstorage_free_mail(&mail_tbl_data, 1, &err))
+		EM_DEBUG_EXCEPTION("emcore_free_mail Failed [%d ]", err);
 #endif
 #endif
 	EM_DEBUG_FUNC_END();
 	return ret;
-}	
+}
 
-INTERNAL_FUNC int emdaemon_search_mail_on_server(char *multi_user_name, 
-												int input_account_id, 
-												int input_mailbox_id, 
-												email_search_filter_t *input_search_filter, 
-												int input_search_filter_count, 
-												unsigned int *output_handle, 
+INTERNAL_FUNC int emdaemon_search_mail_on_server(char *multi_user_name,
+												int input_account_id,
+												int input_mailbox_id,
+												email_search_filter_t *input_search_filter,
+												int input_search_filter_count,
+												unsigned int *output_handle,
 												int *err_code)
 {
-	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], mailbox_id [%d], input_search_filter [%p], " 
-						"input_search_filter_count [%d], output_handle [%p]", 
-						input_account_id, input_mailbox_id, input_search_filter, 
+	EM_DEBUG_FUNC_BEGIN("input_account_id [%d], mailbox_id [%d], input_search_filter [%p], "
+						"input_search_filter_count [%d], output_handle [%p]",
+						input_account_id, input_mailbox_id, input_search_filter,
 						input_search_filter_count, output_handle);
 	int error = EMAIL_ERROR_NONE;
 	int ret = false;
 	email_event_t *event_data = NULL;
-	
+
 	if (input_mailbox_id == 0 || input_account_id < 0) {
 		EM_DEBUG_EXCEPTION("Invalid parameter");
 		error = EMAIL_ERROR_INVALID_PARAM;
@@ -274,28 +273,28 @@ INTERNAL_FUNC int emdaemon_reschedule_sending_mail()
 	filter_list[6].list_filter_item.operator_type                      = EMAIL_LIST_FILTER_OPERATOR_RIGHT_PARENTHESIS;
 
 	/* Get scheduled mail list */
-	if( (err = emstorage_write_conditional_clause_for_getting_mail_list(multi_user_name, filter_list, filter_rule_count, NULL, 0, -1, -1, &conditional_clause_string)) != EMAIL_ERROR_NONE) {
+	if ((err = emstorage_write_conditional_clause_for_getting_mail_list(multi_user_name, filter_list, filter_rule_count, NULL, 0, -1, -1, &conditional_clause_string)) != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emstorage_write_conditional_clause_for_getting_mail_list failed[%d]", err);
 		goto FINISH_OFF;
 	}
 
 	EM_DEBUG_LOG("conditional_clause_string[%s].", conditional_clause_string);
 
-	if(!emstorage_query_mail_list(NULL, conditional_clause_string, true, &result_mail_list, &result_mail_count, &err) && !result_mail_list) {
+	if (!emstorage_query_mail_list(NULL, conditional_clause_string, true, &result_mail_list, &result_mail_count, &err) && !result_mail_list) {
 		EM_DEBUG_EXCEPTION("emstorage_query_mail_list [%d]", err);
 		goto FINISH_OFF;
 	}
 
 	/* Add alarm for scheduled mail */
-	for(i = 0; i < result_mail_count; i++) {
-		if((err = emcore_schedule_sending_mail(multi_user_name, result_mail_list[i].mail_id, result_mail_list[i].scheduled_sending_time)) != EMAIL_ERROR_NONE) {
+	for (i = 0; i < result_mail_count; i++) {
+		if ((err = emcore_schedule_sending_mail(multi_user_name, result_mail_list[i].mail_id, result_mail_list[i].scheduled_sending_time)) != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_schedule_sending_mail failed [%d]", err);
 			goto FINISH_OFF;
 		}
 	}
 
 FINISH_OFF:
-	EM_SAFE_FREE (conditional_clause_string); /* detected by valgrind */
+	EM_SAFE_FREE(conditional_clause_string); /* detected by valgrind */
 	EM_SAFE_FREE(result_mail_list);
 
 	EM_DEBUG_FUNC_END("err [%d]", err);
@@ -306,15 +305,14 @@ FINISH_OFF:
 INTERNAL_FUNC int emdaemon_clear_all_mail_data(char *multi_user_name, int* err_code)
 {
 	EM_DEBUG_FUNC_BEGIN();
-	
+
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
-	
+
 	if (emdaemon_initialize(multi_user_name, &error)) {
 		if (!emstorage_clear_mail_data(multi_user_name, true, &error))
 			EM_DEBUG_EXCEPTION("emstorage_clear_mail_data failed [%d]", error);
-	}
-	else {
+	} else {
 		EM_DEBUG_EXCEPTION("emdaemon_initialize failed [%d]", error);
 		if (err_code)
 			*err_code = error;
@@ -325,11 +323,11 @@ INTERNAL_FUNC int emdaemon_clear_all_mail_data(char *multi_user_name, int* err_c
 
 	ret = true;
 
-	if (!emstorage_create_table(multi_user_name, EMAIL_CREATE_DB_NORMAL, &error)) 
+	if (!emstorage_create_table(multi_user_name, EMAIL_CREATE_DB_NORMAL, &error))
 		EM_DEBUG_EXCEPTION("emstorage_create_table failed [%d]", error);
-	
+
 	emdaemon_finalize(&error);
-	
+
 	if (err_code)
 		*err_code = error;
 	EM_DEBUG_FUNC_END();
@@ -363,7 +361,7 @@ INTERNAL_FUNC int emdaemon_check_smack_rule(int app_sockfd, char *file_path)
 		}
 	}
 
-	if(!have_smack) {
+	if (!have_smack) {
 		EM_DEBUG_LOG("smack is disabled");
 		result = true;
 		goto FINISH_OFF;
@@ -377,7 +375,7 @@ INTERNAL_FUNC int emdaemon_check_smack_rule(int app_sockfd, char *file_path)
 		result = false;
 		goto FINISH_OFF;
 	}
-	
+
 	real_file_path = realpath(file_path, NULL);
 	if (!real_file_path) {
 		EM_DEBUG_LOG("realpath failed [%d][%s]", errno, EM_STRERROR(errno_buf));
@@ -470,7 +468,7 @@ INTERNAL_FUNC int emdaemon_finalize_sync(char *multi_user_name, int account_id, 
 			emcore_set_blocking_mode_status(false);
 #endif /* __FEATURE_BLOCKING_MODE__ */
 
-		
+
 			if ((err = emcore_update_sync_status_of_account(multi_user_name, account_id, SET_TYPE_MINUS, SYNC_STATUS_HAVE_NEW_MAILS)) != EMAIL_ERROR_NONE)
 				EM_DEBUG_EXCEPTION("emcore_update_sync_status_of_account failed [%d]", err);
 		}

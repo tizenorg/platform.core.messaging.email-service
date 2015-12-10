@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -35,7 +35,7 @@
 EXPORT_API bool emipc_deserialize_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction, void *stream)
 {
 	EM_DEBUG_FUNC_BEGIN("emipc_email_api_info : [%p], direction : [%d]", api_info, direction);
-	
+
 	if (!api_info || !stream) {
 		EM_DEBUG_EXCEPTION("Invalid parameter.");
 		return false;
@@ -60,7 +60,7 @@ EXPORT_API unsigned char *emipc_serialize_api_info(emipc_email_api_info *api_inf
 {
 	EM_DEBUG_FUNC_BEGIN();
 	unsigned char *stream = NULL;
-	
+
 	if (!api_info) {
 		EM_DEBUG_EXCEPTION("Invalid parameter.");
 		return stream;
@@ -88,12 +88,12 @@ EXPORT_API unsigned char *emipc_serialize_api_info(emipc_email_api_info *api_inf
 EXPORT_API void *emipc_get_parameters_of_api_info(emipc_email_api_info *api_info, EPARAMETER_DIRECTION direction)
 {
 	EM_DEBUG_FUNC_BEGIN("emipc_email_api_info : [%p], direction : [%d]", api_info, direction);
-	
+
 	if (!api_info) {
 		EM_DEBUG_EXCEPTION("INVALID_PARAM");
 		return NULL;
 	}
-	
+
 	if (api_info->params[direction] == NULL) {
 		api_info->params[direction] = emipc_create_param_list();
 		if (api_info->params[direction] == NULL) {
@@ -107,11 +107,11 @@ EXPORT_API void *emipc_get_parameters_of_api_info(emipc_email_api_info *api_info
 
 EXPORT_API void emipc_free_api_info(emipc_email_api_info *api_info)
 {
-	if (!api_info) 
+	if (!api_info)
 		return;
 
-	emipc_destroy_param_list (api_info->params[ePARAMETER_IN]);
-	emipc_destroy_param_list (api_info->params[ePARAMETER_OUT]);
+	emipc_destroy_param_list(api_info->params[ePARAMETER_IN]);
+	emipc_destroy_param_list(api_info->params[ePARAMETER_OUT]);
 }
 
 
