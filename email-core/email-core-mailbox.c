@@ -1667,7 +1667,7 @@ INTERNAL_FUNC int emcore_save_local_activity_sync(int account_id, int *err_code)
 	if (activity_count > 0) {
 		event_data = em_malloc(sizeof(email_event_t));
 		if (!event_data) {
-			EM_DEBUG_EXCEPTION("em_mallocfailed");
+			EM_DEBUG_EXCEPTION("em_malloc failed");
 			err = EMAIL_ERROR_OUT_OF_MEMORY;
 			goto FINISH_OFF;
 		}

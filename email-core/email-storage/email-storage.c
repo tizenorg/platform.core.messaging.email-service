@@ -11558,6 +11558,7 @@ INTERNAL_FUNC int emstorage_get_save_name(char *multi_user_name, int account_id,
 	char create_dir[1024] = {0};
 	char *temp_file = NULL;
 	char *prefix_path = NULL;
+	char *modified_fname = NULL;
 
 	if (!move_buf || !path_buf || account_id < FIRST_ACCOUNT_ID || mail_id < 0 || atch_id < 0) {
 		EM_DEBUG_EXCEPTION(" account_id[%d], mail_id[%d], atch_id[%d], fname[%p], move_buf[%p], path_buf[%p]", account_id, mail_id, atch_id, fname, move_buf, path_buf);
@@ -11590,7 +11591,14 @@ INTERNAL_FUNC int emstorage_get_save_name(char *multi_user_name, int account_id,
 
 	if (fname) {
 		EM_DEBUG_LOG_DEV(">>>>> fname [%s]", fname);
-		if (EM_SAFE_STRLEN(fname) + EM_SAFE_STRLEN(path_buf) + strlen(DIR_SEPERATOR) > maxlen - 1) {
+
+		/* Did not allow the slash */
+		modified_fname = reg_replace_new(fname, "/", "_");
+		EM_DEBUG_LOG("modified_fname : [%s]", modified_fname);
+
+		if (modified_fname == NULL) modified_fname = g_strdup(fname);
+
+		if (EM_SAFE_STRLEN(modified_fname) + EM_SAFE_STRLEN(path_buf) + strlen(DIR_SEPERATOR) > maxlen - 1) {
 			char *modified_name = NULL;
 			int remain_len  = (maxlen - 1) - EM_SAFE_STRLEN(path_buf) - strlen(DIR_SEPERATOR);
 
@@ -11603,7 +11611,7 @@ INTERNAL_FUNC int emstorage_get_save_name(char *multi_user_name, int account_id,
 				remain_len = MAX_FILENAME;
 			}
 
-			modified_name = em_shrink_filename(fname, remain_len);
+			modified_name = em_shrink_filename(modified_fname, remain_len);
 
 			if (!modified_name) {
 				error = EMAIL_ERROR_MAX_EXCEEDED;
@@ -11614,10 +11622,10 @@ INTERNAL_FUNC int emstorage_get_save_name(char *multi_user_name, int account_id,
 			EM_DEBUG_LOG(">>>>> Modified fname [%s]", modified_name);
 			EM_SAFE_FREE(modified_name);
 		} else {
-			if (EM_SAFE_STRLEN(fname) > MAX_FILENAME - 1) {
+			if (EM_SAFE_STRLEN(modified_fname) > MAX_FILENAME - 1) {
 				char *modified_name = NULL;
 
-				modified_name = em_shrink_filename(fname, MAX_FILENAME);
+				modified_name = em_shrink_filename(modified_fname, MAX_FILENAME);
 				if (!modified_name) {
 					error = EMAIL_ERROR_MAX_EXCEEDED;
 					goto FINISH_OFF;
@@ -11627,7 +11635,7 @@ INTERNAL_FUNC int emstorage_get_save_name(char *multi_user_name, int account_id,
 				EM_DEBUG_LOG(">>>>> Modified fname [%s]", modified_name);
 				EM_SAFE_FREE(modified_name);
 			} else {
-				sprintf(path_buf+EM_SAFE_STRLEN(path_buf), "%s%s", DIR_SEPERATOR, fname);
+				sprintf(path_buf+EM_SAFE_STRLEN(path_buf), "%s%s", DIR_SEPERATOR, modified_fname);
 			}
 		}
 	}
@@ -11653,6 +11661,7 @@ FINISH_OFF:
 
 	EM_SAFE_FREE(temp_file);
 	EM_SAFE_FREE(prefix_path);
+	EM_SAFE_FREE(modified_fname);
 
 	if (err_code != NULL)
 		*err_code = error;

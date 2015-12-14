@@ -4670,7 +4670,7 @@ static int emcore_sending_alarm_cb(email_alarm_data_t *alarm_data, void *user_pa
 
 	event_data = em_malloc(sizeof(email_event_t));
 	if (event_data == NULL) {
-		EM_DEBUG_EXCEPTION("em_mallocfailed");
+		EM_DEBUG_EXCEPTION("em_malloc failed");
 		err = EMAIL_ERROR_OUT_OF_MEMORY;
 		goto FINISH_OFF;
 	}
@@ -4778,8 +4778,11 @@ static int emcore_auto_resend_cb(email_alarm_data_t *alarm_data, void *user_para
 	int filter_rule_count = 5;
 	int sorting_rule_count = 2;
 	int result_mail_count = 0;
+	int result_handle = 0;
 	int i = 0;
 	char *multi_user_name = (char *)user_parameter;
+
+	email_event_t *event_data = NULL;
 
 	/* Get all mails have remaining resend counts in outbox with status 'EMAIL_MAIL_STATUS_SEND_FAILURE or EMAIL_MAIL_STATUS_SEND_WAIT' */
 	attribute_field_name = emcore_get_mail_field_name_by_attribute_type(EMAIL_MAIL_ATTRIBUTE_REMAINING_RESEND_TIMES);
@@ -4827,20 +4830,53 @@ static int emcore_auto_resend_cb(email_alarm_data_t *alarm_data, void *user_para
 	}
 
 	/* Send mails in loop */
-
 	for (i = 0; i < result_mail_count; i++) {
-		if (!emcore_send_mail(multi_user_name, result_mail_list[i].mail_id, &err)) {
-			EM_DEBUG_EXCEPTION("emcore_send_mail failed [%d]", err);
+		event_data = em_malloc(sizeof(email_event_t));
+		if (event_data == NULL) {
+			EM_DEBUG_EXCEPTION("em_malloc failed");
+			err = EMAIL_ERROR_OUT_OF_MEMORY;
+			goto FINISH_OFF;
+		}
+
+		event_data->type = EMAIL_EVENT_SEND_MAIL;
+		event_data->account_id = result_mail_list[i].account_id;
+		event_data->event_param_data_4 = result_mail_list[i].mail_id;
+		event_data->event_param_data_5 = result_mail_list[i].mailbox_id;
+		event_data->multi_user_name = EM_SAFE_STRDUP(multi_user_name);
+
+		if (!emcore_insert_event_for_sending_mails(event_data, &result_handle, &err)) {
+			EM_DEBUG_EXCEPTION("emcore_insert_event_for_sending_mails failed : [%d]", err);
+			goto FINISH_OFF;
 		}
 
 		if (attribute_field_name) {
-			if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name, result_mail_list[i].account_id, &(result_mail_list[i].mail_id), 1, attribute_field_name, result_mail_list[i].remaining_resend_times - 1, true, &err)) {
+			if (!emstorage_set_field_of_mails_with_integer_value(multi_user_name,
+																	result_mail_list[i].account_id,
+																	&(result_mail_list[i].mail_id),
+																	1,
+																	attribute_field_name,
+																	result_mail_list[i].remaining_resend_times - 1,
+																	true,
+																	&err)) {
 				EM_DEBUG_EXCEPTION("emstorage_set_field_of_mails_with_integer_value failed [%d]", err);
 			}
 		}
+
+		/* Do not free the event_data */
+		/* Because the event_data is freed in event_handler */
+		event_data = NULL;
+		err = EMAIL_ERROR_NONE;
 	}
 
 FINISH_OFF:
+
+	if (err != EMAIL_ERROR_NONE) {
+		if (event_data) {
+			emcore_free_event(event_data);
+			EM_SAFE_FREE(event_data);
+		}
+	}
+
 	EM_SAFE_FREE(conditional_clause_string); /* detected by valgrind */
 	EM_SAFE_FREE(result_mail_list);
 
