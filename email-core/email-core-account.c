@@ -1449,7 +1449,7 @@ static int emcore_get_xoauth2_access_token(char *input_refresh_token, char **out
 	curl_easy_setopt(curl, CURLOPT_URL, GOOGLE_PIM_SYNC_GET_TOKEN_URL);
 	curl_easy_setopt(curl, CURLOPT_POST, 1);
 	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, buf);
-	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
+	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 1L);
 	curl_easy_setopt(curl, CURLOPT_CONNECTTIMEOUT, CALCURL_TIMEOUT);
 	curl_easy_setopt(curl, CURLOPT_VERBOSE, 1);
 	curl_easy_setopt(curl, CURLOPT_NOPROGRESS, 0);
