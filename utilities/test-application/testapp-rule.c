@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -55,18 +55,18 @@ static gboolean testapp_test_add_rule()
 	testapp_print("> Enter Type(FROM - 1 / SUBJECT - 2): ");
 	if (0 >= scanf("%d", &type))
 		testapp_print("Invalid input. ");
-	rule->type= type;		
+	rule->type = type;
 
 	memset(arg, 0x00, 500);
 	testapp_print("\n> Enter Filtering Value:");
-	if (0 >= scanf("%s",arg))
+	if (0 >= scanf("%s", arg))
 		testapp_print("Invalid input. ");
-	rule->value= strdup(arg);	
+	rule->value = strdup(arg);
 
 	testapp_print("> Enter Action(MOVE - 1, BLOCK - 2, DELETE - 3): ");
 	if (0 >= scanf("%d", &action))
 		testapp_print("Invalid input. ");
-	rule->faction= action;	
+	rule->faction = action;
 
 	if (action == 1) {
 		testapp_print("\n> Enter target mailbox id:");
@@ -78,12 +78,12 @@ static gboolean testapp_test_add_rule()
 	testapp_print("> Enter Flag1 value [On/Off]: ");
 	if (0 >= scanf("%d", &flag))
 		testapp_print("Invalid input. ");
-	rule->flag1= flag;
+	rule->flag1 = flag;
 
 	testapp_print("> Enter Flag2 value [0:Exactly same as, 1:Include, 2:Compare Domain] : ");
 	if (0 >= scanf("%d", &flag))
 		testapp_print("Invalid input. ");
-	rule->flag2= flag;
+	rule->flag2 = flag;
 
 	if (email_add_rule(rule) < 0)
 		testapp_print("\n email_add_rule failed");
@@ -92,9 +92,9 @@ static gboolean testapp_test_add_rule()
 
 	if (email_apply_rule(rule->filter_id) != EMAIL_ERROR_NONE)
 		testapp_print("email_apply_rule failed\n");
-	
+
 	email_free_rule(&rule, 1);
-	
+
 	return FALSE;
 }
 
@@ -106,9 +106,9 @@ static gboolean testapp_test_delete_rule()
 	if (0 >= scanf("%d", &filter_id))
 		testapp_print("Invalid input. ");
 
-	if(email_delete_rule(filter_id) < 0)
+	if (email_delete_rule(filter_id) < 0)
 		testapp_print("email_delete_rule failed..! ");
-		
+
 	return FALSE;
 }
 
@@ -125,11 +125,11 @@ static gboolean testapp_test_update_rule()
 	int filter_id = 0;
 
 	rule = malloc(sizeof(email_rule_t));
-	memset(rule,0X00,sizeof(email_rule_t));
+	memset(rule, 0X00, sizeof(email_rule_t));
 	testapp_print("> Enter filter id: ");
 	if (0 >= scanf("%d", &filter_id))
 		testapp_print("Invalid input. ");
-	
+
 	testapp_print("> Enter account id: ");
 	if (0 >= scanf("%d", &account_id))
 		testapp_print("Invalid input. ");
@@ -138,18 +138,18 @@ static gboolean testapp_test_update_rule()
 	testapp_print("> Enter Type(FROM - 1 / SUBJECT - 2): ");
 	if (0 >= scanf("%d", &type))
 		testapp_print("Invalid input. ");
-	rule->type= type;		
+	rule->type = type;
 
 	memset(arg, 0x00, 500);
 	testapp_print("\n> Enter Filtering Value:");
-	if (0 >= scanf("%s",arg))
+	if (0 >= scanf("%s", arg))
 		testapp_print("Invalid input. ");
-	rule->value= strdup(arg);	
+	rule->value = strdup(arg);
 
 	testapp_print("> Enter Action(MOVE - 1, BLOCK - 2, DELETE - 3): ");
 	if (0 >= scanf("%d", &action))
 		testapp_print("Invalid input. ");
-	rule->faction= action;	
+	rule->faction = action;
 
 	if (action == 1) {
 		testapp_print("\n> Enter target mailbox id:");
@@ -161,18 +161,18 @@ static gboolean testapp_test_update_rule()
 	testapp_print("> Enter Flag1 value: ");
 	if (0 >= scanf("%d", &flag))
 		testapp_print("Invalid input. ");
-	rule->flag1= flag;
+	rule->flag1 = flag;
 
 	testapp_print("> Enter Flag2 value: ");
 	if (0 >= scanf("%d", &flag))
 		testapp_print("Invalid input. ");
-	rule->flag2= flag;
-	
-	if( !email_update_rule(filter_id, rule) < 0)
+	rule->flag2 = flag;
+
+	if (!email_update_rule(filter_id, rule) < 0)
 		testapp_print("email_update_rule failed..! ");
-		
+
 	email_free_rule(&rule, 1);
-		
+
 	return FALSE;
 }
 
@@ -186,29 +186,29 @@ static gboolean testapp_test_get_rule(void)
 	if (0 >= scanf("%d", &filter_id))
 		testapp_print("Invalid input. ");
 
-	if(email_get_rule(filter_id, &rule) >= 0)	
+	if (email_get_rule(filter_id, &rule) >= 0)
 		testapp_print("\n Got rule of account_id = %d and type = %d\n", rule->account_id, rule->type);
 
 	email_free_rule(&rule, 1);
-	
+
 	return FALSE;
-	
+
 }
 
-static gboolean testapp_test_get_rule_list	(void)
+static gboolean testapp_test_get_rule_list(void)
 {
 	int count, i;
-	email_rule_t* rule_list=NULL;
+	email_rule_t* rule_list = NULL;
 
-	if(email_get_rule_list(&rule_list, &count) < 0) {
+	if (email_get_rule_list(&rule_list, &count) < 0) {
 		testapp_print("   email_get_rule_list error\n");
 		return false ;
 	}
-	
-	for(i=0;i<count;i++){
-		testapp_print("   %2d) Fileter_Id: %d | Account_id: %d  | Type: %d | Value %s \n", i+1, 
+
+	for (i = 0; i < count; i++) {
+		testapp_print("   %2d) Fileter_Id: %d | Account_id: %d  | Type: %d | Value %s \n", i + 1,
 			rule_list[i].filter_id,
-			rule_list[i].account_id, 
+			rule_list[i].account_id,
 			rule_list[i].type,
 			rule_list[i].value);
 	}
@@ -220,22 +220,22 @@ static gboolean testapp_test_get_rule_list	(void)
 
 
 
-static gboolean testapp_test_interpret_command (int menu_number)
+static gboolean testapp_test_interpret_command(int menu_number)
 {
 	gboolean go_to_loop = TRUE;
-	
+
 	switch (menu_number) {
 		case 1:
 			testapp_test_add_rule();
 			break;
 		case 2:
-			testapp_test_delete_rule ();
+			testapp_test_delete_rule();
 			break;
 		case 3:
 			testapp_test_update_rule();
 			break;
 		case 5:
-			testapp_test_get_rule ();
+			testapp_test_get_rule();
 			break;
 		case 6:
 			testapp_test_get_rule_list();
@@ -255,15 +255,15 @@ void email_test_rule_main()
 {
 	gboolean go_to_loop = TRUE;
 	int menu_number = 0;
-	
+
 	while (go_to_loop) {
-		testapp_show_menu (EMAIL_RULE_MENU);
-		testapp_show_prompt (EMAIL_RULE_MENU);
-			
+		testapp_show_menu(EMAIL_RULE_MENU);
+		testapp_show_prompt(EMAIL_RULE_MENU);
+
 		if (0 >= scanf("%d", &menu_number))
 			testapp_print("Invalid input. ");
 
-		go_to_loop = testapp_test_interpret_command (menu_number);
+		go_to_loop = testapp_test_interpret_command(menu_number);
 	}
 }
 

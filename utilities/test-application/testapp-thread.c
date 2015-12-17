@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -53,7 +53,7 @@ static gboolean testapp_test_move_thread()
 	testapp_print("\n > Enter move_always_flag: ");
 	if (0 >= scanf("%d", &move_always_flag))
 		testapp_print("Invalid input. ");
-	
+
 	email_move_thread_to_mailbox(thread_id, target_mailbox_id, move_always_flag);
 
 	return FALSE;
@@ -97,7 +97,7 @@ static gboolean testapp_test_set_seen_flag_of_thread()
 	return FALSE;
 }
 
-static gboolean testapp_test_interpret_command (int menu_number)
+static gboolean testapp_test_interpret_command(int menu_number)
 {
 	gboolean go_to_loop = TRUE;
 
@@ -130,12 +130,12 @@ void testapp_thread_main()
 	int menu_number = 0;
 
 	while (go_to_loop) {
-		testapp_show_menu (EMAIL_THREAD_MENU);
-		testapp_show_prompt (EMAIL_THREAD_MENU);
+		testapp_show_menu(EMAIL_THREAD_MENU);
+		testapp_show_prompt(EMAIL_THREAD_MENU);
 
 		if (0 >= scanf("%d", &menu_number))
 			testapp_print("Invalid input. ");
 
-		go_to_loop = testapp_test_interpret_command (menu_number);
+		go_to_loop = testapp_test_interpret_command(menu_number);
 	}
 }

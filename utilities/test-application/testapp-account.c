@@ -1,11 +1,11 @@
 /*
 *  email-service
 *
-* Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
+* Copyright(c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
 *
-* Licensed under the Apache License, Version 2.0 (the "License");
+* Licensed under the Apache License, Version 2.0(the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
 *
@@ -67,38 +67,38 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 
 	testapp_print("1. Gawab\n");
 	testapp_print("2. Vodafone\n");
-	testapp_print("4. SAMSUNG 3G TEST (POP)\n");
-	testapp_print("5. SAMSUNG 3G TEST (IMAP)\n");
-	testapp_print("6. Gmail (POP3)\n");
-	testapp_print("7. Gmail (IMAP4)\n");
-	testapp_print("8. Active Sync (dummy)\n");
+	testapp_print("4. SAMSUNG 3G TEST(POP)\n");
+	testapp_print("5. SAMSUNG 3G TEST(IMAP)\n");
+	testapp_print("6. Gmail(POP3)\n");
+	testapp_print("7. Gmail(IMAP4)\n");
+	testapp_print("8. Active Sync(dummy)\n");
 	testapp_print("9. AOL\n");
 	testapp_print("10. Hotmail\n");
-	testapp_print("11. Daum (IMAP4)\n");
-	testapp_print("12. Daum (POP3)\n");
-	testapp_print("13. Yahoo (IMAP ID)\n");
+	testapp_print("11. Daum(IMAP4)\n");
+	testapp_print("12. Daum(POP3)\n");
+	testapp_print("13. Yahoo(IMAP ID)\n");
 	testapp_print("14. Gmail IMAP with XOAUTH\n");
 	testapp_print("15. Yandex\n");
 	testapp_print("16. mopera\n");
 	testapp_print("Choose server type: ");
 
 
-	if (0 >= scanf("%d",&account_type))
+	if (0 >= scanf("%d", &account_type))
 		testapp_print("Invalid input. ");
 
-	switch(account_type) {
-		case 4 :
-		case 5 :
+	switch (account_type) {
+		case 4:
+		case 5:
 			do {
 				testapp_print("Enter your account index [1~10] : ");
-				if (0 >= scanf("%d",&samsung3g_account_index))
+				if (0 >= scanf("%d", &samsung3g_account_index))
 					testapp_print("Invalid input. ");
-			}while( samsung3g_account_index > 10 || samsung3g_account_index < 1);
+			} while (samsung3g_account_index > 10 || samsung3g_account_index < 1);
 			sprintf(id_string, "test%02d", samsung3g_account_index);
 			sprintf(address_string, "test%02d@streaming.s3glab.net", samsung3g_account_index);
 			sprintf(password_string, "test%02d", samsung3g_account_index);
 			break;
-		case 14 :
+		case 14:
 			testapp_print("Enter email address : ");
 			if (0 >= scanf("%s", address_string))
 				testapp_print("Invalid input. ");
@@ -154,7 +154,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 	account->logo_icon_path                          = NULL;
 	account->color_label                             = (128 << 16) | (128 << 8) | (128);
 	account->user_data                               = malloc(data_length);
-	memcpy(account->user_data, (void*) &data, data_length);
+	memcpy(account->user_data, (void *)&data, data_length);
 	account->user_data_length                        = data_length;
 	account->options.priority                        = EMAIL_MAIL_PRIORITY_NORMAL;
 	account->options.keep_local_copy                 = 1;
@@ -205,7 +205,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 
 		case 2:/*  vadofone */
 			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
-			account->incoming_server_address= strdup(VDF_RECV_SERVER_ADDR);
+			account->incoming_server_address = strdup(VDF_RECV_SERVER_ADDR);
 			account->incoming_server_port_number = EMAIL_IMAP_PORT;
 			account->outgoing_server_address     = strdup(VDF_SMTP_SERVER_ADDR);
 			account->incoming_server_secure_connection	= 0;
@@ -225,7 +225,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 
 		case 5:/*  SAMSUNG 3G TEST */
 			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
-			account->incoming_server_address= strdup(S3G_RECV_SERVER_ADDR);
+			account->incoming_server_address = strdup(S3G_RECV_SERVER_ADDR);
 			account->incoming_server_port_number = EMAIL_IMAPS_PORT;
 			account->outgoing_server_address     = strdup(S3G_SMTP_SERVER_ADDR);
 			account->outgoing_server_port_number = S3G_SMTP_SERVER_PORT;
@@ -236,7 +236,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 
 		case 6:/*  Gmail POP3 */
 			account->incoming_server_type  = EMAIL_SERVER_TYPE_POP3;
-			account->incoming_server_address= strdup("pop.gmail.com");
+			account->incoming_server_address = strdup("pop.gmail.com");
 			account->incoming_server_port_number = 995;
 			account->incoming_server_secure_connection	= 1;
 			account->outgoing_server_address    = strdup("smtp.gmail.com");
@@ -245,7 +245,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 			account->outgoing_server_need_authentication = 1;
 			break;
 
-		case 7 : /*  Gmail IMAP4 */
+		case 7: /*  Gmail IMAP4 */
 			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
 			account->incoming_server_address = strdup("imap.gmail.com");
 			account->incoming_server_port_number = 993;
@@ -259,7 +259,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 
 		case 8: /*  Active Sync */
 			account->incoming_server_type  = EMAIL_SERVER_TYPE_ACTIVE_SYNC;
-			account->incoming_server_address= strdup("");
+			account->incoming_server_address = strdup("");
 			account->incoming_server_port_number = 0;
 			account->incoming_server_secure_connection	= 1;
 			account->outgoing_server_address    = strdup("");
@@ -270,7 +270,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 
 		case 9: /*  AOL */
 			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
-			account->incoming_server_address= strdup("imap.aol.com");
+			account->incoming_server_address = strdup("imap.aol.com");
 			account->incoming_server_port_number = 143;
 			account->incoming_server_secure_connection	= 0;
 			account->outgoing_server_address    = strdup("smtp.aol.com");
@@ -281,7 +281,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 
 		case 10: /*  Hotmail */
 			account->incoming_server_type  = EMAIL_SERVER_TYPE_POP3;
-			account->incoming_server_address= strdup("pop3.live.com");
+			account->incoming_server_address = strdup("pop3.live.com");
 			account->incoming_server_port_number = 995;
 			account->incoming_server_secure_connection	= 1;
 			account->outgoing_server_address    = strdup("smtp.live.com");
@@ -292,7 +292,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 
 		case 11:/*  Daum IMAP4*/
 			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
-			account->incoming_server_address= strdup("imap.daum.net");
+			account->incoming_server_address = strdup("imap.daum.net");
 			account->incoming_server_port_number = 993;
 			account->incoming_server_secure_connection	= 1;
 			account->outgoing_server_address    = strdup("smtp.daum.net");
@@ -303,7 +303,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 
 		case 12:/*  Daum POP3*/
 			account->incoming_server_type  = EMAIL_SERVER_TYPE_POP3;
-			account->incoming_server_address= strdup("pop.daum.net");
+			account->incoming_server_address = strdup("pop.daum.net");
 			account->incoming_server_port_number = 995;
 			account->incoming_server_secure_connection	= 1;
 			account->outgoing_server_address    = strdup("smtp.daum.net");
@@ -314,7 +314,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 
 		case 13: /* Yahoo IMAP ID */
 			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
-			account->incoming_server_address= strdup("samsung.imap.mail.yahoo.com");
+			account->incoming_server_address = strdup("samsung.imap.mail.yahoo.com");
 			account->incoming_server_port_number = 993;
 			account->incoming_server_secure_connection	= 1;
 			account->outgoing_server_address    = strdup("samsung.smtp.mail.yahoo.com");
@@ -323,7 +323,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 			account->outgoing_server_need_authentication = 1;
 			break;
 
-		case 14 : /*  XOAUTH */
+		case 14: /*  XOAUTH */
 			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
 			account->incoming_server_address = strdup("imap.gmail.com");
 			account->incoming_server_port_number = 993;
@@ -335,7 +335,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 			account->incoming_server_authentication_method = EMAIL_AUTHENTICATION_METHOD_XOAUTH2;
 			break;
 
-		case 15 : /*  yandex */
+		case 15: /*  yandex */
 			account->incoming_server_type  = EMAIL_SERVER_TYPE_IMAP4;
 			account->incoming_server_address = strdup("imap.yandex.ru");
 			account->incoming_server_port_number = 993;
@@ -347,7 +347,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 			account->incoming_server_authentication_method = EMAIL_AUTHENTICATION_METHOD_DEFAULT;
 			break;
 
-		case 16 : /*  mopera */
+		case 16: /*  mopera */
 			account->incoming_server_type                  = EMAIL_SERVER_TYPE_POP3;
 			account->incoming_server_address               = strdup("mail.mopera.net");
 			account->incoming_server_port_number           = 110;
@@ -366,7 +366,7 @@ gboolean  testapp_create_account_object(email_account_t **result_account)
 	}
 	account->account_svc_id = 77;
 
-	if(result_account)
+	if (result_account)
 		*result_account = account;
 
 	return TRUE;
@@ -378,19 +378,19 @@ static gboolean testapp_test_add_account_with_validation()
 	email_account_t *account = NULL;
 	int handle;
 
-	if(!testapp_create_account_object(&account)) {
-		testapp_print ("testapp_test_create_account_by_account_type error\n");
+	if (!testapp_create_account_object(&account)) {
+		testapp_print("testapp_test_create_account_by_account_type error\n");
 		return FALSE;
 	}
 
 	err = email_add_account_with_validation(account, &handle);
-	if( err < 0) {
-		testapp_print ("email_add_account_with_validation error : %d\n", err);
+	if (err < 0) {
+		testapp_print("email_add_account_with_validation error : %d\n", err);
 		err = email_free_account(&account, 1);
 		return FALSE;
 	}
 
-	testapp_print ("email_add_account succeed. account_id\n", account->account_id);
+	testapp_print("email_add_account succeed. account_id\n", account->account_id);
 
 	err = email_free_account(&account, 1);
 
@@ -409,34 +409,34 @@ static gboolean testapp_test_update_account()
 	int with_validation = 0; //account_svc_id = 0,
 
 	testapp_print("\n>> Enter Account ID: ");
-	if (0 >= scanf("%d",&account_id))
+	if (0 >= scanf("%d", &account_id))
 		testapp_print("Invalid input. ");
 
-	if( (err = email_get_account(account_id, GET_FULL_DATA,&account)) != EMAIL_ERROR_NONE) {
-		testapp_print ("email_get_account failed - %d\n", err);
+	if ((err = email_get_account(account_id, GET_FULL_DATA, &account)) != EMAIL_ERROR_NONE) {
+		testapp_print("email_get_account failed - %d\n", err);
 		return false;
 	}
 
-	testapp_print ("email_get_account result account_name - %s \n", account->account_name);
-	testapp_print ("email_get_account result address - %s \n", account->user_email_address);
-	testapp_print ("email_get_account result signature - %s \n", account->options.signature);
-	testapp_print ("email_get_account result check_interval - %d \n", account->check_interval);
+	testapp_print("email_get_account result account_name - %s \n", account->account_name);
+	testapp_print("email_get_account result address - %s \n", account->user_email_address);
+	testapp_print("email_get_account result signature - %s \n", account->options.signature);
+	testapp_print("email_get_account result check_interval - %d \n", account->check_interval);
 
-	testapp_print("\n Enter new check interval (in mins):");
-	if (0 >= scanf("%d",&(account->check_interval)))
+	testapp_print("\n Enter new check interval(in mins):");
+	if (0 >= scanf("%d", &(account->check_interval)))
 		testapp_print("Invalid input. ");
 /*
-	testapp_print("\n Enter new peak interval (in mins):");
-	if (0 >= scanf("%d",&(account->peak_interval));
+	testapp_print("\n Enter new peak interval(in mins):");
+	if (0 >= scanf("%d", &(account->peak_interval));
 
 	testapp_print("\n Enter new peak days:");
-	if (0 >= scanf("%d",&(account->peak_days));
+	if (0 >= scanf("%d", &(account->peak_days));
 
 	testapp_print("\n Enter new peak start time:");
-	if (0 >= scanf("%d",&(account->peak_start_time));
+	if (0 >= scanf("%d", &(account->peak_start_time));
 
 	testapp_print("\n Enter new peak end time:");
-	if (0 >= scanf("%d",&(account->peak_end_time));
+	if (0 >= scanf("%d", &(account->peak_end_time));
 */
 
 /*
@@ -450,17 +450,17 @@ static gboolean testapp_test_update_account()
 	if (0 >= scanf("%s",signature);
 
 	testapp_print("\n>> Enter add_my_address_to_bcc:(0:off, 1:on) ");
-	if (0 >= scanf("%d",&add_my_address_to_bcc);
+	if (0 >= scanf("%d", &add_my_address_to_bcc);
 
 	testapp_print("\n>> Enter account_svc_id: ");
-	if (0 >= scanf("%d",&account_svc_id);
+	if (0 >= scanf("%d", &account_svc_id);
 
-	testapp_print("\n>> With validation ? (0: No, 1:Yes) ");
-	if (0 >= scanf("%d",&with_validation);
+	testapp_print("\n>> With validation ?(0: No, 1:Yes) ");
+	if (0 >= scanf("%d", &with_validation);
 */
-    if( account )  {
-		testapp_print("\n Assigning New Account name: (%s)", account->account_name);
-		testapp_print("\n Assigning New Signature: (%s)\n", account->options.signature);
+    if (account)  {
+		testapp_print("\n Assigning New Account name:(%s)", account->account_name);
+		testapp_print("\n Assigning New Signature:(%s)\n", account->options.signature);
 		/*
 		account->account_name = strdup(account_name);
 		account->user_email_address = strdup(user_email_address);
@@ -469,69 +469,66 @@ static gboolean testapp_test_update_account()
 		account->account_svc_id = account_svc_id;
 		*/
 
-		if(with_validation) {
-			if((err = email_update_account_with_validation(account_id, account)) != EMAIL_ERROR_NONE){
-				testapp_print ("email_update_account_with_validation failed - %d\n", err);
+		if (with_validation) {
+			if ((err = email_update_account_with_validation(account_id, account)) != EMAIL_ERROR_NONE) {
+				testapp_print("email_update_account_with_validation failed - %d\n", err);
 				return false;
 			}
-				testapp_print ("email_update_account_with_validation successful \n");
-		}
-		else {
-			if((err = email_update_account(account_id, account)) != EMAIL_ERROR_NONE) {
-				testapp_print ("email_update_account failed - %d\n", err);
+				testapp_print("email_update_account_with_validation successful \n");
+		} else {
+			if ((err = email_update_account(account_id, account)) != EMAIL_ERROR_NONE) {
+				testapp_print("email_update_account failed - %d\n", err);
 				return false;
 			}
-			testapp_print ("email_update_account successful \n");
+			testapp_print("email_update_account successful \n");
 		}
     }
 	return true;
 }
 
-static gboolean testapp_test_delete_account ()
+static gboolean testapp_test_delete_account()
 {
 	int account_id;
-	email_account_t *account=NULL;
+	email_account_t *account = NULL;
 	int err = EMAIL_ERROR_NONE;
 
 	testapp_print("\n>> Enter Account No: ");
-	if (0 >= scanf("%d",&account_id))
+	if (0 >= scanf("%d", &account_id))
 		testapp_print("Invalid input. ");
 
 /* sowmya.kr, 281209 Adding signature to options in email_account_t changes */
-	if( (err = email_get_account(account_id, WITHOUT_OPTION,&account)) < 0) {
-		testapp_print ("email_get_account failed \n");
+	if ((err = email_get_account(account_id, WITHOUT_OPTION, &account)) < 0) {
+		testapp_print("email_get_account failed \n");
 		testapp_print("testapp_test_delete_account failed\n");
-	}
-	else {
-		testapp_print ("email_get_account result account_name - %s \n", account->account_name);
-
-		if((err = email_delete_account(account_id)) < 0)
-			testapp_print ("email_delete_account failed[%d]\n", err);
+	} else {
+		testapp_print("email_get_account result account_name - %s \n", account->account_name);
+		if ((err = email_delete_account(account_id)) < 0)
+			testapp_print("email_delete_account failed[%d]\n", err);
 		else
-			testapp_print ("email_delete_account successful \n");
+			testapp_print("email_delete_account successful \n");
 	}
 	return FALSE;
 
 }
 
 
-static gboolean testapp_test_validate_account ()
+static gboolean testapp_test_validate_account()
 {
 	email_account_t *account = NULL;
 	int err_code = EMAIL_ERROR_NONE;
 	int handle = 0;
 
-	if(!testapp_create_account_object(&account)) {
-		testapp_print ("testapp_create_account_object error\n");
+	if (!testapp_create_account_object(&account)) {
+		testapp_print("testapp_create_account_object error\n");
 		return FALSE;
 	}
 
-	if((err_code = email_validate_account_ex(account, &handle)) == EMAIL_ERROR_NONE )
-		testapp_print ("email_validate_account_ex successful handle : %u\n",handle);
+	if ((err_code = email_validate_account_ex(account, &handle)) == EMAIL_ERROR_NONE)
+		testapp_print("email_validate_account_ex successful handle : %u\n", handle);
 	else
-		testapp_print ("email_validate_account_ex failed err_code : %d \n",err_code);
+		testapp_print("email_validate_account_ex failed err_code : %d \n", err_code);
 
-	if(account)
+	if (account)
 		email_free_account(&account, 1);
 
 	return FALSE;
@@ -539,7 +536,7 @@ static gboolean testapp_test_validate_account ()
 }
 
 
-static gboolean testapp_test_cancel_validate_account ()
+static gboolean testapp_test_cancel_validate_account()
 {
 	int account_id = 0;
 	int err_code = EMAIL_ERROR_NONE;
@@ -554,10 +551,10 @@ static gboolean testapp_test_cancel_validate_account ()
 		testapp_print("Invalid input. ");
 
 	err_code = email_cancel_job(account_id, account_handle, EMAIL_CANCELED_BY_USER);
-	if(err_code == 0)
+	if (err_code == 0)
 		testapp_print("email_cancel_job Success..!handle:[%d]", account_handle);
 	else
-		testapp_print ("email_cancel_job failed err_code: %d \n",err_code);
+		testapp_print("email_cancel_job failed err_code: %d \n", err_code);
 
 	return FALSE;
 }
@@ -565,10 +562,10 @@ static gboolean testapp_test_cancel_validate_account ()
 static gboolean testapp_test_get_account()
 {
 	int account_id;
-	email_account_t *account=NULL;
+	email_account_t *account = NULL;
 	int err_code = EMAIL_ERROR_NONE;
 	testapp_print("\n>> Enter Account No: ");
-	if (0 >= scanf("%d",&account_id))
+	if (0 >= scanf("%d", &account_id))
 		testapp_print("Invalid input. ");
 
 	typedef struct {
@@ -576,18 +573,18 @@ static gboolean testapp_test_get_account()
 		int index_color;
 	} user_data_t;
 
-	testapp_print ("\n----------------------------------------------------------\n");
-	testapp_print ("email_get_account GET_FULL_DATA \n");
-	if( (err_code = email_get_account(account_id,GET_FULL_DATA,&account)) < 0) {
-		testapp_print ("email_get_account failed - %d\n", err_code);
+	testapp_print("\n----------------------------------------------------------\n");
+	testapp_print("email_get_account GET_FULL_DATA \n");
+	if ((err_code = email_get_account(account_id, GET_FULL_DATA, &account)) < 0) {
+		testapp_print("email_get_account failed - %d\n", err_code);
 		return FALSE;
 	}
 
-	user_data_t* val = (user_data_t*) account->user_data;
-	int is_preset_account =  val? val->is_preset_account : 0;
-	int index_color = val? val->index_color : 0;
+	user_data_t *val = (user_data_t *)account->user_data;
+	int is_preset_account =  val ? val->is_preset_account : 0;
+	int index_color = val ? val->index_color : 0;
 
-	testapp_print ("email_get_account result\n"
+	testapp_print("email_get_account result\n"
 			"account_name - %s \n"
 			"user_email_address - %s \n"
 			"incoming_server_secure_connection %d \n"
@@ -649,15 +646,15 @@ static gboolean testapp_test_get_account()
 
 	err_code = email_free_account(&account, 1);
 
-	testapp_print ("\n----------------------------------------------------------\n");
-	testapp_print ("email_get_account WITHOUT_OPTION \n");
+	testapp_print("\n----------------------------------------------------------\n");
+	testapp_print("email_get_account WITHOUT_OPTION \n");
 
-	if( (err_code = email_get_account(account_id, WITHOUT_OPTION, &account)) < 0) {
-		testapp_print ("email_get_account failed \n");
+	if ((err_code = email_get_account(account_id, WITHOUT_OPTION, &account)) < 0) {
+		testapp_print("email_get_account failed \n");
 		return FALSE;
 	}
 
-	testapp_print ("email_get_account result\n"
+	testapp_print("email_get_account result\n"
 			"account_name - %s \n"
 			"user_email_address - %s \n"
 			"incoming_server_secure_connection %d \n"
@@ -668,22 +665,22 @@ static gboolean testapp_test_get_account()
 		account->options.add_signature
 	);
 
-	if(account->options.signature)
-		testapp_print ("signature : %s\n", account->options.signature);
+	if (account->options.signature)
+		testapp_print("signature : %s\n", account->options.signature);
 	else
-		testapp_print ("signature not retrieved \n");
+		testapp_print("signature not retrieved \n");
 
 	err_code = email_free_account(&account, 1);
 
-	testapp_print ("\n----------------------------------------------------------\n");
-	testapp_print ("email_get_account ONLY_OPTION \n");
+	testapp_print("\n----------------------------------------------------------\n");
+	testapp_print("email_get_account ONLY_OPTION \n");
 
-	if( (err_code = email_get_account(account_id, ONLY_OPTION, &account)) < 0) {
-		testapp_print ("email_get_account failed \n");
+	if ((err_code = email_get_account(account_id, ONLY_OPTION, &account)) < 0) {
+		testapp_print("email_get_account failed \n");
 		return FALSE;
 	}
 
-	testapp_print ("email_get_account result\n"
+	testapp_print("email_get_account result\n"
 			"add_sig : %d \n"
 			"signature %s \n"
 			"add_my_address_to_bcc %d\n"
@@ -694,42 +691,42 @@ static gboolean testapp_test_get_account()
 		account->account_svc_id
 		);
 
-	if(account->account_name)
-		testapp_print ("account_name : %s \n", account->account_name);
+	if (account->account_name)
+		testapp_print("account_name : %s \n", account->account_name);
 	else
-		testapp_print ("account_name not retrieved \n");
+		testapp_print("account_name not retrieved \n");
 
-	if(account->user_email_address)
-		testapp_print ("user_email_address : %s \n", account->user_email_address);
+	if (account->user_email_address)
+		testapp_print("user_email_address : %s \n", account->user_email_address);
 	else
-		testapp_print ("user_email_address not retrieved \n");
+		testapp_print("user_email_address not retrieved \n");
 	err_code = email_free_account(&account, 1);
 
 	return FALSE;
 }
 
-static gboolean testapp_test_get_account_list ()
+static gboolean testapp_test_get_account_list()
 {
 
 	int count, i;
-	email_account_t *account_list=NULL;
+	email_account_t *account_list = NULL;
 	struct timeval tv_1, tv_2;
 	int interval;
 	int err_code = EMAIL_ERROR_NONE;
 
 	gettimeofday(&tv_1, NULL);
 
-	if((err_code = email_get_account_list(&account_list, &count)) < 0 ) {
+	if ((err_code = email_get_account_list(&account_list, &count)) < 0) {
 		testapp_print("   email_get_account_list error\n");
 		return false ;
 	}
 
 	gettimeofday(&tv_2, NULL);
 	interval = tv_2.tv_usec - tv_1.tv_usec;
-	testapp_print("\t testapp_test_get_account_list Proceed time %d us\n",interval);
+	testapp_print("\t testapp_test_get_account_list Proceed time %d us\n", interval);
 
-	for(i=0;i<count;i++){
-		testapp_print("   %2d) %-15s %-30s\n",account_list[i].account_id,
+	for (i = 0; i < count; i++) {
+		testapp_print("   %2d) %-15s %-30s\n", account_list[i].account_id,
 			account_list[i].account_name,
 			account_list[i].user_email_address);
 	}
@@ -745,27 +742,27 @@ static gboolean testapp_test_update_check_interval()
 	email_account_t *account = NULL;
 
 	testapp_print("\n Enter account id :");
-	if (0 >= scanf("%d",&account_id))
+	if (0 >= scanf("%d", &account_id))
 		testapp_print("Invalid input. ");
 
-	if( (err_code = email_get_account(account_id, GET_FULL_DATA_WITHOUT_PASSWORD, &account)) != EMAIL_ERROR_NONE) {
-		testapp_print ("email_get_account failed [%d]\n", err_code);
+	if ((err_code = email_get_account(account_id, GET_FULL_DATA_WITHOUT_PASSWORD, &account)) != EMAIL_ERROR_NONE) {
+		testapp_print("email_get_account failed [%d]\n", err_code);
 		goto FINISH_OFF;
 	}
 
-	testapp_print("\n Enter new check interval (in mins):");
-	if (0 >= scanf("%d",&(account->check_interval)))
+	testapp_print("\n Enter new check interval(in mins):");
+	if (0 >= scanf("%d", &(account->check_interval)))
 		testapp_print("Invalid input. ");
 
-	if((err_code = email_update_account(account_id, account)) != EMAIL_ERROR_NONE) {
-		testapp_print ("email_update_account failed [%d]\n", err_code);
+	if ((err_code = email_update_account(account_id, account)) != EMAIL_ERROR_NONE) {
+		testapp_print("email_update_account failed [%d]\n", err_code);
 		goto FINISH_OFF;
 	}
 
-	testapp_print ("email_update_account successful \n");
+	testapp_print("email_update_account successful \n");
 
 FINISH_OFF:
-	if(account)
+	if (account)
 		email_free_account(&account, 1);
 
 	return err_code;
@@ -776,7 +773,7 @@ static gboolean testapp_test_backup_account()
 	char *file_name = "/opt/usr/data/email/accounts_file";
 	int error_code;
 	error_code = email_backup_accounts_into_secure_storage(file_name);
-	testapp_print("\n email_backup_accounts_into_secure_storage returned [%d]\n",error_code);
+	testapp_print("\n email_backup_accounts_into_secure_storage returned [%d]\n", error_code);
 	return FALSE;
 }
 static gboolean testapp_test_restore_account()
@@ -784,7 +781,7 @@ static gboolean testapp_test_restore_account()
 	char *file_name = "/opt/usr/data/email/accounts_file";
 	int error_code;
 	error_code = email_restore_accounts_from_secure_storage(file_name);
-	testapp_print("\n email_restore_accounts_from_secure_storage returned [%d]\n",error_code);
+	testapp_print("\n email_restore_accounts_from_secure_storage returned [%d]\n", error_code);
 	return FALSE;
 }
 
@@ -796,7 +793,7 @@ static gboolean testapp_test_get_password_length_of_account()
 	if (0 >= scanf("%d", &account_id))
 		testapp_print("Invalid input. ");
 	email_get_password_length_of_account(account_id, EMAIL_GET_INCOMING_PASSWORD_LENGTH, &password_length);
-	testapp_print("testapp_test_get_password_length_of_account returned [%d]\n",password_length);
+	testapp_print("testapp_test_get_password_length_of_account returned [%d]\n", password_length);
 	return FALSE;
 }
 
@@ -825,7 +822,7 @@ static gboolean testapp_test_update_notification()
 		testapp_print("Invalid input. ");
 
 	error_code = email_update_notification_bar(account_id, t_mail_count, unread_mail_count, input_from_eas);
-	testapp_print("email_update_notification_bar returned [%d]\n",error_code);
+	testapp_print("email_update_notification_bar returned [%d]\n", error_code);
 	return FALSE;
 }
 
@@ -839,7 +836,7 @@ static gboolean testapp_test_clear_notification()
 		testapp_print("Invalid input. ");
 
 	error_code = email_clear_notification_bar(account_id);
-	testapp_print("email_clear_notification_bar returned [%d]\n",error_code);
+	testapp_print("email_clear_notification_bar returned [%d]\n", error_code);
 	return FALSE;
 }
 
@@ -848,7 +845,7 @@ static gboolean testapp_test_clear_all_notification()
 	int error_code;
 
 	error_code = email_clear_notification_bar(ALL_ACCOUNT);
-	testapp_print("email_clear_notification_bar returned [%d]\n",error_code);
+	testapp_print("email_clear_notification_bar returned [%d]\n", error_code);
 	return FALSE;
 }
 
@@ -857,14 +854,14 @@ static gboolean testapp_test_save_default_account_id()
 	int error_code;
 	int account_id = 0;
 
-	testapp_print ("\nInput default account id : ");
+	testapp_print("\nInput default account id : ");
 
 	if (0 >= scanf("%d", &account_id))
 		testapp_print("Invalid input. ");
 
 	error_code = email_save_default_account_id(account_id);
 
-	testapp_print("email_save_default_account_id returned [%d]\n",error_code);
+	testapp_print("email_save_default_account_id returned [%d]\n", error_code);
 	return FALSE;
 }
 
@@ -875,8 +872,8 @@ static gboolean testapp_test_load_default_account_id()
 
 	error_code = email_load_default_account_id(&account_id);
 
-	testapp_print ("\ndefault account id : %d\n", account_id);
-	testapp_print("email_load_default_account_id returned [%d]\n",error_code);
+	testapp_print("\ndefault account id : %d\n", account_id);
+	testapp_print("email_load_default_account_id returned [%d]\n", error_code);
 	return FALSE;
 }
 
@@ -885,19 +882,19 @@ static gboolean testapp_test_add_account()
 	int err = EMAIL_ERROR_NONE;
 	email_account_t *account = NULL;
 
-	if(!testapp_create_account_object(&account)) {
-		testapp_print ("testapp_test_create_account_by_account_type error\n");
+	if (!testapp_create_account_object(&account)) {
+		testapp_print("testapp_test_create_account_by_account_type error\n");
 		return FALSE;
 	}
 
 	err = email_add_account(account);
-	if( err < 0) {
-		testapp_print ("email_add_account error : %d\n", err);
+	if (err < 0) {
+		testapp_print("email_add_account error : %d\n", err);
 		err = email_free_account(&account, 1);
 		return FALSE;
 	}
 
-	testapp_print ("email_add_account succeed. account_id\n", account->account_id);
+	testapp_print("email_add_account succeed. account_id\n", account->account_id);
 
 	err = email_free_account(&account, 1);
 
@@ -911,55 +908,54 @@ static gboolean testapp_test_update_peak_schedule()
 	int err = EMAIL_ERROR_NONE;
 
 	testapp_print("\n>> Enter Account No: ");
-	if (0 >= scanf("%d",&account_id))
+	if (0 >= scanf("%d", &account_id))
 		testapp_print("Invalid input. ");
 
-	if( (err = email_get_account(account_id, GET_FULL_DATA, &account)) != EMAIL_ERROR_NONE) {
-		testapp_print ("email_get_account failed [%d]\n", err);
+	if ((err = email_get_account(account_id, GET_FULL_DATA, &account)) != EMAIL_ERROR_NONE) {
+		testapp_print("email_get_account failed [%d]\n", err);
 		return false;
 	}
 
-	testapp_print ("old check_interval - %d \n", account->check_interval);
-
-	testapp_print("\n Enter new check interval (in mins):");
-	if (0 >= scanf("%d",&(account->check_interval)))
+	testapp_print("old check_interval - %d \n", account->check_interval);
+	testapp_print("\n Enter new check interval(in mins):");
+	if (0 >= scanf("%d", &(account->check_interval)))
 		testapp_print("Invalid input. ");
 
-	testapp_print ("old peak_interval - %d \n", account->peak_interval);
+	testapp_print("old peak_interval - %d \n", account->peak_interval);
 
-	testapp_print("\n Enter new peak interval (in mins):");
-	if (0 >= scanf("%d",&(account->peak_interval)))
+	testapp_print("\n Enter new peak interval(in mins):");
+	if (0 >= scanf("%d", &(account->peak_interval)))
 		testapp_print("Invalid input. ");
 
-	testapp_print ("old peak_days - %d \n", account->peak_days);
+	testapp_print("old peak_days - %d \n", account->peak_days);
 
 	testapp_print("\n Enter new peak days:");
-	if (0 >= scanf("%d",&(account->peak_days)))
+	if (0 >= scanf("%d", &(account->peak_days)))
 		testapp_print("Invalid input. ");
 
-	testapp_print ("old peak_start_time - %d \n", account->peak_start_time);
+	testapp_print("old peak_start_time - %d \n", account->peak_start_time);
 
 	testapp_print("\n Enter new peak start time:");
-	if (0 >= scanf("%d",&(account->peak_start_time)))
+	if (0 >= scanf("%d", &(account->peak_start_time)))
 		testapp_print("Invalid input. ");
 
-	testapp_print ("old peak_end_time - %d \n", account->peak_start_time);
+	testapp_print("old peak_end_time - %d \n", account->peak_start_time);
 
 	testapp_print("\n Enter new peak end time:");
-	if (0 >= scanf("%d",&(account->peak_end_time)))
+	if (0 >= scanf("%d", &(account->peak_end_time)))
 		testapp_print("Invalid input. ");
 
-	if( account )  {
-		if((err = email_update_account(account_id, account)) != EMAIL_ERROR_NONE) {
-			testapp_print ("email_update_account failed [%d]\n", err);
+	if (account)  {
+		if ((err = email_update_account(account_id, account)) != EMAIL_ERROR_NONE) {
+			testapp_print("email_update_account failed [%d]\n", err);
 			return false;
 		}
-		testapp_print ("email_update_account successful \n");
+		testapp_print("email_update_account successful \n");
 	}
 	return true;
 }
 
-static gboolean testapp_test_interpret_command (int selected_number)
+static gboolean testapp_test_interpret_command(int selected_number)
 {
 	gboolean go_to_loop = TRUE;
 
@@ -1047,19 +1043,19 @@ static gboolean testapp_test_interpret_command (int selected_number)
 	return go_to_loop;
 }
 
-void testapp_account_main ()
+void testapp_account_main()
 {
 	gboolean go_to_loop = TRUE;
 	int menu_number = 0;
 
 	while (go_to_loop) {
-		testapp_show_menu (EMAIL_ACCOUNT_MENU);
-		testapp_show_prompt (EMAIL_ACCOUNT_MENU);
+		testapp_show_menu(EMAIL_ACCOUNT_MENU);
+		testapp_show_prompt(EMAIL_ACCOUNT_MENU);
 
 		if (0 >= scanf("%d", &menu_number))
 			testapp_print("Invalid input");
 
-		go_to_loop = testapp_test_interpret_command (menu_number);
+		go_to_loop = testapp_test_interpret_command(menu_number);
 	}
 }
 

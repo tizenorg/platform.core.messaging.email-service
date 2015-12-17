@@ -49,7 +49,7 @@ static void print_mime_struct(GMimeObject *part, int depth)
 static void
 test_eml_parsing_foreach_callback(GMimeObject *parent, GMimeObject *part, gpointer user_data)
 {
-	int *cnt= user_data;
+	int *cnt = user_data;
 
 	(*cnt)++;
 
@@ -64,7 +64,7 @@ test_eml_parsing_foreach_callback(GMimeObject *parent, GMimeObject *part, gpoint
 		testapp_print("Location:%s\n", g_mime_part_get_content_location(leaf_part));
 
 		GMimeContentEncoding enc = g_mime_part_get_content_encoding(leaf_part);
-		switch(enc) {
+		switch (enc) {
 		case GMIME_CONTENT_ENCODING_DEFAULT:
 			testapp_print("Encoding:ENCODING_DEFAULT\n");
 			break;
@@ -153,7 +153,7 @@ static gboolean testapp_test_gmime_eml_parsing(void)
 	g_mime_message_foreach(message, test_eml_parsing_foreach_callback, &count);
 }
 
-static gboolean testapp_test_interpret_command (int menu_number)
+static gboolean testapp_test_interpret_command(int menu_number)
 {
 	gboolean go_to_loop = TRUE;
 
@@ -179,11 +179,11 @@ void testapp_gmime_main()
 	int result_from_scanf = 0;
 
 	while (go_to_loop) {
-		testapp_show_menu (EMAIL_GMIME_MENU);
-		testapp_show_prompt (EMAIL_GMIME_MENU);
+		testapp_show_menu(EMAIL_GMIME_MENU);
+		testapp_show_prompt(EMAIL_GMIME_MENU);
 
-		result_from_scanf = scanf ("%d", &menu_number);
+		result_from_scanf = scanf("%d", &menu_number);
 
-		go_to_loop = testapp_test_interpret_command (menu_number);
+		go_to_loop = testapp_test_interpret_command(menu_number);
 	}
 }
