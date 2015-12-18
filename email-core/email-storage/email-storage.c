@@ -4419,32 +4419,35 @@ INTERNAL_FUNC int emstorage_update_account_password(char *multi_user_name, int i
 	EM_DEBUG_LOG_SEC("send_password_file_name [%s] input_outgoing_server_password [%s]",
 						send_password_file_name, input_outgoing_server_password);
 
-	err = emcore_remove_password_in_key_manager(recv_password_file_name);
-	if (err != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION_SEC("emcore_remove_password_in_key_manager: file[%s]", recv_password_file_name);
-		goto FINISH_OFF;
+	if (input_incoming_server_password) {
+		err = emcore_remove_password_in_key_manager(recv_password_file_name);
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION_SEC("emcore_remove_password_in_key_manager: file[%s]", recv_password_file_name);
+			goto FINISH_OFF;
+		}
+
+		/*  save recv passwords to the secure storage */
+		err = emcore_add_password_in_key_manager(recv_password_file_name, input_incoming_server_password);
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_add_password_in_key_manager failed : [%d]", err);
+			goto FINISH_OFF;
+		}
 	}
 
-	/*  save recv passwords to the secure storage */
-	err = emcore_add_password_in_key_manager(recv_password_file_name, input_incoming_server_password);
-	if (err != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emcore_add_password_in_key_manager failed : [%d]", err);
-		goto FINISH_OFF;
-	}
+	if (input_outgoing_server_password) {
+		err = emcore_remove_password_in_key_manager(send_password_file_name);
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION_SEC("emcore_remove_password_in_key_manager: file[%s]", send_password_file_name);
+			goto FINISH_OFF;
+		}
 
-	err = emcore_remove_password_in_key_manager(send_password_file_name);
-	if (err != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION_SEC("emcore_remove_password_in_key_manager: file[%s]", send_password_file_name);
-		goto FINISH_OFF;
+		/*  save send passwords to the secure storage */
+		err = emcore_add_password_in_key_manager(send_password_file_name, input_outgoing_server_password);
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_add_password_in_key_manager failed : [%d]", err);
+			goto FINISH_OFF;
+		}
 	}
-
-	/*  save send passwords to the secure storage */
-	err = emcore_add_password_in_key_manager(send_password_file_name, input_outgoing_server_password);
-	if (err != EMAIL_ERROR_NONE) {
-		EM_DEBUG_EXCEPTION("emcore_add_password_in_key_manager failed : [%d]", err);
-		goto FINISH_OFF;
-	}
-
 FINISH_OFF:
 
 	EM_DEBUG_FUNC_END("err [%d]", err);

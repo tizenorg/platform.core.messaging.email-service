@@ -60,7 +60,7 @@ INTERNAL_FUNC int emcore_add_password_in_key_manager(char *data_name, char *stor
 	ckmc_raw_buffer_s email_data;
 	char errno_buf[ERRNO_BUF_SIZE] = {0};
 
-	if (data_name == NULL) {
+	if (data_name == NULL || stored_data == NULL) {
 		EM_DEBUG_EXCEPTION("Invalid parameter");
 		err = EMAIL_ERROR_INVALID_PARAM;
 		return err;
