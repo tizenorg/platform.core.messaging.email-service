@@ -51,6 +51,46 @@ extern "C" {
 
 
 /**
+ * @brief Stores a public certificate information in the database.
+ *
+ * @since_tizen 2.3
+ * @privlevel public
+ * @privilege %http://tizen.org/privilege/email
+ *
+ * @param[in] certificate_path  The file path of public certificate
+ * @param[in] email_address     The keyword for searching the certificate information
+ *
+ * @return  #EMAIL_ERROR_NONE on success,
+ *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
+ */
+EXPORT_API int email_add_certificate(char *certificate_path, char *email_address) DEPRECATED;
+
+/**
+ * @brief Deletes a public certificate information from the database.
+ *
+ * @param[in]  email_address  The keyword for deleting the certificate information
+ *
+ * @return  #EMAIL_ERROR_NONE on success, 
+ *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
+ */
+EXPORT_API int email_delete_certificate(char *email_address) DEPRECATED;
+
+/**
+ * @brief Gets the the public certificate information from the database.
+ *
+ * @since_tizen 2.3
+ * @privlevel public
+ * @privilege %http://tizen.org/privilege/email
+ *
+ * @param[in]  email_address  The keyword for getting the certificate information
+ * @param[out] certificate    The certificate
+ *
+ * @return  #EMAIL_ERROR_NONE on success, 
+ *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
+ */
+EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **certificate) DEPRECATED;
+
+/**
  * @brief Gets a decrypted message.
  *
  * @since_tizen 2.3
@@ -124,6 +164,22 @@ EXPORT_API int email_verify_signature(int mail_id, int *verify);
 *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
 */
 EXPORT_API int email_verify_signature_ex(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data, int input_attachment_count, int *verify);
+
+/**
+ * @brief Verifies a certificate.
+ *
+ * @since_tizen 2.3
+ * @privlevel public
+ * @privilege %http://tizen.org/privilege/email
+ *
+ * @param[in]   certificate_path  The path of the certificate
+ * @param[out]  verify            The verification status \n
+ *                                false : failed verification, true : verification successful
+ *
+ * @return  #EMAIL_ERROR_NONE on success,
+ *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
+ */
+EXPORT_API int email_verify_certificate(char *certificate_path, int *verify) DEPRECATED;
 
 /**
  * @brief Gets the certificate from the server (using exchange server).

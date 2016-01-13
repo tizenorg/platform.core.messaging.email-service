@@ -45,6 +45,30 @@
 #include "email-core-signal.h"
 #include "email-ipc.h"
 
+EXPORT_API int email_add_certificate(char *certificate_path, char *email_address)
+{
+	EM_DEBUG_API_BEGIN("");
+	return EMAIL_ERROR_NOT_SUPPORTED;
+}
+
+EXPORT_API int email_delete_certificate(char *email_address)
+{
+	EM_DEBUG_API_BEGIN("");
+	return EMAIL_ERROR_NOT_SUPPORTED;
+}
+
+EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **certificate)
+{
+	EM_DEBUG_API_BEGIN("");
+	return EMAIL_ERROR_NOT_SUPPORTED;
+}
+
+EXPORT_API int email_verify_certificate(char *certificate_path, int *verify)
+{
+	EM_DEBUG_API_BEGIN("");
+	return EMAIL_ERROR_NOT_SUPPORTED;
+}
+
 EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output_mail_data,
 										email_attachment_data_t **output_attachment_data,
 										int *output_attachment_count, int *verify)
