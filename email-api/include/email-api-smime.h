@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -51,6 +51,7 @@ extern "C" {
 
 
 /**
+ * @deprecated Deprecated since 3.0 Use key-manager api instead.
  * @brief Stores a public certificate information in the database.
  *
  * @since_tizen 2.3
@@ -66,16 +67,18 @@ extern "C" {
 EXPORT_API int email_add_certificate(char *certificate_path, char *email_address) DEPRECATED;
 
 /**
+ * @deprecated Deprecated since 3.0 Use key-manager api instead.
  * @brief Deletes a public certificate information from the database.
  *
  * @param[in]  email_address  The keyword for deleting the certificate information
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  */
 EXPORT_API int email_delete_certificate(char *email_address) DEPRECATED;
 
 /**
+ * @deprecated Deprecated since 3.0 Use key-manager api instead.
  * @brief Gets the the public certificate information from the database.
  *
  * @since_tizen 2.3
@@ -85,7 +88,7 @@ EXPORT_API int email_delete_certificate(char *email_address) DEPRECATED;
  * @param[in]  email_address  The keyword for getting the certificate information
  * @param[out] certificate    The certificate
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  */
 EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **certificate) DEPRECATED;
@@ -107,8 +110,8 @@ EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **
  * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  */
-EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output_mail_data, 
-										email_attachment_data_t **output_attachment_data, 
+EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output_mail_data,
+										email_attachment_data_t **output_attachment_data,
 										int *output_attachment_count, int *verify);
 
 /**
@@ -127,11 +130,11 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 
  * @return EMAIL_ERROR_NONE on success or an error code (refer to EMAIL_ERROR_XXX) on failure
  */
-EXPORT_API int email_get_decrypt_message_ex(email_mail_data_t *input_mail_data, 
-											email_attachment_data_t *input_attachment_data, 
+EXPORT_API int email_get_decrypt_message_ex(email_mail_data_t *input_mail_data,
+											email_attachment_data_t *input_attachment_data,
 											int input_attachment_count,
-                                            email_mail_data_t **output_mail_data, 
-											email_attachment_data_t **output_attachment_data, 
+                                            email_mail_data_t **output_mail_data,
+											email_attachment_data_t **output_attachment_data,
 											int *output_attachment_count,
 											int *verify);
 /**
@@ -166,6 +169,7 @@ EXPORT_API int email_verify_signature(int mail_id, int *verify);
 EXPORT_API int email_verify_signature_ex(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data, int input_attachment_count, int *verify);
 
 /**
+ * @deprecated Deprecated since 3.0 Use key-manager api instead.
  * @brief Verifies a certificate.
  *
  * @since_tizen 2.3
