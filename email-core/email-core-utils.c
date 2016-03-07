@@ -103,10 +103,10 @@
 #define EMAIL_CH_SQUARE_BRACKET_S '['
 #define EMAIL_CH_SQUARE_BRACKET_E ']'
 #define EMAIL_CH_SPACE            ' '
-#define EMAIL_NOTI_ICON_PATH                "/usr/apps/org.tizen.quickpanel/shared/res/noti_icons/E-mail/noti_email.png"
-#define EMAIL_NOTI_INDICATOR_ICON_PATH      "/usr/apps/org.tizen.indicator/res/icons/Event/B03_Event_email.png"
+#define EMAIL_NOTI_ICON_PATH                tzplatform_mkpath(TZ_SYS_RO_APP,  "org.tizen.quickpanel/shared/res/noti_icons/E-mail/noti_email.png")
+#define EMAIL_NOTI_INDICATOR_ICON_PATH      tzplatform_mkpath(TZ_SYS_RO_APP,  "org.tizen.indicator/res/icons/Event/B03_Event_email.png")
 #define EMAIL_NOTI_MAX_MAIL_ID   100
-
+//#define TEST 			TZ_SYS_RO_APPS
 
 typedef struct  _em_transaction_info_type_t {
 	int mail_id;
@@ -1458,7 +1458,7 @@ INTERNAL_FUNC int emcore_add_notification(char *multi_user_name, int account_id,
 		goto FINISH_OFF;
 	}
 
-	if ((noti_err = notification_set_text_domain(noti, NATIVE_EMAIL_DOMAIN, "/usr/apps/org.tizen.email/res/locale")) != NOTIFICATION_ERROR_NONE) {
+	if ((noti_err = notification_set_text_domain(noti, NATIVE_EMAIL_DOMAIN, tzplatform_mkpath(TZ_SYS_RO_APP,"org.tizen.email/res/locale"))) != NOTIFICATION_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("notification_set_text_domain failed [%d]", noti_err);
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
@@ -1724,7 +1724,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 		textdomain("sys_string");
 */
 		setlocale(LC_MESSAGES, vconf_get_str(VCONFKEY_LANGSET));
-		bindtextdomain(NATIVE_EMAIL_DOMAIN, "/usr/apps/org.tizen.email/res/locale");
+		bindtextdomain(NATIVE_EMAIL_DOMAIN, tzplatform_mkpath(TZ_SYS_RO_APP,"org.tizen.email/res/localea"));
 		textdomain(NATIVE_EMAIL_DOMAIN);
 
 		switch (sending_error) {
@@ -1845,7 +1845,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 
 	case EMAIL_ACTION_SENDING_MAIL:
 
-		if ((noti_err = notification_set_text_domain(noti, NATIVE_EMAIL_DOMAIN, "/usr/apps/org.tizen.email/res/locale")) != NOTIFICATION_ERROR_NONE) {
+		if ((noti_err = notification_set_text_domain(noti, NATIVE_EMAIL_DOMAIN, tzplatform_mkpath(TZ_SYS_RO_APP,"org.tizen.email/res/locale"))) != NOTIFICATION_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("notification_set_text_domain failed [%d]", noti_err);
 			err = EMAIL_ERROR_NOTI;
 			goto FINISH_OFF;

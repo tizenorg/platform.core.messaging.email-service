@@ -32,6 +32,7 @@
 #include <sys/time.h>
 #include <glib.h>
 #include <glib/gstdio.h>
+#include <tzplatform_config.h>
 
 #include "email-internal-types.h"
 #include "email-utilities.h"
@@ -46,6 +47,7 @@
 #include "email-core-signal.h"
 #include "email-core-mailbox-sync.h"
 #include "email-debug-log.h"
+#include "email-types.h"
 
 static int multipart_status = 0;
 
@@ -64,7 +66,7 @@ INTERNAL_FUNC void emcore_gmime_init(void)
 	g_mime_init(0);
 
 #ifdef __FEATURE_SECURE_PGP__
-	setenv("GNUPGHOME", "/opt/usr/apps/org.tizen.email/data/.gnupg", 1);
+	setenv("GNUPGHOME", tzplatform_mkpath(TZ_SYS_RW_APP ,"org.tizen.email/data/.gnupg"), 1);
 #endif
 
 	EM_DEBUG_FUNC_END();
