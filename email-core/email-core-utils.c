@@ -103,6 +103,7 @@
 #define EMAIL_CH_SQUARE_BRACKET_S '['
 #define EMAIL_CH_SQUARE_BRACKET_E ']'
 #define EMAIL_CH_SPACE            ' '
+
 #define EMAIL_NOTI_ICON_PATH                "/usr/apps/org.tizen.quickpanel/shared/res/noti_icons/E-mail/noti_email.png"
 #define EMAIL_NOTI_INDICATOR_ICON_PATH      "/usr/apps/org.tizen.indicator/res/icons/Event/B03_Event_email.png"
 #define EMAIL_NOTI_MAX_MAIL_ID   100
