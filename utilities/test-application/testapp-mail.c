@@ -2389,7 +2389,7 @@ static gboolean testapp_test_email_write_mime_file()
 		return false;
 	}
 
-	snprintf(file_path, 512, "/opt/usr/data/email/.email_data/tmp/%d_%8d.eml", mail_id, (int)time(NULL));
+	snprintf(file_path, 512, tzplatform_mkpath(TZ_SYS_DATA,"email/.email_data/tmp/%d_%8d.eml"), mail_id, (int)time(NULL));
 
 	err = email_write_mime_file(mail_data, mail_attachment_data, attachment_count, &file_path);
 	if (err != EMAIL_ERROR_NONE) {
