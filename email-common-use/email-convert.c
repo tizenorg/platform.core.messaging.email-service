@@ -527,8 +527,7 @@ INTERNAL_FUNC int em_convert_time_t_to_string(time_t *input_time, char **output_
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
-	temp_time_info = localtime(input_time);
-
+	localtime_r(input_time, temp_time_info);
 	if (!temp_time_info) {
 		EM_DEBUG_EXCEPTION("localtime failed.");
 		return EMAIL_ERROR_SYSTEM_FAILURE;
