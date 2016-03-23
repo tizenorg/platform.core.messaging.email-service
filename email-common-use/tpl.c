@@ -580,7 +580,8 @@ fail:
 static int tpl_unmap_file(tpl_mmap_rec *mr)
 {
     if (munmap(mr->text, mr->text_sz) == -1) {
-        tpl_hook.oops("Failed to munmap: %s\n", strerror(errno));
+	char buf[100];
+        tpl_hook.oops("Failed to munmap: %s\n", strerror_r(errno, buf, sizeof(buf)));
     }
     close(mr->fd);
     mr->text = NULL;
@@ -1017,7 +1018,8 @@ TPL_API int tpl_dump(tpl_node *r, int mode, ...)
         else {
             rc = tpl_dump_to_mem(r, buf, sz);
             if (msync(buf, sz, MS_SYNC) == -1) {
-                tpl_hook.oops("msync failed on fd %d: %s\n", fd, strerror(errno));
+		char buf[100];
+                tpl_hook.oops("msync failed on fd %d: %s\n", fd, strerror_r(errno, buf, sizeof(buf)));
             }
             if (munmap(buf, sz) == -1) {
                 tpl_hook.oops("munmap failed on fd %d: %s\n", fd, strerror(errno));
@@ -1767,7 +1769,8 @@ static int tpl_mmap_output_file(char *filename, size_t sz, void **text_out)
         return -1;
     }
     if (ftruncate(fd, sz) == -1) {
-        tpl_hook.oops("ftruncate failed: %s\n", strerror(errno));
+	char buf[100];
+        tpl_hook.oops("ftruncate failed: %s\n", strerror_r(errno, buf, sizeof(buf)));
         munmap(text, sz);
         close(fd);
         return -1;
@@ -1794,8 +1797,9 @@ static int tpl_mmap_file(char *filename, tpl_mmap_rec *mr)
     mr->text_sz = (size_t)stat_buf.st_size;
     mr->text = mmap(0, stat_buf.st_size, PROT_READ, MAP_PRIVATE, mr->fd, 0);
     if (mr->text == MAP_FAILED) {
+	char buf[100];
         close(mr->fd);
-        tpl_hook.oops("Failed to mmap %s: %s\n", filename, strerror(errno));
+        tpl_hook.oops("Failed to mmap %s: %s\n", filename, strerror_r(errno, buf, sizeof(buf)));
         return -1;
     }
 
@@ -2304,7 +2308,8 @@ static int tpl_gather_blocking(int fd, void **img, size_t *sz)
     } while ((rc == -1 && (errno == EINTR || errno == EAGAIN)) || (rc > 0 && i < tpllen));
 
     if (rc < 0) {
-        tpl_hook.oops("tpl_gather_fd_blocking failed: %s\n", strerror(errno));
+	char buf[100];
+        tpl_hook.oops("tpl_gather_fd_blocking failed: %s\n", strerror_r(errno, buf, sizeof(buf)));
         tpl_hook.free(*img);
         return -1;
     } else if (rc == 0) {
@@ -2335,7 +2340,8 @@ static int tpl_gather_nonblocking(int fd, tpl_gather_t **gs, tpl_gather_cb *cb, 
             if (errno == EINTR) continue;  /* got signal during read, ignore */
             if (errno == EAGAIN) return 1; /* nothing to read right now */
             else {
-                tpl_hook.oops("tpl_gather failed: %s\n", strerror(errno));
+		char buf[100];
+                tpl_hook.oops("tpl_gather failed: %s\n", strerror_r(errno, buf, sizeof(buf)));
                 if (*gs) {
                     tpl_hook.free((*gs)->img);
                     tpl_hook.free(*gs);
