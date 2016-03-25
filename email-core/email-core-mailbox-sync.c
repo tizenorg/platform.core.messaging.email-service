@@ -595,7 +595,7 @@ int emcore_get_uids_order_by_datetime_from_imap_server(MAILSTREAM *stream, int c
 			SNPRINTF(command, sizeof(command), "%s UID SEARCH 1:* SINCE %s\015\012", tag, since_date_string);
 		EM_DEBUG_LOG("COMMAND [%s] ", command);
 
-		EM_SAFE_STRCPY(before_date_string, since_date_string);
+		g_strlcpy(before_date_string, since_date_string, 20);
 		EM_SAFE_FREE(since_date_string);
 #ifdef FEATURE_CORE_DEBUG
 		EM_DEBUG_LOG(" [IMAP4] >>> [%s]", command);
@@ -734,8 +734,8 @@ int imap4_mailbox_get_uids_by_timestamp(MAILSTREAM *stream, emcore_uid_list** ui
 	time(&RawTime);
 
 	EM_DEBUG_LOG("RawTime Info [%lu]", RawTime);
-
-	timeinfo = localtime(&RawTime);
+	struct tm time_buf;
+	timeinfo = localtime_r(&RawTime, &time_buf);
 	if (timeinfo == NULL) {
 		EM_DEBUG_EXCEPTION("localtime failed");
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -3171,7 +3171,8 @@ INTERNAL_FUNC char *emcore_guess_charset(char *multi_user_name, char *source_str
 	}
 
 	time_t t = time(0);
-	struct tm *data = localtime(&t);
+	struct tm time_buf;
+	struct tm *data = localtime_r(&t, &time_buf);
 	if (data == NULL) {
 		EM_DEBUG_EXCEPTION("localtime failed");
 		return NULL;

@@ -296,7 +296,7 @@ EXPORT_API int emipc_connect_email_socket(int fd)
 
 	memset(&server, 0, sizeof(server));
 	server.sun_family = AF_UNIX;
-	strcpy(server.sun_path, ipc_socket_path);
+	strncpy(server.sun_path, ipc_socket_path, sizeof(server.sun_path)-1);
 
 	EM_SAFE_FREE(ipc_socket_path);
 

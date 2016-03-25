@@ -4081,6 +4081,7 @@ static int emcore_get_next_peak_start_time(emstorage_account_tbl_t *input_accoun
 	int day_count = 0;
 	int start_hour = 0;
 	int start_min  = 0;
+	struct tm time_buf;
 	struct tm *time_info;
 
 	if (output_time == NULL) {
@@ -4089,7 +4090,7 @@ static int emcore_get_next_peak_start_time(emstorage_account_tbl_t *input_accoun
 		goto FINISH_OFF;
 	}
 
-	time_info = localtime(&input_current_time);
+	time_info = localtime_r(&input_current_time, &time_buf);
 	if (time_info == NULL) {
 		EM_DEBUG_EXCEPTION("localtime failed");
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -4149,6 +4150,7 @@ static int emcore_check_time_in_peak_schedule(emstorage_account_tbl_t *input_acc
 {
 	EM_DEBUG_FUNC_BEGIN("input_account_ref [%p] input_time[%d] output_result[%p]", input_account_ref, input_time, output_result);
 	int err = EMAIL_ERROR_NONE;
+	struct tm time_buf;
 	struct tm *time_info;
 	int wday = 1;
 	int result = 0;
@@ -4163,7 +4165,7 @@ static int emcore_check_time_in_peak_schedule(emstorage_account_tbl_t *input_acc
 		goto FINISH_OFF;
 	}
 
-	time_info = localtime(&input_time);
+	time_info = localtime_r(&input_time, &time_buf);
 	if (time_info == NULL) {
 		EM_DEBUG_EXCEPTION("localtime failed");
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -5450,13 +5452,14 @@ INTERNAL_FUNC int emcore_make_date_string_for_search(time_t input_time, char **o
 {
 	EM_DEBUG_FUNC_BEGIN("input_time[%p] output_date_string[%p]", input_time, output_date_string);
 	int err = EMAIL_ERROR_NONE;
-	struct tm   *timeinfo = NULL;
+	struct tm time_buf;
+	struct tm   *timeinfo;
 	char *mon = NULL;
 	char *temp_date_string = NULL;
 
 	EM_DEBUG_LOG("RawTime Info [%lu]", input_time);
 
-	timeinfo = localtime(&input_time);
+	timeinfo = localtime_r(&input_time, &time_buf);
 	if (timeinfo == NULL) {
 		EM_DEBUG_EXCEPTION("localtime failed");
 		err = EMAIL_ERROR_SYSTEM_FAILURE;

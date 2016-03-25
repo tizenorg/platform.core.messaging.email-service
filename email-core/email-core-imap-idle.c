@@ -494,7 +494,7 @@ void* emcore_imap_idle_worker(void* thread_user_data)
 	epoll_fd = epoll_create(MAX_EPOLL_EVENT);
 
 	if (epoll_fd < 0) {
-		EM_DEBUG_CRITICAL_EXCEPTION("epoll_create failed: %s[%d]", EM_STRERROR(errno_buf), errno);
+		EM_DEBUG_CRITICAL_EXCEPTION("epoll_create failed: [%d]", errno);
 		err = EMAIL_ERROR_IMAP4_IDLE_FAILURE;
 		goto FINISH_OFF;
 	}

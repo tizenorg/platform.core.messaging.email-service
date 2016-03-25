@@ -3621,7 +3621,8 @@ static int emcore_make_envelope_from_mail(char *multi_user_name, emstorage_mail_
 		int zone      = t->tm_hour * 60 + t->tm_min;
 		int julian    = t->tm_yday;
 
-		t = localtime(&input_mail_tbl_data->date_time);
+		struct tm t_buf;
+		t = localtime_r(&input_mail_tbl_data->date_time, &t_buf);
 		if (t == NULL) {
 			EM_DEBUG_EXCEPTION("localtime failed");
 			error = EMAIL_ERROR_SYSTEM_FAILURE;

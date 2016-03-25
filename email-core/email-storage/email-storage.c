@@ -4037,11 +4037,11 @@ static int _get_password_file_name(char *multi_user_name, int account_id, char *
     EM_DEBUG_LOG("MULTI_USER_NAME : [%s]", multi_user_name);
 
 	if (EM_SAFE_STRLEN(multi_user_name) > 0) {
-		sprintf(recv_password_file_name, ".email_account_%d_recv_%s", account_id, multi_user_name);
-		sprintf(send_password_file_name, ".email_account_%d_send_%s", account_id, multi_user_name);
+		snprintf(recv_password_file_name, MAX_PW_FILE_NAME_LENGTH, ".email_account_%d_recv_%s", account_id, multi_user_name);
+		sprintf(send_password_file_name, MAX_PW_FILE_NAME_LENGTH, ".email_account_%d_send_%s", account_id, multi_user_name);
 	} else {
-		sprintf(recv_password_file_name, ".email_account_%d_recv", account_id);
-		sprintf(send_password_file_name, ".email_account_%d_send", account_id);
+		sprintf(recv_password_file_name, MAX_PW_FILE_NAME_LENGTH, ".email_account_%d_recv", account_id);
+		sprintf(send_password_file_name, MAX_PW_FILE_NAME_LENGTH, ".email_account_%d_send", account_id);
 	}
 
 	EM_DEBUG_FUNC_END();
@@ -11569,14 +11569,14 @@ INTERNAL_FUNC int emstorage_get_save_name(char *multi_user_name, int account_id,
 		goto FINISH_OFF;
 	}
 
-	sprintf(path_buf, "%s", MAILHOME);
-	sprintf(path_buf+EM_SAFE_STRLEN(path_buf), "%s%d", DIR_SEPERATOR, account_id);
+	snprintf(path_buf, 512, "%s", MAILHOME);
+	snprintf(path_buf+EM_SAFE_STRLEN(path_buf), 512 - EM_SAFE_STRLEN(path_buf), "%s%d", DIR_SEPERATOR, account_id);
 
 	if (mail_id > 0)
-		sprintf(path_buf+EM_SAFE_STRLEN(path_buf), "%s%d", DIR_SEPERATOR, mail_id);
+		snprintf(path_buf+EM_SAFE_STRLEN(path_buf),   512 - EM_SAFE_STRLEN(path_buf), "%s%d", DIR_SEPERATOR, mail_id);
 
 	if (atch_id > 0)
-		sprintf(path_buf+EM_SAFE_STRLEN(path_buf), "%s%d", DIR_SEPERATOR, atch_id);
+		snprintf(path_buf+EM_SAFE_STRLEN(path_buf), 512 - EM_SAFE_STRLEN(path_buf), "%s%d", DIR_SEPERATOR, atch_id);
 
 	if (fname) {
 		temp_file = EM_SAFE_STRDUP(fname);
@@ -11674,6 +11674,7 @@ FINISH_OFF:
 	return ret;
 }
 
+/*
 INTERNAL_FUNC int emstorage_get_dele_name(char *multi_user_name, int account_id, int mail_id, int atch_id, char *fname, char *name_buf, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN("account_id[%d], mail_id[%d], atch_id[%d], fname[%p], name_buf[%p], err_code[%p]", account_id, mail_id, atch_id, fname, name_buf, err_code);
@@ -11703,6 +11704,7 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END();
 	return true;
 }
+*/
 
 INTERNAL_FUNC int emstorage_create_dir(char *multi_user_name, int account_id, int mail_id, int atch_id, int *err_code)
 {
