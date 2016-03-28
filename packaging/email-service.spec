@@ -5,7 +5,7 @@ Summary:    E-mail Framework Middleware package
 Version:    0.10.103
 Release:    1
 Group:      Messaging/Service
-License:    Apache-2.0 and BSD-3-Clause
+License:    Apache-2.0 and BSD-2.0
 Source0:    %{name}-%{version}.tar.gz
 Source1:    email-service.socket
 Source2:    email-service.manifest
