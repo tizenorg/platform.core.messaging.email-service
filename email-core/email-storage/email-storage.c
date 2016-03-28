@@ -4038,10 +4038,10 @@ static int _get_password_file_name(char *multi_user_name, int account_id, char *
 
 	if (EM_SAFE_STRLEN(multi_user_name) > 0) {
 		snprintf(recv_password_file_name, MAX_PW_FILE_NAME_LENGTH, ".email_account_%d_recv_%s", account_id, multi_user_name);
-		sprintf(send_password_file_name, MAX_PW_FILE_NAME_LENGTH, ".email_account_%d_send_%s", account_id, multi_user_name);
+		snprintf(send_password_file_name, MAX_PW_FILE_NAME_LENGTH, ".email_account_%d_send_%s", account_id, multi_user_name);
 	} else {
-		sprintf(recv_password_file_name, MAX_PW_FILE_NAME_LENGTH, ".email_account_%d_recv", account_id);
-		sprintf(send_password_file_name, MAX_PW_FILE_NAME_LENGTH, ".email_account_%d_send", account_id);
+		snprintf(recv_password_file_name, MAX_PW_FILE_NAME_LENGTH, ".email_account_%d_recv", account_id);
+		snprintf(send_password_file_name, MAX_PW_FILE_NAME_LENGTH, ".email_account_%d_send", account_id);
 	}
 
 	EM_DEBUG_FUNC_END();
