@@ -1347,7 +1347,7 @@ static int _get_stmt_field_data_string_without_allocation(DB_STMT hStmt, char *b
 		memset(buf, 0, buffer_size);
 		strncpy(buf, (char *)sqlite3_column_text(hStmt, index), buffer_size - 1);
 	} else
-		strcpy(buf, "");
+		strncpy(buf, "", buffer_size - 1);
 
 #ifdef _PRINT_STORAGE_LOG_
 	EM_DEBUG_LOG("buf[%s], index[%d]", buf, index);
@@ -16444,7 +16444,7 @@ INTERNAL_FUNC int emstorage_write_conditional_clause_for_getting_mail_list(char 
 
 	if (input_filter_count > 0) {
 		query_size = QUERY_SIZE;
-		strcpy(conditional_clause_string, " WHERE ");
+		strncpy(conditional_clause_string, " WHERE ", QUERY_SIZE  );
 
 		for (i = 0; i < input_filter_count; i++) {
 			switch (input_filter_list[i].list_filter_item_type) {

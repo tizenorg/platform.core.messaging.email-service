@@ -3762,8 +3762,8 @@ int emcore_make_attachment_file_name_with_extension(char *source_file_name, char
                 goto FINISH_OFF;
             }
 
-			strcat(attachment_file_name, ".");
-			strcat(attachment_file_name, sub_type);
+			strncat(attachment_file_name, ".", MAX_PATH - EM_SAFE_STRLEN(attachment_file_name));
+			strncat(attachment_file_name, sub_type, MAX_PATH - EM_SAFE_STRLEN(attachment_file_name));
 			EM_DEBUG_LOG_SEC("attachment_file_name with extension[%s] ", attachment_file_name);
 		} else
 			EM_DEBUG_LOG("UnKnown Extesnsion");
@@ -3946,7 +3946,7 @@ INTERNAL_FUNC int emcore_search_string_from_file(char *file_path, char *search_s
 				goto FINISH_OFF;
 			}
 
-			sprintf(cid_string, "cid:%s", search_string);
+			snprintf(cid_string, strlen(search_string) + strlen("cid:") + 1, "cid:%s", search_string);
 
 			modified_string = em_replace_string(stripped, cid_string, new_string);
 			if (modified_string) {

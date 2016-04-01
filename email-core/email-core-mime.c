@@ -1215,7 +1215,7 @@ INTERNAL_FUNC int emcore_make_mail_data_from_mime_data(struct _m_mesg *mmsg,
 		if (cnt_info->text.html_charset != NULL) {
 			SNPRINTF(html_body, MAX_PATH, "%s%s", cnt_info->text.html_charset, HTML_EXTENSION_STRING);
 		} else {
-			strcpy(html_body, UNKNOWN_CHARSET_HTML_TEXT_FILE);
+			strncpy(html_body, UNKNOWN_CHARSET_HTML_TEXT_FILE, MAX_PATH - 1);
 		}
 
 		if (!emstorage_get_save_name(multi_user_name, EML_FOLDER, eml_mail_id,

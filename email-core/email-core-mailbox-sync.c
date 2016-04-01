@@ -3383,7 +3383,7 @@ void mail_appenduid(char *mailbox, unsigned long uidvalidity, SEARCHSET *set)
 
     memset(g_append_uid_rsp, 0x00, 129);
 
-    sprintf(g_append_uid_rsp, "%ld", set->first);
+    snprintf(g_append_uid_rsp, 129, "%ld", set->first);
     EM_DEBUG_LOG("append uid - %s", g_append_uid_rsp);
 }
 
@@ -3510,7 +3510,7 @@ INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(char *multi_user_name, 
 	snprintf(message_size, sizeof(message_size), "%d", len);
 	INIT(&str, mail_string, message_size, EM_SAFE_STRLEN(message_size));
 
-	sprintf(set_flags, "\\Seen");
+	snprintf(set_flags, 100, "\\Seen");
 
 	int total_size = len;
 	int data_size = 0;

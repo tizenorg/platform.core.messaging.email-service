@@ -3688,43 +3688,43 @@ static char *emcore_get_digest_string(int digest_type, int mime_type)
 	case EMAIL_PGP_ENCRYPTED:
 	case EMAIL_PGP_SIGNED_AND_ENCRYPTED:
 		memset(p_digest_string, 0x00, sizeof(p_digest_string));
-		strcpy(p_digest_string, "pgp-");
+		strncpy(p_digest_string, "pgp-", sizeof(p_digest_string));
 		break;
 	}
 
 	switch (digest_type) {
 	case DIGEST_TYPE_SHA1:
-		strcat(p_digest_string, "sha1");
+		strncat(p_digest_string, "sha1", 100 - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_MD5:
-		strcat(p_digest_string, "md5");
+		strncat(p_digest_string, "md5", 100 - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_RIPEMD160:
-		strcat(p_digest_string, "ripemd160");
+		strncat(p_digest_string, "ripemd160", 100 - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_MD2:
-		strcat(p_digest_string, "md2");
+		strncat(p_digest_string, "md2", 100 - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_TIGER192:
-		strcat(p_digest_string, "tiger192");
+		strncat(p_digest_string, "tiger192", 100 - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_HAVAL5160:
-		strcat(p_digest_string, "haval5160");
+		strncat(p_digest_string, "haval5160", 100 - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_SHA256:
-		strcat(p_digest_string, "sha256");
+		strncat(p_digest_string, "sha256", 100 - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_SHA384:
-		strcat(p_digest_string, "sha384");
+		strncat(p_digest_string, "sha384", 100 - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_SHA512:
-		strcat(p_digest_string, "sha512");
+		strncat(p_digest_string, "sha512", 100 - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_SHA224:
-		strcat(p_digest_string, "sha224");
+		strncat(p_digest_string, "sha224", 100 - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_MD4:
-		strcat(p_digest_string, "md4");
+		strncat(p_digest_string, "md4", 100 - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	}
 
