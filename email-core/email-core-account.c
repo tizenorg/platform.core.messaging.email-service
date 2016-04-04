@@ -177,7 +177,7 @@ static char *emcore_get_imap_capability_string(MAILSTREAM *input_stream)
 
 	if ((imap_capability = imap_cap(input_stream))) {
 		if (imap_capability->idle)
-			EM_SAFE_STRCAT(capability_string, "IDLE ");
+			strncat(capability_string, "IDLE ", 512 - EM_SAFE_STRLEN(capability_string) - 1);
 		if (imap_capability->quota)
 			EM_SAFE_STRCAT(capability_string, "QUOTA ");
 		if (imap_capability->starttls)
@@ -318,7 +318,7 @@ INTERNAL_FUNC int emcore_validate_account_with_account_info(char *multi_user_nam
 				goto FINISH_OFF;
 			}
 
-			EM_SAFE_STRCAT(*output_server_capability_string, smtp_capability_string);
+			strncat(*output_server_capability_string,smtp_capability_string , (server_capability_string_length + 1) - EM_SAFE_STRLEN(*output_server_capability_string)- 1);
 			EM_SAFE_STRCAT(*output_server_capability_string, imap_capability_string);
 			EM_DEBUG_LOG("%s", *output_server_capability_string);
 		}
