@@ -305,8 +305,8 @@ char *emcore_mime_get_save_file_name(int *err_code)
 	srand(tv.tv_usec);
 
 	memset(tempname, 0x00, sizeof(tempname));
-
-	SNPRINTF(tempname, sizeof(tempname), "%s%s%d", MAILTEMP, DIR_SEPERATOR, rand());
+	unsigned int seed = time(NULL);
+	SNPRINTF(tempname, sizeof(tempname), "%s%s%d", MAILTEMP, DIR_SEPERATOR, rand_r(&seed));
 	EM_DEBUG_FUNC_END();
 	return EM_SAFE_STRDUP(tempname);
 }
@@ -1158,7 +1158,8 @@ INTERNAL_FUNC int emcore_make_mail_data_from_mime_data(struct _m_mesg *mmsg,
 	/* Create rand mail id of eml */
 	gettimeofday(&tv, NULL);
 	srand(tv.tv_usec);
-	eml_mail_id = rand();
+	unsigned int seed = time(NULL);
+	eml_mail_id = rand_r(&seed);
 
 	p_mail_data = (email_mail_data_t *)em_malloc(sizeof(email_mail_data_t));
 	if (p_mail_data == NULL) {
@@ -1215,7 +1216,7 @@ INTERNAL_FUNC int emcore_make_mail_data_from_mime_data(struct _m_mesg *mmsg,
 		if (cnt_info->text.html_charset != NULL) {
 			SNPRINTF(html_body, MAX_PATH, "%s%s", cnt_info->text.html_charset, HTML_EXTENSION_STRING);
 		} else {
-			strcpy(html_body, UNKNOWN_CHARSET_HTML_TEXT_FILE);
+			g_strlcpy(html_body, UNKNOWN_CHARSET_HTML_TEXT_FILE, MAX_PATH);
 		}
 
 		if (!emstorage_get_save_name(multi_user_name, EML_FOLDER, eml_mail_id,

@@ -1347,7 +1347,7 @@ static int _get_stmt_field_data_string_without_allocation(DB_STMT hStmt, char *b
 		memset(buf, 0, buffer_size);
 		strncpy(buf, (char *)sqlite3_column_text(hStmt, index), buffer_size - 1);
 	} else
-		strcpy(buf, "");
+		g_strlcpy(buf, "", buffer_size);
 
 #ifdef _PRINT_STORAGE_LOG_
 	EM_DEBUG_LOG("buf[%s], index[%d]", buf, index);
@@ -11621,7 +11621,7 @@ INTERNAL_FUNC int emstorage_get_save_name(char *multi_user_name, int account_id,
 				goto FINISH_OFF;
 			}
 
-			sprintf(path_buf+EM_SAFE_STRLEN(path_buf), "%s%s", DIR_SEPERATOR, modified_name);
+			snprintf(path_buf+EM_SAFE_STRLEN(path_buf), 512 - EM_SAFE_STRLEN(path_buf),"%s%s", DIR_SEPERATOR, modified_name);
 			EM_DEBUG_LOG(">>>>> Modified fname [%s]", modified_name);
 			EM_SAFE_FREE(modified_name);
 		} else {
@@ -11634,11 +11634,11 @@ INTERNAL_FUNC int emstorage_get_save_name(char *multi_user_name, int account_id,
 					goto FINISH_OFF;
 				}
 
-				sprintf(path_buf+EM_SAFE_STRLEN(path_buf), "%s%s", DIR_SEPERATOR, modified_name);
+				snprintf(path_buf+EM_SAFE_STRLEN(path_buf), 512 - EM_SAFE_STRLEN(path_buf),"%s%s", DIR_SEPERATOR, modified_name);
 				EM_DEBUG_LOG(">>>>> Modified fname [%s]", modified_name);
 				EM_SAFE_FREE(modified_name);
 			} else {
-				sprintf(path_buf+EM_SAFE_STRLEN(path_buf), "%s%s", DIR_SEPERATOR, modified_fname);
+				snprintf(path_buf+EM_SAFE_STRLEN(path_buf), 512 - EM_SAFE_STRLEN(path_buf),"%s%s", DIR_SEPERATOR, modified_fname);
 			}
 		}
 	}
@@ -11651,10 +11651,10 @@ INTERNAL_FUNC int emstorage_get_save_name(char *multi_user_name, int account_id,
 			EM_DEBUG_EXCEPTION("emcore_get_container_path failed : [%d]", error);
 			goto FINISH_OFF;
 		}
-        sprintf(move_buf, "%s/%s", prefix_path, path_buf);
+        snprintf(move_buf, 512, "%s/%s", prefix_path, path_buf);
         EM_DEBUG_LOG("move_buf : [%s]", move_buf);
     } else {
-        sprintf(move_buf, "%s", path_buf);
+        snprintf(move_buf, 512, "%s", path_buf);
         EM_DEBUG_LOG("move_buf : [%s]", move_buf);
     }
 
@@ -11968,8 +11968,8 @@ static int _get_temp_file_name(char **filename, int *err_code)
 
 	gettimeofday(&tv, NULL);
 	srand(tv.tv_usec);
-
-	SNPRINTF(tempname, sizeof(tempname), "%s%c%d", MAILTEMP, '/', rand());
+	unsigned int seed = time(NULL);
+	SNPRINTF(tempname, sizeof(tempname), "%s%c%d", MAILTEMP, '/', rand_r(&seed));
 
 	char *p = EM_SAFE_STRDUP(tempname);
 	if (p == NULL) {
@@ -16444,7 +16444,7 @@ INTERNAL_FUNC int emstorage_write_conditional_clause_for_getting_mail_list(char 
 
 	if (input_filter_count > 0) {
 		query_size = QUERY_SIZE;
-		strcpy(conditional_clause_string, " WHERE ");
+		g_strlcpy(conditional_clause_string, " WHERE ", QUERY_SIZE);
 
 		for (i = 0; i < input_filter_count; i++) {
 			switch (input_filter_list[i].list_filter_item_type) {

@@ -480,7 +480,6 @@ int emcore_get_temp_file_name(char **filename, int *err_code)
 
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
-
 	if (filename == NULL) {
 		EM_DEBUG_EXCEPTION("\t filename[%p]\n", filename);
 		error = EMAIL_ERROR_INVALID_PARAM;
@@ -1724,7 +1723,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 		textdomain("sys_string");
 */
 		setlocale(LC_MESSAGES, vconf_get_str(VCONFKEY_LANGSET));
-		bindtextdomain(NATIVE_EMAIL_DOMAIN, tzplatform_mkpath(TZ_SYS_RO_APP,"org.tizen.email/res/localea"));
+		bindtextdomain(NATIVE_EMAIL_DOMAIN, tzplatform_mkpath(TZ_SYS_RO_APP,"org.tizen.email/res/locale"));
 		textdomain(NATIVE_EMAIL_DOMAIN);
 
 		switch (sending_error) {
@@ -3762,8 +3761,8 @@ int emcore_make_attachment_file_name_with_extension(char *source_file_name, char
                 goto FINISH_OFF;
             }
 
-			strcat(attachment_file_name, ".");
-			strcat(attachment_file_name, sub_type);
+			strncat(attachment_file_name, ".", MAX_PATH - EM_SAFE_STRLEN(attachment_file_name) - 1);
+			strncat(attachment_file_name, sub_type, MAX_PATH - EM_SAFE_STRLEN(attachment_file_name) - 1);
 			EM_DEBUG_LOG_SEC("attachment_file_name with extension[%s] ", attachment_file_name);
 		} else
 			EM_DEBUG_LOG("UnKnown Extesnsion");
@@ -3946,7 +3945,7 @@ INTERNAL_FUNC int emcore_search_string_from_file(char *file_path, char *search_s
 				goto FINISH_OFF;
 			}
 
-			sprintf(cid_string, "cid:%s", search_string);
+			snprintf(cid_string, strlen(search_string) + strlen("cid:") + 1, "cid:%s", search_string);
 
 			modified_string = em_replace_string(stripped, cid_string, new_string);
 			if (modified_string) {

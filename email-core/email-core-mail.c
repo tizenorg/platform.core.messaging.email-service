@@ -405,12 +405,12 @@ static void emcore_mail_copyuid_ex(MAILSTREAM *stream, char *mailbox, unsigned l
 	for (i = 0; i <= index; ++i) {
 
 		memset(old_server_uid_char, 0x00, sizeof(old_server_uid_char));
-		sprintf(old_server_uid_char, "%ld", old_server_uid[i]);
+		snprintf(old_server_uid_char, 129, "%ld", old_server_uid[i]);
 
 		EM_DEBUG_LOG("Old Server Uid Char[%s]", old_server_uid_char);
 
 		memset(new_server_uid_char, 0x00, sizeof(new_server_uid_char));
-		sprintf(new_server_uid_char, "%ld", new_server_uid[i]);
+		snprintf(new_server_uid_char, 129,"%ld", new_server_uid[i]);
 
 		EM_DEBUG_LOG("New Server Uid Char[%s]", new_server_uid_char);
 
@@ -3363,11 +3363,11 @@ void emcore_mail_copyuid(MAILSTREAM *stream, char *mailbox,
 	/* search for server _mail_id with value sourceset->first and update it with destset->first */
 	/* faizan.h@samsung.com */
 	memset(old_server_uid, 0x00, 129);
-	sprintf(old_server_uid, "%ld", sourceset->first);
+	snprintf(old_server_uid, 129, "%ld", sourceset->first);
 	EM_DEBUG_LOG(">>>>> old_server_uid = %s", old_server_uid);
 
 	memset(g_new_server_uid, 0x00, 129);
-	sprintf(g_new_server_uid, "%ld", destset->first);
+	snprintf(g_new_server_uid, 129,"%ld", destset->first);
 	EM_DEBUG_LOG(">>>>> new_server_uid =%s", g_new_server_uid);
 
 	if (!emstorage_update_server_uid(NULL, 0, old_server_uid, g_new_server_uid, NULL)) {
@@ -3420,7 +3420,7 @@ static int emcore_delete_mails_from_remote_server(char *multi_user_name,
 	for (i = 0; i < input_mail_id_count; i++) {
 		memset(mail_id_string, 0, sizeof(mail_id_string));
 		SNPRINTF(mail_id_string, sizeof(mail_id_string), "%d,", input_mail_ids[i]);
-		strcat(noti_param_string, mail_id_string);
+		strncat(noti_param_string, mail_id_string,(sizeof(char) * 10 * input_mail_id_count) - EM_SAFE_STRLEN(noti_param_string) - 1 );
 		/* can be optimized by appending sub string with directly pointing on string array kyuho.jo 2011-10-07 */
 	}
 
@@ -3853,7 +3853,7 @@ INTERNAL_FUNC int emcore_delete_mails_from_local_storage(char *multi_user_name,
 	for (i = 0; i < num; i++) {
 		memset(mail_id_string, 0, sizeof(mail_id_string));
 		SNPRINTF(mail_id_string, sizeof(mail_id_string), "%d,", mail_ids[i]);
-		strcat(noti_param_string, mail_id_string);
+		strncat(noti_param_string, mail_id_string, (sizeof(char) * 10 * num)- EM_SAFE_STRLEN(noti_param_string) -  1);
 		/* can be optimized by appending sub string with directly pointing on string array kyuho.jo 2011-10-07 */
 	}
 
@@ -5244,7 +5244,7 @@ INTERNAL_FUNC int emcore_move_mail(char *multi_user_name, int mail_ids[], int ma
 	for (i = 0; i < mail_ids_count; i++) {
 		memset(mail_id_string, 0, 10);
 		SNPRINTF(mail_id_string, 10, "%d,", mail_ids[i]);
-		strcat(parameter_string, mail_id_string);
+		strncat(parameter_string, mail_id_string, parameter_string - EM_SAFE_STRLEN(parameter_string) - 1);
 	}
 
 	EM_DEBUG_LOG("num : [%d], param string : [%s]", mail_ids_count , parameter_string);
@@ -6334,27 +6334,27 @@ INTERNAL_FUNC int emcore_sync_flag_with_server(char *multi_user_name, int mail_i
 		goto FINISH_OFF;
 	}
 
-	sprintf(tmp, "%d", msgno);
+	snprintf(tmp, 100,"%d", msgno);
 
 	if (mail->flags_seen_field)
-		sprintf(set_flags, "\\Seen");
+		snprintf(set_flags, 100, "\\Seen");
 	else
-		sprintf(clear_flags, "\\Seen");
+		snprintf(clear_flags, 100,"\\Seen");
 
 	if (mail->flags_answered_field)
-		sprintf(set_flags, "%s \\Answered", set_flags);
+		snprintf(set_flags, 100,"%s \\Answered", set_flags);
 	else
-		sprintf(clear_flags, "%s \\Answered", clear_flags);
+		snprintf(clear_flags, 100,"%s \\Answered", clear_flags);
 
 	if (mail->flags_flagged_field)
-		sprintf(set_flags, "%s \\Flagged", set_flags);
+		snprintf(set_flags, 100, "%s \\Flagged", set_flags);
 	else
-		sprintf(clear_flags, "%s \\Flagged", clear_flags);
+		snprintf(clear_flags, 100,"%s \\Flagged", clear_flags);
 
 	if (mail->flags_forwarded_field)
-		sprintf(set_flags, "%s $Forwarded", set_flags);
+		snprintf(set_flags, 100,"%s $Forwarded", set_flags);
 	else
-		sprintf(clear_flags, "%s $Forwarded", clear_flags);
+		snprintf(clear_flags, 100,"%s $Forwarded", clear_flags);
 
 	if (EM_SAFE_STRLEN(set_flags) > 0) {
 		EM_DEBUG_LOG(">>>> Calling mail_setflag [%s] ", set_flags);
@@ -6370,7 +6370,7 @@ INTERNAL_FUNC int emcore_sync_flag_with_server(char *multi_user_name, int mail_i
 
 	if (mail->lock_status) {
 		memset(set_flags, 0x00, 100);
-		sprintf(set_flags, "Sticky");
+		snprintf(set_flags, 100, "Sticky");
 		if (EM_SAFE_STRLEN(set_flags) > 0) {
 			EM_DEBUG_LOG(">>>> Calling mail_setflag [%s]", set_flags);
 			mail_flag(stream, tmp, set_flags, ST_SET | ST_SILENT);
@@ -6478,15 +6478,15 @@ INTERNAL_FUNC int emcore_sync_seen_flag_with_server(char *multi_user_name, int m
 		}
 
 		memset(tmp, 0x00, 100);
-		sprintf(tmp, "%d", msgno);
+		snprintf(tmp, 100,"%d", msgno);
 
 		memset(set_flags, 0x00, 100);
 		memset(clear_flags, 0x00, 100);
 
 		if (mail->flags_seen_field)
-			sprintf(set_flags, "\\Seen");
+			snprintf(set_flags, 100,"\\Seen");
 		else
-			sprintf(clear_flags, "\\Seen");
+			snprintf(clear_flags, 100,"\\Seen");
 		EM_DEBUG_LOG("new_flag.seen :  %s ", set_flags);
 
 		if (EM_SAFE_STRLEN(set_flags) > 0) {
@@ -6967,7 +6967,7 @@ static int emcore_mail_move_by_filter_rule(char *multi_user_name, int account_id
 				SNPRINTF(mail_id_string, 10, "%d", filter_mail_id_list[mail_id_index]);
 			else
 				SNPRINTF(mail_id_string, 10, "%d,", filter_mail_id_list[mail_id_index]);
-			strcat(parameter_string, mail_id_string);
+			strncat(parameter_string, mail_id_string, (sizeof(char) * parameter_string_length) - EM_SAFE_STRLEN(parameter_string) - 1);
 		}
 
 		EM_DEBUG_LOG("filtered_mail_id_count [%d]", filter_mail_id_count);
@@ -7195,7 +7195,7 @@ INTERNAL_FUNC int emcore_update_rule(char *multi_user_name, int filter_id, email
                             SNPRINTF(mail_id_string, 10, "%d", filter_mail_id_list[mail_id_index]);
                     else
                             SNPRINTF(mail_id_string, 10, "%d,", filter_mail_id_list[mail_id_index]);
-                    strcat(parameter_string, mail_id_string);
+                    strncat(parameter_string, mail_id_string, (sizeof(char) * parameter_string_length) - EM_SAFE_STRLEN(parameter_string) - 1);
             }
 
             EM_DEBUG_LOG("filtered_mail_id_count [%d]", filter_mail_id_count);
@@ -7266,7 +7266,7 @@ INTERNAL_FUNC int emcore_delete_rule(char *multi_user_name, int filter_id)
 				SNPRINTF(mail_id_string, 10, "%d", filter_mail_id_list[mail_id_index]);
 			else
 				SNPRINTF(mail_id_string, 10, "%d,", filter_mail_id_list[mail_id_index]);
-			strcat(parameter_string, mail_id_string);
+			strncat(parameter_string, mail_id_string,( sizeof(char) * parameter_string_length) - EM_SAFE_STRLEN(parameter_string) - 1 );
 		}
 
 		EM_DEBUG_LOG("filtered_mail_id_count [%d]", filter_mail_id_count);
@@ -8107,6 +8107,7 @@ int emcore_search_mail_and_uids(MAILSTREAM *stream, email_search_filter_t *input
 	int  uid_count = 0;
 	char          *search_filter_string = NULL;
 	char          *uid_range_string = NULL;
+	char *ptr = NULL;
 	emcore_uid_list *uid_list_for_listing = NULL;
 
 	if (stream  == NULL || output_uid_list == NULL || input_search_filter == NULL || output_uid_count == NULL) {
@@ -8171,7 +8172,7 @@ int emcore_search_mail_and_uids(MAILSTREAM *stream, email_search_filter_t *input
 		if ((p = strstr(response, " SEARCH "))) {
 			*p = '\0'; p  += strlen(" SEARCH ");
 
-			result = strtok(p, delims);
+			result = strtok_r(p, delims, &ptr);
 
 			while (result  != NULL) {
 				EM_DEBUG_LOG("UID VALUE DEEP is [%s]", result);
@@ -8187,7 +8188,7 @@ int emcore_search_mail_and_uids(MAILSTREAM *stream, email_search_filter_t *input
 				if (uid_list_for_listing != NULL)
 					uid_elem->next = uid_list_for_listing;
 				uid_list_for_listing = uid_elem;
-				result = strtok(NULL, delims);
+				result = strtok_r(NULL, delims, &ptr);
 				uid_count++;
 			}
 
