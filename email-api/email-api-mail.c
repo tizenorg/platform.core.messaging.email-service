@@ -279,7 +279,7 @@ EXPORT_API int email_create_db_full()
 	for (mailbox_index = 0; mailbox_index < mailbox_count; mailbox_index++) {
 		mail_slot_size = mailbox_list[mailbox_index].mail_slot_size;
 		for (mail_index = 0; mail_index < mail_slot_size; mail_index++) {
-			sprintf(mail_table_data.subject, "Subject #%d", mail_index);
+			snprintf(mail_table_data.subject, 50,"Subject #%d", mail_index);
 			mail_table_data.mailbox_id   = mailbox_list[mailbox_index].mailbox_id;
 			mail_table_data.mailbox_type = mailbox_list[mailbox_index].mailbox_type;
 

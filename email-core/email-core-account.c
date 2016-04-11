@@ -177,14 +177,14 @@ static char *emcore_get_imap_capability_string(MAILSTREAM *input_stream)
 
 	if ((imap_capability = imap_cap(input_stream))) {
 		if (imap_capability->idle)
-			EM_SAFE_STRCAT(capability_string, "IDLE ");
+			EM_SAFE_STRNCAT(capability_string, "IDLE ", sizeof(capability_string) - EM_SAFE_STRLEN(capability_string) - 1);
 		if (imap_capability->quota)
-			EM_SAFE_STRCAT(capability_string, "QUOTA ");
+			EM_SAFE_STRNCAT(capability_string, "QUOTA ", sizeof(capability_string) - EM_SAFE_STRLEN(capability_string) - 1);
 		if (imap_capability->starttls)
-			EM_SAFE_STRCAT(capability_string, "STARTTLS ");
+			EM_SAFE_STRNCAT(capability_string, "STARTTLS ", sizeof(capability_string) - EM_SAFE_STRLEN(capability_string) - 1);
 #ifdef __FEATURE_XLIST_SUPPORT__
 		if (imap_capability->xlist)
-			EM_SAFE_STRCAT(capability_string, "XLIST ");
+			EM_SAFE_STRNCAT(capability_string, "XLIST ", sizeof(capability_string) - EM_SAFE_STRLEN(capability_string) - 1);
 #endif /* __FEATURE_XLIST_SUPPORT__ */
 		result_string = EM_SAFE_STRDUP(capability_string);
 	}
@@ -317,8 +317,7 @@ INTERNAL_FUNC int emcore_validate_account_with_account_info(char *multi_user_nam
 				err = EMAIL_ERROR_OUT_OF_MEMORY;
 				goto FINISH_OFF;
 			}
-
-			EM_SAFE_STRCAT(*output_server_capability_string, smtp_capability_string);
+			EM_SAFE_STRNCAT(*output_server_capability_string,smtp_capability_string , (server_capability_string_length + 1) - EM_SAFE_STRLEN(*output_server_capability_string)- 1);
 			EM_SAFE_STRCAT(*output_server_capability_string, imap_capability_string);
 			EM_DEBUG_LOG("%s", *output_server_capability_string);
 		}

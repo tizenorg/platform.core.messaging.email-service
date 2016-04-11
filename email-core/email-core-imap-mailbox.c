@@ -715,7 +715,7 @@ int emcore_download_mailbox_list(void *mail_stream,
 			strncpy(reference, stream->original_mailbox, (size_t)EM_SAFE_STRLEN(stream->original_mailbox));
 			if ((s = strchr(reference, '}')))
 				*(++s) = '\0';
-			strcat(reference, mailbox_name);
+			EM_SAFE_STRNCAT(reference, mailbox_name, (EM_SAFE_STRLEN(stream->original_mailbox) + strlen(mailbox_name) + 1) - EM_SAFE_STRLEN(reference) - 1);
 		}
 	} else
 		reference = EM_SAFE_STRDUP(stream->original_mailbox);

@@ -49,6 +49,8 @@
 #include "email-debug-log.h"
 #include "email-types.h"
 
+#define SECTIONS_SIZE 16
+
 static int multipart_status = 0;
 
 static void emcore_gmime_pop3_parse_foreach_cb(GMimeObject *parent, GMimeObject *part, gpointer user_data);
@@ -3131,7 +3133,7 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart(GMimeMultipart *multipart,
 	part = body->nested.part;
 
 	while (part != NULL) {
-		sprintf(id, "%d", i++);
+		snprintf(id, 13, "%d", i++);
 
 		if (EM_SAFE_STRLEN(subspec) > 2)
 			section = EM_SAFE_STRDUP(subspec+2);
@@ -3596,7 +3598,7 @@ INTERNAL_FUNC int emcore_gmime_get_body_sections_from_message(GMimeMessage *mess
 				char t[100] = {0,};
 				snprintf(t, sizeof(t), "BODY.PEEK[%s] ", part_path);
 				if (EM_SAFE_STRLEN(sections) + EM_SAFE_STRLEN(t) < sizeof(sections) - 1) {
-					strcat(sections, t);
+					EM_SAFE_STRNCAT(sections, t, sizeof(sections) - EM_SAFE_STRLEN(sections) - 1);
 				} else {
 					EM_DEBUG_EXCEPTION("Too many body parts. IMAP command may cross 2000bytes.");
 					goto FINISH_OFF;
@@ -3608,7 +3610,7 @@ INTERNAL_FUNC int emcore_gmime_get_body_sections_from_message(GMimeMessage *mess
 					char t[100] = {0,};
 					snprintf(t, sizeof(t), "BODY.PEEK[%s] ", part_path);
 					if (EM_SAFE_STRLEN(sections) + EM_SAFE_STRLEN(t) < sizeof(sections) - 1) {
-						strcat(sections, t);
+						EM_SAFE_STRNCAT(sections, t, sizeof(sections)- EM_SAFE_STRLEN(sections) - 1);
 					} else {
 						EM_DEBUG_EXCEPTION("Too many body parts. IMAP command may cross 2000bytes.");
 						goto FINISH_OFF;
@@ -3703,7 +3705,7 @@ INTERNAL_FUNC int emcore_gmime_get_attachment_section_from_message(GMimeMessage 
 					char t[100] = {0,};
 					snprintf(t, sizeof(t), "%s", part_path);
 					if (EM_SAFE_STRLEN(sections) + EM_SAFE_STRLEN(t) < sizeof(sections) - 1) {
-						strcat(sections, t);
+						EM_SAFE_STRNCAT(sections, t, sizeof(sections) - EM_SAFE_STRLEN(sections) - 1);
 					} else {
 						EM_DEBUG_EXCEPTION("Too many body parts. IMAP command may cross 2000bytes.");
 						goto FINISH_OFF;
@@ -3754,7 +3756,7 @@ static int emcore_gmime_get_section_n_bodysize(char *response, char *section, in
 			s++;
 
 		*s = '\0';
-		strcpy(section, p);
+		g_strlcpy(section, p, SECTIONS_SIZE);
 
 		/* if (strcmp(section, p)) {
 					err = EMAIL_ERROR_INVALID_RESPONSE;
@@ -3804,7 +3806,7 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_body_sections(MAILSTREAM *stream, int 
 
 	char tag[16] = {0,};
 	char command[IMAP_MAX_COMMAND_LENGTH+100] = {0,};
-	char section[16] = {0,};
+	char section[SECTIONS_SIZE] = {0,};
 	char *response = NULL;
 
 	int server_response_yn = 0;
@@ -4998,8 +5000,8 @@ INTERNAL_FUNC char *emcore_gmime_get_modified_filename_in_duplication(char *sour
 
 	gettimeofday(&tv, NULL);
 	srand(tv.tv_usec);
-
-	snprintf(temp_filename, MAX_PATH, "%d_%s", rand(), source_filename);
+	unsigned int seed = time(NULL);
+	snprintf(temp_filename, MAX_PATH, "%d_%s", rand_r(&seed), source_filename);
 	EM_DEBUG_LOG_SEC("temp_file_name [%s]", temp_filename);
 
 	EM_DEBUG_FUNC_END();

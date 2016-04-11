@@ -12,7 +12,7 @@
 * http://www.apache.org/licenses/LICENSE-2.0
 *
 * Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS, 
+* distributed under the License is distributed on an "AS IS" BASIS,
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 * See the License for the specific language governing permissions and
 * limitations under the License.
@@ -521,19 +521,19 @@ INTERNAL_FUNC int em_convert_time_t_to_string(time_t *input_time, char **output_
 	EM_DEBUG_FUNC_BEGIN("input_time[%p], output_datetime_string[%p]", input_time, output_datetime_string);
 	char temp_buffer[20] = { 0, };
 	struct tm *temp_time_info;
-
+	struct tm time_buf;
 	if (!input_time || !output_datetime_string) {
 		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
 		return EMAIL_ERROR_INVALID_PARAM;
 	}
 
-	temp_time_info = localtime(input_time);
+	temp_time_info = localtime_r(input_time, &time_buf);
 
 	if (!temp_time_info) {
 		EM_DEBUG_EXCEPTION("localtime failed.");
 		return EMAIL_ERROR_SYSTEM_FAILURE;
 	}
-	SNPRINTF(temp_buffer, sizeof(temp_buffer), "%04d%02d%02d%02d%02d%02d", 
+	SNPRINTF(temp_buffer, sizeof(temp_buffer), "%04d%02d%02d%02d%02d%02d",
 		temp_time_info->tm_year + 1970, temp_time_info->tm_mon, temp_time_info->tm_mday, temp_time_info->tm_hour, temp_time_info->tm_min, temp_time_info->tm_sec);
 
 	*output_datetime_string = EM_SAFE_STRDUP(temp_buffer);
@@ -1291,19 +1291,19 @@ INTERNAL_FUNC char* em_convert_meeting_req_to_byte_stream(email_meeting_request_
 		return NULL;
 	}
 
-	tn = tpl_map(converted_fmt, 
-						&meeting_req->mail_id, 
-						&meeting_req->meeting_response, 
-						&tb[0], 
-						&tb[1], 
-						&meeting_req->location, 
-						&meeting_req->global_object_id, 
-						&meeting_req->time_zone.offset_from_GMT, 
-						meeting_req->time_zone.standard_name, 32, 
-						&tb[2], 
-						&meeting_req->time_zone.standard_bias, 
-						meeting_req->time_zone.daylight_name, 32, 
-						&tb[3], 
+	tn = tpl_map(converted_fmt,
+						&meeting_req->mail_id,
+						&meeting_req->meeting_response,
+						&tb[0],
+						&tb[1],
+						&meeting_req->location,
+						&meeting_req->global_object_id,
+						&meeting_req->time_zone.offset_from_GMT,
+						meeting_req->time_zone.standard_name, 32,
+						&tb[2],
+						&meeting_req->time_zone.standard_bias,
+						meeting_req->time_zone.daylight_name, 32,
+						&tb[3],
 						&meeting_req->time_zone.daylight_bias
 				);
 	if (!tn) {
@@ -1349,19 +1349,19 @@ INTERNAL_FUNC void em_convert_byte_stream_to_meeting_req(char *stream, int strea
 		return;
 	}
 
-	tn = tpl_map(converted_fmt, 
-						&meeting_req->mail_id, 
-						&meeting_req->meeting_response, 
-						&tb[0], 
-						&tb[1], 
-						&meeting_req->location, 
-						&meeting_req->global_object_id, 
-						&meeting_req->time_zone.offset_from_GMT, 
-						meeting_req->time_zone.standard_name, 32, 
-						&tb[2], 
-						&meeting_req->time_zone.standard_bias, 
-						meeting_req->time_zone.daylight_name, 32, 
-						&tb[3], 
+	tn = tpl_map(converted_fmt,
+						&meeting_req->mail_id,
+						&meeting_req->meeting_response,
+						&tb[0],
+						&tb[1],
+						&meeting_req->location,
+						&meeting_req->global_object_id,
+						&meeting_req->time_zone.offset_from_GMT,
+						meeting_req->time_zone.standard_name, 32,
+						&tb[2],
+						&meeting_req->time_zone.standard_bias,
+						meeting_req->time_zone.daylight_name, 32,
+						&tb[3],
 						&meeting_req->time_zone.daylight_bias
 				);
 	if (!tn) {
@@ -1387,7 +1387,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_meeting_req(char *stream, int strea
 	EM_DEBUG_FUNC_END();
 }
 
-INTERNAL_FUNC char* em_convert_search_filter_to_byte_stream(email_search_filter_t *input_search_filter_list, 
+INTERNAL_FUNC char* em_convert_search_filter_to_byte_stream(email_search_filter_t *input_search_filter_list,
 									int input_search_filter_count, int *output_stream_size)
 {
 	EM_DEBUG_FUNC_BEGIN("input_search_filter_list [%p] input_search_filter_count [%d]", input_search_filter_list, input_search_filter_count);
@@ -1452,7 +1452,7 @@ INTERNAL_FUNC char* em_convert_search_filter_to_byte_stream(email_search_filter_
 	return result_stream;
 }
 
-INTERNAL_FUNC void em_convert_byte_stream_to_search_filter(char *input_stream, 
+INTERNAL_FUNC void em_convert_byte_stream_to_search_filter(char *input_stream,
 				email_search_filter_t **output_search_filter_list, int *output_search_filter_count)
 {
 	EM_DEBUG_FUNC_BEGIN("input_stream [%p] output_search_filter_list [%p] output_search_filter_count [%p]", input_stream, output_search_filter_list, output_search_filter_count);
