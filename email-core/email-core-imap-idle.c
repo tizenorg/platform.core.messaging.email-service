@@ -335,8 +335,8 @@ static int emcore_connect_and_idle_on_mailbox(char *multi_user_name,
 	/* Get Socket ID */
 	socket_fd = ((TCPSTREAM *)tcp_stream)->tcpsi;
 
-	sprintf(tag, "%08lx", 0xffffffff & (((MAILSTREAM *)mail_stream)->gensym++));
-	sprintf(cmd, "%s IDLE\015\012", tag);
+	snprintf(tag, sizeof(tag), "%08lx", 0xffffffff & (((MAILSTREAM *)mail_stream)->gensym++));
+	snprintf(cmd, sizeof(cmd), "%s IDLE\015\012", tag);
 
 	/* Send IDLE command */
 	if (!imap_local->netstream || !net_sout(imap_local->netstream, cmd, (int)EM_SAFE_STRLEN(cmd))) {

@@ -2872,7 +2872,7 @@ char *emcore_generate_content_id_string(const char *hostname, int *err)
 
 	int cid_length = RANDOM_NUMBER_LENGTH + EM_SAFE_STRLEN(hostname) + 2, random_number_1, random_number_2, random_number_3, random_number_4;
 	char *cid_string = NULL;
-
+	unsigned int seed = time(NULL);
 	cid_string = malloc(cid_length);
 
 	if (!cid_string) {
@@ -2883,11 +2883,11 @@ char *emcore_generate_content_id_string(const char *hostname, int *err)
 
 	memset(cid_string, 0, cid_length);
 
-	srand(time(NULL) + rand());
-	random_number_1 = rand() * rand();
-	random_number_2 = rand() * rand();
-	random_number_3 = rand() * rand();
-	random_number_4 = rand() * rand();
+	srand(time(NULL) + rand_r(&seed));
+	random_number_1 = rand_r(&seed) * rand_r(&seed);
+	random_number_2 = rand_r(&seed) * rand_r(&seed);
+	random_number_3 = rand_r(&seed) * rand_r(&seed);
+	random_number_4 = rand_r(&seed) * rand_r(&seed);
 
 	SNPRINTF(cid_string, cid_length, "<%08x%08x%08x%08x@%s>", random_number_1, random_number_2, random_number_3, random_number_4, hostname);
 
@@ -3611,7 +3611,8 @@ static int emcore_make_envelope_from_mail(char *multi_user_name, emstorage_mail_
 	if (!is_incomplete) {
 		char  localtime_string[DATE_STR_LENGTH] = { 0, };
 		time_t tn     = time(0);
-		struct tm *t  = gmtime(&tn);
+		struct tm time_buf;
+		struct tm *t  = gmtime_r(&tn, &time_buf);
 		if (t == NULL) {
 			EM_DEBUG_EXCEPTION("gmtime failed");
 			error = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -3688,43 +3689,43 @@ static char *emcore_get_digest_string(int digest_type, int mime_type)
 	case EMAIL_PGP_ENCRYPTED:
 	case EMAIL_PGP_SIGNED_AND_ENCRYPTED:
 		memset(p_digest_string, 0x00, sizeof(p_digest_string));
-		strcpy(p_digest_string, "pgp-");
+		g_strlcpy(p_digest_string, "pgp-", sizeof(p_digest_string));
 		break;
 	}
 
 	switch (digest_type) {
 	case DIGEST_TYPE_SHA1:
-		strcat(p_digest_string, "sha1");
+		strncat(p_digest_string, "sha1", sizeof(p_digest_string) - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_MD5:
-		strcat(p_digest_string, "md5");
+		strncat(p_digest_string, "md5", sizeof(p_digest_string) - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_RIPEMD160:
-		strcat(p_digest_string, "ripemd160");
+		strncat(p_digest_string, "ripemd160", sizeof(p_digest_string) - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_MD2:
-		strcat(p_digest_string, "md2");
+		strncat(p_digest_string, "md2", sizeof(p_digest_string) - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_TIGER192:
-		strcat(p_digest_string, "tiger192");
+		strncat(p_digest_string, "tiger192", sizeof(p_digest_string) - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_HAVAL5160:
-		strcat(p_digest_string, "haval5160");
+		strncat(p_digest_string, "haval5160", sizeof(p_digest_string) - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_SHA256:
-		strcat(p_digest_string, "sha256");
+		strncat(p_digest_string, "sha256", sizeof(p_digest_string) - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_SHA384:
-		strcat(p_digest_string, "sha384");
+		strncat(p_digest_string, "sha384", sizeof(p_digest_string) - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_SHA512:
-		strcat(p_digest_string, "sha512");
+		strncat(p_digest_string, "sha512", sizeof(p_digest_string) - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_SHA224:
-		strcat(p_digest_string, "sha224");
+		strncat(p_digest_string, "sha224", sizeof(p_digest_string) - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	case DIGEST_TYPE_MD4:
-		strcat(p_digest_string, "md4");
+		strncat(p_digest_string, "md4", sizeof(p_digest_string) - EM_SAFE_STRLEN(p_digest_string) - 1);
 		break;
 	}
 

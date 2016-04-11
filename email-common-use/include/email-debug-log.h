@@ -281,6 +281,16 @@ extern "C"
 		((_src) && (_dest))? strcat(_dest, _src) : NULL;\
 	})
 
+
+#define EM_SAFE_STRNCAT(dest, src, size) \
+	({\
+		char* _dest = dest;\
+		char* _src = src;\
+	 	int _size = size;\
+		((_src) && (_dest))? strncat(_dest, _src, _size) : NULL;\
+	})
+
+
 #define EM_SAFE_STRLEN(s) \
 	({\
 		char* _s = (char*)s;\

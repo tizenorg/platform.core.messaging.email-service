@@ -559,6 +559,7 @@ int emcore_get_uids_order_by_datetime_from_imap_server(MAILSTREAM *stream, int c
 	char before_date_string[20] = {0};
 	char *since_date_string = NULL;
 	char *uid_range_string = NULL;
+	char *ptr = NULL;
 	emcore_uid_list *uid_list_for_listing = NULL;
 
 	if (!stream || !output_uid_list) {
@@ -633,7 +634,7 @@ int emcore_get_uids_order_by_datetime_from_imap_server(MAILSTREAM *stream, int c
 			if ((p = strstr(response, " SEARCH "))) {
 				*p = '\0'; p  += strlen(" SEARCH ");
 
-				result = strtok(p, delims);
+				result = strtok_r(p, delims, &ptr);
 
 				while (result  != NULL) {
 					EM_DEBUG_LOG_DEV("UID VALUE DEEP is [%s]", result);
@@ -649,7 +650,7 @@ int emcore_get_uids_order_by_datetime_from_imap_server(MAILSTREAM *stream, int c
 					if (uid_list_for_listing != NULL)
 						uid_elem->next = uid_list_for_listing;
 					uid_list_for_listing = uid_elem;
-					result = strtok(NULL, delims);
+					result = strtok_r(NULL, delims, &ptr);
 					uid_count++;
 				}
 
@@ -716,6 +717,7 @@ int imap4_mailbox_get_uids_by_timestamp(MAILSTREAM *stream, emcore_uid_list** ui
 	time_t         week_before_RawTime = 0;
 	char  date_string[16];
 	char *mon = NULL;
+	char *ptr = NULL;
 
 	if (!stream || !uid_list) {
 		EM_DEBUG_EXCEPTION(" stream[%p], uid_list[%p]", stream, uid_list);
@@ -747,7 +749,8 @@ int imap4_mailbox_get_uids_by_timestamp(MAILSTREAM *stream, emcore_uid_list** ui
 	week_before_RawTime = RawTime - 604800;
 
 	/* Reading the current timeinfo */
-	timeinfo = localtime(&week_before_RawTime);
+	struct tm tm_buf;
+	timeinfo = localtime_r(&week_before_RawTime, &tm_buf);
 	if (timeinfo == NULL) {
 		EM_DEBUG_EXCEPTION("localtime failed");
 		err = EMAIL_ERROR_SYSTEM_FAILURE;
@@ -811,7 +814,7 @@ int imap4_mailbox_get_uids_by_timestamp(MAILSTREAM *stream, emcore_uid_list** ui
 		if ((p = strstr(response, " SEARCH "))) {
 		    *p = '\0'; p  += strlen(" SEARCH ");
 
-		    result = strtok(p, delims);
+		    result = strtok_r(p, delims, &ptr);
 
 		    while (result  != NULL) {
 				EM_DEBUG_LOG("UID VALUE DEEP is [%s]", result);
@@ -827,7 +830,7 @@ int imap4_mailbox_get_uids_by_timestamp(MAILSTREAM *stream, emcore_uid_list** ui
 				if (*uid_list  != NULL)
 					uid_elem->next = *uid_list;
 				*uid_list = uid_elem;
-				result = strtok(NULL, delims);
+				result = strtok_r(NULL, delims, &ptr);
 		    }
 
 			EM_SAFE_FREE(response);
@@ -3383,7 +3386,7 @@ void mail_appenduid(char *mailbox, unsigned long uidvalidity, SEARCHSET *set)
 
     memset(g_append_uid_rsp, 0x00, 129);
 
-    sprintf(g_append_uid_rsp, "%ld", set->first);
+    snprintf(g_append_uid_rsp, sizeof(g_append_uid_rsp), "%ld", set->first);
     EM_DEBUG_LOG("append uid - %s", g_append_uid_rsp);
 }
 
@@ -3510,7 +3513,7 @@ INTERNAL_FUNC int emcore_sync_mail_from_client_to_server(char *multi_user_name, 
 	snprintf(message_size, sizeof(message_size), "%d", len);
 	INIT(&str, mail_string, message_size, EM_SAFE_STRLEN(message_size));
 
-	sprintf(set_flags, "\\Seen");
+	snprintf(set_flags, sizeof(set_flags), "\\Seen");
 
 	int total_size = len;
 	int data_size = 0;
