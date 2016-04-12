@@ -200,7 +200,10 @@ FINISH_OFF:
 			X509_free(x509_cert);
 	}
 
-	EM_SAFE_FREE(in_cert);
+	if(in_cert){
+		free((char *)in_cert);
+	}
+
 	EM_SAFE_FREE(temp_recipients);
 	if (token_address)
 		mail_free_address(&token_address);

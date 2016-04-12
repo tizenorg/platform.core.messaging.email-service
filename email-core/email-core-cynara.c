@@ -4,7 +4,7 @@
 * Copyright (c) 2015 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Sunghyun Kwon <sh0701.kwon@samsung.com>, Minsoo Kim <minnsoo.kim@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -26,7 +26,7 @@
  * @file	email-core-cynara.c
  * @author	sh0701.kwon@samsung.com
  * @version	0.1
- * @brief 	This file contains functionality to provide cynara support in email-service. 
+ * @brief 	This file contains functionality to provide cynara support in email-service.
  */
 
 #include <pthread.h>
@@ -34,6 +34,7 @@
 #include <cynara-client.h>
 #include <cynara-session.h>
 #include <cynara-creds-commons.h>
+#include <cynara-creds-socket.h>
 
 #include "email-debug-log.h"
 #include "email-utilities.h"
@@ -65,7 +66,7 @@ INTERNAL_FUNC int emcore_init_cynara()
 	ret = cynara_initialize(&(cynara_info->email_cynara), NULL);
 	if (ret != CYNARA_API_SUCCESS) {
 		cynara_strerror(ret, errno_buf, ERRNO_BUF_SIZE);
-		EM_DEBUG_EXCEPTION("cynara_initialize failed : [%d], error : [%s]", 
+		EM_DEBUG_EXCEPTION("cynara_initialize failed : [%d], error : [%s]",
 							ret,
 							errno_buf);
 		err = EMAIL_ERROR_NOT_INITIALIZED;
@@ -75,7 +76,7 @@ INTERNAL_FUNC int emcore_init_cynara()
 	ret = cynara_creds_get_default_client_method(&(cynara_info->client_method));
 	if (ret != CYNARA_API_SUCCESS) {
 		cynara_strerror(ret, errno_buf, ERRNO_BUF_SIZE);
-		EM_DEBUG_EXCEPTION("cynara_creds_get_default_client_method failed : [%d], error : [%s]", 
+		EM_DEBUG_EXCEPTION("cynara_creds_get_default_client_method failed : [%d], error : [%s]",
 							ret,
 							errno_buf);
 		err = EMAIL_ERROR_NOT_INITIALIZED;
@@ -85,7 +86,7 @@ INTERNAL_FUNC int emcore_init_cynara()
 	ret = cynara_creds_get_default_user_method(&(cynara_info->user_method));
 	if (ret != CYNARA_API_SUCCESS) {
 		cynara_strerror(ret, errno_buf, ERRNO_BUF_SIZE);
-		EM_DEBUG_EXCEPTION("cynara_creds_get_default_user_method failed : [%d], error : [%s]", 
+		EM_DEBUG_EXCEPTION("cynara_creds_get_default_user_method failed : [%d], error : [%s]",
 							ret,
 							errno_buf);
 		err = EMAIL_ERROR_NOT_INITIALIZED;
@@ -115,8 +116,8 @@ INTERNAL_FUNC void emcore_finish_cynara()
 	ret = cynara_finish(cynara_info->email_cynara);
 	if (ret != CYNARA_API_SUCCESS) {
 		cynara_strerror(ret, errno_buf, ERRNO_BUF_SIZE);
-		EM_DEBUG_EXCEPTION("cynara_finish failed : [%d], error : [%s]", 
-							ret, 
+		EM_DEBUG_EXCEPTION("cynara_finish failed : [%d], error : [%s]",
+							ret,
 							errno_buf);
 	}
 	EM_SAFE_FREE(cynara_info);
@@ -145,7 +146,7 @@ INTERNAL_FUNC int emcore_check_privilege(unsigned int socket_fd)
 			return err;
 		}
 	}
-	
+
 	err = EMAIL_ERROR_PERMISSION_DENIED;
 
 	pid_t client_pid = 0;
@@ -167,8 +168,8 @@ INTERNAL_FUNC int emcore_check_privilege(unsigned int socket_fd)
 	ret = cynara_creds_socket_get_user(socket_fd, cynara_info->user_method, &client_uid);
 	if (ret != CYNARA_API_SUCCESS) {
 		cynara_strerror(ret, errno_buf, ERRNO_BUF_SIZE);
-		EM_DEBUG_EXCEPTION("cynara_creds_socket_get_user failed : [%d], error : [%s]", 
-							ret, 
+		EM_DEBUG_EXCEPTION("cynara_creds_socket_get_user failed : [%d], error : [%s]",
+							ret,
 							errno_buf);
 		goto FINISH_OFF;
 	}
@@ -176,8 +177,8 @@ INTERNAL_FUNC int emcore_check_privilege(unsigned int socket_fd)
 	ret = cynara_creds_socket_get_pid(socket_fd, &client_pid);
 	if (ret != CYNARA_API_SUCCESS) {
 		cynara_strerror(ret, errno_buf, ERRNO_BUF_SIZE);
-		EM_DEBUG_EXCEPTION("cynara_creds_socket_get_pid failed : [%d], error : [%s]", 
-							ret, 
+		EM_DEBUG_EXCEPTION("cynara_creds_socket_get_pid failed : [%d], error : [%s]",
+							ret,
 							errno_buf);
 		goto FINISH_OFF;
 	}
@@ -185,16 +186,16 @@ INTERNAL_FUNC int emcore_check_privilege(unsigned int socket_fd)
 	client_session = cynara_session_from_pid(client_pid);
 	if (client_session == NULL) {
 		cynara_strerror(ret, errno_buf, ERRNO_BUF_SIZE);
-		EM_DEBUG_EXCEPTION("cynara_session_from_pid failed error : [%s]", 
+		EM_DEBUG_EXCEPTION("cynara_session_from_pid failed error : [%s]",
 							errno_buf);
 		goto FINISH_OFF;
 	}
 
-	ret = cynara_check(cynara_info->email_cynara, client_smack, client_session, client_uid, 
+	ret = cynara_check(cynara_info->email_cynara, client_smack, client_session, client_uid,
 					"http://tizen.org/privilege/email");
 	if (ret != CYNARA_API_ACCESS_ALLOWED) {
 		cynara_strerror(ret, errno_buf, ERRNO_BUF_SIZE);
-		EM_DEBUG_EXCEPTION("cynara_check failed : [%d], error : [%s]", 
+		EM_DEBUG_EXCEPTION("cynara_check failed : [%d], error : [%s]",
 							ret,
 							errno_buf);
 		goto FINISH_OFF;

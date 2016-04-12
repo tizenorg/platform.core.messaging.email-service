@@ -33,6 +33,7 @@
 #include "email-utilities.h"
 
 /* Adding '/' method for system daemon */
+/*
 static char *add_shared_owner_prefix(const char *name)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -48,6 +49,7 @@ static char *add_shared_owner_prefix(const char *name)
 	EM_DEBUG_FUNC_END();
 	return ckm_alias;
 }
+*/
 
 /* Add new data */
 INTERNAL_FUNC int emcore_add_password_in_key_manager(char *data_name, char *stored_data)
