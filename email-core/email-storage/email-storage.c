@@ -188,8 +188,6 @@
 /*  for safety DB operation */
 static pthread_mutex_t _db_handle_lock = PTHREAD_MUTEX_INITIALIZER;
 
-/* for safety secure-storage operation */
-static pthread_mutex_t _ss_handle_lock = PTHREAD_MUTEX_INITIALIZER;
 
 #define	_MULTIPLE_DB_HANDLE
 
@@ -1329,33 +1327,6 @@ static void _get_stmt_field_data_blob(DB_STMT hStmt, void **buf, int index)
 
 }
 
-static int _get_stmt_field_data_string_without_allocation(DB_STMT hStmt, char *buf, int buffer_size, int ucs2, int index)
-{
-	if (!hStmt || !buf || (index < 0)) { /*prevent 39620*/
-		EM_DEBUG_EXCEPTION("hStmt[%d], buf[%p], buffer_size[%d], index[%d]", hStmt, buf, buffer_size, index);
-		return false;
-	}
-
-	int sLen = 0;
-	sLen = sqlite3_column_bytes(hStmt, index);
-
-#ifdef _PRINT_STORAGE_LOG_
-		EM_DEBUG_LOG("_get_stmt_field_data_string_without_allocation sqlite3_column_bytes sLen[%d]", sLen);
-#endif
-
-	if (sLen > 0) {
-		memset(buf, 0, buffer_size);
-		strncpy(buf, (char *)sqlite3_column_text(hStmt, index), buffer_size - 1);
-	} else
-		g_strlcpy(buf, "", buffer_size);
-
-#ifdef _PRINT_STORAGE_LOG_
-	EM_DEBUG_LOG("buf[%s], index[%d]", buf, index);
-#endif
-
-	return false;
-}
-
 static int _bind_stmt_field_data_char(DB_STMT hStmt, int index, char value)
 {
 	if ((hStmt == NULL) || (index < 0)) {
@@ -1678,7 +1649,7 @@ static int _delete_all_files_and_directories(char *db_file_path, int *err_code)
 		}
 	}
 
-	if (!emstorage_delete_dir(MAILHOME, &error)) {
+	if (!emstorage_delete_dir((char *)MAILHOME, &error)) {
 		EM_DEBUG_EXCEPTION("emstorage_delete_dir failed");
 		goto FINISH_OFF;
 	}
@@ -1782,7 +1753,7 @@ INTERNAL_FUNC int emstorage_init_db(char *multi_user_name)
 	}
 
 	if (err == EMAIL_ERROR_CONTAINER_NOT_INITIALIZATION) {
-		err = emcore_get_canonicalize_path(EMAIL_SERVICE_DB_FILE_PATH, &output_file_path);
+		err = emcore_get_canonicalize_path((char *)EMAIL_SERVICE_DB_FILE_PATH, &output_file_path);
 		if (err != EMAIL_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("emcore_get_canonicalize_path failed : [%d]", err);
 			goto FINISH_OFF;
@@ -1926,7 +1897,7 @@ INTERNAL_FUNC sqlite3* emstorage_db_open(char *multi_user_name, int *err_code)
         }
 
 		if (error == EMAIL_ERROR_CONTAINER_NOT_INITIALIZATION) {
-			if ((error = emcore_get_canonicalize_path(EMAIL_SERVICE_DB_FILE_PATH, &output_file_path)) != EMAIL_ERROR_NONE) {
+			if ((error = emcore_get_canonicalize_path((char *)EMAIL_SERVICE_DB_FILE_PATH, &output_file_path)) != EMAIL_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("emcore_get_canonicalize_path failed : [%d]", error);
 				goto FINISH_OFF;
 			}
@@ -2092,7 +2063,7 @@ INTERNAL_FUNC int emstorage_initialize_field_count()
 		goto FINISH_OFF;
 	}
 
-	err = emcore_load_query_from_file(EMAIL_SERVICE_CREATE_TABLE_QUERY_FILE_PATH, &create_table_query, &query_len);
+	err = emcore_load_query_from_file((char *)EMAIL_SERVICE_CREATE_TABLE_QUERY_FILE_PATH, &create_table_query, &query_len);
 	if (err != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_load_sql_from_file failed [%d]", err);
 		goto FINISH_OFF;
@@ -2140,7 +2111,7 @@ INTERNAL_FUNC int emstorage_create_table(char *multi_user_name, emstorage_create
 
 	sqlite3 *local_db_handle = emstorage_get_db_connection(multi_user_name);
 
-	error = emcore_load_query_from_file(EMAIL_SERVICE_CREATE_TABLE_QUERY_FILE_PATH, &create_table_query, &query_len);
+	error = emcore_load_query_from_file((char *)EMAIL_SERVICE_CREATE_TABLE_QUERY_FILE_PATH, &create_table_query, &query_len);
 	if (error != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_load_sql_from_file failed [%d]", error);
 		goto FINISH_OFF2;
@@ -4848,7 +4819,6 @@ INTERNAL_FUNC int emstorage_add_account(char *multi_user_name, emstorage_account
 	int i = 0;
 	int rc = -1, ret = false;
 	int error = EMAIL_ERROR_NONE;
-	int error_from_ssm = 0;
 	DB_STMT hStmt = NULL;
 	char sql_query_string[QUERY_SIZE] = {0, };
 	char recv_password_file_name[MAX_PW_FILE_NAME_LENGTH];
@@ -11478,7 +11448,7 @@ INTERNAL_FUNC int emstorage_clear_mail_data(char *multi_user_name, int transacti
 	sqlite3 *local_db_handle = emstorage_get_db_connection(multi_user_name);
 	EMSTORAGE_START_WRITE_TRANSACTION(multi_user_name, transaction, error);
 
-	if (!emstorage_delete_dir(MAILHOME, &error)) {
+	if (!emstorage_delete_dir((char *)MAILHOME, &error)) {
 		EM_DEBUG_EXCEPTION(" emstorage_delete_dir failed - %d", error);
 
 		goto FINISH_OFF;
@@ -12791,7 +12761,7 @@ INTERNAL_FUNC int emstorage_test(char *multi_user_name, int mail_id, int account
 	_bind_stmt_field_data_string(hStmt, ALIAS_SENDER_IDX_IN_MAIL_TBL, "send_alias", 1, FROM_EMAIL_ADDRESS_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, ALIAS_RECIPIENT_IDX_IN_MAIL_TBL, "recipient_alias", 1, TO_EMAIL_ADDRESS_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_int(hStmt, BODY_DOWNLOAD_STATUS_IDX_IN_MAIL_TBL, 1);
-	_bind_stmt_field_data_string(hStmt, FILE_PATH_PLAIN_IDX_IN_MAIL_TBL, MAILHOME_UTF8, 0, TEXT_1_LEN_IN_MAIL_TBL);
+	_bind_stmt_field_data_string(hStmt, FILE_PATH_PLAIN_IDX_IN_MAIL_TBL, (char *)MAILHOME_UTF8, 0, TEXT_1_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_string(hStmt, FILE_PATH_HTML_IDX_IN_MAIL_TBL, "", 0, TEXT_2_LEN_IN_MAIL_TBL);
 	_bind_stmt_field_data_int(hStmt, MAIL_SIZE_IDX_IN_MAIL_TBL, 4);
 	_bind_stmt_field_data_char(hStmt, FLAGS_SEEN_FIELD_IDX_IN_MAIL_TBL, 0);
@@ -17930,7 +17900,7 @@ INTERNAL_FUNC int emstorage_update_db_table_schema(char *multi_user_name)
 
 	};
 
-	error = emcore_load_query_from_file(EMAIL_SERVICE_CREATE_TABLE_QUERY_FILE_PATH, &create_table_query, &query_len);
+	error = emcore_load_query_from_file((char *)EMAIL_SERVICE_CREATE_TABLE_QUERY_FILE_PATH, &create_table_query, &query_len);
 
 	if (error != EMAIL_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("emcore_load_sql_from_file failed [%d]", error);
