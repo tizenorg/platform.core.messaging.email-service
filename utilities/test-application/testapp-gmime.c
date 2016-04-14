@@ -15,14 +15,15 @@
 
 
 #define TEST_EML_PATH "/tmp/test.eml"
-
+/*
 static void print_depth(int depth)
 {
 	int i;
 	for (i = 0; i < depth; i++)
 		testapp_print("    \n");
 }
-
+*/
+/*
 static void print_mime_struct(GMimeObject *part, int depth)
 {
 	const GMimeContentType *type;
@@ -45,7 +46,7 @@ static void print_mime_struct(GMimeObject *part, int depth)
 		}
 	}
 }
-
+*/
 static void
 test_eml_parsing_foreach_callback(GMimeObject *parent, GMimeObject *part, gpointer user_data)
 {
@@ -120,7 +121,7 @@ static gboolean testapp_test_gmime_eml_parsing(void)
 
 	if ((fd = open(TEST_EML_PATH, O_RDONLY, 0)) == -1) {
 		testapp_print ("open fail\n");
-		return 0;
+		return FALSE;
 	}
 
 	/* init the gmime library */
@@ -151,6 +152,7 @@ static gboolean testapp_test_gmime_eml_parsing(void)
 	testapp_print("Header String:%s\n\n\n\n", g_mime_header_list_to_string(po->headers));
 
 	g_mime_message_foreach(message, test_eml_parsing_foreach_callback, &count);
+	return TRUE;
 }
 
 static gboolean testapp_test_interpret_command(int menu_number)
@@ -176,13 +178,14 @@ void testapp_gmime_main()
 {
 	gboolean go_to_loop = TRUE;
 	int menu_number = 0;
-	int result_from_scanf = 0;
-
 	while (go_to_loop) {
 		testapp_show_menu(EMAIL_GMIME_MENU);
 		testapp_show_prompt(EMAIL_GMIME_MENU);
 
-		result_from_scanf = scanf("%d", &menu_number);
+		if(0 >= scanf("%d", &menu_number)){
+			testapp_print ("input fail\n");
+			continue;
+		}
 
 		go_to_loop = testapp_test_interpret_command(menu_number);
 	}
