@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -24,9 +24,9 @@
  * This file contains functionality related to KNOX
  * to interact with email-service.
  * @file		email-core-container.c
- * @author	
+ * @author
  * @version	0.1
- * @brief 		This file contains functionality to provide KNOX support in email-service. 
+ * @brief 		This file contains functionality to provide KNOX support in email-service.
  */
 #ifdef __FEATURE_CONTAINER_ENABLE__
 #include <vasum.h>
@@ -99,21 +99,21 @@ INTERNAL_FUNC void emcore_destroy_container()
     EM_DEBUG_FUNC_END();
 }
 
-static gboolean mainloop_callback(GIOChannel *channel, GIOCondition condition, void *data) 
+#ifdef __FEATURE_CONTAINER_ENABLE__
+static gboolean mainloop_callback(GIOChannel *channel, GIOCondition condition, void *data)
 {
     EM_DEBUG_FUNC_BEGIN();
 
-#ifdef __FEATURE_CONTAINER_ENABLE__
     vsm_context_h ctx = (vsm_context_h)data;
 
     EM_DEBUG_LOG("Enter event loop");
     vsm_enter_eventloop(ctx, 0, 0);
     EM_DEBUG_LOG("Finish event loop");
-#endif /* __FEATURE_CONTAINER_ENABLE__ */
 
     EM_DEBUG_FUNC_END();
     return TRUE;
 }
+#endif /* __FEATURE_CONTAINER_ENABLE__ */
 
 INTERNAL_FUNC void emcore_bind_vsm_context()
 {
@@ -284,7 +284,7 @@ void iterate_callback(vsm_zone_h zone, void *user_data)
     zone_name = EM_SAFE_STRDUP(vsm_get_zone_name(zone));
 	if (EM_SAFE_STRLEN(zone_name) > 0)
 	    zone_name_list = g_list_append(zone_name_list, zone_name);
-    
+
     EM_DEBUG_FUNC_END();
 }
 #endif /* __FEATURE_CONTAINER_ENABLE__ */
@@ -293,7 +293,6 @@ INTERNAL_FUNC int emcore_get_zone_name_list(GList **output_name_list)
 {
     EM_DEBUG_FUNC_BEGIN();
     int err = EMAIL_ERROR_NONE;
-    int ret = 0;
     GList *zone_name_list = NULL;
     GList *node = NULL;
 
@@ -304,6 +303,8 @@ INTERNAL_FUNC int emcore_get_zone_name_list(GList **output_name_list)
     }
 
 #ifdef __FEATURE_CONTAINER_ENABLE__
+    int ret = 0;
+
     if (container == NULL) {
         EM_DEBUG_EXCEPTION("Not initialize");
         err = EMAIL_ERROR_CONTAINER_CREATE_FAILED;
@@ -330,7 +331,7 @@ FINISH_OFF:
         node = g_list_first(zone_name_list);
         while (node != NULL) {
             /* Free the domain name */
-            EM_SAFE_FREE(node->data);                   
+            EM_SAFE_FREE(node->data);
             node = g_list_next(node);
         }
         g_list_free(zone_name_list);

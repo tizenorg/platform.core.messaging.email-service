@@ -772,7 +772,7 @@ FINISH_OFF:
 
 static gboolean testapp_test_backup_account()
 {
-	char *file_name = tzplatform_mkpath(TZ_SYS_DATA, "email/accounts_file");
+	char *file_name = (char *)tzplatform_mkpath(TZ_SYS_DATA, "email/accounts_file");
 	int error_code;
 	error_code = email_backup_accounts_into_secure_storage(file_name);
 	testapp_print("\n email_backup_accounts_into_secure_storage returned [%d]\n", error_code);
@@ -780,7 +780,7 @@ static gboolean testapp_test_backup_account()
 }
 static gboolean testapp_test_restore_account()
 {
-	char *file_name = tzplatform_mkpath(TZ_SYS_DATA,"email/accounts_file");
+	char *file_name = (char *)tzplatform_mkpath(TZ_SYS_DATA,"email/accounts_file");
 	int error_code;
 	error_code = email_restore_accounts_from_secure_storage(file_name);
 	testapp_print("\n email_restore_accounts_from_secure_storage returned [%d]\n", error_code);
