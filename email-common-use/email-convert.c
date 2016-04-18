@@ -1537,10 +1537,11 @@ FINISH_OFF:
 
 
 #define EMAIL_JOB_INFORMATION_FMT   "A(S(iiii))"
+#define EMAIL_JOB_INFORMATION_CUSTOM_FMT   "A(S(iiiiiii))"
 
 INTERNAL_FUNC char* em_convert_task_information_to_byte_stream(email_task_information_t *input_task_information, int input_task_information_count, int *stream_len)
 {
-	EM_DEBUG_FUNC_BEGIN("input_task_information[%p] input_task_information_count[%d] stream_len[%p]", input_task_information, input_task_information_count, stream_len);
+	EM_DEBUG_FUNC_BEGIN("it check input_task_information[%p] input_task_information_count[%d] stream_len[%p]", input_task_information, input_task_information_count, stream_len);
 	EM_IF_NULL_RETURN_VALUE(input_task_information, NULL);
 	EM_IF_NULL_RETURN_VALUE(stream_len, NULL);
 
@@ -1548,7 +1549,7 @@ INTERNAL_FUNC char* em_convert_task_information_to_byte_stream(email_task_inform
 	tpl_node *tn = NULL;
 	int i = 0;
 
-	tn = tpl_map(EMAIL_JOB_INFORMATION_FMT, &cur);
+	tn = tpl_map(EMAIL_JOB_INFORMATION_CUSTOM_FMT, &cur);
 	if (!tn) {
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return NULL;
@@ -1581,7 +1582,7 @@ INTERNAL_FUNC void em_convert_byte_stream_to_task_information(char *input_stream
 	tpl_node *tn = NULL;
 	int i = 0;
 
-	tn = tpl_map(EMAIL_JOB_INFORMATION_FMT, &cur);
+	tn = tpl_map(EMAIL_JOB_INFORMATION_CUSTOM_FMT, &cur);
 	if (!tn) {
 		EM_DEBUG_EXCEPTION("tpl_map failed");
 		return;
