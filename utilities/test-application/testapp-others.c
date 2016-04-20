@@ -118,7 +118,7 @@ static gboolean testapp_test_get_task_information()
 
 	testapp_print("\n======================================================================\n");
 	for (i = 0; i < task_information_count; i++)
-		testapp_print("type[%d], account_id[%d], handle[%d], status[%d]", task_information_array[i].type, task_information_array[i].account_id, task_information_array[i].handle, task_information_array[i].status);
+		testapp_print("type[%d], account_id[%d], handle[%d], status[%d] nth[%d] progress[%d] mail_id[%d]", task_information_array[i].type, task_information_array[i].account_id, task_information_array[i].handle, task_information_array[i].status,(int)task_information_array[i].user_data2, (int)task_information_array[i].user_data1, task_information_array[i].mail_id );
 	testapp_print("\n======================================================================\n");
 
 	testapp_print("testapp_test_get_task_information  ..........End\n");

@@ -1869,6 +1869,11 @@ typedef struct {
     int                                    account_id;    /**< The account ID for task information */
     email_event_type_t                     type;          /**< The type for task information */
     email_event_status_type_t              status;        /**< The status for task information */
+
+    void				  *user_data1;
+    void				  *user_data2;
+    int                                    mail_id;    /**< The account ID for task information */
+
 } email_task_information_t;
 
 typedef enum {
