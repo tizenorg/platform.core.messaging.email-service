@@ -1536,7 +1536,7 @@ FINISH_OFF:
 }
 
 
-#define EMAIL_JOB_INFORMATION_FMT   "A(S(iiii))"
+#define EMAIL_JOB_INFORMATION_FMT   "A(S(iiiiiii))"
 
 INTERNAL_FUNC char* em_convert_task_information_to_byte_stream(email_task_information_t *input_task_information, int input_task_information_count, int *stream_len)
 {
