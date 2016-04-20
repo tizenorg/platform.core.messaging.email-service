@@ -4418,6 +4418,17 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_attachment_section(MAILSTREAM *stream,
 	GMimeMessagePart *mime_message_part = NULL;
 	search_section *search_info = NULL;
 
+
+	EM_DEBUG_LOG("get event data for progress");
+	email_event_t *event_data = NULL;
+	if(!emcore_retrieve_event_for_download_attachment(&event_data, &err)){
+
+		EM_DEBUG_LOG("fail get event data");
+	}
+
+
+
+
 	if (!stream || !cnt_info || !message) {
 		EM_DEBUG_EXCEPTION_SEC("stream[%p], section[%s], cnt_info[%p], message[%p]",
 				stream, cnt_info, message);
@@ -4832,6 +4843,12 @@ INTERNAL_FUNC int emcore_gmime_fetch_imap_attachment_section(MAILSTREAM *stream,
 
 						EM_DEBUG_LOG("DOWNLOADING STATUS NOTIFY : received[%d] / total_size[%d] = %d %% Completed",
 								downloaded_size, download_total_size, (int)((float)downloaded_size / (float)download_total_size * 100.0));
+
+						if (event_data) {
+							event_data->event_param_data_8 = (int)((float)downloaded_size / (float)download_total_size * 100.0);
+
+						}
+
 
 						if (((last_notified_download_size + download_noti_interval) <= downloaded_size) || (downloaded_size >= download_total_size)) {
 
