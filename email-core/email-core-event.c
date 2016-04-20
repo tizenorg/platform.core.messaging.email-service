@@ -527,6 +527,57 @@ FINISH_OFF:
 	return ret;
 }
 
+/* get a event from event_data queue for download_attachment*/
+INTERNAL_FUNC int emcore_retrieve_event_for_download_attachment(email_event_t **event_data, int *err_code)
+{
+	EM_DEBUG_FUNC_BEGIN("event_data[%p], err_code[%p]", event_data, err_code);
+
+	int ret = false;
+	int error = EMAIL_ERROR_NONE;
+	int q_length = 0;
+	email_event_t *poped = NULL;
+	email_event_t *head_event = NULL;
+
+	if (g_event_que)
+		q_length = g_queue_get_length(g_event_que);
+
+	EM_DEBUG_LOG("Q Length : [%d]", q_length);
+
+	if (!q_length) {
+		error = EMAIL_ERROR_EVENT_QUEUE_EMPTY;
+		EM_DEBUG_LOG("QUEUE is empty");
+		goto FINISH_OFF;
+	}
+
+	head_event = (email_event_t *)g_queue_peek_head(g_event_que);
+	if (!head_event) {
+		error = EMAIL_ERROR_EVENT_QUEUE_EMPTY;
+		EM_DEBUG_LOG_DEV("QUEUE is empty");
+
+	} else if (head_event->status != EMAIL_EVENT_STATUS_STARTED) {
+		EM_DEBUG_LOG("EVENT STATUS [%d]", head_event->status);
+		error = EMAIL_ERROR_NO_MORE_DATA;
+		EM_DEBUG_LOG("get event data err");
+
+	} else {
+		*event_data = head_event;
+		ret = true;
+
+	}
+
+
+FINISH_OFF:
+
+	if (err_code != NULL)
+		*err_code = error;
+
+	EM_DEBUG_FUNC_END("ret [%d]", ret);
+	return ret;
+}
+
+
+
+
 /* check that event_data loop is continuous */
 INTERNAL_FUNC int emcore_event_loop_continue(void)
 {
@@ -1365,12 +1416,33 @@ INTERNAL_FUNC int emcore_get_task_information(email_task_information_t **output_
 
 	for (i = 0; i < q_length; i++) {
 		elm = (email_event_t *)g_queue_peek_nth(g_event_que, i);
-		if (elm && (elm->type != EMAIL_EVENT_NONE && elm->status != EMAIL_EVENT_STATUS_CANCELED)) {
-			task_information[index].handle     = elm->handle;
-			task_information[index].account_id = elm->account_id;
-			task_information[index].type       = elm->type;
-			task_information[index].status     = elm->status;
-			index++;
+		if(elm->type != EMAIL_EVENT_DOWNLOAD_ATTACHMENT) {
+			if (elm && (elm->type != EMAIL_EVENT_NONE && elm->status != EMAIL_EVENT_STATUS_CANCELED)) {
+				task_information[index].handle     = elm->handle;
+				task_information[index].account_id = elm->account_id;
+				task_information[index].type       = elm->type;
+				task_information[index].status     = elm->status;
+				task_information[index].task_data1 = 0;
+				task_information[index].task_data2 = 0;
+				task_information[index].task_data3 = 0;
+				index++;
+
+			}
+		}else if(elm->type == EMAIL_EVENT_DOWNLOAD_ATTACHMENT) {
+			if (elm && (elm->type != EMAIL_EVENT_NONE && elm->status != EMAIL_EVENT_STATUS_CANCELED)) {
+
+				task_information[index].task_data1 = (void *)elm->event_param_data_4; /* mail_id */
+				task_information[index].task_data2 = (void *)elm->event_param_data_5; /* attachment_nth */
+				task_information[index].task_data3 = (void *)elm->event_param_data_8; /* download progress */
+
+				task_information[index].handle     = elm->handle;
+				task_information[index].account_id = elm->account_id;
+				task_information[index].type       = elm->type;
+				task_information[index].status     = elm->status;
+
+				index++;
+			}
+
 		}
 	}
 

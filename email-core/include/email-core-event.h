@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -24,9 +24,9 @@
  * File :  email-core-event.h
  * Desc :  Mail Engine Event Header
  *
- * Auth : 
+ * Auth :
  *
- * History : 
+ * History :
  *    2006.08.16  :  created
  *****************************************************************************/
 #ifndef __EMAIL_CORE_EVNET_H__
@@ -67,6 +67,7 @@ INTERNAL_FUNC int emcore_event_loop_continue(void);
 INTERNAL_FUNC int emcore_is_event_queue_empty(void);
 INTERNAL_FUNC int emcore_is_send_event_queue_empty(void);
 INTERNAL_FUNC int emcore_retrieve_event(email_event_t **event_data, int *err_code);
+INTERNAL_FUNC int emcore_retrieve_event_for_download_attachment(email_event_t **event_data, int *err_code);
 INTERNAL_FUNC int emcore_return_handle(int handle);
 INTERNAL_FUNC int emcore_retrieve_send_event(email_event_t **event_data, int *err_code);
 INTERNAL_FUNC int emcore_return_send_handle(int handle);
@@ -78,8 +79,8 @@ INTERNAL_FUNC int emcore_set_pbd_thd_state(int flag);
 INTERNAL_FUNC void emcore_get_sync_fail_event_data(email_event_t **event_data);
 
 /*
-NOTE: The event is subject to event thread worker. 
-      Don't be confused with other events 
+NOTE: The event is subject to event thread worker.
+      Don't be confused with other events
 */
 #define FINISH_OFF_IF_EVENT_CANCELED(err, handle)     \
 		do {\
