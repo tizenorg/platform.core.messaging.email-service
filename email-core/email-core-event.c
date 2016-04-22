@@ -549,26 +549,26 @@ INTERNAL_FUNC int emcore_retrieve_event_for_download_attachment(email_event_t **
 		goto FINISH_OFF;
 	}
 
-	while (1) {
-		head_event = (email_event_t *)g_queue_peek_head(g_event_que);
-		if (!head_event) {
-			error = EMAIL_ERROR_EVENT_QUEUE_EMPTY;
-			EM_DEBUG_LOG_DEV("QUEUE is empty");
-			break;
-		}
 
-		if (head_event->status != EMAIL_EVENT_STATUS_STARTED) {
-			EM_DEBUG_LOG("EVENT STATUS [%d]", head_event->status);
-			error = EMAIL_ERROR_NO_MORE_DATA;
-			EM_DEBUG_LOG("get event data err");
-			break;
-
-		} else {
-			*event_data = head_event;
-			ret = true;
-			break;
-		}
+	head_event = (email_event_t *)g_queue_peek_head(g_event_que);
+	if (!head_event) {
+		error = EMAIL_ERROR_EVENT_QUEUE_EMPTY;
+		EM_DEBUG_LOG_DEV("QUEUE is empty");
+		break;
 	}
+
+	if (head_event->status != EMAIL_EVENT_STATUS_STARTED) {
+		EM_DEBUG_LOG("EVENT STATUS [%d]", head_event->status);
+		error = EMAIL_ERROR_NO_MORE_DATA;
+		EM_DEBUG_LOG("get event data err");
+		break;
+
+	} else {
+		*event_data = head_event;
+		ret = true;
+		break;
+	}
+
 
 FINISH_OFF:
 
