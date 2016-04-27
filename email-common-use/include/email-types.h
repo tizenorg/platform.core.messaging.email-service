@@ -69,23 +69,23 @@ extern "C"
 #define EMAIL_SUCCESS                     0                                      /*  we need to modify the success return value */
 
 /** @brief Definition for default values without account name.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_ACC_GET_OPT_DEFAULT         0x01
 
 /** @brief Definition for account name.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_ACC_GET_OPT_ACCOUNT_NAME    0x02
 
 /** @brief Definition for account with password.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_ACC_GET_OPT_PASSWORD        0x04
 
 /** @brief Definition for account with options: #email_option_t.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_ACC_GET_OPT_OPTIONS         0x08
 
 /** @brief Definition for account with all data of account.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_ACC_GET_OPT_FULL_DATA       0xFF
 
 
@@ -96,93 +96,93 @@ extern "C"
 
 
 /** @brief Definition for the function 'email_activate_pdp'.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define THREAD_TYPE_RECEIVING             0
 
 /** @brief Definition for the function 'email_activate_pdp'.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define THREAD_TYPE_SENDING               1
 
 
 /** @brief Definition for the default IMAP port.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_IMAP_PORT                   143
 
 /** @brief Definition for the default POP3 port.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_POP3_PORT                   110
 
 /** @brief Definition for the default SMTP port.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_SMTP_PORT                   25
 
 /** @brief Definition for the default IMAP SSL port.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_IMAPS_PORT                  993
 
 /** @brief Definition for the default POP3 SSL port.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_POP3S_PORT                  995
 
 /** @brief Definition for the default SMTP SSL port.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_SMTPS_PORT                  465
 
 /** @brief Definition for the MAX account.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_ACCOUNT_MAX                 10
 
 /** @brief Definition for the name of inbox.
- *  @since_tizen 2.3 */
+ *  @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_INBOX_NAME                  "INBOX"
 
 /** @brief Definition for the name of draftbox.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_DRAFTBOX_NAME               "DRAFTBOX"
 
 /** @brief Definition for the name of outbox.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_OUTBOX_NAME                 "OUTBOX"
 
 /** @brief Definition for the name of sentbox.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_SENTBOX_NAME                "SENTBOX"
 
 /** @brief Definition for the name of trash.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_TRASH_NAME                  "TRASH"
 
 /** @brief Definition for the name of spambox.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_SPAMBOX_NAME                "SPAMBOX"
 
 /** @brief Definition for the display name of inbox.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_INBOX_DISPLAY_NAME          "Inbox"
 
 /** @brief Definition for the display name of draftbox.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_DRAFTBOX_DISPLAY_NAME       "Draftbox"
 
 /** @brief Definition for the display name of outbox.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_OUTBOX_DISPLAY_NAME         "Outbox"
 
 /** @brief Definition for the display name of sentbox.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_SENTBOX_DISPLAY_NAME        "Sentbox"
 
 /** @brief Definition for the display name of trash.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_TRASH_DISPLAY_NAME          "Trash"
 
 /** @brief Definition for the display name of spambox.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_SPAMBOX_DISPLAY_NAME        "Spambox"
 
 
 /** @brief Definition for the name of search result mailbox.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 #define EMAIL_SEARCH_RESULT_MAILBOX_NAME  "_`S1!E2@A3#R4$C5^H6&R7*E8(S9)U0-L=T_"
 
 #define SYNC_STATUS_FINISHED              0                                      /* BIN 00000000 */
@@ -241,7 +241,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the notification of changes on storage.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -299,7 +299,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the notification of network event.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -387,7 +387,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the response to request.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -399,7 +399,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the account mail type.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -409,7 +409,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the account server type.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -422,7 +422,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the retrieval mode.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -433,7 +433,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the filtering type.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -446,7 +446,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the rules for filtering type.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -457,7 +457,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the action for filtering type.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -468,7 +468,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the email status.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -488,7 +488,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the email priority.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -499,7 +499,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the email status.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -513,7 +513,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the DRM type.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -525,7 +525,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the mail type.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -537,7 +537,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the meeting response type.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -581,7 +581,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the status of getting an envelope list.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -600,7 +600,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the downloaded status of an email.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -619,7 +619,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the status of sending an email.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -654,7 +654,7 @@ typedef enum
 
 /**
 * @brief Enumeration for the deleting status of an email.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 typedef enum
 {
@@ -675,7 +675,7 @@ typedef enum
 
 /**
 * @brief Enumeration for the status of validating an account.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 typedef enum
 {
@@ -694,7 +694,7 @@ typedef enum
 
 /**
 * @brief Enumeration for the status of setting slot size.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 typedef enum
 {
@@ -707,7 +707,7 @@ typedef enum
 
 /**
 * @brief Enumeration for the status of expunging mails.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 typedef enum
 {
@@ -720,7 +720,7 @@ typedef enum
 
 /**
 * @brief Enumeration for the status of searching mails on server.
-* @since_tizen 2.4
+* @since_tizen @if MOBILE 2.4 @elseif WEARABLE 3.0 @endif
 */
 typedef enum
 {
@@ -733,7 +733,7 @@ typedef enum
 
 /**
 * @brief Enumeration for the status of moving mails.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 typedef enum
 {
@@ -746,7 +746,7 @@ typedef enum
 
 /**
 * @brief Enumeration for the status of updating mails.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 typedef enum
 {
@@ -759,7 +759,7 @@ typedef enum
 
 /**
 * @brief Enumeration for the mailbox type.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 typedef enum
 {
@@ -778,7 +778,7 @@ typedef enum
 
 
 /** @brief Enumeration for the sync order.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 
 
 typedef enum
@@ -789,7 +789,7 @@ typedef enum
 } EMAIL_RETRIEVE_MODE;
 
 /** @brief Enumeration for the event type.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 typedef enum
 {
     EMAIL_EVENT_NONE                            =  0,          /**< Initial value of #email_event_type_t */
@@ -832,7 +832,7 @@ typedef enum
 } email_event_type_t;
 
 /** @brief Enumeration for the event status.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 typedef enum
 {
     EMAIL_EVENT_STATUS_UNUSED        = 0,    /**< Initial status of event : DB data(priority low) */
@@ -844,7 +844,7 @@ typedef enum
 
 
 /** @brief Enumeration for the srting type.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 typedef enum
 {
     EMAIL_SORT_DATETIME_HIGH         = 0,    /**< Sort mails by datetime ascending order */
@@ -881,7 +881,7 @@ typedef enum
 
 /**
 * @brief Enumeration for the priority.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 enum
 {
@@ -892,7 +892,7 @@ enum
 
 /**
 * @brief Enumeration for the saving a copy after sending.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 enum
 {
@@ -902,7 +902,7 @@ enum
 
 /**
 * @brief Enumeration for the request of a delivery report.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 enum
 {
@@ -912,7 +912,7 @@ enum
 
 /**
 * @brief Enumeration for the request of a read receipt.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 enum
 {
@@ -922,7 +922,7 @@ enum
 
 /**
 * @brief Enumeration for the blocking of an address.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 enum
 {
@@ -932,7 +932,7 @@ enum
 
 /**
 * @brief Enumeration for the blocking of a subject.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 enum
 {
@@ -950,7 +950,7 @@ enum
 
 /**
 * @brief Enumeration for the mailbox sync type.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 enum
 {
@@ -961,7 +961,7 @@ enum
 
 /**
 * @brief Enumeration for the mail change type.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 typedef enum
 {
@@ -987,7 +987,7 @@ typedef enum
 
 /**
 * @brief Enumeration for the address type.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 */
 typedef enum
 {
@@ -1001,7 +1001,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the search type for searching a mailbox.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -1013,7 +1013,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the download status of a mail body.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 
 typedef enum
@@ -1025,7 +1025,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the download status of a mail body.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 
 typedef enum
@@ -1037,7 +1037,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the moving type.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -1049,7 +1049,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the deletion type.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -1063,7 +1063,7 @@ typedef enum
 
 /**
  * @brief Enumeration for the status field type.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef enum
 {
@@ -1302,7 +1302,7 @@ typedef enum {
 
 /**
  * @brief The structure type to save the mail time.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct
 {
@@ -1316,7 +1316,7 @@ typedef struct
 
 /**
  * @brief The structure type to save the options.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct
 {
@@ -1343,7 +1343,7 @@ typedef struct
 
 /**
  * @brief The structure type to save the information of an email account.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct
 {
@@ -1419,7 +1419,7 @@ typedef struct
 
 /**
  * @brief The structure type to save the certificate information.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 
 typedef struct
@@ -1439,7 +1439,7 @@ typedef struct
 
 /**
  * @brief The structure type to save the email server information.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 
 typedef struct
@@ -1468,7 +1468,7 @@ typedef struct
 
 /**
  * @brief The structure type which contains the Mail information.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 
 typedef struct
@@ -1535,7 +1535,7 @@ typedef struct
 
 /**
  * @brief The structure type which contains information for displaying a mail list.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct
 {
@@ -1579,7 +1579,7 @@ typedef struct
 
 /**
  * @brief The structure type used to save the filtering structure.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct
 {
@@ -1597,7 +1597,7 @@ typedef struct
 
 /**
  * @brief The structure type used to save the information of a mail flag.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct
 {
@@ -1615,7 +1615,7 @@ typedef struct
 
 /**
  * @brief The structure type used to save the information of a mail extra flag.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct
 {
@@ -1634,7 +1634,7 @@ typedef struct
 
 /**
  * @brief The structure type used to save the information of an attachment.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct
 {
@@ -1665,7 +1665,7 @@ typedef struct
 
 /**
  * @brief Structure used to save the information of a meeting request
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct
 {
@@ -1682,7 +1682,7 @@ typedef struct
 
 /**
  * @brief The structure type used to save the information of a sender list with unread/total mail counts.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct
 {
@@ -1697,7 +1697,7 @@ typedef struct
 
 /**
  * @brief The structure type used to save the information of a mailbox.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct
 {
@@ -1720,7 +1720,7 @@ typedef struct
 
 /**
  * @brief Structure used to save the information of email a address.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 
 typedef struct
@@ -1734,7 +1734,7 @@ typedef struct
 
 /**
  * @brief Structure used to save the set of email addresses
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct
 {
@@ -1746,7 +1746,7 @@ typedef struct
 
 /**
  * @brief Structure used to save the list of email addresses
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct
 {
@@ -1758,7 +1758,7 @@ typedef struct
 
 /**
  * @brief Structure used to save the information of a search filter
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct _email_search_filter_t {
     email_search_filter_type search_filter_type;      /**< The type of search filter */
@@ -1829,7 +1829,7 @@ typedef enum {
 
 /**
  * @brief Structure used to save the information of a list filter
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  */
 typedef struct {
     email_list_filter_item_type_t          list_filter_item_type;    /**< Filter item type */
@@ -2111,14 +2111,14 @@ typedef union
 } ASNotiData;
 
 /** @brief Enumeration for noti string types.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 typedef enum
 {
     EMAIL_CONVERT_STRUCT_TYPE_MAIL_LIST_ITEM,      /**< specifies email_mail_list_t */
 } email_convert_struct_type_e;
 
 /** @brief Enumeration for task types.
- * @since_tizen 2.3 */
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif */
 typedef enum {
     /* Sync tasks */
     EMAIL_SYNC_TASK_BOUNDARY_START                                          = 11000,    /**< Sync task for boundary start */

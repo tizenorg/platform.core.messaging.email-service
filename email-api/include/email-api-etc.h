@@ -53,7 +53,7 @@ extern "C" {
 /**
  * @brief Shows a user message.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -71,7 +71,7 @@ EXPORT_API int email_show_user_message(int id, email_action_t action, int error_
 /**
  * @brief Parses a MIME file.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -88,7 +88,7 @@ EXPORT_API int email_parse_mime_file(char *eml_file_path, email_mail_data_t **ou
 /**
  * @brief Creates a MIME file from input data.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -97,7 +97,7 @@ EXPORT_API int email_parse_mime_file(char *eml_file_path, email_mail_data_t **ou
  * @param[in]   input_attachment_count  (need to be updated)
  * @param[out]  output_file_path        (need to be updated)
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise error code (see #EMAIL_ERROR_XXX) on failure
  */
 EXPORT_API int email_write_mime_file(email_mail_data_t *input_mail_data, email_attachment_data_t *input_attachment_data, int input_attachment_count, char **output_file_path);
@@ -105,13 +105,13 @@ EXPORT_API int email_write_mime_file(email_mail_data_t *input_mail_data, email_a
 /**
  * @brief Deletes the parsed files of MIME.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[in]  input_mail_data  (need to be updated)
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  */
 EXPORT_API int email_delete_parsed_data(email_mail_data_t *input_mail_data);
@@ -120,7 +120,7 @@ EXPORT_API int email_delete_parsed_data(email_mail_data_t *input_mail_data);
 /**
  * @brief Gets a MIME entity.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -135,7 +135,7 @@ EXPORT_API int email_get_mime_entity(char *mime_path, char **mime_entity);
 /**
  * @brief Validates email address.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -149,10 +149,10 @@ EXPORT_API int email_verify_email_address(char *input_email_address);
 /**
  * @brief   Converts mutf7 string to utf8 string.
  *
- * @since_tizen 2.3.1
+ * @since_tizen @if MOBILE 2.3.1 @elseif WEARABLE 3.0 @endif
  *
- * @param[in] mutf7_str     The original mutf7 string	
- * @param[out] utf8_str     Thr utf8 string converted	
+ * @param[in] mutf7_str     The original mutf7 string
+ * @param[out] utf8_str     Thr utf8 string converted
  *
  * @remarks The out param(utf8_str) should be freed by you.
  *

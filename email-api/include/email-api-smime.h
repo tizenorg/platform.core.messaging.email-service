@@ -96,7 +96,7 @@ EXPORT_API int email_get_certificate(char *email_address, email_certificate_t **
 /**
  * @brief Gets a decrypted message.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -116,7 +116,7 @@ EXPORT_API int email_get_decrypt_message(int mail_id, email_mail_data_t **output
 
 /**
  * @brief Gets a decrypted message.
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  * @param[in] input_mail_data		Specifies the signed mail data
@@ -140,7 +140,7 @@ EXPORT_API int email_get_decrypt_message_ex(email_mail_data_t *input_mail_data,
 /**
  * @brief Verifies a signed mail.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -155,7 +155,7 @@ EXPORT_API int email_verify_signature(int mail_id, int *verify);
 
 /**
 * @brief Verifies a signed mail.
-* @since_tizen 2.3
+* @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
 *
 * @param[in]  input_mail_data         The signed mail data
 * @param[in]  input_attachment_data   The attachment of signed mail
@@ -188,7 +188,7 @@ EXPORT_API int email_verify_certificate(char *certificate_path, int *verify) DEP
 /**
  * @brief Gets the certificate from the server (using exchange server).
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -204,7 +204,7 @@ EXPORT_API int email_get_resolve_recipients(int account_id, char *email_address,
 /**
  * @brief Verifies the certificate to the server (using exchange server).
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -220,7 +220,7 @@ EXPORT_API int email_validate_certificate(int account_id, char *email_address, u
 /**
  * @brief Frees the memory of the certificate.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel N/P
  *
  * @param[in] certificate  The certificate

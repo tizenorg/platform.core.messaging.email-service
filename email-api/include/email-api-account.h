@@ -156,7 +156,7 @@ extern "C" {
  * @brief Creates a new email account.
  * @details This function is invoked when the user wants to add a new email account.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  * @param[in] account  The structure pointer of an account
@@ -172,7 +172,7 @@ EXPORT_API int email_add_account(email_account_t* account);
  * @brief Deletes an email account.
  * @details This function is invoked when the user wants to delete an existing email account.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -189,14 +189,14 @@ EXPORT_API int email_delete_account(int account_id);
  * @brief Changes the information of an email account.
  * @details This function is invoked when the user wants to change some information of the existing email account.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[in] account_id       The original account ID
  * @param[in] new_account      The information of new account
  * @param[in] with_validation  The validation flag \n
- *                             If this is @c 1, email-service will validate the account before updating. 
+ *                             If this is @c 1, email-service will validate the account before updating.
  *                             If this is @c 0, email-service will update the account without validation.
  *
  * @return  #EMAIL_ERROR_NONE on success,
@@ -212,14 +212,14 @@ EXPORT_API int email_update_account(int account_id, email_account_t* new_account
  * @brief Changes the information of an email account.
  * @details This function is invoked when the user wants to change some information of the existing email account.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[in] account_id       The original account ID
  * @param[in] new_account      The information of new account
  * @param[in] with_validation  The validation tag \n
- *                             If this is @c 1, email-service will validate the account before updating. 
+ *                             If this is @c 1, email-service will validate the account before updating.
  *                             If this is @c 0, email-service will update the account without validation.
  *
  * @return  #EMAIL_ERROR_NONE on success,
@@ -233,16 +233,16 @@ EXPORT_API int email_update_account_with_validation(int account_id, email_accoun
 
 /**
  * @brief Gets an email account by ID.
- * @details This function is invoked when the user wants to get the account information based on account ID and option (GET_FULL_DATA/WITHOUT_OPTION/ONLY_OPTION). 
- *          Memory for account information will be allocated to the 3rd param (@a account). 
+ * @details This function is invoked when the user wants to get the account information based on account ID and option (GET_FULL_DATA/WITHOUT_OPTION/ONLY_OPTION).
+ *          Memory for account information will be allocated to the 3rd param (@a account).
  *          You must free the allocated memory using email_free_account().
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[in]  account_id  The account ID
- * @param[in]  pulloption  The option to specify to get full details or partial \n 
+ * @param[in]  pulloption  The option to specify to get full details or partial \n
  *                         See definition of #EMAIL_ACC_GET_OPT_XXX.
  * @param[out] account     The returned account is saved here
  *
@@ -257,11 +257,11 @@ EXPORT_API int email_get_account(int account_id, int pulloption, email_account_t
 
 /**
  * @brief Gets an account list.
- * @details This function is invoked when the user wants to get all account information based on the count of accounts provided by user. 
- *          Memory for account information will be allocated to 3rd param (@a account). 
+ * @details This function is invoked when the user wants to get all account information based on the count of accounts provided by user.
+ *          Memory for account information will be allocated to 3rd param (@a account).
  *          You must free the allocated memory using email_free_account().
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -281,7 +281,7 @@ EXPORT_API int email_get_account_list(email_account_t** account_list, int* count
  * @brief Frees allocated memory.
  * @details This function is invoked when the user wants to delete all account information.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel N/P
  *
  * @param[in]  account_list  The structure pointer of an account
@@ -303,7 +303,7 @@ EXPORT_API int email_validate_account(int account_id, int *handle) DEPRECATED; /
  * @details This function is invoked after adding one account to validate it.
  *          If the account is not validated then t user should retry once again to add the account.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -321,11 +321,11 @@ EXPORT_API int email_validate_account_ex(email_account_t* account, int *handle);
 
 /**
  * @brief Adds an account when the account is validated.
- * @details This function is invoked when a user wants to validate an account. 
- *          If the account is not validated then user should retry once again to add the account. 
+ * @details This function is invoked when a user wants to validate an account.
+ *          If the account is not validated then user should retry once again to add the account.
  *          Validation is executed without saving an account to DB.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -353,7 +353,7 @@ EXPORT_API int email_backup_accounts_into_secure_storage(const char *file_name);
  * @brief Restores accounts from a file stored in the secure storage.
  * @details This function is invoked when a user wants to restore accounts.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -368,7 +368,7 @@ EXPORT_API int email_restore_accounts_from_secure_storage(const char * file_name
  * @brief Gets the password length of an account.
  * @details This function is invoked when a user wants to know the length of an account.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -399,7 +399,7 @@ EXPORT_API int email_update_notification_bar(int account_id, int total_mail_coun
  * @brief Clears all notification on the notification bar.
  * @details This function is invoked when a user wants to clear notification bar.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -413,7 +413,7 @@ EXPORT_API int email_clear_all_notification_bar();
  * @brief  Clear notification of account on notification bar.
  *         This function is getting invoked when user want to clear notification bar.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -428,7 +428,7 @@ EXPORT_API int email_clear_notification_bar(int account_id);
  * @brief Saves the default account ID to the vconf storage.
  * @details This function is invoked when a user wants to save a default account ID.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -441,7 +441,7 @@ EXPORT_API int email_save_default_account_id(int input_account_id);
  * @brief Loads the default account ID to the vconf storage.
  * @details This function is invoked when a user wants to load a default account ID.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *

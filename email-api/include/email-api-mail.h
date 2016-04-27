@@ -61,7 +61,7 @@ extern "C" {
  *          If the incoming_server_type is EMAIL_SERVER_TYPE_POP3 then from_eas value will be 0.\n
  *          If the incoming_server_type is EMAIL_SERVER_TYPE_IMAP4 then from_eas value will be 1/0.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -71,7 +71,7 @@ extern "C" {
  * @param[in] input_meeting_request       Specifies if the mail comes from composer
  * @param[in] input_from_eas              Specifies if the mail will be saved on server
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  *
  * @see #email_mail_data_t and #email_mailbox_t
@@ -204,7 +204,7 @@ EXPORT_API int email_add_mail(email_mail_data_t *input_mail_data, email_attachme
  * @brief Adds a read receipt mail.
  * @details This function is invoked when a user receives a mail with read report enable and wants to send a read report for the same.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -220,7 +220,7 @@ EXPORT_API int email_add_read_receipt(int input_read_mail_id, int *output_receip
  * @brief Updates an existing email information.
  * @details This function is invoked when a user wants to change some existing email information with new email information.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -303,7 +303,7 @@ EXPORT_API int email_update_mail(email_mail_data_t *input_mail_data, email_attac
 /**
  * @brief Updates an individual attribute of the mail data.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -323,7 +323,7 @@ EXPORT_API int email_update_mail_attribute(int input_account_id, int *input_mail
  * @details This function is invoked when a user wants to know how many total mails and out of that
  *          how many unseen mails are there in a given mailbox.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -397,7 +397,7 @@ EXPORT_API int email_get_max_mail_count(int *count);
  * @brief Deletes a mail or multiple mails.
  * @details Based on from_server value, this function will delete a mail or multiple mails from the server or locally.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -438,7 +438,7 @@ EXPORT_API int email_delete_mail(int input_mailbox_id, int *input_mail_ids, int 
  * @details  If the incoming_server_type is #EMAIL_SERVER_TYPE_POP3 then @a from_server value will be @c 0. \n
  *           If the incoming_server_type is #EMAIL_SERVER_TYPE_IMAP4 then @a from_server value will be 1/0.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -449,7 +449,7 @@ EXPORT_API int email_delete_mail(int input_mailbox_id, int *input_mail_ids, int 
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  *
  * @see #email_mailbox_t
- 
+
  * @code
  *  #include "email-api-account.h"
  *  bool
@@ -473,7 +473,7 @@ EXPORT_API int email_delete_all_mails_in_mailbox(int input_mailbox_id, int input
  * @brief Deletes email data from the storage.
  * @details This API will be used by Settings Application.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -499,7 +499,7 @@ EXPORT_API int  email_clear_mail_data();
  * @brief Appends an attachment to an email.
  * @details This function is invoked when a user wants to add attachment to an existing mail.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -541,7 +541,7 @@ EXPORT_API int email_add_attachment(int mail_id, email_attachment_data_t* attach
  * @brief Deletes an attachment from email.
  * @details This function is invoked when a user wants to delete a attachment from an existing mail based on mail ID and attachment ID.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -572,7 +572,7 @@ EXPORT_API int email_delete_attachment(int attachment_id);
  * @brief Gets a mail attachment.
  * @details This function is invoked when a user wants to get the attachment information based on an attachment ID for the specified mail ID.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -617,7 +617,7 @@ EXPORT_API int email_get_attachment_data(int attachment_id, email_attachment_dat
  * @brief Gets a list of mail attachments.
  * @details This function is invoked when a user wants to get the the attachment list information based on the mail ID.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -635,7 +635,7 @@ EXPORT_API int email_get_attachment_data_list(int input_mail_id, email_attachmen
 /**
  * @brief Frees the allocated memory for email attachments.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  *
  * @param[in] atch_info  The pointer of mail attachment structure pointer
  *
@@ -685,7 +685,7 @@ EXPORT_API int email_free_attachment_data(email_attachment_data_t **attachment_d
 /**
  * @brief Queries the mail list information from the DB based on the mailbox name.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -728,7 +728,7 @@ EXPORT_API int email_query_mails(char *conditional_clause_string, email_mail_dat
 /**
  * @brief Queries the mail list information from the DB.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -772,7 +772,7 @@ EXPORT_API int email_query_mail_list(char *input_conditional_clause_string, emai
  * @brief Gets a mail by its mail ID.
  * @details This function is invoked when a user wants to get a mail based on mail ID existing in the DB.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -814,7 +814,7 @@ EXPORT_API int email_get_mail_data(int input_mail_id, email_mail_data_t **output
 /**
  * @brief Frees the allocated memory for emails.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  *
  * @param[in] mail_list  The pointer of mail structure pointer
  * @param[in] count      The count of mails
@@ -852,14 +852,14 @@ EXPORT_API int email_free_mail_data(email_mail_data_t** mail_list, int count);
  * @details If the incoming_server_type is EMAIL_SERVER_TYPE_POP3 then from_server value will be 0. \n
  *          If the incoming_server_type is EMAIL_SERVER_TYPE_IMAP4 then from_server value will be 1/0.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[in] account_id  The account ID
  * @param[in] mail_ids    The array of mail IDs
  * @param[in] num         The number of mail IDs
- * @param[in] field_type  The field type to be set \n 
+ * @param[in] field_type  The field type to be set \n
  *                        See #email_flags_field_type.
  * @param[in] value       The value to be set
  * @param[in] onserver    The flag indicating whether mail flag updating is in server
@@ -900,7 +900,7 @@ EXPORT_API int email_set_flags_field(int account_id, int *mail_ids, int num, ema
 /**
  * @brief Moves an email to another mailbox.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -939,7 +939,7 @@ EXPORT_API int email_move_mail_to_mailbox(int *mail_ids, int num, int input_targ
 /**
  * @brief Moves all emails to another mailbox.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -985,7 +985,7 @@ EXPORT_API int email_move_all_mails_to_mailbox(int input_source_mailbox_id, int 
 /**
  * @brief Moves mails to the mailbox of an another account.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1004,7 +1004,7 @@ EXPORT_API int email_move_mails_to_mailbox_of_another_account(int input_source_m
 /**
  * @brief Gets the Mail List information from the DB.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1106,7 +1106,7 @@ EXPORT_API int email_get_mail_list_ex(email_list_filter_t *input_filter_list, in
 /**
  * @brief Frees the allocated memory for filters.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel N/P
  *
  * @param[in] input_filter_list   The pointer of filter structure
@@ -1122,7 +1122,7 @@ EXPORT_API int email_free_list_filter(email_list_filter_t **input_filter_list, i
 /**
  * @brief Gets the Mail List information from the DB based on the mailbox name.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1176,7 +1176,7 @@ EXPORT_API int email_get_mails(int account_id , int mailbox_id, int thread_id, i
 /**
  * @brief Gets the Mail List information from the DB based on the mailbox name.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1231,7 +1231,7 @@ EXPORT_API int email_get_mail_list(int account_id, int mailbox_id, int thread_id
 /**
  * @brief Gets the Mail List information from the DB based on the mailbox name account_id and sender addresses.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1244,7 +1244,7 @@ EXPORT_API int email_get_mail_list(int account_id, int mailbox_id, int thread_id
  * @param[in]     limit_count   The max number of returned mails
  * @param[in]     search_type   The search type
  * @param[in]     search_value  The search value
- * @param[in]     sorting       The sorting order \n 
+ * @param[in]     sorting       The sorting order \n
  *                              See #email_sort_type_t.
  * @param[in/out] mail_list     The Pointer to the structure #email_mail_list_item_t
  * @param[in/out] result_count  The number of searched mails
@@ -1260,7 +1260,7 @@ EXPORT_API int email_get_mail_by_address(int account_id , int mailbox_id, email_
 /**
  * @brief Gets thread information for a specific thread from DB based on the mailbox name.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1302,7 +1302,7 @@ EXPORT_API int email_get_thread_information_by_thread_id(int thread_id, email_ma
 /**
  * @brief Gets Mail List information for a specific thread from the DB based on the mailbox name.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1344,7 +1344,7 @@ EXPORT_API int email_get_thread_information_ex(int thread_id, email_mail_list_it
 /**
  * @brief Retries to send a mail.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1375,7 +1375,7 @@ EXPORT_API int email_retry_sending_mail(int mail_id, int timeout_in_sec);
 /**
  * @brief Creates a DB and fill it with dummy data.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1385,10 +1385,10 @@ EXPORT_API int email_retry_sending_mail(int mail_id, int timeout_in_sec);
 EXPORT_API int email_create_db_full();
 
 /**
- * @brief Callback function for cm popup. 
+ * @brief Callback function for cm popup.
  *        We set the status as EMAIL_MAIL_STATUS_SEND_CANCELED <<need to be updated>>.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1418,7 +1418,7 @@ EXPORT_API int email_cancel_sending_mail(int mail_id) ;
 /**
  * @brief Gets the total disk usage of emails in KB.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1450,13 +1450,13 @@ EXPORT_API int email_get_disk_space_usage(unsigned long *total_size);
  *          "data" variable of GList structure contains #email_address_info_t data. \n
  *          To get #email_address_info_t data from GList, use type casting from GList node.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[in]  mail_id            The mail ID to get the list
  * @param[out] address_info_list  The pointer to the structure #email_address_info_list_t \n
- *                                Memory for a new address info list will be allocated to this. 
+ *                                Memory for a new address info list will be allocated to this.
  *                                You must call email_free_address_info_list() to free the memory allocated to this.
  *
  * @return  #EMAIL_ERROR_NONE on success,
@@ -1510,7 +1510,7 @@ EXPORT_API int email_get_address_info_list(int mail_id, email_address_info_list_
  * @brief Frees the address info list allocated by email_get_address_info_list().
  * @details This function will free the memory which is allocated to address_info_list itself.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel N/P
  *
  * @param[in]  address_info_list  The pointer to the structure #email_address_info_list_t to be freed
@@ -1531,8 +1531,8 @@ EXPORT_API int email_free_address_info_list(email_address_info_list_t **address_
  * @param[out] output_meeting_req               The pointer to the structure #email_meeting_request_t
  * @param[out] output_count                     The number of meeting request returned
  *
- * @return  #EMAIL_ERROR_NONE on success, 
- *          #EMAIL_ERROR_DATA_NOT_FOUND if there is no matched mail, 
+ * @return  #EMAIL_ERROR_NONE on success,
+ *          #EMAIL_ERROR_DATA_NOT_FOUND if there is no matched mail,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  *
  * @see #email_meeting_request_t
@@ -1545,15 +1545,15 @@ EXPORT_API int email_query_meeting_request(char *input_conditional_clause_string
  *          The information of the meeting request is corresponding to only one mail. \n
  *          For this reason, the meeting request information can be added by using email_add_message_with_meeting_request() with the matched mail information.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[in]     mail_id      The mail ID for which  meeting request details need to be fetched
  * @param[in/out] meeting_req  The pointer to the structure #email_meeting_request_t
  *
- * @return  #EMAIL_ERROR_NONE on success, 
- *          #EMAIL_ERROR_DATA_NOT_FOUND if there is no matched mail, 
+ * @return  #EMAIL_ERROR_NONE on success,
+ *          #EMAIL_ERROR_DATA_NOT_FOUND if there is no matched mail,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  *
  * @see #email_meeting_request_t
@@ -1564,7 +1564,7 @@ EXPORT_API int email_get_meeting_request(int mail_id, email_meeting_request_t **
  * @brief Frees a meeting request allocated by email_get_meeting_request() or allocated to add.
  * @details This function will free the memory which is allocated to meeting_req (= *meeting_req) itself.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel N/P
  *
  * @param[in] email_meeting_request_t  The pointer to the structure #email_meeting_request_t to be freed
@@ -1580,7 +1580,7 @@ EXPORT_API int email_free_meeting_request(email_meeting_request_t** meeting_req,
 /**
  * @brief Moves a thread of mails to the target mailbox.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1596,7 +1596,7 @@ EXPORT_API int email_move_thread_to_mailbox(int thread_id, int target_mailbox_id
 /**
  * @brief Deletes a thread of mails.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1611,7 +1611,7 @@ EXPORT_API int email_delete_thread(int thread_id, int delete_always_flag);
 /**
  * @brief Modifies seen flags of the thread.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -1627,7 +1627,7 @@ EXPORT_API int email_modify_seen_flag_of_thread(int thread_id, int seen_flag, in
 /**
  * @brief Deletes mails flagged to "delete".
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *

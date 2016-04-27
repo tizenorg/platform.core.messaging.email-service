@@ -132,7 +132,7 @@ extern "C"
  * @details This function is invoked when a user wants to create a new mailbox for the specified account.\n
  *          If on_server is true, it will create the mailbox on the server as well as locally.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -151,7 +151,7 @@ EXPORT_API int email_add_mailbox(email_mailbox_t *new_mailbox, int on_server, in
  * @brief Changes the name of a mailbox.
  * @details This function is invoked when a user wants to change the name of an existing mail box.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -174,7 +174,7 @@ EXPORT_API int email_rename_mailbox(int input_mailbox_id, char *input_mailbox_na
  * @brief Changes the name of a mailbox.
  * @details This function is invoked when a user wants to change the name of an existing mail box.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -200,7 +200,7 @@ EXPORT_API int email_rename_mailbox_ex(int input_mailbox_id, char *input_mailbox
  * @details This function deletes the existing mailbox for the specified account based on the on_server option. \n
  *          If on_server is true, it deletes the mailbox from the server as well as locally.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -222,7 +222,7 @@ EXPORT_API int email_delete_mailbox(int input_mailbox_id, int input_on_server, i
  * @details This function deletes the existing mailbox for the specified account based on the option on_server option. \n
  *          If on_server is true, it deletes the mailbox from the server as well as locally.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -245,7 +245,7 @@ EXPORT_API int email_delete_mailbox_ex(int input_account_id, int *input_mailbox_
  * @brief Changes the mailbox type.
  * @details This function is invoked when a user wants to change the mailbox type.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -266,7 +266,7 @@ EXPORT_API int email_set_mailbox_type(int input_mailbox_id, email_mailbox_type_e
  * @brief Changes the 'local' attribute of #email_mailbox_t.
  * @details This function is invoked when a user wants to change the 'local' attribute.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -283,7 +283,7 @@ EXPORT_API int email_set_local_mailbox(int input_mailbox_id, int input_is_local_
 /**
  * @brief Gets all mailboxes from account.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -329,7 +329,7 @@ EXPORT_API int email_get_mailbox_list(int account_id, int mailbox_sync_type, ema
 /**
  * @brief Extends the email_get_mailbox_list_ex() function.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -349,7 +349,7 @@ EXPORT_API int email_get_mailbox_list_ex(int account_id, int mailbox_sync_type, 
 /**
  * @brief Gets the mailbox list based on a keyword.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -369,7 +369,7 @@ EXPORT_API int email_get_mailbox_list_by_keyword(int account_id, char *keyword, 
  * @brief Gets a mailbox by mailbox type.
  * @details This function is invoked when a user wants to know the mailbox information by @a mailbox_type for the given account.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -388,7 +388,7 @@ EXPORT_API int email_get_mailbox_by_mailbox_type(int account_id, email_mailbox_t
  * @brief Gets a mailbox by mailbox ID.
  * @details This function is invoked when a user wants to know the mailbox information by mailbox ID.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -406,7 +406,7 @@ EXPORT_API int email_get_mailbox_by_mailbox_id(int input_mailbox_id, email_mailb
  * @brief Sets a mail slot size.
  * @details This function is invoked when a user wants to set the size of mail slot.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -425,13 +425,13 @@ EXPORT_API int email_set_mail_slot_size(int input_account_id, int input_mailbox_
  * @brief Sets the sync time of a mailbox.
  * @details This function is invoked when a user wants to set the sync time of the mailbox.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[in] input_mailbox_id  The mailbox ID
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  *
  * @see #email_mailbox_t
@@ -442,13 +442,13 @@ EXPORT_API int email_stamp_sync_time_of_mailbox(int input_mailbox_id);
 /**
  * @brief Frees the memory allocated for the mailbox information.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel N/P
  *
  * @param[in] mailbox_list  The pointer for searching mailbox structure pointer
  * @param[in] count         The count of mailboxes
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  *
  * @see #email_mailbox_t

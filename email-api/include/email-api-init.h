@@ -84,7 +84,7 @@ extern "C" {
 /**
  * @brief Creates all tables for an email.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -96,7 +96,7 @@ EXPORT_API int email_init_storage(void);
 /**
  * @brief Opens the email DB and registers a busy handler.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -109,11 +109,11 @@ EXPORT_API int email_open_db(void);
 /**
  * @brief Closes the connection to the email DB.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  */
 EXPORT_API int email_close_db(void);
@@ -121,7 +121,7 @@ EXPORT_API int email_close_db(void);
 /**
  * @brief Initializes IPC Proxy by an application which used the Email FW API's.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -132,8 +132,8 @@ EXPORT_API int email_service_begin(void);
 
 /**
  * @brief Finalizes IPC Proxy by an application which used the Email FW API's.
- 
- * @since_tizen 2.3
+
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -145,7 +145,7 @@ EXPORT_API int email_service_end(void);
 /**
  * @brief Checks whether the email-service process is running.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *

@@ -115,7 +115,7 @@ extern "C" {
 /**
  * @brief Gets a filter rule.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -136,14 +136,14 @@ EXPORT_API int email_get_rule(int filter_id, email_rule_t** filtering_set);
  * @details This function gives all the filter rules already set before by user.
  *          This will provide total number of filter rules available and information of all rules.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[out] filtering_set  The filtering rules (possibly @c NULL)
  * @param[out] count          The count of returned filters (possibly @c 0)
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  *
  * @retval  EMAIL_ERROR_INVALID_PARAM  Invalid argument
@@ -156,7 +156,7 @@ EXPORT_API int email_get_rule_list(email_rule_t** filtering_set, int* count);
  * @brief Adds a filter rule.
  * @details This function is invoked if a user wants to add a new filter rule.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -177,7 +177,7 @@ EXPORT_API int email_add_rule(email_rule_t* filtering_set);
  *
  * @param[in]  filter_id  The original filter ID
  * @param[in]  new_set    The information of new filter
- 
+
  * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  *
@@ -191,7 +191,7 @@ EXPORT_API int email_update_rule(int filter_id, email_rule_t* new_set);
  * @brief Deletes a filter rule.
  * @details This function will delete the existing filter information by the specified filter ID.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -207,7 +207,7 @@ EXPORT_API int email_delete_rule(int filter_id);
 /**
  * @brief Frees allocated memory.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel N/P
  *
  * @param[in] filtering_set  The pointer of pointer of filter structure for memory freeing
@@ -226,7 +226,7 @@ EXPORT_API int email_free_rule (email_rule_t** filtering_set, int count);
  * @brief Deletes a filter rule.
  * @details This function will delete the existing filter information by the specified filter ID.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *

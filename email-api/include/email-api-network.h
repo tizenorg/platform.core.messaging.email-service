@@ -164,14 +164,14 @@ extern "C" {
  * @brief Sends a mail.
  * @details This function is invoked when a user wants to send a composed mail.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[in]   mail_id  The mail ID
  * @param[out]  handle   The sending handle
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  *
  * @see #email_mailbox_t and #email_option_t
@@ -182,14 +182,14 @@ EXPORT_API int email_send_mail(int mail_id,	int *handle);
  * @brief Sends a mail.
  * @details This function is invoked when a user wants to send the mail, not been downloaded the attachment.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[in]   input_mail_id  The mail ID
  * @param[out]  handle         The sending handle
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  *
  * @see #email_mailbox_t and #email_option_t
@@ -200,14 +200,14 @@ EXPORT_API int email_send_mail_with_downloading_attachment_of_original_mail(int 
  * @brief Sends a mail.
  * @details This function is invoked when a user wants to send the scheduled mail.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[in]   input_mail_id  The mail ID
  * @param[out]  input_time     The scheduled time
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (refer to #EMAIL_ERROR_XXX) on failure
  *
  * @see #email_mailbox_t and #email_option_t
@@ -219,7 +219,7 @@ EXPORT_API int email_schedule_sending_mail(int input_mail_id, time_t input_time)
  * @brief Downloads headers of new emails from the mail server.
  * @details This function is invoked when a user wants to download only the headers of new mails.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -227,7 +227,7 @@ EXPORT_API int email_schedule_sending_mail(int input_mail_id, time_t input_time)
  * @param[in]  input_mailbox_id  The mailbox ID
  * @param[out] handle            The handle for stopping downloading
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  *
  * @see #email_mailbox_t
@@ -239,13 +239,13 @@ EXPORT_API int email_sync_header(int input_account_id, int input_mailbox_id, int
  * @brief Downloads headers of new emails from the mail server for all emails.
  * @details This function is invoked when a user wants to download headers of new mails for all accounts.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[out]  handle  The handle for stopping downloading
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  */
 EXPORT_API int email_sync_header_for_all_account(int *handle);
@@ -256,7 +256,7 @@ EXPORT_API int email_sync_header_for_all_account(int *handle);
  * @details This function is invoked when a user wants to download email body with/without attachment based on the @a with_attachment option
  *          from the server.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -276,7 +276,7 @@ EXPORT_API int email_download_body(int mail_id, int with_attachment, int *handle
  * @brief Downloads an email nth-attachment from the server.
  * @details This function is invoked if a user wants to download only specific attachment of a mail whose body is already downloaded.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -296,7 +296,7 @@ EXPORT_API int email_download_attachment(int mail_id, int nth, int *handle);
  * @brief Cancels the ongoing job.
  * @details This function is invoked if a user wants to cancel any ongoing job of a specified account.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -316,14 +316,14 @@ EXPORT_API int email_get_network_status(int* on_sending, int* on_receiving) DEPR
 /**
  * @brief Gives the current job information.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
  * @param[out]  output_task_information        The array of job information
  * @param[out]  output_task_information_count  The count of job information
  *
- * @return  #EMAIL_ERROR_NONE on success, 
+ * @return  #EMAIL_ERROR_NONE on success,
  *          otherwise an error code (see #EMAIL_ERROR_XXX) on failure
  */
 EXPORT_API int email_get_task_information(email_task_information_t **output_task_information, int *output_task_information_count);
@@ -333,7 +333,7 @@ EXPORT_API int email_get_task_information(email_task_information_t **output_task
  * @details This function is invoked when a user wants to send an email and saving it afterwards.
  *          This will save the email in draft mailbox and then send it.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -351,7 +351,7 @@ EXPORT_API int email_send_saved(int account_id, int *handle);
  * @brief Fetches all mailbox names from the server and stores the non-existing mailboxes in the DB.
  * @details This function is invoked when a user wants to download all server mailboxes from IMAP server.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -366,7 +366,7 @@ EXPORT_API int email_sync_imap_mailbox_list(int account_id, int *handle);
 /**
  * @brief Searches the mails on the server.
  *
- * @since_tizen 2.4
+ * @since_tizen @if MOBILE 2.4 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -385,14 +385,14 @@ EXPORT_API int email_sync_imap_mailbox_list(int account_id, int *handle);
  *
  * @see #email_search_filter_t
  */
-EXPORT_API int email_search_mail_on_server(int input_account_id, int input_mailbox_id, 
-										email_search_filter_t *input_search_filter_list, 
+EXPORT_API int email_search_mail_on_server(int input_account_id, int input_mailbox_id,
+										email_search_filter_t *input_search_filter_list,
 										int input_search_filter_count, int *output_handle);
 
 /**
  * @brief Deletes temporarily downloaded mails from the local storage.
  *
- * @since_tizen 2.4
+ * @since_tizen @if MOBILE 2.4 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
@@ -408,7 +408,7 @@ EXPORT_API int email_clear_result_of_search_mail_on_server(int input_account_id)
 /**
  * @brief Queries the maximum mail size limit from the SMTP server.
  *
- * @since_tizen 2.3
+ * @since_tizen @if MOBILE 2.3 @elseif WEARABLE 3.0 @endif
  * @privlevel public
  * @privilege %http://tizen.org/privilege/email
  *
