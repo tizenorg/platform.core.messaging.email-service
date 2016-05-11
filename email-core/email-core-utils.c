@@ -2151,8 +2151,8 @@ char *emcore_get_alias_of_mailbox(const char *mailbox_path)
 
 	if (token_list == NULL) {
 		EM_DEBUG_LOG("g_strsplit_set failed.");
-        if (mailbox)
-            g_free(mailbox);
+   	     if (mailbox)
+        	    g_free(mailbox);
 
 		return NULL;
 	}
@@ -2165,11 +2165,8 @@ char *emcore_get_alias_of_mailbox(const char *mailbox_path)
 
 	name = g_strdup(token_list[index - 1]);
 	if (!name) /* prevent 27459 */ {
-        if (mailbox)
-            g_free(mailbox);
-
 		return NULL;
-    }
+	 }
 
 	g_strfreev(token_list);
 
