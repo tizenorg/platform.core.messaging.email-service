@@ -1416,8 +1416,13 @@ INTERNAL_FUNC int emcore_get_task_information(email_task_information_t **output_
 
 	for (i = 0; i < q_length; i++) {
 		elm = (email_event_t *)g_queue_peek_nth(g_event_que, i);
+		if (!elm){
+			EM_DEBUG_EXCEPTION("EMAIL_ERROR_DATA_NOT_FOUND");
+			err = EMAIL_ERROR_DATA_NOT_FOUND;
+			goto FINISH_OFF;
+		}
 		if(elm->type != EMAIL_EVENT_DOWNLOAD_ATTACHMENT) {
-			if (elm && (elm->type != EMAIL_EVENT_NONE && elm->status != EMAIL_EVENT_STATUS_CANCELED)) {
+			if (elm->type != EMAIL_EVENT_NONE && elm->status != EMAIL_EVENT_STATUS_CANCELED) {
 				task_information[index].handle     = elm->handle;
 				task_information[index].account_id = elm->account_id;
 				task_information[index].type       = elm->type;
@@ -1429,7 +1434,7 @@ INTERNAL_FUNC int emcore_get_task_information(email_task_information_t **output_
 
 			}
 		}else if(elm->type == EMAIL_EVENT_DOWNLOAD_ATTACHMENT) {
-			if (elm && (elm->type != EMAIL_EVENT_NONE && elm->status != EMAIL_EVENT_STATUS_CANCELED)) {
+			if (elm->type != EMAIL_EVENT_NONE && elm->status != EMAIL_EVENT_STATUS_CANCELED) {
 
 				task_information[index].task_data1 = (void *)elm->event_param_data_4; /* mail_id */
 				task_information[index].task_data2 = (void *)elm->event_param_data_5; /* attachment_nth */
