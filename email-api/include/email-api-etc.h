@@ -165,6 +165,10 @@ EXPORT_API int email_verify_email_address(char *input_email_address);
  */
 EXPORT_API int email_convert_mutf7_to_utf8(const char *mutf7_str, char **utf8_str);
 
+
+
+EXPORT_API int email_check_privilege(const char *privilege_name);
+
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

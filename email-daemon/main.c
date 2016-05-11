@@ -2779,6 +2779,53 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END();
 }
 
+void stb_check_privilege(HIPC_API a_hAPI, unsigned int client_fd)
+{
+	EM_DEBUG_FUNC_BEGIN();
+
+	EM_DEBUG_LOG("****************************************itcheck");
+	char *privilege_name = NULL;
+	int local_result = 0, err_code = 0, privilege_name_length = 0;
+	int nAPPID = emipc_get_app_id(a_hAPI);
+ 	char *multi_user_name = NULL;
+	int err = EMAIL_ERROR_NONE;
+
+    if ((err_code = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
+            EM_DEBUG_EXCEPTION("emcore_get_user_info failed : [%d]", err_code);
+            multi_user_name = NULL;
+    }
+
+	/* privilege_name_length */
+	privilege_name_length = emipc_get_parameter_length(a_hAPI, ePARAMETER_IN, 0);
+	if (privilege_name_length > 0) {
+		EM_DEBUG_LOG("privilege_name_length [%d]", privilege_name_length);
+		privilege_name = em_malloc(privilege_name_length);
+		emipc_get_parameter(a_hAPI, ePARAMETER_IN, 0, privilege_name_length, privilege_name);
+		EM_DEBUG_LOG_SEC("privilege_name [%s]", privilege_name);
+
+		err = emcore_check_privilege_common(client_fd, privilege_name);
+
+		EM_DEBUG_LOG("result err [%d]", err);
+		//local_result = emcore_backup_accounts(multi_user_name, (const char*)file_path, &err_code);
+	}
+
+	EM_DEBUG_LOG("itcheck result err [%d]", err);
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		EM_DEBUG_LOG("emipc_add_parameter failed ");
+
+
+	if (!emipc_execute_stub_api(a_hAPI))
+		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed  ");
+
+	EM_SAFE_FREE(privilege_name);
+	EM_SAFE_FREE(multi_user_name);
+	EM_DEBUG_FUNC_END();
+
+
+}
+
+
+
 void stb_backup_account(HIPC_API a_hAPI)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -3741,6 +3788,12 @@ void stb_API_mapper(HIPC_API a_hAPI)
 	int err = EMAIL_ERROR_NONE;
 	unsigned int nAPIID = emipc_get_api_id(a_hAPI);
 	unsigned int client_fd = emipc_get_response_id(a_hAPI);
+
+	if(nAPIID == _EMAIL_API_CHECK_PRIVILEGE){
+		//TODO check privilege stb_check_privilege(a_hAPI);
+		stb_check_privilege(a_hAPI, client_fd);
+		return;
+	}
 
 	err = emcore_check_privilege(client_fd);
 	if (err != EMAIL_ERROR_NONE) {

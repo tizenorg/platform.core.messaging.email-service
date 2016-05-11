@@ -219,3 +219,53 @@ EXPORT_API int email_convert_mutf7_to_utf8(const char *mutf7_str, char **utf8_st
 	EM_DEBUG_API_END("ret[%d]", err);
 	return err;
 }
+EXPORT_API int email_check_privilege(const char *privilege_name)
+{
+
+	EM_DEBUG_API_BEGIN("privilege_name[%s]", privilege_name);
+
+
+	int ret = 0;
+	int err = EMAIL_ERROR_NONE;
+	if(!privilege_name){
+		EM_DEBUG_EXCEPTION("EMAIL_ERROR_INVALID_PARAM");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		return err;
+	}
+
+
+	HIPC_API hAPI = emipc_create_email_api(_EMAIL_API_CHECK_PRIVILEGE);
+	EM_IF_NULL_RETURN_VALUE(hAPI, EMAIL_ERROR_NULL_VALUE);
+
+	if(!emipc_add_parameter(hAPI, ePARAMETER_IN, (char*)privilege_name, EM_SAFE_STRLEN(privilege_name)+1)){
+		EM_DEBUG_EXCEPTION("emipc_add_parameter_check_privilege failed");
+		err = EMAIL_ERROR_NULL_VALUE;
+		goto FINISH_OFF;
+	}
+
+	if(emipc_execute_proxy_api(hAPI) != EMAIL_ERROR_NONE) {
+
+		EM_DEBUG_EXCEPTION("emipc_execute_proxy_api failed");
+		err = EMAIL_ERROR_IPC_SOCKET_FAILURE;
+		goto FINISH_OFF;
+
+	}
+
+	emipc_get_parameter(hAPI, ePARAMETER_OUT, 0, sizeof(int), &err);
+//	if(ret == false) {
+
+//		emipc_get_parameter(hAPI, ePARAMETER_OUT, 1, sizeof(int), &err);
+//	}
+
+	EM_DEBUG_LOG("err : %d", err);
+
+FINISH_OFF:
+	emipc_destroy_email_api(hAPI);
+	hAPI = NULL;
+
+	EM_DEBUG_API_END("err[%d]", err);
+	return err;
+
+}
+
+

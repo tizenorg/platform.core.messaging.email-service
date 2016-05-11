@@ -214,3 +214,95 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END();
 	return err;
 }
+INTERNAL_FUNC int emcore_check_privilege_common(unsigned int socket_fd, char *privilege_name)
+{
+	EM_DEBUG_FUNC_BEGIN();
+	int ret = CYNARA_API_SUCCESS;
+	int err = EMAIL_ERROR_NONE;
+	char errno_buf[ERRNO_BUF_SIZE] = {0};
+
+	EM_DEBUG_LOG("privilege_name [%s]", privilege_name);
+	if (socket_fd < 0) {
+		EM_DEBUG_EXCEPTION("Invalid parameter");
+		err = EMAIL_ERROR_INVALID_PARAM;
+		return err;
+	}
+
+	if (cynara_info->email_cynara == NULL) {
+		err = emcore_init_cynara();
+		if (err != EMAIL_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("emcore_init_cynara failed : [%d]", err);
+			return err;
+		}
+	}
+
+	err = EMAIL_ERROR_PERMISSION_DENIED;
+
+	pid_t client_pid = 0;
+	char *client_uid = NULL;
+	char *client_smack = NULL;
+	char *client_session = NULL;
+
+	ENTER_CRITICAL_SECTION(cynara_mutex);
+
+	ret = cynara_creds_socket_get_client(socket_fd, cynara_info->client_method, &client_smack);
+	if (ret != CYNARA_API_SUCCESS) {
+		cynara_strerror(ret, errno_buf, ERRNO_BUF_SIZE);
+		EM_DEBUG_EXCEPTION("cynara_creds_socket_get_client failed : [%d], error : [%s]",
+							ret,
+							errno_buf);
+		goto FINISH_OFF;
+	}
+
+	ret = cynara_creds_socket_get_user(socket_fd, cynara_info->user_method, &client_uid);
+	if (ret != CYNARA_API_SUCCESS) {
+		cynara_strerror(ret, errno_buf, ERRNO_BUF_SIZE);
+		EM_DEBUG_EXCEPTION("cynara_creds_socket_get_user failed : [%d], error : [%s]",
+							ret,
+							errno_buf);
+		goto FINISH_OFF;
+	}
+
+	ret = cynara_creds_socket_get_pid(socket_fd, &client_pid);
+	if (ret != CYNARA_API_SUCCESS) {
+		cynara_strerror(ret, errno_buf, ERRNO_BUF_SIZE);
+		EM_DEBUG_EXCEPTION("cynara_creds_socket_get_pid failed : [%d], error : [%s]",
+							ret,
+							errno_buf);
+		goto FINISH_OFF;
+	}
+
+	client_session = cynara_session_from_pid(client_pid);
+	if (client_session == NULL) {
+		cynara_strerror(ret, errno_buf, ERRNO_BUF_SIZE);
+		EM_DEBUG_EXCEPTION("cynara_session_from_pid failed error : [%s]",
+							errno_buf);
+		goto FINISH_OFF;
+	}
+
+	EM_DEBUG_LOG_SEC("privilege_name [%s]", privilege_name);
+	ret = cynara_check(cynara_info->email_cynara, client_smack, client_session, client_uid,
+					privilege_name);
+
+	EM_DEBUG_LOG_SEC("ret [%d]", ret);
+	if (ret != CYNARA_API_ACCESS_ALLOWED) {
+		cynara_strerror(ret, errno_buf, ERRNO_BUF_SIZE);
+		EM_DEBUG_EXCEPTION("cynara_check failed : [%d], error : [%s]",
+							ret,
+							errno_buf);
+		goto FINISH_OFF;
+	}
+
+	err = EMAIL_ERROR_NONE;
+
+FINISH_OFF:
+
+	LEAVE_CRITICAL_SECTION(cynara_mutex);
+
+	EM_SAFE_FREE(client_uid);
+	EM_SAFE_FREE(client_smack);
+	EM_SAFE_FREE(client_session);
+
+	EM_DEBUG_FUNC_END();
+	return err;
+}
