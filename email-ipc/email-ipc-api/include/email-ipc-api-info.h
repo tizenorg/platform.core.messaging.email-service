@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -235,6 +235,9 @@ EXPORT_API void emipc_free_api_info(emipc_email_api_info *api_info);
 					break;\
 			case _EMAIL_API_LOAD_DEFAULT_ACCOUNT_ID:\
 					s = "_EMAIL_API_LOAD_DEFAULT_ACCOUNT_ID";\
+					break;\
+			case _EMAIL_API_CHECK_PRIVILEGE:\
+					s = "_EMAIL_API_CHECK_PRIVILEGE";\
 					break;\
 			default : \
 					s = "UNKNOWN_APIID";\
