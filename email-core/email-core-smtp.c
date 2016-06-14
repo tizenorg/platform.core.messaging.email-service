@@ -2872,7 +2872,7 @@ char *emcore_generate_content_id_string(const char *hostname, int *err)
 
 	int cid_length = RANDOM_NUMBER_LENGTH + EM_SAFE_STRLEN(hostname) + 2, random_number_1, random_number_2, random_number_3, random_number_4;
 	char *cid_string = NULL;
-	unsigned int seed = time(NULL);
+	unsigned int seed = clock();
 	cid_string = malloc(cid_length);
 
 	if (!cid_string) {
