@@ -1931,7 +1931,9 @@ INTERNAL_FUNC int emcore_free_partial_body_thd_event(email_event_partial_body_th
 	EM_DEBUG_FUNC_BEGIN();
 
 	if (NULL == partial_body_thd_event) {
-		*error_code = EMAIL_ERROR_INVALID_PARAM;
+		if (error_code != NULL) {
+			*error_code = EMAIL_ERROR_INVALID_PARAM;
+		}
 		return false;
 	}
 

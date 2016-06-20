@@ -3279,18 +3279,20 @@ INTERNAL_FUNC void emcore_gmime_construct_multipart(GMimeMultipart *multipart,
 			EM_DEBUG_LOG_SEC("Content-ID: %s", part->body.id);
 			int i = 0;
 			char *cid = EM_SAFE_STRDUP(part->body.id);
-			g_strstrip(cid);
+			if (cid) {
+				g_strstrip(cid);
 
-			while (EM_SAFE_STRLEN(cid) > 0 && cid[i] != '\0') {
-				if (cid[i] == '<' || cid[i] == '>')
-					cid[i] = ' ';
-				i++;
+				while (EM_SAFE_STRLEN(cid) > 0 && cid[i] != '\0') {
+					if (cid[i] == '<' || cid[i] == '>')
+						cid[i] = ' ';
+					i++;
+				}
+
+				g_strstrip(cid);
+				EM_DEBUG_LOG_DEV("Content-ID stripped: %s", cid);
+				g_mime_object_set_content_id(subpart, cid);
+				EM_SAFE_FREE(cid);
 			}
-
-			g_strstrip(cid);
-			EM_DEBUG_LOG_DEV("Content-ID stripped: %s", cid);
-			g_mime_object_set_content_id(subpart, cid);
-			EM_SAFE_FREE(cid);
 		}
 
 		g_mime_multipart_add(multipart, subpart);
