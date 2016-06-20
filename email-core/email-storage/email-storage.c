@@ -3410,7 +3410,7 @@ INTERNAL_FUNC int emstorage_get_account_list(char *multi_user_name, int *select_
 
 	EM_DEBUG_LOG_DEV("count = %d", rc);
 
-	if (count == 0) {
+	if (count <= 0) {
 		EM_DEBUG_LOG("no account found...");
 		error = EMAIL_ERROR_ACCOUNT_NOT_FOUND;
 		ret = true;
@@ -4848,7 +4848,7 @@ INTERNAL_FUNC int emstorage_add_account(char *multi_user_name, emstorage_account
 	sqlite3_free_table(result);
 	result = NULL;
 
-	if (rc < 0 && rc > EMAIL_ACCOUNT_MAX) {
+	if (rc < 0 || rc > EMAIL_ACCOUNT_MAX) {
 		EM_DEBUG_EXCEPTION("OVERFLOWED THE MAX ACCOUNT");
 		error = EMAIL_ERROR_ACCOUNT_MAX_COUNT;
 		goto FINISH_OFF;
@@ -13477,7 +13477,7 @@ INTERNAL_FUNC int emstorage_get_pbd_mailbox_list(char *multi_user_name, int acco
 	*count = atoi(result[1]);
 	sqlite3_free_table(result);
 
-	if (!*count) {
+	if (*count <= 0) {
 		EM_DEBUG_EXCEPTION(" no mailbox_name found...");
 		error = EMAIL_ERROR_MAILBOX_NOT_FOUND;
 		ret = true;
@@ -13577,7 +13577,7 @@ INTERNAL_FUNC int emstorage_get_pbd_account_list(char *multi_user_name, int **ac
 	*count = atoi(result[1]);
 	sqlite3_free_table(result);
 
-	if (!*count) {
+	if (*count <= 0) {
 		EM_DEBUG_EXCEPTION("no account found...");
 		error = EMAIL_ERROR_MAILBOX_NOT_FOUND;
 		ret = true;
@@ -13683,7 +13683,7 @@ INTERNAL_FUNC int emstorage_get_pbd_activity_data(char *multi_user_name, int acc
 
 	EM_DEBUG_LOG_SEC("Query = [%s]", sql_query_string);
 
-	if (!*count) {
+	if (*count <= 0) {
 		EM_DEBUG_LOG("No matched activity found in mail_partial_body_activity_tbl");
 		error = EMAIL_ERROR_MAIL_NOT_FOUND;
 		ret = true;
