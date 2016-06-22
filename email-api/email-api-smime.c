@@ -543,3 +543,11 @@ FINISH_OFF:
 	EM_DEBUG_API_END("err[%d]", err);
 	return err;
 }
+
+EXPORT_API int email_free_certificate(email_certificate_t **certificate, int count)
+{
+	EM_DEBUG_API_BEGIN("");
+	return EMAIL_ERROR_NOT_SUPPORTED;
+}
+
+
