@@ -202,9 +202,6 @@ void stb_delete_account(HIPC_API a_hAPI)
 	if (!emipc_execute_stub_api(a_hAPI))
 		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
 
-	/* if file is not deleted, main thread kills the thread */
-	emcore_send_signal_for_del_account(EMAIL_SIGNAL_DB_DELETED);
-	EM_DEBUG_LOG("publish db of account deleted");
 
 FINISH_OFF:
 

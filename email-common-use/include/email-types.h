@@ -1357,8 +1357,6 @@ typedef struct
     char                           *logo_icon_path;                           /**< Account logo icon (used by account svc and email app) */
     email_roaming_option_t          roaming_option;                           /**< Roaming option */
     int                             color_label;                              /**< Account color label */
-    void                           *user_data;                                /**< Binary user data */
-    int                             user_data_length;                         /**< User data length */
 
     /* User information */
     char                           *user_display_name;                        /**< User's display */
@@ -1414,6 +1412,9 @@ typedef struct
     email_cipher_type               cipher_type;                              /**< The encryption algorithm */
     email_digest_type               digest_type;                              /**< The digest algorithm */
 	char                           *user_name;                                /**< The user name for multi user (Since 2.4) */
+    void                           *user_data;                                /**< Binary user data */
+    int                             user_data_length;                         /**< User data length */
+
 
 } email_account_t;
 
