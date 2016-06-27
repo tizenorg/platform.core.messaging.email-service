@@ -1414,6 +1414,9 @@ typedef struct
     email_cipher_type               cipher_type;                              /**< The encryption algorithm */
     email_digest_type               digest_type;                              /**< The digest algorithm */
 	char                           *user_name;                                /**< The user name for multi user (Since 2.4) */
+    void                           *user_data;                                /**< Binary user data */
+    int                             user_data_length;                         /**< User data length */
+
 
 } email_account_t;
 
