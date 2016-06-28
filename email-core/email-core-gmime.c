@@ -5089,14 +5089,14 @@ INTERNAL_FUNC char *emcore_gmime_get_mime_entity_signed_message(GMimeObject *mul
 		goto FINISH_OFF;
 	}
 
-	if (!emcore_get_temp_file_name(&mime_entity_path, &error)) {
+	if (!emcore_get_temp_mime_file_name(&mime_entity_path, &error)) {
 		EM_DEBUG_EXCEPTION("emcore_get_temp_file_name failed : [%d]", error);
 		goto FINISH_OFF;
 	}
-
 	entity_fd = open(mime_entity_path, O_WRONLY|O_CREAT, 0644);
 	if (entity_fd < 0) {
 		EM_DEBUG_EXCEPTION("open failed");
+		EM_DEBUG_EXCEPTION("errno : %d", errno);
 		error = EMAIL_ERROR_SYSTEM_FAILURE;
 		goto FINISH_OFF;
 	}
