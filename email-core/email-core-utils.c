@@ -516,6 +516,47 @@ FINISH_OFF:
 	return ret;
 }
 
+int emcore_get_temp_mime_file_name(char **filename, int *err_code)
+{
+	EM_DEBUG_FUNC_BEGIN("filename[%p], err_code[%p]", filename, err_code);
+
+	int ret = false;
+	int error = EMAIL_ERROR_NONE;
+	if (filename == NULL) {
+		EM_DEBUG_EXCEPTION("\t filename[%p]\n", filename);
+		error = EMAIL_ERROR_INVALID_PARAM;
+		goto FINISH_OFF;
+	}
+
+	char tempname[512] = {0x00, };
+	struct timeval tv;
+
+
+	gettimeofday(&tv, NULL);
+	srand(tv.tv_usec);
+
+	/* Create Directory If deleted by user*/
+	emstorage_create_dir_if_delete();
+
+	SNPRINTF(tempname, sizeof(tempname), "%s%c%d", TEMPMIME, DIR_SEPERATOR_CH, rand());
+
+	char *p = EM_SAFE_STRDUP(tempname);
+	if (p == NULL) {
+		EM_DEBUG_EXCEPTION("\t strdup failed...\n");
+		error = EMAIL_ERROR_OUT_OF_MEMORY;
+		goto FINISH_OFF;
+	}
+
+	*filename = p;
+
+	ret = true;
+
+FINISH_OFF:
+	if (err_code != NULL)
+		*err_code = error;
+	EM_DEBUG_FUNC_END();
+	return ret;
+}
 int emcore_get_file_name(char *path, char **filename, int *err_code)
 {
 	EM_DEBUG_FUNC_BEGIN_SEC("path[%s], filename[%p], err_code[%p]", path, filename, err_code);
