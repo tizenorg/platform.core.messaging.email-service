@@ -26,4 +26,5 @@ chmod 664 ${TZ_USER_DB}/.email-service.db-journal
 mkdir -m775 -p ${TZ_USER_DATA}/email/.email_data
 
 mkdir -m775 -p ${TZ_USER_DATA}/email/.email_data/tmp
+mkdir -m775 -p ${TZ_USER_SHARE}/email/.email_data/tmp
 

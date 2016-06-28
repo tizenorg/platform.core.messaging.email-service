@@ -4,7 +4,7 @@
 * Copyright (c) 2012 - 2013 Samsung Electronics Co., Ltd. All rights reserved.
 *
 * Contact: Kyuho Jo <kyuho.jo@samsung.com>, Sunghyun Kwon <sh0701.kwon@samsung.com>
-* 
+*
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
 * You may obtain a copy of the License at
@@ -24,9 +24,9 @@
  * File :  email-internal-types.h
  * Desc :  defines data structures and macros
  *
- * Auth : 
+ * Auth :
  *
- * History : 
+ * History :
  *    2011.04.05  :  created
  *****************************************************************************/
 #ifndef __EMAIL_INTERNAL_TYPES_H__
@@ -80,12 +80,12 @@ extern "C"
 /* #define __FEATURE_BLOCKING_MODE__ */
 #define __FEATURE_BODY_SEARCH__
 #define __FEATURE_ACCESS_CONTROL__
-#define __FEATURE_UPDATE_DB_TABLE_SCHEMA__ 
-#define __FEATURE_OPEN_SSL_MULTIHREAD_HANDLE__ 
+#define __FEATURE_UPDATE_DB_TABLE_SCHEMA__
+#define __FEATURE_OPEN_SSL_MULTIHREAD_HANDLE__
 /* #define __FEATURE_COMPARE_DOMAIN__ */
 /* #define __FEATURE_FORK_FOR_CURL__ */
 /* #define __FEATURE_USE_DRM_API__ */
-#define __FEATURE_SECURE_PGP__ 
+#define __FEATURE_SECURE_PGP__
 /* #define __FEATURE_SYNC_STATUS__ */
 #define __FEATURE_NOTIFICATION_ENABLE__
 /* #define __FEATURE_VOICERECORDER_STATUS_FOR_NOTI__ */
@@ -100,7 +100,7 @@ extern "C"
 
 #define SESSION_MAX	                        50
 #define	IMAP_2004_LOG                       1
-#define TEXT_SIZE                           161 
+#define TEXT_SIZE                           161
 #define MAILBOX_COUNT                       6
 #define PARTIAL_DOWNLOAD_SIZE               1024
 #define PARTIAL_BODY_SIZE_IN_BYTES          15360     /*  Partial Body download - 15K */
@@ -134,6 +134,7 @@ extern "C"
 #define EMAILPATH 					        tzplatform_mkpath(TZ_USER_DATA, "email")
 #define MAILHOME 					        tzplatform_mkpath(TZ_USER_DATA, "email/.email_data")
 #define MAILTEMP                            tzplatform_mkpath(TZ_USER_DATA, "email/.email_data/tmp")
+#define TEMPMIME                           tzplatform_mkpath(TZ_USER_SHARE, "email/.email_data/tmp")
 #define DIRECTORY_PERMISSION                0775
 
 #define MIME_SUBTYPE_DRM_OBJECT             "vnd.oma.drm.message"
@@ -197,10 +198,10 @@ extern "C"
 #define LEAVE_CRITICAL_SECTION(cs)                {pthread_mutex_unlock(&cs); }
 #define DELETE_CRITICAL_SECTION(cs)               {EM_DEBUG_LOG("DELETE_CRITICAL_SECTION "#cs); pthread_mutex_destroy(&cs); }
 
-#define INITIALIZE_CONDITION_VARIABLE(cv)         {EM_DEBUG_LOG("INITIALIZE_CONDITION_VARIABLE "#cv); pthread_cond_init(&cv, NULL); } 
-#define SLEEP_CONDITION_VARIABLE(cv, cs)          {EM_DEBUG_LOG("SLEEP_CONDITION_VARIABLE "#cv); pthread_cond_wait(&cv, &cs); } 
-#define WAKE_CONDITION_VARIABLE(cv)               {EM_DEBUG_LOG("WAKE_CONDITION_VARIABLE "#cv); pthread_cond_signal(&cv); } 
-#define DELETE_CONDITION_VARIABLE(cv)             {EM_DEBUG_LOG("DELETE_CONDITION_VARIABLE "#cv); pthread_cond_destroy(&cv); } 
+#define INITIALIZE_CONDITION_VARIABLE(cv)         {EM_DEBUG_LOG("INITIALIZE_CONDITION_VARIABLE "#cv); pthread_cond_init(&cv, NULL); }
+#define SLEEP_CONDITION_VARIABLE(cv, cs)          {EM_DEBUG_LOG("SLEEP_CONDITION_VARIABLE "#cv); pthread_cond_wait(&cv, &cs); }
+#define WAKE_CONDITION_VARIABLE(cv)               {EM_DEBUG_LOG("WAKE_CONDITION_VARIABLE "#cv); pthread_cond_signal(&cv); }
+#define DELETE_CONDITION_VARIABLE(cv)             {EM_DEBUG_LOG("DELETE_CONDITION_VARIABLE "#cv); pthread_cond_destroy(&cv); }
 
 #define INITIALIZE_RECURSIVE_CRITICAL_SECTION(cs) {EM_DEBUG_LOG("INITIALIZE_RECURSIVE_CRITICAL_SECTION "#cs);\
                                                    if (cs == NULL) {pthread_mutexattr_t attr; cs = (pthread_mutex_t *)malloc(sizeof(pthread_mutex_t));\
@@ -231,7 +232,7 @@ typedef pthread_t thread_t;
 #define READMODE "r"
 #define WRITEMODE "w"
 
-#define TYPEPKCS7_SIGN 10	
+#define TYPEPKCS7_SIGN 10
 #define TYPEPKCS7_MIME 11
 #define TYPEPGP        12
 
@@ -254,11 +255,11 @@ typedef pthread_t thread_t;
 /*  Type */
 typedef enum
 {
-	_SERVICE_THREAD_TYPE_NONE      = 0,  
-	_SERVICE_THREAD_TYPE_RECEIVING = 1, 
-	_SERVICE_THREAD_TYPE_SENDING   = 2, 
-#ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__ 
-	_SERVICE_THREAD_TYPE_PBD       = 3, 
+	_SERVICE_THREAD_TYPE_NONE      = 0,
+	_SERVICE_THREAD_TYPE_RECEIVING = 1,
+	_SERVICE_THREAD_TYPE_SENDING   = 2,
+#ifdef __FEATURE_PARTIAL_BODY_DOWNLOAD__
+	_SERVICE_THREAD_TYPE_PBD       = 3,
 #endif /*  __FEATURE_PARTIAL_BODY_DOWNLOAD__ */
 } email_service_thread_type;
 
@@ -293,7 +294,7 @@ enum
 } ;
 #endif /* __FEATURE_KEEP_CONNECTION__ */
 
-enum 
+enum
 {
 	EXTENSION_JPEG   = 0,
 	EXTENSION_JPG    = 1,
@@ -433,7 +434,7 @@ typedef enum
 	ACTIVITY_PARTIAL_BODY_DOWNLOAD_POP3_ACTIVE
 }	email_pdb_activity_type_e;
 
-typedef struct 
+typedef struct
 {
         int account_id;
         int mail_id;
@@ -449,10 +450,10 @@ typedef struct
 
 typedef enum
 {
-	EMAIL_ALERT_TYPE_MELODY, 
-	EMAIL_ALERT_TYPE_VIB, 
-	EMAIL_ALERT_TYPE_MELODY_AND_VIB, 
-	EMAIL_ALERT_TYPE_MUTE, 
+	EMAIL_ALERT_TYPE_MELODY,
+	EMAIL_ALERT_TYPE_VIB,
+	EMAIL_ALERT_TYPE_MELODY_AND_VIB,
+	EMAIL_ALERT_TYPE_MUTE,
 	EMAIL_ALERT_TYPE_NONE,
 } EMAIL_ALERT_TYPE;
 
