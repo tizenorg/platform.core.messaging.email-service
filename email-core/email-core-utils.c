@@ -480,6 +480,7 @@ int emcore_get_temp_file_name(char **filename, int *err_code)
 
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
+	unsigned int seed = clock();
 	if (filename == NULL) {
 		EM_DEBUG_EXCEPTION("\t filename[%p]\n", filename);
 		error = EMAIL_ERROR_INVALID_PARAM;
@@ -496,7 +497,7 @@ int emcore_get_temp_file_name(char **filename, int *err_code)
 	/* Create Directory If deleted by user*/
 	emstorage_create_dir_if_delete();
 
-	SNPRINTF(tempname, sizeof(tempname), "%s%c%d", MAILTEMP, DIR_SEPERATOR_CH, rand());
+	SNPRINTF(tempname, sizeof(tempname), "%s%c%d", MAILTEMP, DIR_SEPERATOR_CH, rand_r(&seed));
 
 	char *p = EM_SAFE_STRDUP(tempname);
 	if (p == NULL) {
@@ -522,6 +523,7 @@ int emcore_get_temp_mime_file_name(char **filename, int *err_code)
 
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
+	unsigned int seed = clock();
 	if (filename == NULL) {
 		EM_DEBUG_EXCEPTION("\t filename[%p]\n", filename);
 		error = EMAIL_ERROR_INVALID_PARAM;
@@ -538,7 +540,7 @@ int emcore_get_temp_mime_file_name(char **filename, int *err_code)
 	/* Create Directory If deleted by user*/
 	emstorage_create_dir_if_delete();
 
-	SNPRINTF(tempname, sizeof(tempname), "%s%c%d", TEMPMIME, DIR_SEPERATOR_CH, rand());
+	SNPRINTF(tempname, sizeof(tempname), "%s%c%d", TEMPMIME, DIR_SEPERATOR_CH, rand_r(&seed));
 
 	char *p = EM_SAFE_STRDUP(tempname);
 	if (p == NULL) {
