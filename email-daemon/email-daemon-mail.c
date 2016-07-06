@@ -104,10 +104,7 @@ INTERNAL_FUNC int emdaemon_send_mail(char *multi_user_name, int mail_id, int *ha
 		goto FINISH_OFF;
 	}
 
-	if (!emnetwork_check_network_status(&err)) {
-		EM_DEBUG_EXCEPTION("emnetwork_check_network_status failed [%d]", err);
-		goto FINISH_OFF;
-	}
+
 
 #ifdef __FEATURE_MOVE_TO_OUTBOX_FIRST__
 	if (!emstorage_get_mailbox_by_mailbox_type(multi_user_name, account_id, EMAIL_MAILBOX_TYPE_OUTBOX, &local_mailbox, true, &err))  {
