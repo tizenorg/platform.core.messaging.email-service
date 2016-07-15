@@ -535,7 +535,6 @@ INTERNAL_FUNC int emcore_retrieve_event_for_download_attachment(email_event_t **
 	int ret = false;
 	int error = EMAIL_ERROR_NONE;
 	int q_length = 0;
-	email_event_t *poped = NULL;
 	email_event_t *head_event = NULL;
 
 	if (g_event_que)
