@@ -1086,7 +1086,12 @@ static int emcore_layout_multi_noti(notification_h noti, int unread_mail, char *
 		goto FINISH_OFF;
 	}
 
-	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, "New emails", dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_MBODY_NEW_EMAILS_ABB"), NOTIFICATION_VARIABLE_TYPE_NONE);
+	if ((noti_err = notification_set_text_domain(noti, NATIVE_EMAIL_DOMAIN, tzplatform_mkpath(TZ_SYS_RO_APP,"org.tizen.email/res/locale"))) != NOTIFICATION_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("notification_set_text_domain failed [%d]", noti_err);
+			goto FINISH_OFF;
+	}
+
+	noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, "New emails", "IDS_EMAIL_MBODY_NEW_EMAILS_ABB", NOTIFICATION_VARIABLE_TYPE_NONE);
 	if (noti_err != NOTIFICATION_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_TITLE failed");
 		goto FINISH_OFF;
@@ -1151,8 +1156,14 @@ static int emcore_layout_single_noti(notification_h noti, char *account_name, in
 		goto FINISH_OFF;
 	}
 
+	if ((noti_err = notification_set_text_domain(noti, NATIVE_EMAIL_DOMAIN, tzplatform_mkpath(TZ_SYS_RO_APP,"org.tizen.email/res/locale"))) != NOTIFICATION_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("notification_set_text_domain failed [%d]", noti_err);
+			goto FINISH_OFF;
+	}
+
+
 	if (ids)
-		noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, "Email", dgettext(NATIVE_EMAIL_DOMAIN, "IDS_ST_HEADER_EMAIL"), NOTIFICATION_VARIABLE_TYPE_NONE);
+		noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, "Email", "IDS_ST_HEADER_EMAIL", NOTIFICATION_VARIABLE_TYPE_NONE);
 	else
 		noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, display_sender, NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
 
@@ -1180,7 +1191,7 @@ static int emcore_layout_single_noti(notification_h noti, char *account_name, in
 	if (display_status)
 		noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_CONTENT, subject, NULL, NOTIFICATION_VARIABLE_TYPE_NONE);
 	else
-		noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_INFO_1, "New email", dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_NEW_EMAIL_RECEIVED_ABB"), NOTIFICATION_VARIABLE_TYPE_NONE);
+		noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_INFO_1, "New email", "IDS_EMAIL_TPOP_NEW_EMAIL_RECEIVED_ABB", NOTIFICATION_VARIABLE_TYPE_NONE);
 
 	if (noti_err != NOTIFICATION_ERROR_NONE) {
 		EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_INFO_1 failed");
@@ -1769,6 +1780,12 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 		bindtextdomain(NATIVE_EMAIL_DOMAIN, tzplatform_mkpath(TZ_SYS_RO_APP,"org.tizen.email/res/locale"));
 		textdomain(NATIVE_EMAIL_DOMAIN);
 
+		if ((noti_err = notification_set_text_domain(noti, NATIVE_EMAIL_DOMAIN, tzplatform_mkpath(TZ_SYS_RO_APP,"org.tizen.email/res/locale"))) != NOTIFICATION_ERROR_NONE) {
+			EM_DEBUG_EXCEPTION("notification_set_text_domain failed [%d]", noti_err);
+			err = EMAIL_ERROR_NOTI;
+			goto FINISH_OFF;
+		}
+
 		switch (sending_error) {
 		case EMAIL_ERROR_NONE:
 			dgettext_string = dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_EMAIL_SENT");
@@ -1818,7 +1835,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 			if ((noti_err = notification_set_text(noti,
 												NOTIFICATION_TEXT_TYPE_CONTENT,
 												"Email Sent",
-												dgettext_string,
+												"IDS_EMAIL_TPOP_EMAIL_SENT",
 												NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
 				err = EMAIL_ERROR_NOTI;
@@ -1829,7 +1846,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 			if ((noti_err = notification_set_text(noti,
 												NOTIFICATION_TEXT_TYPE_CONTENT,
 												"Sending failed. Server storage full.",
-												dgettext_string,
+												"IDS_EMAIL_TPOP_SENDING_FAILED_SERVER_STORAGE_FULL_ABB",
 												NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
 				err = EMAIL_ERROR_NOTI;
@@ -1840,7 +1857,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 			if ((noti_err = notification_set_text(noti,
 												NOTIFICATION_TEXT_TYPE_CONTENT,
 												"Sending failed",
-												dgettext_string,
+												"IDS_EMAIL_TPOP_SENDING_FAILED",
 												NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
 				err = EMAIL_ERROR_NOTI;
@@ -1852,7 +1869,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 		if (sending_error == EMAIL_ERROR_SMTP_SEND_FAILURE_BY_OVERSIZE) {
 			if ((noti_err = notification_set_text(noti,
 												NOTIFICATION_TEXT_TYPE_INFO_1,
-												dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_POP_THE_EMAIL_IS_TOO_LARGE"),
+												"IDS_EMAIL_POP_THE_EMAIL_IS_TOO_LARGE",
 												NULL,
 												NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("notification_set_text TEXT_TYPE_INFO_1 failed");
@@ -1905,7 +1922,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 			goto FINISH_OFF;
 		}
 
-		if ((noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, "Sending email...", dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_SENDING_EMAIL_ING"), NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
+		if ((noti_err = notification_set_text(noti, NOTIFICATION_TEXT_TYPE_TITLE, "Sending email...", "IDS_EMAIL_TPOP_SENDING_EMAIL_ING", NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
 			err = EMAIL_ERROR_NOTI;
 			goto FINISH_OFF;
