@@ -1818,7 +1818,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 			if ((noti_err = notification_set_text(noti,
 												NOTIFICATION_TEXT_TYPE_CONTENT,
 												"Email Sent",
-												dgettext_string,
+												"IDS_EMAIL_TPOP_EMAIL_SENT",
 												NOTIFICATION_VARIABLE_TYPE_NONE)) != NOTIFICATION_ERROR_NONE) {
 				EM_DEBUG_EXCEPTION("notification_set_text failed [%d]", noti_err);
 				err = EMAIL_ERROR_NOTI;
