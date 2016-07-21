@@ -60,6 +60,10 @@ extern GQueue *g_event_que;
 extern int g_event_loop;
 extern int recv_thread_run;
 
+#ifdef __FEATURE_DPM__
+extern int g_dpm_policy_status;
+#endif /* __FEATURE_DPM__ */
+
 #ifdef __FEATURE_WIFI_AUTO_DOWNLOAD__
 extern pthread_cond_t  _auto_downalod_available_signal;
 #endif
@@ -648,6 +652,23 @@ static int event_handler_EMAIL_EVENT_SYNC_HEADER(char *multi_user_name, int inpu
 			EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_FAIL] Failed >>>> ");
 		goto FINISH_OFF;
 	}
+#ifdef __FEATURE_DPM__
+
+	if(g_dpm_policy_status == false){
+
+		EM_DEBUG_EXCEPTION("dpm policy not allowed");
+		err = EMAIL_ERROR_DPM_RESTRICTED_MODE;
+		if (!emcore_notify_network_event(NOTI_DOWNLOAD_FAIL, input_account_id, input_mailbox_id_str, handle_to_be_published, err))
+			EM_DEBUG_EXCEPTION(" emcore_notify_network_event [ NOTI_DOWNLOAD_FAIL] Failed >>>> ");
+
+		goto FINISH_OFF;
+
+	}
+#endif /* __FEATURE_DPM__ */
+
+
+
+
 
 	if (sync_type != EMAIL_SYNC_ALL_MAILBOX) {	/* Sync only particular mailbox */
 		EM_DEBUG_LOG_SEC("sync start: account_id [%d] alias [%s]", input_account_id, mailbox_tbl_target->alias);

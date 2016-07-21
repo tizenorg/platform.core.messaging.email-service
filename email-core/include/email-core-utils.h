@@ -52,6 +52,10 @@ typedef int (*email_get_unread_email_count_cb)(int unread, int *err_code);
 /* parse the Full mailbox Path and get the Alias Name of the Mailbox */
 char* emcore_get_alias_of_mailbox(const char *mailbox_path);
 
+#ifdef __FEATURE_DPM__
+INTERNAL_FUNC void dpm_instance_create(void);
+#endif /* __FEATURE_DPM__ */
+
 /* Parse the Mailbox Path and get the Account Email address */
 INTERNAL_FUNC int   emcore_get_temp_file_name(char **filename, int *err_code);
 INTERNAL_FUNC int   emcore_get_temp_mime_file_name(char **filename, int *err_code);

@@ -62,6 +62,13 @@
 #include "email-core-container.h"
 #include "email-core-cynara.h"
 
+#ifdef __FEATURE_DPM__
+extern int g_dpm_policy_status;
+#endif /* __FEATURE_DPM__ */
+
+
+
+
 void stb_create_account(HIPC_API a_hAPI)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -1521,6 +1528,22 @@ void stb_add_mail(HIPC_API a_hAPI)
 		EM_DEBUG_EXCEPTION("em_get_account_server_type_by_account_id failed[%d]", err);
 		goto FINISH_OFF;
 	}
+
+#ifdef __FEATURE_DPM__
+
+	EM_DEBUG_LOG("check_dpm_policy : %d", g_dpm_policy_status);
+	if(g_dpm_policy_status == false){
+
+		if (account_server_type != EMAIL_SERVER_TYPE_ACTIVE_SYNC) {
+			err = EMAIL_ERROR_DPM_RESTRICTED_MODE;
+			goto FINISH_OFF;
+	       	}
+
+	  	EM_DEBUG_LOG("EMAIL_SERVER_TYPE_ACTIVE_SYNC is exceptional from dpm policy");
+
+	}
+#endif /* __FEATURE_DPM__ */
+
 
     /* Get the absolute path */
     if (EM_SAFE_STRLEN(multi_user_name) > 0) {
@@ -3181,6 +3204,14 @@ void stb_validate_account_ex(HIPC_API a_hAPI)
 	int err = EMAIL_ERROR_NONE;
     int nAPPID = emipc_get_app_id(a_hAPI);
     char *multi_user_name = NULL;
+#ifdef __FEATURE_DPM__
+    EM_DEBUG_LOG("check_dpm_policy : %d", g_dpm_policy_status);
+	 if(g_dpm_policy_status == false){
+
+		err = EMAIL_ERROR_DPM_RESTRICTED_MODE;
+		goto FINISH_OFF;
+	 }
+#endif /* __FEATURE_DPM__ */
 
     if ((err = emcore_get_user_name(nAPPID, &multi_user_name)) != EMAIL_ERROR_NONE) {
         EM_DEBUG_EXCEPTION("emcore_get_user_name failed : [%d]", err);
@@ -3632,6 +3663,39 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END("err [%d]", err);
 }
 
+#ifdef __FEATURE_DPM__
+
+int stb_check_dpm_policy(HIPC_API a_hAPI)
+{
+	EM_DEBUG_FUNC_BEGIN();
+
+	int err = EMAIL_ERROR_NONE;
+
+	EM_DEBUG_LOG("g_dpm_policy_status : %d", g_dpm_policy_status);
+	if (g_dpm_policy_status == true){
+		EM_DEBUG_LOG("true");
+		return err;
+	}else if(g_dpm_policy_status == false){
+
+		EM_DEBUG_LOG("false");
+		err = EMAIL_ERROR_DPM_RESTRICTED_MODE;
+	}
+	if (!emipc_add_parameter(a_hAPI, ePARAMETER_OUT, &err, sizeof(int)))
+		EM_DEBUG_EXCEPTION("emipc_add_parameter failed");
+
+	if (!emipc_execute_stub_api(a_hAPI))
+		EM_DEBUG_EXCEPTION("emipc_execute_stub_api failed");
+
+	EM_DEBUG_FUNC_END("err [%d]", err);
+	return err;
+
+}
+
+
+#endif /* __FEATURE_DPM__ */
+
+
+
 void stb_save_default_account_id(HIPC_API a_hAPI)
 {
 	EM_DEBUG_FUNC_BEGIN();
@@ -3738,6 +3802,35 @@ void stb_API_mapper(HIPC_API a_hAPI)
 	int err = EMAIL_ERROR_NONE;
 	unsigned int nAPIID = emipc_get_api_id(a_hAPI);
 	unsigned int client_fd = emipc_get_response_id(a_hAPI);
+
+
+
+#ifdef __FEATURE_DPM__
+
+	switch(nAPIID) {
+
+		/* Sending the mail */
+		case _EMAIL_API_SEND_MAIL:
+		case _EMAIL_API_ADD_ATTACHMENT:
+		case _EMAIL_API_SEND_RETRY:
+		/* Download the mail */
+		case _EMAIL_API_SYNC_HEADER:
+		case _EMAIL_API_DOWNLOAD_BODY:
+		case _EMAIL_API_DOWNLOAD_ATTACHMENT:
+		case _EMAIL_API_ADD_ACCOUNT_WITH_VALIDATION:
+		case _EMAIL_API_ADD_ACCOUNT:
+			EM_DEBUG_LOG("check_dpm_policy");
+			err = stb_check_dpm_policy(a_hAPI);
+			if (err == EMAIL_ERROR_DPM_RESTRICTED_MODE) {
+				EM_DEBUG_LOG("stb_check_dpm_policy result in EMAIL_ERROR_DPM_RESTRICTED_MODE");
+				return;
+			} else
+				break;
+
+	}
+#endif /* __FEATURE_DPM__ */
+
+
 
 	err = emcore_check_privilege(client_fd);
 	if (err != EMAIL_ERROR_NONE) {
@@ -4238,6 +4331,13 @@ INTERNAL_FUNC int main(int argc, char *argv[])
 #if !GLIB_CHECK_VERSION(2, 36, 0)
 	g_type_init();
 #endif
+
+
+#ifdef __FEATURE_DPM__
+
+	dpm_instance_create();
+
+#endif /* __FEATURE_DPM__ */
 
     /* Init container for daemon */
     emcore_create_container();
