@@ -188,6 +188,7 @@
 #define EMAIL_ERROR_MDM_SERVICE_FAILURE                 -7100    /**<  The MDM service did not work */
 #define EMAIL_ERROR_MDM_RESTRICTED_MODE                 -7101    /**<  The MDM service is in restricted mode */
 #define EMAIL_ERROR_NOTI                                -7110    /**<  The Notification API returned the error */
+#define EMAIL_ERROR_DPM_RESTRICTED_MODE			-7201	 /**<  The DPM service is in restricted mode */
 
 /* Etc */
 #define EMAIL_ERROR_ALREADY_INITIALIZED                 -7321    /**<  The thread is already intialized */

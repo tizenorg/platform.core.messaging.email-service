@@ -71,6 +71,9 @@
 #include "email-core-container.h"
 
 connection_h conn = NULL;
+#ifdef __FEATURE_DPM__
+extern int g_dpm_policy_status;
+#endif /* __FEATURE_DPM__ */
 
 extern void *
 pop3_parameters(long function, void *value);
@@ -174,6 +177,17 @@ static void callback_for_SYNC_ALL_STATUS_from_account_svc(keynode_t *input_node,
 	int sync_start_toggle = 0;
 	email_account_t         *account_list = NULL;
 	emstorage_mailbox_tbl_t *mailbox_tbl_data = NULL;
+
+#ifdef __FEATURE_DPM__
+	if(g_dpm_policy_status == false){
+		EM_DEBUG_EXCEPTION("dpm policy not allowed");
+		err =  EMAIL_ERROR_DPM_RESTRICTED_MODE;
+		goto FINISH_OFF;
+
+	}
+#endif /* __FEATURE_DPM__ */
+
+
 
 	if (!emdaemon_get_account_list(NULL, &account_list, &account_count, &err))  {
 		EM_DEBUG_EXCEPTION("emdaemon_get_account_list failed [%d]", err);
