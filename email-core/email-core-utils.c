@@ -125,6 +125,10 @@ struct emcore_account_list_t {
 	emcore_account_list_t *next;
 };
 
+#ifdef __FEATURE_DPM__
+INTERNAL_FUNC int g_dpm_policy_status = 0;
+
+#endif /* __FEATURE_DPM__ */
 #include <gmime/gmime.h>
 
 INTERNAL_FUNC char *emcore_convert_mutf7_to_utf8(char *mailbox_name)
@@ -4127,6 +4131,67 @@ FINISH_OFF:
 	EM_DEBUG_FUNC_END("error:[%d]", error);
 	return error;
 }
+
+
+#ifdef __FEATURE_DPM__
+
+#include <dpm/restriction.h>
+void on_restriction(const char* policy, const char* value, void* user_data)
+{
+	int is_allowed = strcmp(value, "allowed") == 0 ? 1 : 0;
+	/* true = 1;
+	   false = 0; */
+
+	EM_DEBUG_LOG("dpm_cb_status : %d",  is_allowed);
+	g_dpm_policy_status = is_allowed;
+}
+
+int callback_id;
+device_policy_manager_h dpm;
+
+void dpm_instance_create()
+{
+
+	EM_DEBUG_LOG("dpm_instance_create");
+	dpm = dpm_manager_create();
+	int allowed;
+	void *user_data = NULL;
+	int ret = dpm_restriction_get_popimap_email_state(dpm, &allowed);
+	if (ret != DPM_ERROR_NONE) {
+		EM_DEBUG_LOG("dpm_error : %d", ret);
+		//TODO add error routin
+	}
+
+		EM_DEBUG_LOG("dpm_policy  : %d", allowed);
+	if (allowed == false) {
+
+		/* OPERATION IS RESTRICTED */
+		g_dpm_policy_status = false;
+
+	} else if (allowed == true){
+
+		/* OPERATION IS ALLOWED */
+		g_dpm_policy_status = true;
+
+	} else {
+		EM_DEBUG_LOG("dpm wrong status : %d", allowed);
+
+		//TODO add error routin
+	}
+
+	// Callback will be called when policy is changed
+	dpm_add_policy_changed_cb(dpm , "popimap-email", on_restriction, user_data, &callback_id);
+
+
+}
+
+void dpm_interface_destroy()
+{
+	dpm_remove_policy_changed_cb(dpm, callback_id);
+	dpm_manager_destroy(dpm);
+}
+
+#endif /* __FEATURE_DPM__ */
 
 /* peak schedule */
 static int emcore_get_next_peak_start_time(emstorage_account_tbl_t *input_account_ref, time_t input_current_time, time_t *output_time)

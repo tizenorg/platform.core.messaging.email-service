@@ -42,6 +42,9 @@
 #include "email-network.h"
 #include "email-utilities.h"
 
+#ifdef __FEATURE_DPM__
+extern int g_dpm_policy_status;
+#endif /* __FEATURE_DPM__ */
 
 static int _emdaemon_get_polling_account_and_timeinterval(email_alarm_data_t *alarm_data, int *account_id, int *timer_interval);
 static int _emdaemon_create_alarm_for_auto_polling(char *multi_user_name, int input_account_id);
@@ -128,6 +131,16 @@ INTERNAL_FUNC int emdaemon_alarm_polling_cb(email_alarm_data_t *alarm_data, void
 		EM_DEBUG_EXCEPTION("_emdaemon_create_alarm_for_auto_polling failed [%d]", err);
 		return false;
 	}
+
+	#ifdef __FEATURE_DPM__
+		if(g_dpm_policy_status == false){
+			EM_DEBUG_EXCEPTION("dpm policy not allowed");
+			err = EMAIL_ERROR_DPM_RESTRICTED_MODE;
+			goto FINISH_OFF;
+		}
+	#endif /* __FEATURE_DPM__ */
+
+
 
 	ref_account = emcore_get_account_reference(alarm_data->multi_user_name, account_id, false);
 	if (ref_account == NULL) {
