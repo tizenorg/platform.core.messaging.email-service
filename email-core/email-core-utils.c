@@ -1682,7 +1682,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 	int private_id = 0;
 	void *join_zone = NULL;
 	char *mailbox_name = NULL;
-	char *dgettext_string = NULL;
+/*	char *dgettext_string = NULL; */
 	char vconf_private_id[MAX_PATH] = {0, };
 	notification_h noti = NULL;
 	notification_error_e noti_err = NOTIFICATION_ERROR_NONE;
@@ -1785,7 +1785,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 			err = EMAIL_ERROR_NOTI;
 			goto FINISH_OFF;
 		}
-
+/*
 		switch (sending_error) {
 		case EMAIL_ERROR_NONE:
 			dgettext_string = dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_EMAIL_SENT");
@@ -1804,7 +1804,7 @@ INTERNAL_FUNC int emcore_add_notification_for_send(char *multi_user_name, int ac
 			dgettext_string = dgettext(NATIVE_EMAIL_DOMAIN, "IDS_EMAIL_TPOP_SENDING_FAILED");
 			break;
 		}
-
+*/
 		if ((noti_err = notification_set_layout(noti,
 												NOTIFICATION_LY_NOTI_EVENT_SINGLE)) != NOTIFICATION_ERROR_NONE) {
 			EM_DEBUG_EXCEPTION("notification_set_layout failed [%d]", noti_err);
